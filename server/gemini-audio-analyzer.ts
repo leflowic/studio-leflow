@@ -60,103 +60,75 @@ export interface AudioAnalysisResult {
   }>;
 }
 
-const AUDIO_ANALYSIS_PROMPT = `Ti si EVLFRQ - profesionalni audio inženjer i mix analizator. Analiziraj ovaj audio fajl i daj detaljan izveštaj.
+const AUDIO_ANALYSIS_PROMPT = `You are EVLFRQ - a professional audio engineer and mix analyzer. Analyze this audio file.
 
-KRITIČNO - DETEKCIJA TIPA MATERIJALA:
-PAŽLJIVO SLUŠAJ audio i odredi TAČNO o kakvom tipu materijala se radi. NE POGAĐAJ - slušaj!
+CRITICAL - AUDIO TYPE DETECTION:
+LISTEN CAREFULLY to the audio and determine EXACTLY what type of material this is. DO NOT GUESS - actually listen!
 
-Ako čuješ SAMO GLAS bez muzike/beata = "Raw Vocal" ili "Processed Vocal"
-Ako čuješ SAMO INSTRUMENTALE bez glasa = "Instrumental" ili "Beat"
-Ako čuješ I GLAS I INSTRUMENTALE = "Full Mix" ili "Vocal Mix"
+DECISION TREE:
+1. Is there ANY vocal/voice in the audio?
+   - YES, there is voice → Go to step 2
+   - NO, only instruments/music → It's "Instrumental" or "Beat"
 
-TIPOVI MATERIJALA:
-- "Raw Vocal" - SAMO glas, neobrađen (bez reverba, delaya, autotune-a, kompresije). Čuješ sobu, dahove, prirodan zvuk.
-- "Processed Vocal" - SAMO glas sa efektima (reverb, delay, autotune, kompresija). Nema beata/muzike u pozadini.
-- "Vocal Mix" - Glas SA backing trackom/beatom u pozadini
-- "Full Mix" - Kompletna pesma (vokal + svi instrumenti + produkcija)
-- "Instrumental" - Samo instrumentali, NEMA vokala uopšte
-- "Beat" - Hip-hop/trap/pop beat bez vokala
-- "Acapella" - Samo vokali (jedan ili više glasova), bez instrumentala
-- "Stem" - Pojedinačni element (samo bas, samo bubnjevi, samo gitara)
-- "Master" - Finalni masterovani audio (limitovan, loud)
-- "Demo" - Loš kvalitet snimka, skica
+2. Is there music/beat behind the vocal?
+   - YES, voice + music together → It's "Full Mix" or "Vocal Mix"  
+   - NO, ONLY voice without any music → Go to step 3
 
-KLJUČNA PITANJA ZA DETEKCIJU:
-1. Da li čujem SAMO GLAS ili ima i muzike?
-2. Ako je samo glas - da li ima efekata (reverb/delay) ili je suv/raw?
-3. Ako ima muzike - da li ima i vokala ili je instrumental?
+3. Does the voice have effects (reverb, delay, autotune)?
+   - YES, voice has effects but NO music → "Processed Vocal"
+   - NO, dry/raw voice, you can hear room, breaths → "Raw Vocal"
 
-ANALIZIRAJ SLEDEĆE ASPEKTE:
+AUDIO TYPES:
+- "Raw Vocal" = ONLY voice, DRY, no effects, no reverb, no music. You hear room noise, breaths, natural sound.
+- "Processed Vocal" = ONLY voice WITH effects (reverb, delay, autotune, compression) but NO music/beat behind it
+- "Vocal Mix" = Voice WITH backing track/beat playing together
+- "Full Mix" = Complete song with vocals + all instruments + full production
+- "Instrumental" = Only instruments, NO vocals at all
+- "Beat" = Hip-hop/trap/pop beat without vocals
+- "Acapella" = Only vocals (one or more voices), no instruments
+- "Stem" = Single element (only bass, only drums, only guitar)
 
-1. FREKVENCIJSKI BALANS:
-- Low (20-250Hz): Previše/premalo basa? Muddy? Boomy?
-- Low-Mid (250-2kHz): Mutno? Boxy? 
-- High-Mid (2-8kHz): Oštro? Harsh? Sibilant?
-- High (8-20kHz): Dovoljno "air"? Previše šuma?
+ANALYZE:
+1. Frequency Balance (Low 20-250Hz, Low-Mid 250-2kHz, High-Mid 2-8kHz, High 8-20kHz)
+2. Dynamics (compression, dynamic range)
+3. Stereo Image (width, correlation)
+4. Issues (Boomy, Muddy, Boxy, Harsh, Sibilant, Room problems, etc.)
+5. Loudness (LUFS, True Peak)
 
-2. DINAMIKA:
-- Previše kompresovano (overcompressed)?
-- Nedostaje kontrola (undercompressed)?
-- Dynamic range procena
-
-3. STEREO SLIKA:
-- Širina stereo polja
-- Phase correlation (mono kompatibilnost)
-
-4. PROBLEMI (detektuj sve prisutne):
-- Boomy, Muddy, Boxy, Honky, Nasal, Harsh, Sibilant, Thin
-- Clicks/Noise, Room problems, Plosives
-
-5. LOUDNESS:
-- LUFS vrednost
-- True Peak
-
-ODGOVORI U TAČNO OVOM JSON FORMATU (bez markdown, samo čist JSON):
+RESPOND IN THIS EXACT JSON FORMAT (no markdown, pure JSON only):
 {
-  "audioType": "[OBAVEZNO POPUNI NA OSNOVU ONOGA ŠTO ČUJEŠ]",
-  "audioTypeDetails": "[Opiši šta tačno čuješ - muški/ženski glas, žanr, instrumenti ako ih ima]",
+  "audioType": "Raw Vocal",
+  "audioTypeDetails": "Male vocal, dry recording, room ambience audible, no effects",
   "detectedKey": "C Minor",
   "duration": "2:30",
-  "summary": "Kratak opis kvaliteta na srpskom...",
+  "summary": "Opis kvaliteta na srpskom jeziku...",
   "mixScore": 70,
   "mixGrade": "B",
-  "lufs": -14.0,
-  "truePeak": -1.5,
-  "stereoWidth": 50,
-  "correlation": 0.95,
-  "dynamicRange": 10.0,
+  "lufs": -18.0,
+  "truePeak": -3.0,
+  "stereoWidth": 20,
+  "correlation": 0.98,
+  "dynamicRange": 12.0,
   "transientScore": 65,
-  "tonalBalance": {
-    "low": 40,
-    "lowMid": 50,
-    "highMid": 55,
-    "high": 45
-  },
-  "issues": [
-    {
-      "name": "ImeProblema",
-      "description": "Opis problema...",
-      "solution": "Rešenje..."
-    }
-  ],
-  "recommendations": [
-    "Preporuka..."
-  ]
+  "tonalBalance": {"low": 30, "lowMid": 45, "highMid": 60, "high": 50},
+  "issues": [{"name": "Room", "description": "Čuje se prostorija...", "solution": "Koristiti noise gate..."}],
+  "recommendations": ["Preporuka na srpskom..."]
 }
 
-PRIMERI audioType ODGOVORA:
-- Ako čuješ samo suv glas bez efekata: "Raw Vocal", "Neobrađen muški vokal, snimljen u sobi"
-- Ako čuješ glas sa reverbom ali bez beata: "Processed Vocal", "Ženski vokal sa reverb i delay efektima"
-- Ako čuješ glas preko trap beata: "Full Mix", "Muški vokal, trap produkcija, 808 bas"
-- Ako čuješ samo beat bez glasa: "Beat", "Trap beat sa 808 basom i hi-hat patternima"
+IMPORTANT RULES FOR audioType:
+- If you hear ONLY a person speaking/singing with NO music = "Raw Vocal" or "Processed Vocal"
+- "Raw Vocal" means DRY voice - no reverb, no delay, natural room sound
+- "Processed Vocal" means voice HAS effects but still NO music behind it
+- If there IS music/beat = "Full Mix", "Vocal Mix", or "Instrumental"/"Beat"
+- Write summary, issues, recommendations in SERBIAN language
 
-PRAVILA ZA OCENJIVANJE:
-- S (95-100): Profesionalni masterski kvalitet
-- A (80-94): Odličan, spremno za release
-- B (65-79): Dobar sa manjim problemima
-- C (50-64): Prosečan, potrebne korekcije
-- D (35-49): Ispod proseka
-- F (0-34): Loš, potreban remix`;
+GRADING:
+- S (95-100): Professional master quality
+- A (80-94): Excellent, release ready
+- B (65-79): Good with minor issues
+- C (50-64): Average, needs corrections
+- D (35-49): Below average
+- F (0-34): Poor, needs remix`;
 
 export async function analyzeAudioWithGemini(
   audioBuffer: Buffer,
@@ -274,6 +246,9 @@ export async function analyzeAudioWithGemini(
 
           const text = response.text || "";
           
+          // Log raw Gemini response for debugging
+          console.log(`[EVLFRQ] Raw Gemini response (first 500 chars): ${text.substring(0, 500)}`);
+          
           // Extract JSON from response
           let jsonStr = text;
           const jsonMatch = text.match(/\{[\s\S]*\}/);
@@ -282,6 +257,9 @@ export async function analyzeAudioWithGemini(
           }
 
           const parsed = JSON.parse(jsonStr);
+          
+          // Log detected audio type
+          console.log(`[EVLFRQ] Detected audioType: "${parsed.audioType}", details: "${parsed.audioTypeDetails}"`);
 
           // Generate frequency data based on tonal balance
           const frequencyData = generateFrequencyData(parsed.tonalBalance, parsed.issues);
