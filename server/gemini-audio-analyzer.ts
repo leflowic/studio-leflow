@@ -30,6 +30,8 @@ export interface AudioAnalysisResult {
   fileName: string;
   duration: string;
   detectedKey: string;
+  audioType: string;  // Tip materijala: Raw Vocal, Processed Vocal, Full Mix, Instrumental, Beat, etc.
+  audioTypeDetails: string;  // Dodatni detalji o tipu
   summary: string;
   mixScore: number;
   mixGrade: string;
@@ -59,6 +61,19 @@ export interface AudioAnalysisResult {
 }
 
 const AUDIO_ANALYSIS_PROMPT = `Ti si EVLFRQ - profesionalni audio inženjer i mix analizator. Analiziraj ovaj audio fajl i daj detaljan izveštaj.
+
+PRVO PREPOZNAJ TIP MATERIJALA:
+Detektuj o kakvom tipu audio materijala se radi:
+- "Raw Vocal" - Neobrađen vokal (bez efekata, reverba, kompresije)
+- "Processed Vocal" - Obrađen vokal (sa efektima, autotune, reverb, delay)
+- "Vocal Mix" - Vokal sa backing trackom/beatom
+- "Full Mix" - Kompletna pesma sa svim elementima (vokal + instrumentali)
+- "Instrumental" - Samo instrumentali bez vokala
+- "Beat" - Hip-hop/trap/pop beat/backing track
+- "Acapella" - Samo vokali (može biti više glasova)
+- "Stem" - Pojedinačni stem (bas, bubnjevi, gitara, itd.)
+- "Master" - Finalni masterovani audio
+- "Demo" - Demo snimak (loš kvalitet, skica)
 
 ANALIZIRAJ SLEDEĆE ASPEKTE:
 
@@ -95,6 +110,8 @@ ANALIZIRAJ SLEDEĆE ASPEKTE:
 
 ODGOVORI U TAČNO OVOM JSON FORMATU (bez markdown, samo čist JSON):
 {
+  "audioType": "Full Mix",
+  "audioTypeDetails": "Kompletna pesma sa muškim vokalom, trap beat, 808 bas",
   "detectedKey": "A Minor",
   "duration": "3:45",
   "summary": "Kratak opis kvaliteta miksa na srpskom...",
@@ -124,6 +141,10 @@ ODGOVORI U TAČNO OVOM JSON FORMATU (bez markdown, samo čist JSON):
     "Preporuka 2 na srpskom..."
   ]
 }
+
+PRAVILA ZA audioType:
+- Budi precizan u određivanju tipa materijala
+- audioTypeDetails treba da sadrži dodatne informacije (žanr, pol vokala, instrumenti)
 
 PRAVILA ZA OCENJIVANJE:
 - S (95-100): Profesionalni masterski kvalitet
@@ -267,6 +288,8 @@ export async function analyzeAudioWithGemini(
             fileName,
             duration: parsed.duration || "0:00",
             detectedKey: parsed.detectedKey || "Unknown",
+            audioType: parsed.audioType || "Unknown",
+            audioTypeDetails: parsed.audioTypeDetails || "",
             summary: parsed.summary || "Analiza završena.",
             mixScore: parsed.mixScore || 70,
             mixGrade: parsed.mixGrade || "B",

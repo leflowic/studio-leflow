@@ -1006,22 +1006,41 @@ Studio LeFlow
       <div className="space-y-6">
         {/* Prepoznato - File Info */}
         <Card title="Prepoznato" icon={FileAudio}>
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-            <div>
-              <span className="text-xs text-gray-500 uppercase tracking-wide">Naziv Fajla</span>
-              <p className="text-white font-medium mt-1 truncate" title={report.fileName}>{report.fileName}</p>
+          <div className="space-y-4">
+            {/* Tip Materijala - Prominentno prikazan */}
+            <div className="flex items-center gap-3 pb-4 border-b border-white/10">
+              <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-[#4F46E5] to-[#7C3AED] flex items-center justify-center">
+                {report.audioType?.includes('Vocal') ? <Mic2 size={24} className="text-white" /> :
+                 report.audioType?.includes('Instrumental') || report.audioType?.includes('Beat') ? <Radio size={24} className="text-white" /> :
+                 report.audioType?.includes('Mix') || report.audioType?.includes('Master') ? <Layers size={24} className="text-white" /> :
+                 <Waves size={24} className="text-white" />}
+              </div>
+              <div>
+                <p className="text-xl font-bold text-white">{report.audioType || 'Unknown'}</p>
+                {report.audioTypeDetails && (
+                  <p className="text-sm text-gray-400">{report.audioTypeDetails}</p>
+                )}
+              </div>
             </div>
-            <div>
-              <span className="text-xs text-gray-500 uppercase tracking-wide">Trajanje</span>
-              <p className="text-white font-mono font-medium mt-1">{report.duration}</p>
-            </div>
-            <div>
-              <span className="text-xs text-gray-500 uppercase tracking-wide">Tonalitet</span>
-              <p className="text-purple-400 font-medium mt-1">{report.detectedKey}</p>
-            </div>
-            <div>
-              <span className="text-xs text-gray-500 uppercase tracking-wide">Dynamic Range</span>
-              <p className="text-cyan-400 font-mono font-medium mt-1">{report.dynamicRange.toFixed(1)} dB</p>
+            
+            {/* Ostale informacije */}
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+              <div>
+                <span className="text-xs text-gray-500 uppercase tracking-wide">Naziv Fajla</span>
+                <p className="text-white font-medium mt-1 truncate" title={report.fileName}>{report.fileName}</p>
+              </div>
+              <div>
+                <span className="text-xs text-gray-500 uppercase tracking-wide">Trajanje</span>
+                <p className="text-white font-mono font-medium mt-1">{report.duration}</p>
+              </div>
+              <div>
+                <span className="text-xs text-gray-500 uppercase tracking-wide">Tonalitet</span>
+                <p className="text-purple-400 font-medium mt-1">{report.detectedKey}</p>
+              </div>
+              <div>
+                <span className="text-xs text-gray-500 uppercase tracking-wide">Dynamic Range</span>
+                <p className="text-cyan-400 font-mono font-medium mt-1">{report.dynamicRange.toFixed(1)} dB</p>
+              </div>
             </div>
           </div>
         </Card>

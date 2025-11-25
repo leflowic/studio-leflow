@@ -49,6 +49,8 @@ export interface AnalysisReport {
   fileName: string;
   duration: string;
   detectedKey: string;
+  audioType: string;  // Tip materijala: Raw Vocal, Processed Vocal, Full Mix, Instrumental, Beat, etc.
+  audioTypeDetails: string;  // Dodatni detalji o tipu (žanr, pol vokala, instrumenti)
   summary: string;
   mixScore: number;
   mixGrade: 'S' | 'A' | 'B' | 'C' | 'D' | 'F';
