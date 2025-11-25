@@ -5,6 +5,7 @@ import { Link } from 'wouter';
 import { Button as ShadcnButton } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { SEO, pageStructuredData } from "@/components/SEO";
 import { 
   User as UserIcon, Upload, Activity, Settings, LogOut, 
   FileAudio, AlertTriangle, Cpu, BarChart3, Zap, Gauge, Layers, 
@@ -1106,14 +1107,40 @@ Studio LeFlow
   };
 
   return (
-    <div 
-      className={`min-h-screen bg-gradient-to-br from-[#050505] to-[#0A0A0A] text-white flex transition-all duration-700 ${
-        showApp ? 'opacity-100 scale-100' : 'opacity-0 scale-95'
-      }`}
-      style={{
-        animation: showApp ? 'appFadeIn 0.7s ease-out forwards' : 'none'
-      }}
-    >
+    <>
+      <SEO 
+        title="EVLFRQ Audio Analyzer - Profesionalna AI Analiza Zvuka"
+        description="Profesionalni AI alat za analizu audio fajlova. FFT spektralna analiza, detekcija rezonanci, LUFS merenje, stereo analiza. Ekskluzivni alat za producente."
+        keywords={[
+          "evlfrq",
+          "audio analyzer",
+          "mix analyzer",
+          "FFT analyzer",
+          "LUFS metering",
+          "stereo analysis",
+          "audio analysis tool",
+          "mix check",
+          "frequency analyzer",
+          "resonance detection",
+          "audio quality check",
+          "AI audio analysis",
+          "spektralna analiza",
+          "analiza zvuka",
+          "mix analiza",
+          "audio produkcija",
+          "studio leflow"
+        ]}
+        noIndex={true}
+        structuredData={pageStructuredData.evlfrq}
+      />
+      <div 
+        className={`min-h-screen bg-gradient-to-br from-[#050505] to-[#0A0A0A] text-white flex transition-all duration-700 ${
+          showApp ? 'opacity-100 scale-100' : 'opacity-0 scale-95'
+        }`}
+        style={{
+          animation: showApp ? 'appFadeIn 0.7s ease-out forwards' : 'none'
+        }}
+      >
       {/* App fade-in animation */}
       <style>{`
         @keyframes appFadeIn {
@@ -1232,5 +1259,6 @@ Studio LeFlow
         </div>
       </main>
     </div>
+    </>
   );
 }

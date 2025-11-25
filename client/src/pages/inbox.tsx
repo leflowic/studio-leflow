@@ -1,5 +1,4 @@
 import { useState } from "react";
-import { Helmet } from "react-helmet-async";
 import { useAuth } from "@/hooks/use-auth";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -7,6 +6,7 @@ import { Separator } from "@/components/ui/separator";
 import { MessageCircle, Search } from "lucide-react";
 import ConversationList from "@/components/messaging/ConversationList";
 import ChatInterface from "@/components/messaging/ChatInterface";
+import { SEO } from "@/components/SEO";
 
 export default function Inbox() {
   const { user } = useAuth();
@@ -16,9 +16,11 @@ export default function Inbox() {
   if (!user || !user.emailVerified) {
     return (
       <div className="container mx-auto px-4 py-16 text-center">
-        <Helmet>
-          <title>Poruke - Studio LeFlow</title>
-        </Helmet>
+        <SEO 
+          title="Poruke - Studio LeFlow"
+          description="Sistem za razmenu poruka sa Studio LeFlow timom"
+          noIndex={true}
+        />
         <MessageCircle className="w-16 h-16 mx-auto mb-4 text-muted-foreground" />
         <h2 className="text-2xl font-bold mb-2">Pristup Odbijen</h2>
         <p className="text-muted-foreground">
@@ -30,10 +32,11 @@ export default function Inbox() {
 
   return (
     <div className="h-[calc(100vh-80px)]">
-      <Helmet>
-        <title>Poruke - Studio LeFlow</title>
-        <meta name="description" content="Privatne poruke - Studio LeFlow" />
-      </Helmet>
+      <SEO 
+        title="Poruke - Studio LeFlow"
+        description="Sistem za razmenu poruka sa Studio LeFlow timom"
+        noIndex={true}
+      />
 
       <div className="h-full flex flex-col md:flex-row">
         {/* Inbox sidebar - visible on mobile when no conversation selected */}
