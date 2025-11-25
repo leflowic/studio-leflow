@@ -19,7 +19,7 @@ import { useEditMode } from "@/contexts/EditModeContext";
 import { useWebSocket } from "@/hooks/use-websocket";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import leflowLogo from "@/assets/leflow-logo.png";
-import evlfrqLogo from "@assets/EVLFRQ Logo plavi_1764050012231.png";
+import evlfrqLogo from "@assets/Original Logo EVLFRQ_1764063214953.png";
 
 export function Header() {
   const [location, setLocation] = useLocation();
@@ -214,7 +214,7 @@ export function Header() {
                         </DropdownMenuItem>
                         <DropdownMenuItem asChild>
                           <Link href="/evlfrq" className="flex items-center gap-2 cursor-pointer" data-testid="link-dropdown-evlfrq">
-                            <img src={evlfrqLogo} alt="" className="h-4 w-4 object-contain" />
+                            <img src={evlfrqLogo} alt="" className="h-5 w-5 object-contain" />
                             Evil Frequency
                           </Link>
                         </DropdownMenuItem>
@@ -370,7 +370,7 @@ export function Header() {
                             onClick={() => setMobileMenuOpen(false)}
                             data-testid="link-mobile-evlfrq"
                           >
-                            <img src={evlfrqLogo} alt="" className="h-4 w-4 mr-2 object-contain" />
+                            <img src={evlfrqLogo} alt="" className="h-5 w-5 mr-2 object-contain" />
                             Evil Frequency
                           </Button>
                         </Link>
