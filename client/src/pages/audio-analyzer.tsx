@@ -1075,6 +1075,40 @@ Studio LeFlow
           </Card>
         </div>
 
+        {/* Problematične Rezonance / Issues */}
+        {report.issues && report.issues.length > 0 && (
+          <Card title="Problematične Rezonance" icon={AlertTriangle}>
+            <div className="space-y-3">
+              {report.issues.map((issue, index) => (
+                <div key={index} className="p-4 bg-red-500/10 border border-red-500/20 rounded-xl">
+                  <div className="flex items-center gap-2 mb-2">
+                    <span className="px-2 py-1 bg-red-500/20 text-red-400 text-xs font-bold rounded-lg uppercase">
+                      {issue.name}
+                    </span>
+                  </div>
+                  <p className="text-gray-300 text-sm mb-2">{issue.description}</p>
+                  {issue.solution && (
+                    <div className="flex items-start gap-2 mt-2 pt-2 border-t border-white/5">
+                      <Wrench size={14} className="text-emerald-400 mt-0.5 flex-shrink-0" />
+                      <p className="text-emerald-400 text-sm">{issue.solution}</p>
+                    </div>
+                  )}
+                </div>
+              ))}
+            </div>
+          </Card>
+        )}
+
+        {report.issues && report.issues.length === 0 && (
+          <Card title="Problematične Rezonance" icon={CheckCircle2}>
+            <div className="flex items-center gap-3 p-4 bg-emerald-500/10 border border-emerald-500/20 rounded-xl">
+              <CheckCircle2 size={24} className="text-emerald-400" />
+              <p className="text-emerald-400 font-medium">Nisu pronađene problematične rezonance!</p>
+            </div>
+          </Card>
+        )}
+
+        {/* Rezime Analize - posle problema */}
         {report.summary && (
           <Card title="Rezime Analize" icon={Info}>
             <p className="text-gray-300">{report.summary}</p>
