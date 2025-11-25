@@ -1,0 +1,3465 @@
+import type { Express } from "express";
+import { createServer, type Server } from "http";
+import { storage } from "./storage";
+import { wsHelpers, notifyUser, getOnlineUsersSnapshot } from "./websocket-helpers";
+import { insertContactSubmissionSchema, insertCmsContentSchema, insertCmsMediaSchema, insertVideoSpotSchema, insertUserSongSchema, insertNewsletterSubscriberSchema, insertInvoiceSchema, insertCommunityMessageSchema, insertSiteAnnouncementSchema, mixMasterContractDataSchema, copyrightTransferContractDataSchema, instrumentalSaleContractDataSchema, insertEvlfrqAuthKeySchema, type CmsContent, type CmsMedia, type VideoSpot, type UserSong, type EvlfrqAuthKey } from "@shared/schema";
+import { sendEmail, getLastVerificationCode } from "./resend-client";
+import { setupAuth, hashPassword, comparePasswords } from "./auth";
+import multer from "multer";
+import fs from "fs";
+import path from "path";
+import { z } from "zod";
+import { randomBytes } from "crypto";
+import { createRouteHandler } from "uploadthing/express";
+import { uploadRouter } from "./uploadthing";
+import { generateMixMasterPDF, generateCopyrightTransferPDF, generateInstrumentalSalePDF, type MixMasterContract, type CopyrightTransferContract, type InstrumentalSaleContract } from "./pdf-generators";
+import { analyzeAudioWithGemini } from "./gemini-audio-analyzer";
+import rateLimit from "express-rate-limit";
+import { fileTypeFromBuffer } from "file-type";
+
+// Rate limiters for security
+const loginRateLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000, // 15 minuta
+  max: 5, // max 5 pokušaja prijave po IP
+  message: { error: "Previše pokušaja prijave. Pokušajte ponovo za 15 minuta." },
+  standardHeaders: true,
+  legacyHeaders: false,
+});
+
+const analyzeRateLimiter = rateLimit({
+  windowMs: 60 * 60 * 1000, // 1 sat
+  max: 20, // max 20 analiza po satu po IP
+  message: { error: "Previše zahteva za analizu. Pokušajte ponovo za sat vremena." },
+  standardHeaders: true,
+  legacyHeaders: false,
+});
+
+const uploadRateLimiter = rateLimit({
+  windowMs: 60 * 60 * 1000, // 1 sat
+  max: 30, // max 30 upload-a po satu po IP
+  message: { error: "Previše upload zahteva. Pokušajte ponovo kasnije." },
+  standardHeaders: true,
+  legacyHeaders: false,
+});
+
+const registrationRateLimiter = rateLimit({
+  windowMs: 60 * 60 * 1000, // 1 sat
+  max: 3, // max 3 registracije po satu po IP
+  message: { error: "Previše registracija. Pokušajte ponovo za sat vremena." },
+  standardHeaders: true,
+  legacyHeaders: false,
+});
+
+// Configure multer for audio uploads (memory storage for Gemini)
+const audioUpload = multer({
+  storage: multer.memoryStorage(),
+  limits: {
+    fileSize: 8 * 1024 * 1024, // 8MB max (Gemini inline limit)
+  },
+  fileFilter: (_req, file, cb) => {
+    const allowedMimes = ['audio/mpeg', 'audio/mp3', 'audio/wav', 'audio/x-wav', 'audio/ogg', 'audio/webm', 'audio/flac'];
+    if (allowedMimes.includes(file.mimetype)) {
+      cb(null, true);
+    } else {
+      cb(new Error('Samo audio fajlovi su dozvoljeni (MP3, WAV, OGG, FLAC, WebM)'));
+    }
+  },
+});
+
+// Configure multer for CMS media uploads (disk storage for images)
+const multerUpload = multer({
+  storage: multer.diskStorage({
+    destination: (_req, _file, cb) => {
+      const uploadDir = path.join(process.cwd(), 'attached_assets', 'temp');
+      fs.mkdirSync(uploadDir, { recursive: true });
+      cb(null, uploadDir);
+    },
+    filename: (_req, file, cb) => {
+      cb(null, `${Date.now()}-${file.originalname}`);
+    },
+  }),
+  limits: {
+    fileSize: 10 * 1024 * 1024, // 10MB max for images
+  },
+  fileFilter: (_req, file, cb) => {
+    // Only accept image files
+    if (file.mimetype.startsWith('image/')) {
+      cb(null, true);
+    } else {
+      cb(new Error('Samo slike su dozvoljene'));
+    }
+  },
+});
+
+// HTML escape funkcija za bezbednost
+function escapeHtml(text: string): string {
+  const map: Record<string, string> = {
+    '&': '&amp;',
+    '<': '&lt;',
+    '>': '&gt;',
+    '"': '&quot;',
+    "'": '&#039;'
+  };
+  return text.replace(/[&<>"']/g, (m) => map[m] || m);
+}
+
+// Simple in-memory cache for analytics (30-60s TTL)
+interface CacheEntry<T> {
+  data: T;
+  expiresAt: number;
+}
+
+const analyticsCache = new Map<string, CacheEntry<any>>();
+const CACHE_TTL = 45000; // 45 seconds
+
+function getCachedData<T>(key: string): T | null {
+  const entry = analyticsCache.get(key);
+  if (!entry) return null;
+  
+  if (Date.now() > entry.expiresAt) {
+    analyticsCache.delete(key);
+    return null;
+  }
+  
+  return entry.data;
+}
+
+function setCachedData<T>(key: string, data: T): void {
+  analyticsCache.set(key, {
+    data,
+    expiresAt: Date.now() + CACHE_TTL,
+  });
+}
+
+// Sanitize user object by removing sensitive fields
+function sanitizeUser<T extends Record<string, any>>(user: T): Omit<T, 'password' | 'verificationCode' | 'passwordResetToken' | 'passwordResetExpiry' | 'adminLoginToken' | 'adminLoginExpiry'> {
+  const {
+    password,
+    verificationCode,
+    passwordResetToken,
+    passwordResetExpiry,
+    adminLoginToken,
+    adminLoginExpiry,
+    ...sanitized
+  } = user;
+  return sanitized;
+}
+
+// Rate limiting za kontakt formu - čuva IP adrese i timestamps
+const contactRateLimits = new Map<string, number[]>();
+const RATE_LIMIT_WINDOW = 60 * 60 * 1000; // 1 sat u milisekundama
+const MAX_REQUESTS_PER_HOUR = 3;
+
+// Rate limiting za community chat - 10 sekundi između poruka
+const communityMessageRateLimits = new Map<number, number>();
+const COMMUNITY_MESSAGE_COOLDOWN = 10 * 1000; // 10 sekundi u milisekundama
+
+// Funkcija za dobijanje prave IP adrese klijenta (koristi Express req.ip koji je siguran)
+function getClientIp(req: any): string | null {
+  // req.ip je automatski popunjen od Express-a kada je trust proxy omogućen
+  // Express ispravno parsira X-Forwarded-For i vraća pravu IP adresu
+  const ip = req.ip;
+  
+  // Ignoriši localhost adrese
+  if (!ip || ip === '::1' || ip === '127.0.0.1' || ip === '::ffff:127.0.0.1') {
+    return null;
+  }
+  
+  return ip;
+}
+
+function checkContactRateLimit(ip: string): { allowed: boolean; remainingTime?: number } {
+  const now = Date.now();
+  const timestamps = contactRateLimits.get(ip) || [];
+  
+  // Ukloni stare timestamps (starije od 1 sata)
+  const recentTimestamps = timestamps.filter(ts => now - ts < RATE_LIMIT_WINDOW);
+  
+  if (recentTimestamps.length >= MAX_REQUESTS_PER_HOUR) {
+    // Izračunaj kada će najstariji timestamp isteći
+    const oldestTimestamp = Math.min(...recentTimestamps);
+    const remainingTime = Math.ceil((RATE_LIMIT_WINDOW - (now - oldestTimestamp)) / 60000); // u minutima
+    return { allowed: false, remainingTime };
+  }
+  
+  // Dodaj novi timestamp
+  recentTimestamps.push(now);
+  contactRateLimits.set(ip, recentTimestamps);
+  
+  return { allowed: true };
+}
+
+// Funkcija za proveru rate limita za community chat poruke
+function canUserSendMessage(userId: number): boolean {
+  const now = Date.now();
+  const lastMessageTime = communityMessageRateLimits.get(userId);
+  
+  if (!lastMessageTime) {
+    communityMessageRateLimits.set(userId, now);
+    return true;
+  }
+  
+  const timeSinceLastMessage = now - lastMessageTime;
+  
+  if (timeSinceLastMessage < COMMUNITY_MESSAGE_COOLDOWN) {
+    return false;
+  }
+  
+  communityMessageRateLimits.set(userId, now);
+  return true;
+}
+
+// Middleware to check if user is banned
+function requireNotBanned(req: any, res: any, next: any) {
+  if (!req.jwtUser) {
+    return res.sendStatus(401);
+  }
+  
+  if (req.jwtUser.banned) {
+    return res.status(403).json({ 
+      error: "Vaš nalog je suspendovan. Kontaktirajte administratora za više informacija.",
+      banned: true 
+    });
+  }
+  
+  next();
+}
+
+// Middleware to check if user is admin
+function requireAdmin(req: any, res: any, next: any) {
+  if (!req.jwtUser) {
+    return res.sendStatus(401);
+  }
+  
+  if (req.jwtUser.banned) {
+    return res.status(403).json({ 
+      error: "Vaš nalog je suspendovan. Kontaktirajte administratora za više informacija.",
+      banned: true 
+    });
+  }
+  
+  if (req.jwtUser.role !== 'admin') {
+    return res.status(403).json({ error: "Samo administratori mogu pristupiti ovoj funkcionalnosti" });
+  }
+  
+  next();
+}
+
+// Middleware to check if email is verified
+function requireVerifiedEmail(req: any, res: any, next: any) {
+  if (!req.jwtUser) {
+    return res.sendStatus(401);
+  }
+  
+  if (req.jwtUser.banned) {
+    return res.status(403).json({ 
+      error: "Vaš nalog je suspendovan. Kontaktirajte administratora za više informacija.",
+      banned: true 
+    });
+  }
+  
+  if (!req.jwtUser.emailVerified) {
+    return res.status(403).json({ 
+      error: "Morate verifikovati email adresu da biste pristupili ovoj funkcionalnosti",
+      requiresVerification: true 
+    });
+  }
+  
+  next();
+}
+
+// Middleware to check if site is in maintenance mode (for API routes only)
+async function checkMaintenanceMode(req: any, res: any, next: any) {
+  // Allow access to maintenance check, auth routes, and admin routes
+  // NOTE: Paths do NOT include /api prefix because middleware is mounted on /api
+  const allowedPaths = [
+    '/maintenance',
+    '/login',
+    '/logout',
+    '/user',
+    '/register',
+    '/verify-email',
+    '/forgot-password',
+    '/reset-password',
+    '/admin',
+    '/admin-login-request',
+    '/admin-login-verify',
+  ];
+  
+  // Check if the request is for an allowed path
+  const isAllowedPath = allowedPaths.some(path => req.path.startsWith(path));
+  
+  if (isAllowedPath) {
+    return next();
+  }
+  
+  // If user is admin, allow access
+  if (req.jwtUser && req.jwtUser.role === "admin") {
+    return next();
+  }
+  
+  // Check if maintenance mode is active
+  const isMaintenanceMode = await storage.getMaintenanceMode();
+  
+  if (isMaintenanceMode) {
+    return res.status(503).json({ 
+      error: "Sajt je trenutno u pripremi",
+      maintenanceMode: true 
+    });
+  }
+  
+  next();
+}
+
+export async function registerRoutes(app: Express): Promise<Server> {
+  // Setup authentication routes: /api/register, /api/login, /api/logout, /api/user
+  setupAuth(app);
+
+  // Maintenance mode API routes
+  // GET is public (anyone can check if site is in maintenance)
+  app.get("/api/maintenance", async (_req, res) => {
+    try {
+      const isActive = await storage.getMaintenanceMode();
+      res.json({ maintenanceMode: isActive });
+    } catch (error) {
+      console.error("Error getting maintenance mode:", error);
+      res.status(500).json({ error: "Greška na serveru" });
+    }
+  });
+
+  // POST is admin only (only admins can toggle maintenance mode)
+  app.post("/api/maintenance", requireAdmin, async (req, res) => {
+    try {
+      const { maintenanceMode } = req.body;
+      
+      if (typeof maintenanceMode !== "boolean") {
+        return res.status(400).json({ error: "maintenanceMode mora biti boolean" });
+      }
+      
+      await storage.setMaintenanceMode(maintenanceMode);
+      
+      console.log(`[ADMIN] Maintenance mode ${maintenanceMode ? 'aktiviran' : 'deaktiviran'} od strane ${req.jwtUser!.username}`);
+      
+      res.json({ success: true, maintenanceMode });
+    } catch (error) {
+      console.error("Error setting maintenance mode:", error);
+      res.status(500).json({ error: "Greška na serveru" });
+    }
+  });
+
+  // Development debug endpoint for verification codes (only in development mode)
+  app.get("/api/debug/verification-code", (req, res) => {
+    if (process.env.NODE_ENV !== 'development') {
+      return res.status(404).json({ error: "Not found" });
+    }
+
+    const lastCode = getLastVerificationCode();
+    
+    if (!lastCode) {
+      return res.json({ 
+        message: "No verification code available yet. Register a new user to generate one." 
+      });
+    }
+
+    return res.json({
+      email: lastCode.email,
+      code: lastCode.code,
+      subject: lastCode.subject,
+      timestamp: new Date(lastCode.timestamp).toISOString(),
+      age: Math.round((Date.now() - lastCode.timestamp) / 1000) + ' seconds ago'
+    });
+  });
+
+  // Setup UploadThing routes for file uploads
+  // Use UPLOADTHING_SECRET (same as UPLOADTHING_TOKEN, just different name)
+  app.use(
+    "/api/uploadthing",
+    createRouteHandler({
+      router: uploadRouter,
+      config: {
+        token: process.env.UPLOADTHING_SECRET || process.env.UPLOADTHING_TOKEN,
+      },
+    })
+  );
+
+  // Apply maintenance mode middleware to all API routes (except allowed paths)
+  // This allows static files and index.html to load, but blocks API calls when in maintenance mode
+  app.use('/api', checkMaintenanceMode);
+
+  // Image upload endpoint for CMS
+  app.post("/api/upload-image", requireAdmin, multerUpload.single("file"), async (req, res) => {
+    try {
+      if (!req.file) {
+        return res.status(400).json({ error: "Fajl nije priložen" });
+      }
+
+      // Move file from temp to permanent location
+      const tempPath = req.file.path;
+      const fileName = req.file.filename;
+      const permanentDir = path.join(process.cwd(), 'attached_assets', 'cms_images');
+      fs.mkdirSync(permanentDir, { recursive: true });
+      const permanentPath = path.join(permanentDir, fileName);
+
+      fs.renameSync(tempPath, permanentPath);
+
+      // Return relative URL
+      const url = `/attached_assets/cms_images/${fileName}`;
+      res.json({ url });
+    } catch (error) {
+      console.error("Image upload error:", error);
+      res.status(500).json({ error: "Greška pri upload-u slike" });
+    }
+  });
+
+  // Email verification endpoint
+  // This endpoint verifies email for PENDING users and moves them to the users table
+  app.post("/api/verify-email", async (req, res) => {
+    try {
+      const { code } = req.body;
+      
+      if (!code) {
+        return res.status(400).json({ error: "Verifikacioni kod je obavezan" });
+      }
+      
+      // Find pending user by verification code
+      const pendingUser = await storage.getPendingUserByCode(code);
+      
+      if (!pendingUser) {
+        return res.status(400).json({ error: "Nevažeći verifikacioni kod" });
+      }
+      
+      // Check if pending user has expired (24 hours)
+      if (new Date() > new Date(pendingUser.expiresAt)) {
+        // Delete expired pending user
+        await storage.deletePendingUser(pendingUser.id);
+        return res.status(400).json({ 
+          error: "Verifikacioni kod je istekao. Molimo registrujte se ponovo." 
+        });
+      }
+      
+      // Move pending user to users table (atomic transaction with race condition protection)
+      let user;
+      try {
+        user = await storage.movePendingToUsers(pendingUser.id);
+      } catch (moveError: any) {
+        console.error("[VERIFY] Failed to move pending user to users:", moveError);
+        
+        // Check if error is due to duplicate email/username
+        if (moveError.message.includes("already")) {
+          return res.status(400).json({ error: moveError.message });
+        }
+        
+        return res.status(500).json({ error: "Greška pri kreiranju naloga" });
+      }
+      
+      console.log(`[VERIFY] Successfully created and verified user ${user.username} (id: ${user.id})`);
+      
+      // SECURITY: Check if user is banned before logging them in (paranoid check)
+      if (user.banned) {
+        return res.status(403).json({ error: "Vaš nalog je banovan" });
+      }
+      
+      // Generate JWT token for automatic login after verification
+      const { generateToken } = await import("./jwt-auth");
+      const token = generateToken(user.id);
+      
+      // SECURITY: Don't expose password hash
+      const { password, ...userWithoutPassword } = user;
+      res.json({ success: true, user: userWithoutPassword, token });
+    } catch (error) {
+      console.error("[VERIFY] Verification error:", error);
+      res.status(500).json({ error: "Greška na serveru" });
+    }
+  });
+
+  // Resend verification code
+  app.post("/api/resend-verification", async (req, res) => {
+    try {
+      const { email } = req.body;
+      
+      if (!email) {
+        return res.status(400).json({ error: "Email je obavezan" });
+      }
+      
+      const user = await storage.getUserByEmail(email);
+      if (!user) {
+        return res.status(404).json({ error: "Korisnik sa ovim emailom nije pronađen" });
+      }
+      
+      if (user.emailVerified) {
+        return res.status(400).json({ error: "Email je već verifikovan" });
+      }
+      
+      // Generate new verification code
+      const verificationCode = Math.floor(100000 + Math.random() * 900000).toString();
+      await storage.setVerificationCode(user.id, verificationCode);
+      
+      // Send verification email
+      try {
+        await sendEmail({
+          to: email,
+          subject: 'Novi Verifikacioni Kod - Studio LeFlow',
+          html: `
+            <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
+              <h2 style="color: #7c3aed;">Studio LeFlow</h2>
+              <h3>Novi Verifikacioni Kod</h3>
+              <p>Ovde je Vaš novi verifikacioni kod:</p>
+              <div style="background-color: #f3f4f6; padding: 20px; text-align: center; margin: 30px 0; border-radius: 8px;">
+                <h1 style="color: #7c3aed; font-size: 36px; letter-spacing: 8px; margin: 0;">${verificationCode}</h1>
+              </div>
+              <p>Ovaj kod ističe za 15 minuta.</p>
+              <hr style="margin: 30px 0; border: none; border-top: 1px solid #e5e7eb;">
+              <p style="color: #666; font-size: 12px;">Studio LeFlow - Profesionalna Muzička Produkcija</p>
+            </div>
+          `
+        });
+        return res.json({ success: true, message: "Novi verifikacioni kod je poslat" });
+      } catch (emailError) {
+        console.error("Greška pri slanju emaila:", emailError);
+        return res.status(500).json({ error: "Greška pri slanju emaila" });
+      }
+    } catch (error) {
+      return res.status(500).json({ error: "Greška na serveru" });
+    }
+  });
+
+  // Admin login request - sends verification code to admin email (2FA)
+  app.post("/api/admin-login-request", async (req, res) => {
+    try {
+      const { username, password } = req.body;
+      
+      if (!username || !password) {
+        return res.status(400).json({ error: "Korisničko ime ili email i lozinka su obavezni" });
+      }
+      
+      // Get user by username OR email (check if input contains @)
+      const isEmail = username.includes('@');
+      const user = isEmail 
+        ? await storage.getUserByEmail(username)
+        : await storage.getUserByUsername(username);
+      
+      // Generic error message to prevent user enumeration
+      if (!user) {
+        console.log(`[Admin Login] Failed: User not found (${username})`);
+        return res.status(401).json({ error: "Neispravno korisničko ime ili lozinka" });
+      }
+      
+      // Verify password
+      const validPassword = await comparePasswords(password, user.password);
+      if (!validPassword) {
+        console.log(`[Admin Login] Failed: Invalid password for user ${user.username}`);
+        return res.status(401).json({ error: "Neispravno korisničko ime ili lozinka" });
+      }
+      
+      // Check if user is admin - return same generic error
+      if (user.role !== 'admin') {
+        console.log(`[Admin Login] Failed: User ${user.username} is not admin (role: ${user.role})`);
+        return res.status(401).json({ error: "Neispravno korisničko ime ili lozinka" });
+      }
+      
+      // Check if user is banned - return same generic error
+      if (user.banned) {
+        console.log(`[Admin Login] Failed: User ${user.username} is banned`);
+        return res.status(401).json({ error: "Neispravno korisničko ime ili lozinka" });
+      }
+      
+      // Generate 6-digit verification code
+      const verificationCode = Math.floor(100000 + Math.random() * 900000).toString();
+      await storage.setAdminLoginToken(user.id, verificationCode);
+      
+      // Send verification email
+      try {
+        await sendEmail({
+          to: user.email,
+          subject: 'Verifikacioni Kod Za Admin Prijavu - Studio LeFlow',
+          html: `
+            <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
+              <h2 style="color: #7c3aed;">Studio LeFlow - Admin Prijava</h2>
+              <h3>Verifikacioni Kod</h3>
+              <p>Pokušaj prijave na admin panel. Ako ovo niste Vi, ignorišite ovaj email.</p>
+              <div style="background-color: #f3f4f6; padding: 20px; text-align: center; margin: 30px 0; border-radius: 8px;">
+                <h1 style="color: #7c3aed; font-size: 36px; letter-spacing: 8px; margin: 0;">${verificationCode}</h1>
+              </div>
+              <p>Ovaj kod ističe za 15 minuta.</p>
+              <hr style="margin: 30px 0; border: none; border-top: 1px solid #e5e7eb;">
+              <p style="color: #666; font-size: 12px;">Studio LeFlow - Profesionalna Muzička Produkcija</p>
+            </div>
+          `
+        });
+        
+        return res.json({ 
+          success: true, 
+          message: "Verifikacioni kod je poslat na Vaš email",
+          userId: user.id 
+        });
+      } catch (emailError) {
+        console.error("Greška pri slanju emaila:", emailError);
+        return res.status(500).json({ error: "Greška pri slanju emaila" });
+      }
+    } catch (error) {
+      console.error("Admin login request error:", error);
+      return res.status(500).json({ error: "Greška na serveru" });
+    }
+  });
+
+  // Admin login verify - verifies code and logs in user
+  app.post("/api/admin-login-verify", async (req, res) => {
+    try {
+      const { userId, code } = req.body;
+      
+      if (!userId || !code) {
+        return res.status(400).json({ error: "Svi podaci su obavezni" });
+      }
+      
+      // Verify code
+      const isValid = await storage.verifyAdminLoginToken(userId, code);
+      
+      if (!isValid) {
+        return res.status(401).json({ error: "Neispravan ili istekao kod" });
+      }
+      
+      // Get user
+      const user = await storage.getUser(userId);
+      if (!user) {
+        return res.status(404).json({ error: "Korisnik nije pronađen" });
+      }
+      
+      // Final security checks
+      if (user.role !== 'admin') {
+        return res.status(403).json({ error: "Nemate admin privilegije" });
+      }
+      
+      if (user.banned) {
+        return res.status(403).json({ error: "Vaš nalog je banovan" });
+      }
+      
+      // Clear the admin login token
+      await storage.clearAdminLoginToken(userId);
+      
+      // Generate JWT token for admin login
+      const { generateToken } = await import("./jwt-auth");
+      const token = generateToken(user.id);
+      
+      const { password, verificationCode, adminLoginToken, ...userWithoutSensitiveData } = user;
+      res.json({ success: true, user: userWithoutSensitiveData, token });
+    } catch (error) {
+      console.error("Admin login verify error:", error);
+      return res.status(500).json({ error: "Greška na serveru" });
+    }
+  });
+
+  app.post("/api/contact", async (req, res) => {
+    try {
+      // Proveri rate limit samo ako možemo da odredimo IP adresu
+      const clientIp = getClientIp(req);
+      if (clientIp) {
+        const rateLimitCheck = checkContactRateLimit(clientIp);
+        
+        if (!rateLimitCheck.allowed) {
+          return res.status(429).json({ 
+            error: `Poslali ste previše upita. Molimo pokušajte ponovo za ${rateLimitCheck.remainingTime} minuta.` 
+          });
+        }
+      }
+      
+      const validatedData = insertContactSubmissionSchema.parse(req.body);
+      const submission = await storage.createContactSubmission(validatedData);
+      
+      // Šalji email notifikaciju
+      try {
+        await sendEmail({
+          to: 'business@studioleflow.com',
+          subject: `Novi upit - ${escapeHtml(validatedData.service)}`,
+          html: `
+            <h2>Novi upit sa Studio LeFlow sajta</h2>
+            <p><strong>Usluga:</strong> ${escapeHtml(validatedData.service)}</p>
+            <p><strong>Ime:</strong> ${escapeHtml(validatedData.name)}</p>
+            <p><strong>Email:</strong> ${escapeHtml(validatedData.email)}</p>
+            <p><strong>Telefon:</strong> ${escapeHtml(validatedData.phone)}</p>
+            ${validatedData.preferredDate ? `<p><strong>Željeni termin:</strong> ${escapeHtml(validatedData.preferredDate)}</p>` : ''}
+            <p><strong>Poruka:</strong></p>
+            <p>${escapeHtml(validatedData.message).replace(/\n/g, '<br>')}</p>
+            <hr>
+            <p style="color: #666; font-size: 12px;">Poslato automatski sa Studio LeFlow sajta</p>
+          `
+        });
+      } catch (emailError) {
+        console.error("Greška pri slanju email-a:", emailError);
+        // Nastavi sa odgovorom čak i ako email ne uspe
+      }
+      
+      res.json(submission);
+    } catch (error: any) {
+      if (error.name === "ZodError") {
+        res.status(400).json({ error: "Validacija nije uspela", details: error.errors });
+      } else {
+        res.status(500).json({ error: "Greška na serveru" });
+      }
+    }
+  });
+
+  app.get("/api/contact", async (_req, res) => {
+    try {
+      const submissions = await storage.getAllContactSubmissions();
+      res.json(submissions);
+    } catch (error) {
+      res.status(500).json({ error: "Greška na serveru" });
+    }
+  });
+
+  // ==================== NEWSLETTER API ROUTES ====================
+
+  // Subscribe to newsletter (public)
+  app.post("/api/newsletter/subscribe", async (req, res) => {
+    try {
+      const { email } = insertNewsletterSubscriberSchema.parse(req.body);
+
+      // Check if email already exists
+      const existingSubscriber = await storage.getNewsletterSubscriberByEmail(email);
+
+      if (existingSubscriber) {
+        if (existingSubscriber.status === 'confirmed') {
+          return res.status(400).json({ error: "Email je već prijavljen na newsletter" });
+        } else if (existingSubscriber.status === 'pending') {
+          return res.status(400).json({ error: "Email već postoji - proverite inbox za link za potvrdu" });
+        } else if (existingSubscriber.status === 'unsubscribed') {
+          // Resubscribe - generate new token
+          const confirmationToken = randomBytes(32).toString('hex');
+          
+          await storage.createNewsletterSubscriber(email, confirmationToken);
+          
+          // Send confirmation email
+          try {
+            const baseUrl = process.env.REPLIT_DOMAINS 
+              ? `https://${process.env.REPLIT_DOMAINS}` 
+              : 'http://localhost:5000';
+            const confirmUrl = `${baseUrl}/newsletter/potvrda/${confirmationToken}`;
+            
+            await sendEmail({
+              to: email,
+              subject: 'Potvrdite prijavu na Studio LeFlow newsletter',
+              html: `
+                <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+                  <div style="background-color: #4542f5; padding: 30px; text-align: center;">
+                    <h1 style="color: white; margin: 0;">Studio LeFlow</h1>
+                  </div>
+                  <div style="padding: 30px; background-color: #ffffff;">
+                    <h2 style="color: #333;">Potvrdite svoju email adresu</h2>
+                    <p>Hvala što ste se prijavili na Studio LeFlow newsletter!</p>
+                    <p>Kliknite na dugme ispod da potvrdite svoju email adresu:</p>
+                    <div style="text-align: center; margin: 30px 0;">
+                      <a href="${confirmUrl}" style="background-color: #4542f5; color: white; padding: 15px 40px; text-decoration: none; border-radius: 5px; font-weight: bold; display: inline-block;">Potvrdi email</a>
+                    </div>
+                    <p style="color: #666; font-size: 14px;">Ili kopirajte i nalepite ovaj link u pretraživač:</p>
+                    <p style="color: #4542f5; word-break: break-all; font-size: 12px;">${confirmUrl}</p>
+                    <hr style="margin: 30px 0; border: none; border-top: 1px solid #e5e7eb;">
+                    <p style="color: #666; font-size: 12px;">Ako niste zatražili prijavu na newsletter, ignorišite ovaj email.</p>
+                  </div>
+                </div>
+              `
+            });
+          } catch (emailError) {
+            console.error("Greška pri slanju confirmation email-a:", emailError);
+            return res.status(500).json({ error: "Greška pri slanju email-a za potvrdu" });
+          }
+
+          return res.json({ message: "Uspešno! Proverite email za link za potvrdu" });
+        }
+      }
+
+      // Create new subscriber with confirmation token
+      const confirmationToken = randomBytes(32).toString('hex');
+      await storage.createNewsletterSubscriber(email, confirmationToken);
+
+      // Send confirmation email
+      try {
+        const baseUrl = process.env.REPLIT_DOMAINS 
+          ? `https://${process.env.REPLIT_DOMAINS}` 
+          : 'http://localhost:5000';
+        const confirmUrl = `${baseUrl}/newsletter/potvrda/${confirmationToken}`;
+        
+        await sendEmail({
+          to: email,
+          subject: 'Potvrdite prijavu na Studio LeFlow newsletter',
+          html: `
+            <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+              <div style="background-color: #4542f5; padding: 30px; text-align: center;">
+                <h1 style="color: white; margin: 0;">Studio LeFlow</h1>
+              </div>
+              <div style="padding: 30px; background-color: #ffffff;">
+                <h2 style="color: #333;">Potvrdite svoju email adresu</h2>
+                <p>Hvala što ste se prijavili na Studio LeFlow newsletter!</p>
+                <p>Kliknite na dugme ispod da potvrdite svoju email adresu:</p>
+                <div style="text-align: center; margin: 30px 0;">
+                  <a href="${confirmUrl}" style="background-color: #4542f5; color: white; padding: 15px 40px; text-decoration: none; border-radius: 5px; font-weight: bold; display: inline-block;">Potvrdi email</a>
+                </div>
+                <p style="color: #666; font-size: 14px;">Ili kopirajte i nalepite ovaj link u pretraživač:</p>
+                <p style="color: #4542f5; word-break: break-all; font-size: 12px;">${confirmUrl}</p>
+                <hr style="margin: 30px 0; border: none; border-top: 1px solid #e5e7eb;">
+                <p style="color: #666; font-size: 12px;">Ako niste zatražili prijavu na newsletter, ignorišite ovaj email.</p>
+              </div>
+            </div>
+          `
+        });
+      } catch (emailError) {
+        console.error("Greška pri slanju confirmation email-a:", emailError);
+        return res.status(500).json({ error: "Greška pri slanju email-a za potvrdu" });
+      }
+
+      res.json({ message: "Uspešno! Proverite email za link za potvrdu" });
+    } catch (error: any) {
+      if (error.name === "ZodError") {
+        res.status(400).json({ error: "Unesite validnu email adresu" });
+      } else {
+        console.error("Newsletter subscribe error:", error);
+        res.status(500).json({ error: "Greška na serveru" });
+      }
+    }
+  });
+
+  // Confirm newsletter subscription (public)
+  app.get("/api/newsletter/confirm/:token", async (req, res) => {
+    try {
+      const { token } = req.params;
+      const success = await storage.confirmNewsletterSubscription(token);
+
+      if (!success) {
+        return res.status(400).json({ error: "Link za potvrdu je nevažeći ili je već iskorišćen" });
+      }
+
+      res.json({ message: "Email uspešno potvrđen! Hvala što ste se prijavili na naš newsletter" });
+    } catch (error) {
+      console.error("Newsletter confirm error:", error);
+      res.status(500).json({ error: "Greška na serveru" });
+    }
+  });
+
+  // Unsubscribe from newsletter (public)
+  app.post("/api/newsletter/unsubscribe", async (req, res) => {
+    try {
+      const { email } = req.body;
+
+      if (!email || typeof email !== 'string') {
+        return res.status(400).json({ error: "Email je obavezan" });
+      }
+
+      const success = await storage.unsubscribeNewsletter(email);
+
+      if (!success) {
+        return res.status(400).json({ error: "Email nije pronađen u listi pretplatnika" });
+      }
+
+      res.json({ message: "Uspešno ste se odjavili sa newslettera" });
+    } catch (error) {
+      console.error("Newsletter unsubscribe error:", error);
+      res.status(500).json({ error: "Greška na serveru" });
+    }
+  });
+
+  // Get newsletter subscribers list (admin only)
+  app.get("/api/newsletter/subscribers", requireAdmin, async (_req, res) => {
+    try {
+      const subscribers = await storage.getAllNewsletterSubscribers();
+      res.json(subscribers);
+    } catch (error) {
+      console.error("Newsletter subscribers error:", error);
+      res.status(500).json({ error: "Greška na serveru" });
+    }
+  });
+
+  // Get newsletter statistics (admin only)
+  app.get("/api/newsletter/stats", requireAdmin, async (_req, res) => {
+    try {
+      const stats = await storage.getNewsletterStats();
+      res.json(stats);
+    } catch (error) {
+      console.error("Newsletter stats error:", error);
+      res.status(500).json({ error: "Greška na serveru" });
+    }
+  });
+
+  // Delete newsletter subscriber (admin only)
+  app.delete("/api/newsletter/subscribers/:id", requireAdmin, async (req, res) => {
+    try {
+      const id = parseInt(req.params.id);
+      
+      if (isNaN(id)) {
+        return res.status(400).json({ error: "Nevažeći ID" });
+      }
+
+      const success = await storage.deleteNewsletterSubscriber(id);
+      
+      if (!success) {
+        return res.status(404).json({ error: "Pretplatnik nije pronađen" });
+      }
+
+      res.json({ message: "Pretplatnik je uspešno uklonjen" });
+    } catch (error) {
+      console.error("Delete newsletter subscriber error:", error);
+      res.status(500).json({ error: "Greška na serveru" });
+    }
+  });
+
+  // Send newsletter campaign (admin only)
+  app.post("/api/newsletter/send", requireAdmin, async (req, res) => {
+    try {
+      const { subject, htmlContent } = req.body;
+
+      if (!subject || !htmlContent) {
+        return res.status(400).json({ error: "Subject i sadržaj su obavezni" });
+      }
+
+      // Get all confirmed subscribers
+      const subscribers = await storage.getConfirmedNewsletterSubscribers();
+
+      if (subscribers.length === 0) {
+        return res.status(400).json({ error: "Nema potvrđenih pretplatnika" });
+      }
+
+      // Send email to all confirmed subscribers
+      const emailPromises = subscribers.map(subscriber => 
+        sendEmail({
+          to: subscriber.email,
+          subject: subject,
+          html: htmlContent,
+        })
+      );
+
+      await Promise.all(emailPromises);
+
+      res.json({ 
+        message: `Newsletter uspešno poslat na ${subscribers.length} email adresa`,
+        count: subscribers.length 
+      });
+    } catch (error) {
+      console.error("Send newsletter error:", error);
+      res.status(500).json({ error: "Greška pri slanju newslettera" });
+    }
+  });
+
+  // ==================== GIVEAWAY API ROUTES ====================
+  
+  // Accept terms of service
+  app.post("/api/user/accept-terms", requireVerifiedEmail, async (req, res) => {
+    
+    try {
+      await storage.acceptTerms(req.jwtUser!.id);
+      res.sendStatus(200);
+    } catch (error) {
+      res.status(500).json({ error: "Greška na serveru" });
+    }
+  });
+
+  // Update user profile (username, email)
+  app.put("/api/user/update-profile", requireVerifiedEmail, async (req, res) => {
+    try {
+      let { username, email } = req.body;
+      const userId = req.jwtUser!.id;
+
+      // Normalize email and username to lowercase for consistency
+      if (email) email = email.toLowerCase();
+      if (username) username = username.toLowerCase();
+
+      // Validation
+      if (username && username.trim().length < 3) {
+        return res.status(400).json({ error: "Korisničko ime mora imati najmanje 3 karaktera" });
+      }
+
+      if (email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+        return res.status(400).json({ error: "Unesite validnu email adresu" });
+      }
+
+      // Check if username can be changed (once per month)
+      if (username && username !== req.jwtUser!.username.toLowerCase()) {
+        const user = await storage.getUser(userId);
+        if (user?.usernameLastChanged) {
+          const daysSinceLastChange = Math.floor(
+            (Date.now() - new Date(user.usernameLastChanged).getTime()) / (1000 * 60 * 60 * 24)
+          );
+          if (daysSinceLastChange < 30) {
+            return res.status(400).json({ 
+              error: `Možete promeniti korisničko ime tek za ${30 - daysSinceLastChange} dana` 
+            });
+          }
+        }
+
+        // Check if username is already taken
+        const existingUser = await storage.getUserByUsername(username);
+        if (existingUser && existingUser.id !== userId) {
+          return res.status(400).json({ error: "Korisničko ime je već zauzeto" });
+        }
+      }
+
+      // Check if email is already taken
+      if (email && email !== req.jwtUser!.email.toLowerCase()) {
+        const existingUser = await storage.getUserByEmail(email);
+        if (existingUser && existingUser.id !== userId) {
+          return res.status(400).json({ error: "Email adresa je već zauzeta" });
+        }
+      }
+
+      // Update profile
+      await storage.updateUserProfile(userId, { username, email });
+      
+      // Return updated user (sanitized)
+      const updatedUser = await storage.getUser(userId);
+      if (!updatedUser) {
+        return res.status(404).json({ error: "Korisnik nije pronađen" });
+      }
+      res.json(sanitizeUser(updatedUser));
+    } catch (error: any) {
+      console.error("Update profile error:", error);
+      res.status(500).json({ error: error.message || "Greška na serveru" });
+    }
+  });
+
+  // Change password
+  app.put("/api/user/change-password", requireVerifiedEmail, async (req, res) => {
+    try {
+      const { currentPassword, newPassword } = req.body;
+      const userId = req.jwtUser!.id;
+
+      if (!currentPassword || !newPassword) {
+        return res.status(400).json({ error: "Trenutna i nova lozinka su obavezne" });
+      }
+
+      if (newPassword.length < 6) {
+        return res.status(400).json({ error: "Nova lozinka mora imati najmanje 6 karaktera" });
+      }
+
+      // Verify current password
+      const user = await storage.getUser(userId);
+      if (!user) {
+        return res.status(404).json({ error: "Korisnik nije pronađen" });
+      }
+
+      const isValidPassword = await comparePasswords(currentPassword, user.password);
+      if (!isValidPassword) {
+        return res.status(400).json({ error: "Trenutna lozinka nije tačna" });
+      }
+
+      // Hash new password
+      const hashedPassword = await hashPassword(newPassword);
+      
+      // Update password
+      await storage.updateUserPassword(userId, hashedPassword);
+      
+      res.json({ message: "Lozinka je uspešno promenjena" });
+    } catch (error: any) {
+      console.error("Change password error:", error);
+      res.status(500).json({ error: error.message || "Greška na serveru" });
+    }
+  });
+
+  // Update user avatar
+  app.put("/api/user/avatar", async (req, res) => {
+    try {
+      const { avatarUrl } = req.body;
+      const userId = req.jwtUser?.id;
+
+      if (!userId) {
+        return res.status(401).json({ error: "Neautorizovan pristup" });
+      }
+
+      if (!avatarUrl || typeof avatarUrl !== 'string') {
+        return res.status(400).json({ error: "Avatar URL je obavezan" });
+      }
+
+      // Update avatar
+      await storage.updateUserAvatar(userId, avatarUrl);
+      
+      // Return updated user (sanitized)
+      const updatedUser = await storage.getUser(userId);
+      if (!updatedUser) {
+        return res.status(404).json({ error: "Korisnik nije pronađen" });
+      }
+      res.json(sanitizeUser(updatedUser));
+    } catch (error: any) {
+      console.error("Update avatar error:", error);
+      res.status(500).json({ error: error.message || "Greška na serveru" });
+    }
+  });
+
+  // Remove user avatar
+  app.delete("/api/user/avatar", async (req, res) => {
+    try {
+      const userId = req.jwtUser?.id;
+
+      if (!userId) {
+        return res.status(401).json({ error: "Neautorizovan pristup" });
+      }
+
+      // Remove avatar by setting it to null
+      await storage.updateUserAvatar(userId, null);
+      
+      // Return updated user (sanitized)
+      const updatedUser = await storage.getUser(userId);
+      if (!updatedUser) {
+        return res.status(404).json({ error: "Korisnik nije pronađen" });
+      }
+      res.json(sanitizeUser(updatedUser));
+    } catch (error: any) {
+      console.error("Remove avatar error:", error);
+      res.status(500).json({ error: error.message || "Greška na serveru" });
+    }
+  });
+
+  // Get giveaway settings
+  app.get("/api/giveaway/settings", async (_req, res) => {
+    try {
+      const settings = await storage.getGiveawaySettings();
+      res.json(settings);
+    } catch (error) {
+      res.status(500).json({ error: "Greška na serveru" });
+    }
+  });
+
+  // Get all projects
+  app.get("/api/giveaway/projects", async (_req, res) => {
+    try {
+      const projects = await storage.getAllProjects();
+      res.json(projects);
+    } catch (error) {
+      res.status(500).json({ error: "Greška na serveru" });
+    }
+  });
+
+  // Upload a project - now using UploadThing for file hosting
+  app.post("/api/giveaway/projects", requireVerifiedEmail, async (req, res) => {
+    // SECURITY: Enforce terms acceptance on server side
+    if (!req.jwtUser!.termsAccepted) {
+      return res.status(403).json({ error: "Morate prihvatiti pravila pre učešća u giveaway-u" });
+    }
+    
+    try {
+      // Check if mp3Url was provided (uploaded via UploadThing)
+      if (!req.body.mp3Url) {
+        return res.status(400).json({ error: "MP3 URL je obavezan" });
+      }
+      
+      // Check if user has already uploaded this month
+      const currentMonth = new Date().toISOString().substring(0, 7); // "2025-01"
+      const userProjects = await storage.getUserProjectsForMonth(req.jwtUser!.id, currentMonth);
+      
+      if (userProjects.length > 0) {
+        return res.status(400).json({ error: "Već ste uploadovali projekat ovog meseca. Možete uploadovati samo 1 projekat mesečno." });
+      }
+      
+      // Parse and validate project data from request body
+      const { insertProjectSchema } = await import("@shared/schema");
+      const validatedData = insertProjectSchema.parse({
+        title: req.body.title,
+        description: req.body.description || '',
+        genre: req.body.genre,
+        mp3Url: req.body.mp3Url, // Use the URL from UploadThing
+      });
+      
+      const project = await storage.createProject({
+        ...validatedData,
+        userId: req.jwtUser!.id,
+        currentMonth,
+      });
+      
+      // Notify user about successful upload
+      notifyUser(
+        req.jwtUser!.id,
+        "Projekat uploadovan! 🎉",
+        `Vaš projekat "${project.title}" je uspešno poslat. Sada možete glasati za druge projekte.`
+      );
+      
+      // Notify all admins about new project submission
+      const admins = await storage.getAdminUsers();
+      admins.forEach(admin => {
+        notifyUser(
+          admin.id,
+          "Novi projekat uploadovan",
+          `${req.jwtUser!.username} je uploadovao projekat "${project.title}"`
+        );
+      });
+      
+      res.status(201).json(project);
+    } catch (error: any) {
+      if (error.name === "ZodError") {
+        res.status(400).json({ error: "Validacija nije uspela", details: error.errors });
+      } else {
+        console.error("Project upload error:", error);
+        res.status(500).json({ error: error.message || "Greška na serveru" });
+      }
+    }
+  });
+
+  // Vote on a project (toggle functionality - add or remove vote)
+  app.post("/api/giveaway/vote", requireVerifiedEmail, async (req, res) => {
+    // SECURITY: Enforce terms acceptance on server side
+    if (!req.jwtUser!.termsAccepted) {
+      return res.status(403).json({ error: "Morate prihvatiti pravila pre glasanja" });
+    }
+    
+    try {
+      const { projectId } = req.body;
+      
+      if (!projectId || typeof projectId !== "number") {
+        return res.status(400).json({ error: "ID projekta je obavezan" });
+      }
+      
+      // SECURITY: Get IP address
+      const ipAddress = req.socket.remoteAddress || 'unknown';
+      
+      // Check if user already voted - if yes, remove vote (toggle off)
+      const userAlreadyVoted = await storage.hasUserVoted(req.jwtUser!.id, projectId);
+      
+      if (userAlreadyVoted) {
+        // Remove vote (toggle off)
+        await storage.deleteVote(req.jwtUser!.id, projectId);
+        return res.json({ action: 'removed' });
+      } else {
+        // Check if a DIFFERENT user from this IP has voted
+        // This prevents multiple accounts from same IP, but allows same user to toggle
+        const votes = await storage.getProjectVotes(projectId);
+        const ipVoteByDifferentUser = votes.find(
+          vote => vote.ipAddress === ipAddress && vote.userId !== req.jwtUser!.id
+        );
+        
+        if (ipVoteByDifferentUser) {
+          return res.status(400).json({ error: "Sa ove IP adrese je već glasano za ovaj projekat (drugi korisnik)" });
+        }
+        
+        // Add vote (toggle on)
+        await storage.createVote({
+          userId: req.jwtUser!.id,
+          projectId,
+          ipAddress,
+        });
+        return res.json({ action: 'added' });
+      }
+    } catch (error: any) {
+      console.error("Vote toggle error:", error);
+      res.status(500).json({ error: "Greška na serveru" });
+    }
+  });
+
+  // Get comments for a project
+  app.get("/api/giveaway/projects/:id/comments", async (req, res) => {
+    try {
+      const projectId = parseInt(req.params.id);
+      if (isNaN(projectId)) {
+        return res.status(400).json({ error: "Nevažeći ID projekta" });
+      }
+      
+      const comments = await storage.getProjectComments(projectId);
+      res.json(comments);
+    } catch (error) {
+      res.status(500).json({ error: "Greška na serveru" });
+    }
+  });
+
+  // Add a comment to a project
+  app.post("/api/giveaway/comments", requireVerifiedEmail, async (req, res) => {
+    // SECURITY: Enforce terms acceptance on server side
+    if (!req.jwtUser!.termsAccepted) {
+      return res.status(403).json({ error: "Morate prihvatiti pravila pre komentarisanja" });
+    }
+    
+    try {
+      const { insertCommentSchema } = await import("@shared/schema");
+      const validatedData = insertCommentSchema.parse(req.body);
+      
+      const comment = await storage.createComment({
+        ...validatedData,
+        userId: req.jwtUser!.id,
+      });
+      
+      res.status(201).json(comment);
+    } catch (error: any) {
+      if (error.name === "ZodError") {
+        res.status(400).json({ error: "Validacija nije uspela", details: error.errors });
+      } else {
+        res.status(500).json({ error: "Greška na serveru" });
+      }
+    }
+  });
+
+  // ==================== ADMIN API ROUTES ====================
+  
+  // Get dashboard statistics
+  app.get("/api/admin/stats", requireAdmin, async (_req, res) => {
+    try {
+      const stats = await storage.getAdminStats();
+      res.json(stats);
+    } catch (error) {
+      res.status(500).json({ error: "Greška na serveru" });
+    }
+  });
+
+  // Get all users
+  app.get("/api/admin/users", requireAdmin, async (_req, res) => {
+    try {
+      const users = await storage.getAllUsers();
+      res.json(users);
+    } catch (error) {
+      res.status(500).json({ error: "Greška na serveru" });
+    }
+  });
+
+  // Search users for admin (used in dropdowns/assignments)
+  app.get("/api/admin/users/search", requireAdmin, async (req, res) => {
+    try {
+      const query = req.query.q as string;
+      const limit = parseInt(req.query.limit as string) || 20;
+
+      if (!query || query.trim().length === 0) {
+        return res.json({ users: [] });
+      }
+
+      const users = await storage.adminSearchUsers(query.trim(), limit);
+      res.json({ users });
+    } catch (error) {
+      res.status(500).json({ error: "Greška na serveru" });
+    }
+  });
+
+  // Ban a user
+  app.post("/api/admin/users/:id/ban", requireAdmin, async (req, res) => {
+    try {
+      const userId = parseInt(req.params.id);
+      if (isNaN(userId)) {
+        return res.status(400).json({ error: "Nevažeći ID korisnika" });
+      }
+      
+      await storage.banUser(userId);
+      res.sendStatus(200);
+    } catch (error) {
+      res.status(500).json({ error: "Greška na serveru" });
+    }
+  });
+
+  // Unban a user
+  app.post("/api/admin/users/:id/unban", requireAdmin, async (req, res) => {
+    try {
+      const userId = parseInt(req.params.id);
+      if (isNaN(userId)) {
+        return res.status(400).json({ error: "Nevažeći ID korisnika" });
+      }
+      
+      await storage.unbanUser(userId);
+      res.sendStatus(200);
+    } catch (error) {
+      res.status(500).json({ error: "Greška na serveru" });
+    }
+  });
+
+  // Delete a user
+  app.delete("/api/admin/users/:id", requireAdmin, async (req, res) => {
+    try {
+      const userId = parseInt(req.params.id);
+      if (isNaN(userId)) {
+        return res.status(400).json({ error: "Nevažeći ID korisnika" });
+      }
+      
+      // Don't allow deleting yourself
+      if (userId === req.jwtUser!.id) {
+        return res.status(400).json({ error: "Ne možete obrisati sami sebe" });
+      }
+      
+      await storage.deleteUser(userId);
+      res.sendStatus(200);
+    } catch (error) {
+      res.status(500).json({ error: "Greška na serveru" });
+    }
+  });
+
+  // Toggle admin role
+  app.post("/api/admin/users/:id/toggle-admin", requireAdmin, async (req, res) => {
+    try {
+      const userId = parseInt(req.params.id);
+      if (isNaN(userId)) {
+        return res.status(400).json({ error: "Nevažeći ID korisnika" });
+      }
+      
+      // Don't allow removing your own admin role
+      if (userId === req.jwtUser!.id) {
+        return res.status(400).json({ error: "Ne možete ukloniti sebi admin privilegije" });
+      }
+      
+      await storage.toggleAdminRole(userId);
+      res.sendStatus(200);
+    } catch (error) {
+      res.status(500).json({ error: "Greška na serveru" });
+    }
+  });
+
+  // Update user rank (user, vip, legend, admin)
+  app.patch("/api/users/:userId/rank", requireAdmin, async (req, res) => {
+    try {
+      const userId = parseInt(req.params.userId);
+      if (isNaN(userId)) {
+        return res.status(400).json({ error: "Nevažeći ID korisnika" });
+      }
+      
+      // Validate rank
+      const rankSchema = z.object({ 
+        rank: z.enum(['user', 'vip', 'legend', 'admin']) 
+      });
+      const validated = rankSchema.parse(req.body);
+      
+      // Get user to notify them
+      const user = await storage.getUser(userId);
+      if (!user) {
+        return res.status(404).json({ error: "Korisnik nije pronađen" });
+      }
+      
+      // Update rank
+      await storage.updateUserRank(userId, validated.rank);
+      
+      // Notify user about rank change
+      const rankNames: Record<string, string> = {
+        user: 'Korisnik',
+        vip: 'VIP',
+        legend: 'Legenda',
+        admin: 'Administrator'
+      };
+      notifyUser(
+        userId,
+        "Rank ažuriran",
+        `Vaš rank je promenjen na: ${rankNames[validated.rank]}`
+      );
+      
+      res.json({ success: true, message: "Rank uspešno ažuriran" });
+    } catch (error: any) {
+      if (error.name === "ZodError") {
+        return res.status(400).json({ error: "Validacija nije uspela", details: error.errors });
+      }
+      console.error("Error updating user rank:", error);
+      res.status(500).json({ error: "Greška na serveru" });
+    }
+  });
+
+  // Get all projects (approved and pending) for admin
+  app.get("/api/admin/all-projects", requireAdmin, async (_req, res) => {
+    try {
+      const projects = await storage.getAllProjectsForAdmin();
+      res.json(projects);
+    } catch (error) {
+      res.status(500).json({ error: "Greška na serveru" });
+    }
+  });
+
+  // Get pending (unapproved) projects
+  app.get("/api/admin/pending-projects", requireAdmin, async (_req, res) => {
+    try {
+      const projects = await storage.getPendingProjects();
+      res.json(projects);
+    } catch (error) {
+      res.status(500).json({ error: "Greška na serveru" });
+    }
+  });
+
+  // Approve a project
+  app.post("/api/admin/projects/:id/approve", requireAdmin, async (req, res) => {
+    try {
+      const projectId = parseInt(req.params.id);
+      if (isNaN(projectId)) {
+        return res.status(400).json({ error: "Nevažeći ID projekta" });
+      }
+      
+      await storage.approveProject(projectId);
+      res.sendStatus(200);
+    } catch (error) {
+      res.status(500).json({ error: "Greška na serveru" });
+    }
+  });
+
+  // Delete a project
+  app.delete("/api/admin/projects/:id", requireAdmin, async (req, res) => {
+    try {
+      const projectId = parseInt(req.params.id);
+      if (isNaN(projectId)) {
+        return res.status(400).json({ error: "Nevažeći ID projekta" });
+      }
+      
+      await storage.deleteProject(projectId);
+      res.sendStatus(200);
+    } catch (error) {
+      res.status(500).json({ error: "Greška na serveru" });
+    }
+  });
+
+  // Get all comments
+  app.get("/api/admin/comments", requireAdmin, async (_req, res) => {
+    try {
+      const comments = await storage.getAllComments();
+      res.json(comments);
+    } catch (error) {
+      res.status(500).json({ error: "Greška na serveru" });
+    }
+  });
+
+  // Delete a comment
+  app.delete("/api/admin/comments/:id", requireAdmin, async (req, res) => {
+    try {
+      const commentId = parseInt(req.params.id);
+      if (isNaN(commentId)) {
+        return res.status(400).json({ error: "Nevažeći ID komentara" });
+      }
+      
+      await storage.deleteComment(commentId);
+      res.sendStatus(200);
+    } catch (error) {
+      res.status(500).json({ error: "Greška na serveru" });
+    }
+  });
+
+  // Toggle giveaway active status
+  app.post("/api/admin/giveaway/toggle", requireAdmin, async (req, res) => {
+    try {
+      const { isActive } = req.body;
+      
+      if (typeof isActive !== 'boolean') {
+        return res.status(400).json({ error: "isActive mora biti boolean" });
+      }
+      
+      await storage.setSetting('giveaway_active', isActive.toString());
+      res.sendStatus(200);
+    } catch (error) {
+      res.status(500).json({ error: "Greška na serveru" });
+    }
+  });
+
+  // ==================== CMS API ROUTES ====================
+
+  // GET /api/cms/content?page=home - PUBLIC (for Home/Team pages to read content)
+  app.get("/api/cms/content", async (req, res) => {
+    try {
+      const page = req.query.page as string | undefined;
+      const content = await storage.listCmsContent(page);
+      res.json(content);
+    } catch (error) {
+      res.status(500).json({ error: "Greška na serveru" });
+    }
+  });
+
+  // POST /api/cms/content - batch upsert multiple content entries
+  app.post("/api/cms/content", requireAdmin, async (req, res) => {
+    try {
+      const schema = z.array(insertCmsContentSchema);
+      const validated = schema.parse(req.body);
+      
+      const results = [];
+      for (const item of validated) {
+        const result = await storage.upsertCmsContent(item);
+        results.push(result);
+      }
+      res.json(results);
+    } catch (error: any) {
+      if (error.name === "ZodError") {
+        res.status(400).json({ error: "Validacija nije uspela", details: error.errors });
+      } else {
+        res.status(500).json({ error: "Greška na serveru" });
+      }
+    }
+  });
+
+  // PUT /api/cms/content/single - update single content item
+  app.put("/api/cms/content/single", requireAdmin, async (req, res) => {
+    try {
+      const validated = insertCmsContentSchema.parse(req.body);
+      const result = await storage.upsertCmsContent(validated);
+      res.json(result);
+    } catch (error: any) {
+      if (error.name === "ZodError") {
+        res.status(400).json({ error: "Validacija nije uspela", details: error.errors });
+      } else {
+        res.status(500).json({ error: "Greška na serveru" });
+      }
+    }
+  });
+
+  // DELETE /api/cms/team-member/:memberIndex - delete team member
+  app.delete("/api/cms/team-member/:memberIndex", requireAdmin, async (req, res) => {
+    try {
+      const memberIndex = parseInt(req.params.memberIndex);
+      if (isNaN(memberIndex)) {
+        return res.status(400).json({ error: "Nevažeći member index" });
+      }
+
+      // Delete all entries for this team member
+      await storage.deleteCmsContentByPattern("team", "members", `member_${memberIndex}_`);
+      res.json({ success: true });
+    } catch (error) {
+      console.error("Error deleting team member:", error);
+      res.status(500).json({ error: "Greška pri brisanju člana tima" });
+    }
+  });
+
+  // GET /api/cms/media?page=home - PUBLIC (for frontend to read media paths)
+  app.get("/api/cms/media", async (req, res) => {
+    try {
+      const page = req.query.page as string | undefined;
+      const media = await storage.listCmsMedia(page);
+      res.json(media);
+    } catch (error) {
+      res.status(500).json({ error: "Greška na serveru" });
+    }
+  });
+
+  // POST /api/cms/media - upload image and save to database
+  app.post("/api/cms/media", requireAdmin, multerUpload.single("file"), async (req, res) => {
+    try {
+      if (!req.file) {
+        return res.status(400).json({ error: "No file uploaded" });
+      }
+
+      // Validacija metadata iz req.body
+      const metadata = insertCmsMediaSchema.omit({ filePath: true }).parse({
+        page: req.body.page,
+        section: req.body.section,
+        assetKey: req.body.assetKey,
+      });
+
+      // Create CMS directory if doesn't exist
+      const cmsDir = path.join(process.cwd(), "attached_assets", "cms", metadata.page);
+      await fs.promises.mkdir(cmsDir, { recursive: true });
+
+      // Generate filename: page-section-assetKey-timestamp.ext
+      const ext = path.extname(req.file.originalname);
+      const filename = `${metadata.page}-${metadata.section}-${metadata.assetKey}-${Date.now()}${ext}`;
+      const filePath = `attached_assets/cms/${metadata.page}/${filename}`;
+      const fullPath = path.join(process.cwd(), filePath);
+
+      // Move uploaded file to CMS directory
+      await fs.promises.rename(req.file.path, fullPath);
+
+      // Save to database
+      const mediaEntry = await storage.upsertCmsMedia({
+        ...metadata,
+        filePath,
+      });
+
+      res.json(mediaEntry);
+    } catch (error: any) {
+      if (error.name === "ZodError") {
+        res.status(400).json({ error: "Validacija nije uspela", details: error.errors });
+      } else {
+        res.status(500).json({ error: "Greška na serveru" });
+      }
+    }
+  });
+
+  // DELETE /api/cms/media/:id
+  app.delete("/api/cms/media/:id", requireAdmin, async (req, res) => {
+    try {
+      const id = parseInt(req.params.id);
+      if (isNaN(id)) {
+        return res.status(400).json({ error: "Nevažeći ID" });
+      }
+      await storage.deleteCmsMedia(id);
+      res.json({ success: true });
+    } catch (error) {
+      res.status(500).json({ error: "Greška na serveru" });
+    }
+  });
+
+  // ============================================================================
+  // VIDEO SPOTS API ROUTES
+  // ============================================================================
+
+  // GET /api/video-spots - PUBLIC (get all video spots ordered)
+  app.get("/api/video-spots", async (_req, res) => {
+    try {
+      const spots = await storage.getVideoSpots();
+      res.json(spots);
+    } catch (error) {
+      res.status(500).json({ error: "Greška na serveru" });
+    }
+  });
+
+  // POST /api/video-spots - ADMIN (create new video spot)
+  app.post("/api/video-spots", requireAdmin, async (req, res) => {
+    try {
+      const validated = insertVideoSpotSchema.parse(req.body);
+      const newSpot = await storage.createVideoSpot(validated);
+      res.json(newSpot);
+    } catch (error: any) {
+      if (error.name === "ZodError") {
+        res.status(400).json({ error: "Validacija nije uspela", details: error.errors });
+      } else {
+        res.status(500).json({ error: "Greška na serveru" });
+      }
+    }
+  });
+
+  // PUT /api/video-spots/:id - ADMIN (update video spot)
+  app.put("/api/video-spots/:id", requireAdmin, async (req, res) => {
+    try {
+      const id = parseInt(req.params.id);
+      if (isNaN(id)) {
+        return res.status(400).json({ error: "Nevažeći ID" });
+      }
+      const validated = insertVideoSpotSchema.parse(req.body);
+      const updated = await storage.updateVideoSpot(id, validated);
+      res.json(updated);
+    } catch (error: any) {
+      if (error.name === "ZodError") {
+        res.status(400).json({ error: "Validacija nije uspela", details: error.errors });
+      } else {
+        res.status(500).json({ error: "Greška na serveru" });
+      }
+    }
+  });
+
+  // DELETE /api/video-spots/:id - ADMIN (delete video spot)
+  app.delete("/api/video-spots/:id", requireAdmin, async (req, res) => {
+    try {
+      const id = parseInt(req.params.id);
+      if (isNaN(id)) {
+        return res.status(400).json({ error: "Nevažeći ID" });
+      }
+      await storage.deleteVideoSpot(id);
+      res.json({ success: true });
+    } catch (error) {
+      res.status(500).json({ error: "Greška na serveru" });
+    }
+  });
+
+  // PUT /api/video-spots/:id/order - ADMIN (update spot order)
+  app.put("/api/video-spots/:id/order", requireAdmin, async (req, res) => {
+    try {
+      const id = parseInt(req.params.id);
+      const { order } = req.body;
+      if (isNaN(id) || typeof order !== 'number') {
+        return res.status(400).json({ error: "Nevažeći parametri" });
+      }
+      const updated = await storage.updateVideoSpotOrder(id, order);
+      res.json(updated);
+    } catch (error) {
+      res.status(500).json({ error: "Greška na serveru" });
+    }
+  });
+
+  // ============================================================================
+  // USER SONGS ENDPOINTS (User-submitted YouTube songs with 36h rate limit)
+  // ============================================================================
+
+  // POST /api/user-songs - PROTECTED (create new user song with rate limiting)
+  app.post("/api/user-songs", requireVerifiedEmail, async (req, res) => {
+    try {
+      const userId = req.jwtUser!.id;
+      
+      // 1. Validate input
+      const validated = insertUserSongSchema.parse(req.body);
+      
+      // 2. Check 36-hour rate limit
+      const lastSubmissionTime = await storage.getUserLastSongSubmissionTime(userId);
+      if (lastSubmissionTime) {
+        const hoursSinceLastSubmission = (Date.now() - lastSubmissionTime.getTime()) / (1000 * 60 * 60);
+        if (hoursSinceLastSubmission < 36) {
+          const hoursRemaining = Math.ceil(36 - hoursSinceLastSubmission);
+          return res.status(429).json({ 
+            error: `Možete postaviti novu pesmu za ${hoursRemaining} ${hoursRemaining === 1 ? 'sat' : hoursRemaining < 5 ? 'sata' : 'sati'}`,
+            hoursRemaining 
+          });
+        }
+      }
+      
+      // 3. Create song (duplicate URL check is handled by DB unique constraint)
+      const newSong = await storage.createUserSong({
+        userId,
+        songTitle: validated.songTitle,
+        artistName: validated.artistName,
+        youtubeUrl: validated.youtubeUrl,
+      });
+      
+      // Notify all admins about new song submission
+      const admins = await storage.getAdminUsers();
+      admins.forEach(admin => {
+        notifyUser(
+          admin.id,
+          "Nova pesma za odobrenje",
+          `${req.jwtUser!.username} je poslao pesmu "${newSong.songTitle}" - ${newSong.artistName}`
+        );
+      });
+      
+      res.json(newSong);
+    } catch (error: any) {
+      if (error.name === "ZodError") {
+        return res.status(400).json({ error: "Validacija nije uspela", details: error.errors });
+      }
+      // Check for duplicate YouTube URL error
+      if (error.message?.includes('duplicate') || error.code === '23505') {
+        return res.status(409).json({ error: "Ova pesma je već postavljena" });
+      }
+      console.error("Error creating user song:", error);
+      res.status(500).json({ error: "Greška na serveru" });
+    }
+  });
+
+  // GET /api/user-songs - PROTECTED (get current user's songs)
+  app.get("/api/user-songs", requireVerifiedEmail, async (req, res) => {
+    try {
+      const userId = req.jwtUser!.id;
+      const songs = await storage.getUserSongs(userId);
+      res.json(songs);
+    } catch (error) {
+      console.error("Error fetching user songs:", error);
+      res.status(500).json({ error: "Greška na serveru" });
+    }
+  });
+
+  // GET /api/user-songs/all - ADMIN (get all user songs with usernames)
+  app.get("/api/user-songs/all", requireAdmin, async (req, res) => {
+    try {
+      const songs = await storage.getAllUserSongs();
+      res.json(songs);
+    } catch (error) {
+      console.error("Error fetching all user songs:", error);
+      res.status(500).json({ error: "Greška na serveru" });
+    }
+  });
+
+  // DELETE /api/user-songs/:id - PROTECTED (delete own song)
+  app.delete("/api/user-songs/:id", requireVerifiedEmail, async (req, res) => {
+    try {
+      const songId = parseInt(req.params.id);
+      const userId = req.jwtUser!.id;
+      const isAdmin = req.jwtUser!.role === 'admin';
+      
+      if (isNaN(songId)) {
+        return res.status(400).json({ error: "Nevažeći ID" });
+      }
+      
+      // Verify ownership before deletion (admins can delete any)
+      if (!isAdmin) {
+        const song = await storage.getUserSongById(songId);
+        if (!song) {
+          return res.status(404).json({ error: "Pesma nije pronađena" });
+        }
+        if (song.userId !== userId) {
+          return res.status(403).json({ error: "Nemate dozvolu da obrišete ovu pesmu" });
+        }
+      }
+      
+      await storage.deleteUserSong(songId);
+      res.json({ success: true });
+    } catch (error) {
+      console.error("Error deleting user song:", error);
+      res.status(500).json({ error: "Greška na serveru" });
+    }
+  });
+
+  // POST /api/user-songs/:id/approve - ADMIN (approve a song)
+  app.post("/api/user-songs/:id/approve", requireAdmin, async (req, res) => {
+    try {
+      const songId = parseInt(req.params.id);
+      
+      if (isNaN(songId)) {
+        return res.status(400).json({ error: "Nevažeći ID" });
+      }
+      
+      // Get song details to notify the user
+      const song = await storage.getUserSongById(songId);
+      if (!song) {
+        return res.status(404).json({ error: "Pesma nije pronađena" });
+      }
+      
+      await storage.approveUserSong(songId);
+      
+      // Notify the user that their song was approved
+      notifyUser(
+        song.userId, 
+        "Pesma odobrena! 🎵",
+        `Vaša pesma "${song.songTitle}" je odobrena i sada je vidljiva svima.`
+      );
+      
+      res.json({ success: true });
+    } catch (error) {
+      console.error("Error approving user song:", error);
+      res.status(500).json({ error: "Greška na serveru" });
+    }
+  });
+
+  // GET /api/user-songs/public - PUBLIC (get all approved songs with voting info)
+  app.get("/api/user-songs/public", async (req, res) => {
+    try {
+      const userId = req.jwtUser?.id;
+      const songs = await storage.getApprovedUserSongs(userId);
+      res.json(songs);
+    } catch (error) {
+      console.error("Error fetching public user songs:", error);
+      res.status(500).json({ error: "Greška na serveru" });
+    }
+  });
+
+  // POST /api/user-songs/:id/vote - PROTECTED (toggle vote for a song)
+  app.post("/api/user-songs/:id/vote", requireVerifiedEmail, async (req, res) => {
+    try {
+      const songId = parseInt(req.params.id);
+      const userId = req.jwtUser!.id;
+      
+      if (isNaN(songId)) {
+        return res.status(400).json({ error: "Nevažeći ID" });
+      }
+      
+      const result = await storage.toggleUserSongVote(userId, songId);
+      res.json(result);
+    } catch (error) {
+      console.error("Error toggling song vote:", error);
+      res.status(500).json({ error: "Greška na serveru" });
+    }
+  });
+
+  // ============================================================================
+  // COMMUNITY CHAT ENDPOINTS
+  // ============================================================================
+
+  // GET /api/community-chat - Get community messages
+  app.get("/api/community-chat", requireNotBanned, async (req, res) => {
+    try {
+      const limit = Math.min(Math.max(parseInt(req.query.limit as string) || 100, 1), 100);
+      const messages = await storage.getCommunityMessages(limit);
+      res.json(messages);
+    } catch (error) {
+      console.error("Error fetching community messages:", error);
+      res.status(500).json({ error: "Greška na serveru" });
+    }
+  });
+
+  // POST /api/community-chat - Send a community message
+  app.post("/api/community-chat", requireVerifiedEmail, async (req, res) => {
+    try {
+      // Rate limit check using storage (persisted check)
+      const canSend = await storage.canUserSendMessage(req.jwtUser!.id);
+      if (!canSend) {
+        return res.status(429).json({ 
+          error: "Možete slati poruke samo jednom na 10 sekundi", 
+          retryAfterSeconds: 10 
+        });
+      }
+
+      // Validate message
+      const validated = insertCommunityMessageSchema.parse(req.body);
+      
+      // Create message
+      const createdMessage = await storage.createCommunityMessage(req.jwtUser!.id, validated.message);
+      
+      // Fetch enriched message data with username, rank, avatarUrl
+      const messages = await storage.getCommunityMessages(1);
+      const enrichedMessage = messages.find(m => m.id === createdMessage.id);
+      
+      if (!enrichedMessage) {
+        throw new Error("Failed to fetch enriched message data");
+      }
+      
+      // Broadcast to all online users
+      const onlineUsers = getOnlineUsersSnapshot();
+      if (wsHelpers.broadcastToUser) {
+        onlineUsers.forEach(userId => {
+          wsHelpers.broadcastToUser!(userId, {
+            type: "community-chat:new",
+            message: enrichedMessage
+          });
+        });
+      }
+      
+      res.json(enrichedMessage);
+    } catch (error: any) {
+      if (error.name === "ZodError") {
+        return res.status(400).json({ error: "Validacija nije uspela", details: error.errors });
+      }
+      if (error.message?.includes("10 sekundi")) {
+        return res.status(429).json({ 
+          error: error.message, 
+          retryAfterSeconds: 10 
+        });
+      }
+      console.error("Error creating community message:", error);
+      res.status(500).json({ error: "Greška na serveru" });
+    }
+  });
+
+  // DELETE /api/community-chat/clear - Clear all community messages (ADMIN only)
+  // NOTE: This route MUST come BEFORE /:id to avoid "clear" being matched as an ID
+  app.delete("/api/community-chat/clear", requireAdmin, async (req, res) => {
+    try {
+      await storage.clearAllCommunityMessages();
+      
+      // Broadcast clear to all online users
+      const onlineUsers = getOnlineUsersSnapshot();
+      if (wsHelpers.broadcastToUser) {
+        onlineUsers.forEach(userId => {
+          wsHelpers.broadcastToUser!(userId, {
+            type: "community-chat:clear"
+          });
+        });
+      }
+      
+      res.json({ success: true, message: "Sve poruke su obrisane" });
+    } catch (error) {
+      console.error("Error clearing community messages:", error);
+      res.status(500).json({ error: "Greška na serveru" });
+    }
+  });
+
+  // DELETE /api/community-chat/:id - Delete a community message
+  app.delete("/api/community-chat/:id", requireNotBanned, async (req, res) => {
+    try {
+      const messageId = parseInt(req.params.id);
+      
+      if (isNaN(messageId)) {
+        return res.status(400).json({ error: "Nevažeći ID poruke" });
+      }
+      
+      const success = await storage.deleteCommunityMessage(messageId, req.jwtUser!.id);
+      
+      if (!success) {
+        return res.status(403).json({ error: "Nemate dozvolu da obrišete ovu poruku" });
+      }
+      
+      // Broadcast deletion to all online users
+      const onlineUsers = getOnlineUsersSnapshot();
+      if (wsHelpers.broadcastToUser) {
+        onlineUsers.forEach(userId => {
+          wsHelpers.broadcastToUser!(userId, {
+            type: "community-chat:delete",
+            payload: { id: messageId }
+          });
+        });
+      }
+      
+      res.status(204).end();
+    } catch (error) {
+      console.error("Error deleting community message:", error);
+      res.status(500).json({ error: "Greška na serveru" });
+    }
+  });
+
+  // ============================================================================
+  // SITE ANNOUNCEMENT ENDPOINTS
+  // ============================================================================
+
+  // GET /api/announcement - Get site announcement (PUBLIC)
+  app.get("/api/announcement", async (req, res) => {
+    try {
+      const announcement = await storage.getSiteAnnouncement();
+      res.json(announcement);
+    } catch (error) {
+      console.error("Error fetching site announcement:", error);
+      res.status(500).json({ error: "Greška na serveru" });
+    }
+  });
+
+  // PATCH /api/announcement - Update site announcement (ADMIN only)
+  app.patch("/api/announcement", requireAdmin, async (req, res) => {
+    try {
+      const validated = insertSiteAnnouncementSchema.parse(req.body);
+      const updated = await storage.upsertSiteAnnouncement(validated);
+      res.json(updated);
+    } catch (error: any) {
+      if (error.name === "ZodError") {
+        return res.status(400).json({ error: "Validacija nije uspela", details: error.errors });
+      }
+      console.error("Error updating site announcement:", error);
+      res.status(500).json({ error: "Greška na serveru" });
+    }
+  });
+
+  // SEO routes - robots.txt
+  app.get("/robots.txt", (req, res) => {
+    const host = req.get('host') || 'localhost:5000';
+    const protocol = req.protocol || 'https';
+    const siteUrl = `${protocol}://${host}`;
+    
+    const robotsTxt = `User-agent: *
+Allow: /
+
+Sitemap: ${siteUrl}/sitemap.xml
+`;
+    res.type("text/plain");
+    res.send(robotsTxt);
+  });
+
+  // SEO routes - sitemap.xml
+  app.get("/sitemap.xml", (req, res) => {
+    const host = req.get('host') || 'localhost:5000';
+    const protocol = req.protocol || 'https';
+    const siteUrl = `${protocol}://${host}`;
+    
+    const sitemap = `<?xml version="1.0" encoding="UTF-8"?>
+<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
+  <url>
+    <loc>${siteUrl}/</loc>
+    <lastmod>${new Date().toISOString().split('T')[0]}</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>1.0</priority>
+  </url>
+  <url>
+    <loc>${siteUrl}/kontakt</loc>
+    <lastmod>${new Date().toISOString().split('T')[0]}</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.8</priority>
+  </url>
+  <url>
+    <loc>${siteUrl}/tim</loc>
+    <lastmod>${new Date().toISOString().split('T')[0]}</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.7</priority>
+  </url>
+  <url>
+    <loc>${siteUrl}/giveaway</loc>
+    <lastmod>${new Date().toISOString().split('T')[0]}</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.9</priority>
+  </url>
+  <url>
+    <loc>${siteUrl}/pravila</loc>
+    <lastmod>${new Date().toISOString().split('T')[0]}</lastmod>
+    <changefreq>yearly</changefreq>
+    <priority>0.5</priority>
+  </url>
+  <url>
+    <loc>${siteUrl}/usluge</loc>
+    <lastmod>${new Date().toISOString().split('T')[0]}</lastmod>
+    <changefreq>yearly</changefreq>
+    <priority>0.5</priority>
+  </url>
+</urlset>`;
+    res.type("application/xml");
+    res.send(sitemap);
+  });
+
+  // ===== MESSAGING ENDPOINTS =====
+  
+  // Search users (verified users only) - MUST BE BEFORE /api/users/:id
+  app.get("/api/users/search", requireVerifiedEmail, async (req, res) => {
+    try {
+      const { q } = req.query;
+      
+      if (!q || typeof q !== 'string' || q.trim().length < 2) {
+        return res.status(400).json({ error: "Query mora imati najmanje 2 karaktera" });
+      }
+      
+      const results = await storage.searchUsers(q.trim(), req.jwtUser!.id);
+      res.json(results);
+    } catch (error: any) {
+      console.error("[MESSAGING] User search error:", error);
+      res.status(500).json({ error: "Greška pri pretrazi korisnika" });
+    }
+  });
+  
+  // Get user by ID (verified users only)
+  app.get("/api/users/:id", requireVerifiedEmail, async (req, res) => {
+    try {
+      const userId = parseInt(req.params.id);
+      
+      if (isNaN(userId)) {
+        return res.status(400).json({ error: "Nevažeći ID korisnika" });
+      }
+      
+      const user = await storage.getUser(userId);
+      
+      if (!user) {
+        return res.status(404).json({ error: "Korisnik nije pronađen" });
+      }
+      
+      const sanitized = sanitizeUser(user);
+      res.json(sanitized);
+    } catch (error: any) {
+      console.error("[MESSAGING] Get user error:", error);
+      res.status(500).json({ error: "Greška pri učitavanju korisnika" });
+    }
+  });
+
+  // Get all user conversations
+  app.get("/api/conversations", requireVerifiedEmail, async (req, res) => {
+    try {
+      const conversations = await storage.getUserConversations(req.jwtUser!.id);
+      res.json(conversations);
+    } catch (error: any) {
+      console.error("[MESSAGING] Get conversations error:", error);
+      res.status(500).json({ error: "Greška pri učitavanju konverzacija" });
+    }
+  });
+
+  // Get messages for specific conversation
+  app.get("/api/messages/conversation/:userId", requireVerifiedEmail, async (req, res) => {
+    try {
+      const otherUserId = parseInt(req.params.userId);
+      
+      if (isNaN(otherUserId)) {
+        return res.status(400).json({ error: "Nevažeći ID korisnika" });
+      }
+      
+      const conversation = await storage.getConversation(req.jwtUser!.id, otherUserId);
+      
+      if (!conversation) {
+        return res.json([]);
+      }
+      
+      const messages = await storage.getConversationMessages(conversation.id, req.jwtUser!.id);
+      
+      await storage.markMessagesAsRead(conversation.id, req.jwtUser!.id);
+      
+      // Broadcast message_read event to the sender (otherUserId)
+      if (wsHelpers.broadcastToUser) {
+        wsHelpers.broadcastToUser(otherUserId, {
+          type: 'message_read',
+          conversationId: conversation.id,
+          readBy: req.jwtUser!.id,
+        });
+      }
+      
+      res.json(messages);
+    } catch (error: any) {
+      console.error("[MESSAGING] Get messages error:", error);
+      res.status(500).json({ error: "Greška pri učitavanju poruka" });
+    }
+  });
+
+  // Send a message
+  app.post("/api/messages/send", requireVerifiedEmail, async (req, res) => {
+    try {
+      const { receiverId, content, imageUrl } = req.body;
+      
+      if (!receiverId || typeof receiverId !== 'number') {
+        return res.status(400).json({ error: "receiverId je obavezan" });
+      }
+      
+      if (receiverId === req.jwtUser!.id) {
+        return res.status(400).json({ error: "Ne možete slati poruke samom sebi" });
+      }
+      
+      if (!content || typeof content !== 'string' || content.trim().length === 0) {
+        return res.status(400).json({ error: "Poruka ne može biti prazna" });
+      }
+      
+      if (content.length > 5000) {
+        return res.status(400).json({ error: "Poruka može imati najviše 5000 karaktera" });
+      }
+      
+      // Check if receiver exists and is not banned
+      const receiver = await storage.getUser(receiverId);
+      if (!receiver) {
+        return res.status(404).json({ error: "Korisnik ne postoji" });
+      }
+      
+      if (receiver.banned) {
+        return res.status(403).json({ error: "Ne možete slati poruke banovanom korisniku" });
+      }
+      
+      const message = await storage.sendMessage(
+        req.jwtUser!.id, 
+        receiverId, 
+        content.trim(),
+        imageUrl
+      );
+      
+      // Broadcast new_message event to receiver via WebSocket
+      if (wsHelpers.broadcastToUser) {
+        wsHelpers.broadcastToUser(receiverId, {
+          type: 'new_message',
+          message,
+        });
+        
+        // Also broadcast to sender to update their own conversation list
+        wsHelpers.broadcastToUser(req.jwtUser!.id, {
+          type: 'new_message',
+          message,
+        });
+      }
+      
+      res.json(message);
+    } catch (error: any) {
+      console.error("[MESSAGING] Send message error:", error);
+      res.status(500).json({ error: "Greška pri slanju poruke" });
+    }
+  });
+
+  // DEPRECATED - Messages are now auto-marked as read when fetched (GET /api/messages/conversation/:userId)
+  // This endpoint is kept for backward compatibility with cached JavaScript
+  app.put("/api/messages/mark-read", requireVerifiedEmail, async (req, res) => {
+    console.warn("[DEPRECATED] PUT /api/messages/mark-read called - browser cache issue! User needs hard refresh (Ctrl+F5)");
+    res.json({ 
+      success: true,
+      deprecated: true,
+      message: "Please perform a hard refresh of your browser (Ctrl+F5 or Ctrl+Shift+R)" 
+    });
+  });
+
+  // Get unread message count
+  app.get("/api/messages/unread-count", requireVerifiedEmail, async (req, res) => {
+    try {
+      const count = await storage.getUnreadMessageCount(req.jwtUser!.id);
+      res.json({ count });
+    } catch (error: any) {
+      console.error("[MESSAGING] Get unread count error:", error);
+      res.status(500).json({ error: "Greška pri učitavanju broja nepročitanih poruka" });
+    }
+  });
+
+  // Delete a message (user can only delete their own messages)
+  app.delete("/api/messages/:id", requireVerifiedEmail, async (req, res) => {
+    try {
+      const messageId = parseInt(req.params.id);
+      
+      if (isNaN(messageId)) {
+        return res.status(400).json({ error: "Nevažeći ID poruke" });
+      }
+      
+      // Get message details before deletion for WebSocket broadcast
+      const message = await storage.getMessageById(messageId);
+      
+      const success = await storage.deleteMessage(messageId, req.jwtUser!.id);
+      
+      if (!success) {
+        return res.status(403).json({ error: "Ne možete obrisati ovu poruku" });
+      }
+      
+      // Broadcast message deletion to both sender and receiver via WebSocket
+      if (message && wsHelpers.broadcastToUser) {
+        const deletedMessageEvent = {
+          type: 'message_deleted',
+          messageId,
+        };
+        
+        wsHelpers.broadcastToUser(message.senderId, deletedMessageEvent);
+        wsHelpers.broadcastToUser(message.receiverId, deletedMessageEvent);
+      }
+      
+      res.json({ success: true });
+    } catch (error: any) {
+      console.error("[MESSAGING] Delete message error:", error);
+      res.status(500).json({ error: "Greška pri brisanju poruke" });
+    }
+  });
+
+  // ===== DASHBOARD ENDPOINTS =====
+  
+  // Get dashboard overview for logged-in user
+  app.get("/api/dashboard/overview", requireVerifiedEmail, async (req, res) => {
+    try {
+      const overview = await storage.getDashboardOverview(req.jwtUser!.id);
+      res.json(overview);
+    } catch (error: any) {
+      console.error("[DASHBOARD] Get overview error:", error);
+      res.status(500).json({ error: "Greška pri učitavanju dashboard pregleda" });
+    }
+  });
+
+  // Get user's projects
+  app.get("/api/user/projects", requireVerifiedEmail, async (req, res) => {
+    try {
+      const projects = await storage.getUserProjects(req.jwtUser!.id);
+      res.json(projects);
+    } catch (error: any) {
+      console.error("[DASHBOARD] Get user projects error:", error);
+      res.status(500).json({ error: "Greška pri učitavanju projekata" });
+    }
+  });
+
+  // Get user's contracts
+  app.get("/api/user/contracts", requireVerifiedEmail, async (req, res) => {
+    try {
+      const contracts = await storage.getUserContracts(req.jwtUser!.id);
+      res.json(contracts);
+    } catch (error: any) {
+      console.error("[DASHBOARD] Get user contracts error:", error);
+      res.status(500).json({ error: "Greška pri učitavanju ugovora" });
+    }
+  });
+
+  // Get user's invoices
+  app.get("/api/user/invoices", requireVerifiedEmail, async (req, res) => {
+    try {
+      const invoices = await storage.getUserInvoices(req.jwtUser!.id);
+      res.json(invoices);
+    } catch (error: any) {
+      console.error("[DASHBOARD] Get user invoices error:", error);
+      res.status(500).json({ error: "Greška pri učitavanju faktura" });
+    }
+  });
+
+  // Update project status (admin only)
+  app.put("/api/admin/projects/:id/status", requireAdmin, async (req, res) => {
+    try {
+      const projectId = parseInt(req.params.id);
+      const { status } = req.body;
+
+      if (isNaN(projectId)) {
+        return res.status(400).json({ error: "Nevažeći ID projekta" });
+      }
+
+      if (!status || !['waiting', 'in_progress', 'completed', 'cancelled'].includes(status)) {
+        return res.status(400).json({ error: "Nevažeći status. Dozvoljeni: waiting, in_progress, completed, cancelled" });
+      }
+
+      await storage.updateProjectStatus(projectId, status);
+      
+      // Get project info for notification
+      const project = await storage.getProject(projectId);
+      if (project) {
+        // Notify the user about status change
+        notifyUser(
+          project.userId,
+          "Status projekta ažuriran",
+          `Status vašeg projekta "${project.title}" je promenjen na: ${status}`
+        );
+      }
+
+      res.json({ success: true });
+    } catch (error: any) {
+      console.error("[ADMIN] Update project status error:", error);
+      res.status(500).json({ error: "Greška pri ažuriranju statusa projekta" });
+    }
+  });
+
+  // ===== ADMIN MESSAGING ENDPOINTS =====
+  
+  // Get all conversations (admin only)
+  app.get("/api/admin/messages/conversations", requireAdmin, async (req, res) => {
+    try {
+      const conversations = await storage.adminGetAllConversations();
+      res.json(conversations);
+    } catch (error: any) {
+      console.error("[ADMIN MESSAGING] Get all conversations error:", error);
+      res.status(500).json({ error: "Greška pri učitavanju konverzacija" });
+    }
+  });
+
+  // Get messages between two users (admin only)
+  app.get("/api/admin/messages/conversation/:user1Id/:user2Id", requireAdmin, async (req, res) => {
+    try {
+      const user1Id = parseInt(req.params.user1Id);
+      const user2Id = parseInt(req.params.user2Id);
+      
+      if (isNaN(user1Id) || isNaN(user2Id)) {
+        return res.status(400).json({ error: "Nevažeći ID korisnika" });
+      }
+      
+      // Log admin viewing this conversation
+      await storage.adminLogConversationView(req.jwtUser!.id, user1Id, user2Id);
+      
+      const messages = await storage.adminGetConversationMessages(user1Id, user2Id);
+      res.json(messages);
+    } catch (error: any) {
+      console.error("[ADMIN MESSAGING] Get conversation messages error:", error);
+      res.status(500).json({ error: "Greška pri učitavanju poruka" });
+    }
+  });
+
+  // Delete any message (admin only)
+  app.delete("/api/admin/messages/:id", requireAdmin, async (req, res) => {
+    try {
+      const messageId = parseInt(req.params.id);
+      
+      if (isNaN(messageId)) {
+        return res.status(400).json({ error: "Nevažeći ID poruke" });
+      }
+      
+      await storage.adminDeleteMessage(messageId);
+      res.json({ success: true });
+    } catch (error: any) {
+      console.error("[ADMIN MESSAGING] Delete message error:", error);
+      res.status(500).json({ error: "Greška pri brisanju poruke" });
+    }
+  });
+
+  // Get admin audit logs
+  app.get("/api/admin/messages/audit-logs", requireAdmin, async (req, res) => {
+    try {
+      const logs = await storage.adminGetAuditLogs();
+      res.json(logs);
+    } catch (error: any) {
+      console.error("[ADMIN MESSAGING] Get audit logs error:", error);
+      res.status(500).json({ error: "Greška pri učitavanju audit logova" });
+    }
+  });
+
+  // Export conversation to TXT file
+  app.get("/api/admin/messages/export/:user1Id/:user2Id", requireAdmin, async (req, res) => {
+    try {
+      const user1Id = parseInt(req.params.user1Id);
+      const user2Id = parseInt(req.params.user2Id);
+
+      if (isNaN(user1Id) || isNaN(user2Id)) {
+        return res.status(400).json({ error: "Nevažeći ID korisnika" });
+      }
+
+      const txtContent = await storage.adminExportConversation(user1Id, user2Id);
+
+      const user1 = await storage.getUser(user1Id);
+      const user2 = await storage.getUser(user2Id);
+      const filename = `konverzacija_${user1?.username}_${user2?.username}_${Date.now()}.txt`;
+
+      res.setHeader("Content-Type", "text/plain; charset=utf-8");
+      res.setHeader("Content-Disposition", `attachment; filename="${filename}"`);
+      res.send(txtContent);
+    } catch (error: any) {
+      console.error("[ADMIN MESSAGING] Export conversation error:", error);
+      res.status(500).json({ error: "Greška pri izvozu konverzacije" });
+    }
+  });
+
+  // Get messaging statistics
+  app.get("/api/admin/messages/stats", requireAdmin, async (req, res) => {
+    try {
+      const stats = await storage.adminGetMessagingStats();
+      res.json(stats);
+    } catch (error: any) {
+      console.error("[ADMIN MESSAGING] Get stats error:", error);
+      res.status(500).json({ error: "Greška pri učitavanju statistike" });
+    }
+  });
+
+  // ========== CONTRACTS ==========
+
+  // Helper function to sanitize client name for filename
+  function sanitizeNameForFilename(name: string): string {
+    return name
+      .replace(/\s+/g, '') // Remove all spaces
+      .replace(/[^a-zA-Z0-9]/g, '') // Remove special characters
+      .substring(0, 30); // Limit to 30 characters
+  }
+
+  // Generate contract PDF
+  app.post("/api/admin/contracts/generate", requireAdmin, async (req, res) => {
+    try {
+      const { contractType, contractData } = req.body;
+
+      if (!contractType || !contractData) {
+        return res.status(400).json({ error: "Tip ugovora i podaci su obavezni" });
+      }
+
+      // Validate contractData based on contract type
+      let validatedData: any;
+      try {
+        switch (contractType) {
+          case "mix_master":
+            validatedData = mixMasterContractDataSchema.parse(contractData);
+            break;
+          case "copyright_transfer":
+            validatedData = copyrightTransferContractDataSchema.parse(contractData);
+            break;
+          case "instrumental_sale":
+            validatedData = instrumentalSaleContractDataSchema.parse(contractData);
+            break;
+          default:
+            return res.status(400).json({ error: "Nevažeći tip ugovora" });
+        }
+      } catch (validationError: any) {
+        console.error("[CONTRACTS] Validation error:", validationError);
+        return res.status(400).json({ 
+          error: "Validacija podataka nije uspela", 
+          details: validationError.errors || validationError.message 
+        });
+      }
+
+      // Get next contract number
+      const contractNumber = await storage.getNextContractNumber();
+
+      // Generate PDF based on contract type
+      let pdfBuffer: Buffer;
+      switch (contractType) {
+        case "mix_master":
+          pdfBuffer = await generateMixMasterPDF(validatedData as MixMasterContract);
+          break;
+        case "copyright_transfer":
+          pdfBuffer = await generateCopyrightTransferPDF(validatedData as CopyrightTransferContract);
+          break;
+        case "instrumental_sale":
+          pdfBuffer = await generateInstrumentalSalePDF(validatedData as InstrumentalSaleContract);
+          break;
+        default:
+          return res.status(400).json({ error: "Nevažeći tip ugovora" });
+      }
+
+      // Save PDF to disk
+      const contractsDir = path.join(process.cwd(), 'attached_assets', 'contracts');
+      fs.mkdirSync(contractsDir, { recursive: true });
+      
+      // Extract client/buyer name based on contract type
+      let clientName = '';
+      if (contractType === 'mix_master') {
+        clientName = validatedData.clientName || '';
+      } else {
+        // copyright_transfer and instrumental_sale use buyerName
+        clientName = validatedData.buyerName || '';
+      }
+      const sanitizedName = sanitizeNameForFilename(clientName);
+      
+      // Build filename with client name suffix (or without if name is empty)
+      const filename = sanitizedName 
+        ? `ugovor_${contractNumber.replace('/', '_')}_${sanitizedName}.pdf`
+        : `ugovor_${contractNumber.replace('/', '_')}.pdf`;
+      const pdfPath = path.join(contractsDir, filename);
+      fs.writeFileSync(pdfPath, pdfBuffer);
+
+      // Save contract to database
+      const contract = await storage.createContract({
+        contractNumber,
+        contractType,
+        contractData,
+        pdfPath: `attached_assets/contracts/${filename}`,
+        clientEmail: contractData.clientEmail || null,
+        createdBy: req.jwtUser!.id,
+      });
+
+      res.json({ 
+        success: true, 
+        contract: {
+          id: contract.id,
+          contractNumber: contract.contractNumber,
+          contractType: contract.contractType,
+        }
+      });
+    } catch (error: any) {
+      console.error("[CONTRACTS] Generate error:", error);
+      res.status(500).json({ error: "Greška pri generisanju ugovora" });
+    }
+  });
+
+  // Get all contracts
+  app.get("/api/admin/contracts", requireAdmin, async (req, res) => {
+    try {
+      const contracts = await storage.getAllContracts();
+      res.json(contracts);
+    } catch (error: any) {
+      console.error("[CONTRACTS] Get all error:", error);
+      res.status(500).json({ error: "Greška pri učitavanju ugovora" });
+    }
+  });
+
+  // Download contract PDF
+  app.get("/api/admin/contracts/:id/download", requireAdmin, async (req, res) => {
+    try {
+      const contractId = parseInt(req.params.id);
+      
+      if (isNaN(contractId)) {
+        return res.status(400).json({ error: "Nevažeći ID ugovora" });
+      }
+
+      const contract = await storage.getContractById(contractId);
+      if (!contract) {
+        return res.status(404).json({ error: "Ugovor nije pronađen" });
+      }
+
+      const pdfPath = path.join(process.cwd(), contract.pdfPath!);
+      
+      if (!fs.existsSync(pdfPath)) {
+        return res.status(404).json({ error: "PDF fajl nije pronađen" });
+      }
+
+      // Extract filename from pdfPath for consistent download name
+      const downloadFilename = path.basename(contract.pdfPath || `ugovor_${contract.contractNumber.replace('/', '_')}.pdf`);
+
+      res.setHeader('Content-Type', 'application/pdf');
+      res.setHeader('Content-Disposition', `attachment; filename="${downloadFilename}"`);
+      
+      const fileStream = fs.createReadStream(pdfPath);
+      fileStream.pipe(res);
+    } catch (error: any) {
+      console.error("[CONTRACTS] Download error:", error);
+      res.status(500).json({ error: "Greška pri preuzimanju ugovora" });
+    }
+  });
+
+  // Send contract via email
+  app.post("/api/admin/contracts/:id/send-email", requireAdmin, async (req, res) => {
+    try {
+      const contractId = parseInt(req.params.id);
+      const { email } = req.body;
+
+      if (isNaN(contractId)) {
+        return res.status(400).json({ error: "Nevažeći ID ugovora" });
+      }
+
+      if (!email || !email.match(/^[^\s@]+@[^\s@]+\.[^\s@]+$/)) {
+        return res.status(400).json({ error: "Nevažeća email adresa" });
+      }
+
+      const contract = await storage.getContractById(contractId);
+      if (!contract) {
+        return res.status(404).json({ error: "Ugovor nije pronađen" });
+      }
+
+      const pdfPath = path.join(process.cwd(), contract.pdfPath!);
+      
+      if (!fs.existsSync(pdfPath)) {
+        return res.status(404).json({ error: "PDF fajl nije pronađen" });
+      }
+
+      // Read PDF as base64
+      const pdfBuffer = fs.readFileSync(pdfPath);
+      const pdfBase64 = pdfBuffer.toString('base64');
+
+      // Professional HTML email template
+      const emailHtml = `
+<!DOCTYPE html>
+<html lang="sr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+</head>
+<body style="margin: 0; padding: 0; font-family: 'Arial', sans-serif; background-color: #f4f4f7;">
+  <table role="presentation" cellspacing="0" cellpadding="0" border="0" width="100%" style="background-color: #f4f4f7;">
+    <tr>
+      <td style="padding: 40px 20px;">
+        <table role="presentation" cellspacing="0" cellpadding="0" border="0" width="100%" style="max-width: 600px; margin: 0 auto; background-color: #ffffff; border-radius: 8px; overflow: hidden; box-shadow: 0 4px 12px rgba(0,0,0,0.1);">
+          
+          <!-- Header -->
+          <tr>
+            <td style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); padding: 40px 30px; text-align: center;">
+              <h1 style="margin: 0; color: #ffffff; font-size: 28px; font-weight: 700; letter-spacing: -0.5px;">
+                Studio LeFlow
+              </h1>
+              <p style="margin: 8px 0 0; color: rgba(255,255,255,0.9); font-size: 14px;">
+                Profesionalna muzička produkcija
+              </p>
+            </td>
+          </tr>
+
+          <!-- Content -->
+          <tr>
+            <td style="padding: 40px 30px;">
+              <h2 style="margin: 0 0 16px; color: #1a1a1a; font-size: 22px; font-weight: 600;">
+                Poštovani,
+              </h2>
+              
+              <p style="margin: 0 0 16px; color: #4a4a4a; font-size: 16px; line-height: 1.6;">
+                U prilogu Vam dostavljamo ugovor broj <strong>${contract.contractNumber}</strong>.
+              </p>
+
+              <p style="margin: 0 0 24px; color: #4a4a4a; font-size: 16px; line-height: 1.6;">
+                Molimo Vas da pažljivo pregledate dokument. Ukoliko imate bilo kakvih pitanja ili nedoumica, 
+                slobodno nas kontaktirajte.
+              </p>
+
+              <!-- Contract Info Box -->
+              <table role="presentation" cellspacing="0" cellpadding="0" border="0" width="100%" style="background-color: #f8f9fa; border-radius: 6px; margin-bottom: 24px;">
+                <tr>
+                  <td style="padding: 20px;">
+                    <table role="presentation" cellspacing="0" cellpadding="0" border="0" width="100%">
+                      <tr>
+                        <td style="padding: 8px 0; color: #6b7280; font-size: 14px;">
+                          Broj ugovora:
+                        </td>
+                        <td style="padding: 8px 0; color: #1a1a1a; font-size: 14px; font-weight: 600; text-align: right;">
+                          ${contract.contractNumber}
+                        </td>
+                      </tr>
+                      <tr>
+                        <td style="padding: 8px 0; color: #6b7280; font-size: 14px;">
+                          Tip:
+                        </td>
+                        <td style="padding: 8px 0; color: #1a1a1a; font-size: 14px; font-weight: 600; text-align: right;">
+                          ${contract.contractType === 'mix_master' ? 'Mix & Master' : contract.contractType === 'copyright_transfer' ? 'Prenos autorskih prava' : 'Prodaja instrumentala'}
+                        </td>
+                      </tr>
+                      <tr>
+                        <td style="padding: 8px 0; color: #6b7280; font-size: 14px;">
+                          Datum:
+                        </td>
+                        <td style="padding: 8px 0; color: #1a1a1a; font-size: 14px; font-weight: 600; text-align: right;">
+                          ${new Date(contract.createdAt).toLocaleDateString('sr-RS')}
+                        </td>
+                      </tr>
+                    </table>
+                  </td>
+                </tr>
+              </table>
+
+              <p style="margin: 0 0 8px; color: #4a4a4a; font-size: 16px; line-height: 1.6;">
+                Srdačan pozdrav,
+              </p>
+              <p style="margin: 0 0 24px; color: #667eea; font-size: 16px; font-weight: 600; line-height: 1.6;">
+                Studio LeFlow tim
+              </p>
+            </td>
+          </tr>
+
+          <!-- Footer -->
+          <tr>
+            <td style="background-color: #f8f9fa; padding: 30px; text-align: center; border-top: 1px solid #e5e7eb;">
+              <p style="margin: 0 0 8px; color: #6b7280; font-size: 14px;">
+                Studio LeFlow | Beograd, Srbija
+              </p>
+              <p style="margin: 0; color: #9ca3af; font-size: 12px;">
+                Ova poruka je automatski generisana. Molimo ne odgovarajte direktno na ovaj email.
+              </p>
+            </td>
+          </tr>
+
+        </table>
+      </td>
+    </tr>
+  </table>
+</body>
+</html>
+      `;
+
+      // Send email with PDF attachment
+      // Extract filename from pdfPath for consistent email attachment name
+      const emailFilename = path.basename(contract.pdfPath || `ugovor_${contract.contractNumber.replace('/', '_')}.pdf`);
+
+      await sendEmail({
+        to: email,
+        subject: `Studio LeFlow - Ugovor ${contract.contractNumber}`,
+        html: emailHtml,
+        attachments: [{
+          filename: emailFilename,
+          content: pdfBase64,
+          encoding: 'base64',
+          contentType: 'application/pdf',
+        }],
+      });
+
+      res.json({ success: true, message: "Email uspešno poslat" });
+    } catch (error: any) {
+      console.error("[CONTRACTS] Send email error:", error);
+      res.status(500).json({ error: "Greška pri slanju email-a" });
+    }
+  });
+
+  // Assign contract to user (or remove assignment with null)
+  app.patch("/api/admin/contracts/:id/assign-user", requireAdmin, async (req, res) => {
+    try {
+      const contractId = parseInt(req.params.id);
+      const { userId } = req.body;
+
+      if (isNaN(contractId)) {
+        return res.status(400).json({ error: "Nevažeći ID ugovora" });
+      }
+
+      // userId can be null to remove assignment
+      let parsedUserId: number | null = null;
+      
+      if (userId !== null && userId !== undefined) {
+        parsedUserId = parseInt(userId);
+        if (isNaN(parsedUserId)) {
+          return res.status(400).json({ error: "Nevažeći userId" });
+        }
+
+        // Check if user exists (only if userId is provided)
+        const user = await storage.getUser(parsedUserId);
+        if (!user) {
+          return res.status(404).json({ error: "Korisnik nije pronađen" });
+        }
+      }
+
+      // Update contract userId (can be null to remove assignment)
+      await storage.updateContractUser(contractId, parsedUserId);
+
+      const message = parsedUserId === null 
+        ? "Dodela ugovora uspešno uklonjena" 
+        : "Ugovor uspešno dodeljen korisniku";
+
+      res.json({ success: true, message });
+    } catch (error: any) {
+      console.error("[CONTRACTS] Assign user error:", error);
+      res.status(500).json({ error: "Greška pri dodeljivanju ugovora" });
+    }
+  });
+
+  // Delete contract
+  app.delete("/api/admin/contracts/:id", requireAdmin, async (req, res) => {
+    try {
+      const contractId = parseInt(req.params.id);
+      
+      if (isNaN(contractId)) {
+        return res.status(400).json({ error: "Nevažeći ID ugovora" });
+      }
+
+      const contract = await storage.getContractById(contractId);
+      if (!contract) {
+        return res.status(404).json({ error: "Ugovor nije pronađen" });
+      }
+
+      // Delete PDF file
+      if (contract.pdfPath) {
+        const pdfPath = path.join(process.cwd(), contract.pdfPath);
+        if (fs.existsSync(pdfPath)) {
+          fs.unlinkSync(pdfPath);
+        }
+      }
+
+      // Delete from database
+      await storage.deleteContract(contractId);
+
+      res.json({ success: true, message: "Ugovor uspešno obrisan" });
+    } catch (error: any) {
+      console.error("[CONTRACTS] Delete error:", error);
+      res.status(500).json({ error: "Greška pri brisanju ugovora" });
+    }
+  });
+
+  // ============================================================================
+  // INVOICE MANAGEMENT ENDPOINTS (Admin only)
+  // ============================================================================
+
+  // Create invoice
+  app.post("/api/admin/invoices", requireAdmin, async (req, res) => {
+    try {
+      // Generate invoice number (will be done automatically in storage)
+      const invoiceNumber = await storage.getNextInvoiceNumber();
+      
+      // Validate and prepare invoice data
+      const invoiceData = insertInvoiceSchema.parse({
+        ...req.body,
+        invoiceNumber,
+        createdBy: req.jwtUser!.id,
+        currency: req.body.currency || "RSD",
+        status: req.body.status || "pending",
+      });
+
+      const invoice = await storage.createInvoice(invoiceData);
+      res.json(invoice);
+    } catch (error: any) {
+      console.error("[INVOICES] Create error:", error);
+      if (error.name === "ZodError") {
+        return res.status(400).json({ error: "Nevažeći podaci", details: error.errors });
+      }
+      res.status(500).json({ error: "Greška pri kreiranju fakture" });
+    }
+  });
+
+  // Get all invoices
+  app.get("/api/admin/invoices", requireAdmin, async (req, res) => {
+    try {
+      const invoices = await storage.getAllInvoices();
+      res.json(invoices);
+    } catch (error: any) {
+      console.error("[INVOICES] Get all error:", error);
+      res.status(500).json({ error: "Greška pri učitavanju faktura" });
+    }
+  });
+
+  // Update invoice status
+  app.patch("/api/admin/invoices/:id/status", requireAdmin, async (req, res) => {
+    try {
+      const invoiceId = parseInt(req.params.id);
+      const { status } = req.body;
+
+      if (isNaN(invoiceId)) {
+        return res.status(400).json({ error: "Nevažeći ID fakture" });
+      }
+
+      if (!status || !["pending", "paid", "cancelled"].includes(status)) {
+        return res.status(400).json({ error: "Nevažeći status fakture" });
+      }
+
+      const paidDate = status === "paid" ? new Date() : undefined;
+      await storage.updateInvoiceStatus(invoiceId, status, paidDate);
+
+      res.json({ success: true, message: "Status fakture ažuriran" });
+    } catch (error: any) {
+      console.error("[INVOICES] Update status error:", error);
+      res.status(500).json({ error: "Greška pri ažuriranju statusa fakture" });
+    }
+  });
+
+  // Delete invoice
+  app.delete("/api/admin/invoices/:id", requireAdmin, async (req, res) => {
+    try {
+      const invoiceId = parseInt(req.params.id);
+
+      if (isNaN(invoiceId)) {
+        return res.status(400).json({ error: "Nevažeći ID fakture" });
+      }
+
+      await storage.deleteInvoice(invoiceId);
+      res.json({ success: true, message: "Faktura uspešno obrisana" });
+    } catch (error: any) {
+      console.error("[INVOICES] Delete error:", error);
+      res.status(500).json({ error: "Greška pri brisanju fakture" });
+    }
+  });
+
+  // ============================================================================
+  // ANALYTICS ENDPOINTS (Admin only, with caching)
+  // ============================================================================
+
+  // GET /api/admin/analytics/summary - Cached analytics summary
+  app.get("/api/admin/analytics/summary", requireAdmin, async (_req, res) => {
+    try {
+      const cacheKey = 'analytics:summary';
+      const cached = getCachedData<any>(cacheKey);
+      
+      if (cached) {
+        return res.json(cached);
+      }
+
+      // Gather all metrics in parallel
+      const [
+        newUsersToday,
+        newUsersWeek,
+        newUsersMonth,
+        topProjects,
+        approvedSongsToday,
+        approvedSongsWeek,
+        approvedSongsMonth,
+        contractStats,
+        unreadConversations,
+      ] = await Promise.all([
+        storage.getNewUsersCount('today'),
+        storage.getNewUsersCount('week'),
+        storage.getNewUsersCount('month'),
+        storage.getTopProjects(10),
+        storage.getApprovedSongsCount('today'),
+        storage.getApprovedSongsCount('week'),
+        storage.getApprovedSongsCount('month'),
+        storage.getContractStats(),
+        storage.getUnreadConversationsCount(),
+      ]);
+
+      const summary = {
+        newUsers: {
+          today: newUsersToday,
+          week: newUsersWeek,
+          month: newUsersMonth,
+        },
+        approvedSongs: {
+          today: approvedSongsToday,
+          week: approvedSongsWeek,
+          month: approvedSongsMonth,
+        },
+        topProjects: topProjects.slice(0, 5),
+        contracts: contractStats,
+        unreadConversations,
+        activeUsers: getOnlineUsersSnapshot().length,
+      };
+
+      setCachedData(cacheKey, summary);
+      res.json(summary);
+    } catch (error) {
+      console.error("Error fetching analytics summary:", error);
+      res.status(500).json({ error: "Greška pri učitavanju analitike" });
+    }
+  });
+
+  // GET /api/admin/analytics/active-users - Current active users
+  app.get("/api/admin/analytics/active-users", requireAdmin, async (_req, res) => {
+    try {
+      const onlineUserIds = getOnlineUsersSnapshot();
+      
+      // Fetch user details for online users
+      const onlineUsers = await Promise.all(
+        onlineUserIds.map(async (userId) => {
+          const user = await storage.getUser(userId);
+          if (!user) return null;
+          return {
+            id: user.id,
+            username: user.username,
+            email: user.email,
+            avatarUrl: user.avatarUrl,
+            role: user.role,
+          };
+        })
+      );
+
+      const validUsers = onlineUsers.filter(u => u !== null);
+      res.json({ count: validUsers.length, users: validUsers });
+    } catch (error) {
+      console.error("Error fetching active users:", error);
+      res.status(500).json({ error: "Greška pri učitavanju aktivnih korisnika" });
+    }
+  });
+
+  // ========== EVLFRQ EXCLUSIVE AUDIO ANALYZER AUTH KEYS ==========
+  
+  // Helper function to get client IP
+  const getClientIp = (req: any): string => {
+    return req.headers['x-forwarded-for']?.split(',')[0]?.trim() || 
+           req.headers['x-real-ip'] || 
+           req.connection?.remoteAddress || 
+           req.socket?.remoteAddress ||
+           'unknown';
+  };
+
+  // POST /api/evlfrq/generate-key - Admin generates auth key with duration
+  app.post("/api/evlfrq/generate-key", requireAdmin, async (req, res) => {
+    try {
+      const validation = insertEvlfrqAuthKeySchema.safeParse(req.body);
+      if (!validation.success) {
+        return res.status(400).json({ error: "Nevažeće podatke", details: validation.error.errors });
+      }
+
+      const admin = req.jwtUser!;
+      const { durationDays } = validation.data;
+      const ipAddress = getClientIp(req);
+
+      // Generate 64-character random key with crypto secure random
+      const authKey = randomBytes(32).toString('hex'); // 32 bytes = 64 hex characters
+
+      // Create auth key in storage
+      const key = await storage.createEvlfrqAuthKey({
+        key: authKey,
+        durationDays,
+        createdBy: admin.id,
+      });
+
+      // Log security event
+      await storage.logEvlfrqSecurityEvent({
+        eventType: 'KEY_GENERATED',
+        userId: admin.id,
+        ipAddress,
+        keyId: key.id,
+        details: `Admin ${admin.username} generisao ključ za ${durationDays} dana`,
+      });
+
+      res.json({ 
+        success: true, 
+        keyId: key.id,
+        key: authKey, // Return the key once (user won't see it again)
+        durationDays,
+        createdAt: key.createdAt,
+        message: "Auth ključ je uspešno generisan. Kopiraj ključ - korisniku se prikazuje samo jednom!"
+      });
+    } catch (error: any) {
+      console.error("[EVLFRQ] Generate key error:", error);
+      res.status(500).json({ error: "Greška pri generisanju ključa" });
+    }
+  });
+
+  // POST /api/evlfrq/activate-key - User activates key and gets access
+  app.post("/api/evlfrq/activate-key", async (req, res) => {
+    const ipAddress = getClientIp(req);
+    
+    try {
+      const user = req.jwtUser;
+      if (!user) {
+        // Log unauthorized attempt
+        await storage.logEvlfrqSecurityEvent({
+          eventType: 'ACTIVATION_ATTEMPT',
+          ipAddress,
+          details: 'Pokušaj aktivacije bez prijave',
+        });
+        return res.status(401).json({ error: "Morate biti prijavljeni" });
+      }
+
+      const { key } = req.body;
+
+      // Rate limiting: Max 5 attempts per 15 minutes per IP
+      const recentAttempts = await storage.getRecentActivationAttempts(ipAddress, 15);
+      if (recentAttempts >= 5) {
+        await storage.logEvlfrqSecurityEvent({
+          eventType: 'RATE_LIMIT_EXCEEDED',
+          userId: user.id,
+          ipAddress,
+          details: `Korisnik ${user.username} prekoračio limit pokušaja`,
+        });
+        return res.status(429).json({ 
+          error: "Previše pokušaja. Pokušajte ponovo za 15 minuta.",
+          retryAfter: 15 * 60 // seconds
+        });
+      }
+
+      // Log activation attempt
+      await storage.logEvlfrqSecurityEvent({
+        eventType: 'ACTIVATION_ATTEMPT',
+        userId: user.id,
+        ipAddress,
+        details: `Pokušaj aktivacije od ${user.username}`,
+      });
+
+      if (!key || typeof key !== 'string' || key.length !== 64) {
+        await storage.logEvlfrqSecurityEvent({
+          eventType: 'INVALID_KEY_FORMAT',
+          userId: user.id,
+          ipAddress,
+          details: 'Nevažeći format ključa',
+        });
+        return res.status(400).json({ error: "Nevažeći ključ format" });
+      }
+
+      // Check if user already has active access
+      const existingAccess = await storage.getUserEvlfrqAccessStatus(user.id);
+      if (existingAccess && existingAccess.expiresAt && new Date(existingAccess.expiresAt) > new Date()) {
+        const daysRemaining = Math.ceil((new Date(existingAccess.expiresAt).getTime() - Date.now()) / (24 * 60 * 60 * 1000));
+        return res.status(400).json({ 
+          error: `Već imate aktivan pristup! Ističe za ${daysRemaining} dana.`,
+          existingExpiry: existingAccess.expiresAt
+        });
+      }
+
+      // Check if key exists and is not used
+      const authKey = await storage.getEvlfrqAuthKeyByKey(key);
+      if (!authKey) {
+        await storage.logEvlfrqSecurityEvent({
+          eventType: 'KEY_NOT_FOUND',
+          userId: user.id,
+          ipAddress,
+          details: 'Pokušaj sa nepostojećim ključem',
+        });
+        return res.status(404).json({ error: "Ključ nije pronađen" });
+      }
+
+      if (authKey.isUsed) {
+        await storage.logEvlfrqSecurityEvent({
+          eventType: 'KEY_ALREADY_USED',
+          userId: user.id,
+          ipAddress,
+          keyId: authKey.id,
+          details: 'Pokušaj sa već korišćenim ključem',
+        });
+        return res.status(400).json({ error: "Ovaj ključ je već korišćen" });
+      }
+
+      // Calculate expiry date
+      const expiresAt = new Date(Date.now() + authKey.durationDays * 24 * 60 * 60 * 1000);
+
+      // Mark key as used and assign to user
+      const activatedKey = await storage.activateEvlfrqAuthKey(authKey.id, user.id, expiresAt);
+
+      // Log successful activation
+      await storage.logEvlfrqSecurityEvent({
+        eventType: 'KEY_ACTIVATED',
+        userId: user.id,
+        ipAddress,
+        keyId: authKey.id,
+        details: `Korisnik ${user.username} aktivirao ključ za ${authKey.durationDays} dana`,
+      });
+
+      res.json({
+        success: true,
+        message: `Pristup je aktiviran! Imaš ${authKey.durationDays} dana`,
+        expiresAt: activatedKey.expiresAt,
+        durationDays: authKey.durationDays,
+      });
+    } catch (error: any) {
+      console.error("[EVLFRQ] Activate key error:", error);
+      await storage.logEvlfrqSecurityEvent({
+        eventType: 'ACTIVATION_ERROR',
+        ipAddress,
+        details: error.message,
+      });
+      res.status(500).json({ error: "Greška pri aktivaciji ključa" });
+    }
+  });
+
+  // GET /api/evlfrq/access-status - Check if user has valid EVLFRQ access
+  app.get("/api/evlfrq/access-status", async (req, res) => {
+    try {
+      const user = req.jwtUser;
+      if (!user) {
+        return res.status(401).json({ error: "Morate biti prijavljeni" });
+      }
+
+      // Check if user has an active key
+      const activeKey = await storage.getUserEvlfrqAccessStatus(user.id);
+
+      if (!activeKey || !activeKey.expiresAt) {
+        return res.json({
+          hasAccess: false,
+          expiresAt: null,
+          daysRemaining: null,
+        });
+      }
+
+      const now = new Date();
+      const expiresAt = new Date(activeKey.expiresAt);
+
+      if (expiresAt < now) {
+        // Access has expired
+        return res.json({
+          hasAccess: false,
+          expiresAt: activeKey.expiresAt,
+          daysRemaining: 0,
+        });
+      }
+
+      const msRemaining = expiresAt.getTime() - now.getTime();
+      const daysRemaining = Math.ceil(msRemaining / (24 * 60 * 60 * 1000));
+      const hoursRemaining = Math.ceil(msRemaining / (60 * 60 * 1000));
+
+      res.json({
+        hasAccess: true,
+        expiresAt: activeKey.expiresAt,
+        daysRemaining,
+        hoursRemaining,
+        durationDays: activeKey.durationDays,
+        activatedAt: activeKey.usedAt,
+      });
+    } catch (error: any) {
+      console.error("[EVLFRQ] Access status error:", error);
+      res.status(500).json({ error: "Greška pri proveravanju pristupa" });
+    }
+  });
+
+  // GET /api/evlfrq/active-keys - Admin view all keys
+  app.get("/api/evlfrq/active-keys", requireAdmin, async (req, res) => {
+    try {
+      const keys = await storage.getAllEvlfrqAuthKeys();
+
+      const formattedKeys = keys.map((k: any) => ({
+        id: k.id,
+        durationDays: k.durationDays,
+        isUsed: k.isUsed,
+        usedBy: k.usedBy,
+        usedAt: k.usedAt,
+        expiresAt: k.expiresAt,
+        createdAt: k.createdAt,
+        // Hide the actual key from responses for security
+        keyPreview: k.key ? k.key.substring(0, 8) + "..." : null,
+      }));
+
+      res.json(formattedKeys);
+    } catch (error: any) {
+      console.error("[EVLFRQ] Get keys error:", error);
+      res.status(500).json({ error: "Greška pri učitavanju ključeva" });
+    }
+  });
+
+  // DELETE /api/evlfrq/revoke-key/:id - Admin revokes a key
+  app.delete("/api/evlfrq/revoke-key/:id", requireAdmin, async (req, res) => {
+    try {
+      const keyId = parseInt(req.params.id);
+      if (isNaN(keyId)) {
+        return res.status(400).json({ error: "Nevažeći ID ključa" });
+      }
+
+      const admin = req.jwtUser!;
+      const ipAddress = getClientIp(req);
+
+      // Delete key (this also deletes related security logs)
+      await storage.deleteEvlfrqAuthKey(keyId);
+      
+      // Log security event WITHOUT keyId reference (key is already deleted)
+      await storage.logEvlfrqSecurityEvent({
+        eventType: 'KEY_REVOKED',
+        userId: admin.id,
+        ipAddress,
+        details: `Admin ${admin.username} opozvao ključ #${keyId}`,
+      });
+
+      res.json({ success: true, message: "Ključ je uklonjen" });
+    } catch (error: any) {
+      console.error("[EVLFRQ] Revoke key error:", error);
+      res.status(500).json({ error: "Greška pri uklanjanju ključa" });
+    }
+  });
+
+  // GET /api/evlfrq/security-logs - Admin views security logs
+  app.get("/api/evlfrq/security-logs", requireAdmin, async (req, res) => {
+    try {
+      const limit = parseInt(req.query.limit as string) || 100;
+      const logs = await storage.getEvlfrqSecurityLogs(limit);
+      res.json(logs);
+    } catch (error: any) {
+      console.error("[EVLFRQ] Get security logs error:", error);
+      res.status(500).json({ error: "Greška pri učitavanju sigurnosnih logova" });
+    }
+  });
+
+  // POST /api/evlfrq/analyze - AI-powered audio analysis with Gemini
+  app.post("/api/evlfrq/analyze", analyzeRateLimiter, audioUpload.single("audio"), async (req, res) => {
+    const ipAddress = getClientIp(req);
+    
+    try {
+      const user = req.jwtUser;
+      if (!user) {
+        return res.status(401).json({ error: "Morate biti prijavljeni" });
+      }
+
+      // Check if user has EVLFRQ access
+      const accessStatus = await storage.getUserEvlfrqAccessStatus(user.id);
+      if (!accessStatus || !accessStatus.expiresAt) {
+        return res.status(403).json({ error: "Nemate pristup EVLFRQ analizatoru. Aktivirajte ključ." });
+      }
+
+      const now = new Date();
+      const expiresAt = new Date(accessStatus.expiresAt);
+      if (expiresAt < now) {
+        return res.status(403).json({ error: "Vaš EVLFRQ pristup je istekao." });
+      }
+
+      if (!req.file) {
+        return res.status(400).json({ error: "Audio fajl nije priložen" });
+      }
+
+      // Get file info
+      const { buffer, mimetype, originalname } = req.file;
+
+      // Check file size (Gemini inline limit is 8MB)
+      if (buffer.length > 8 * 1024 * 1024) {
+        return res.status(400).json({ error: "Fajl je prevelik. Maksimalna veličina je 8MB." });
+      }
+
+      // Server-side MIME type validation using file-type (magic bytes)
+      const detectedType = await fileTypeFromBuffer(buffer);
+      const allowedAudioTypes = ['audio/mpeg', 'audio/mp3', 'audio/wav', 'audio/x-wav', 'audio/ogg', 'audio/webm', 'audio/flac', 'audio/x-flac'];
+      
+      if (!detectedType || !allowedAudioTypes.includes(detectedType.mime)) {
+        console.log(`[EVLFRQ] Invalid file type detected: ${detectedType?.mime || 'unknown'} for file ${originalname}`);
+        await storage.logEvlfrqSecurityEvent({
+          eventType: 'INVALID_FILE_TYPE',
+          userId: user.id,
+          ipAddress,
+          details: `Pokušaj upload-a nevažećeg tipa fajla: ${originalname} (prijavljeno: ${mimetype}, detektovano: ${detectedType?.mime || 'nepoznato'})`,
+        });
+        return res.status(400).json({ error: "Nevažeći tip fajla. Dozvoljeni su samo audio fajlovi (MP3, WAV, OGG, FLAC, WebM)." });
+      }
+
+      // Log analysis attempt
+      await storage.logEvlfrqSecurityEvent({
+        eventType: 'ANALYSIS_STARTED',
+        userId: user.id,
+        ipAddress,
+        details: `Korisnik ${user.username} započeo analizu: ${originalname} (${(buffer.length / 1024 / 1024).toFixed(2)}MB)`,
+      });
+
+      console.log(`[EVLFRQ] Starting analysis for ${originalname} (${mimetype}, ${buffer.length} bytes)`);
+
+      // Call Gemini for audio analysis
+      const analysisResult = await analyzeAudioWithGemini(buffer, mimetype, originalname);
+
+      // Log successful analysis
+      await storage.logEvlfrqSecurityEvent({
+        eventType: 'ANALYSIS_COMPLETED',
+        userId: user.id,
+        ipAddress,
+        details: `Analiza završena: ${originalname}, Ocena: ${analysisResult.mixGrade} (${analysisResult.mixScore}/100)`,
+      });
+
+      console.log(`[EVLFRQ] Analysis complete for ${originalname}: Grade ${analysisResult.mixGrade}`);
+
+      res.json(analysisResult);
+    } catch (error: any) {
+      console.error("[EVLFRQ] Audio analysis error:", error);
+      
+      // Log failed analysis
+      await storage.logEvlfrqSecurityEvent({
+        eventType: 'ANALYSIS_FAILED',
+        userId: req.jwtUser?.id,
+        ipAddress,
+        details: `Greška pri analizi: ${error.message}`,
+      });
+
+      res.status(500).json({ error: "Greška pri analizi audio fajla. Pokušajte ponovo." });
+    }
+  });
+
+  // ========== END EVLFRQ ==========
+
+  // GET /api/admin/analytics/top-projects - Top projects with optional limit
+  app.get("/api/admin/analytics/top-projects", requireAdmin, async (req, res) => {
+    try {
+      const limit = parseInt(req.query.limit as string) || 10;
+      const cacheKey = `analytics:top-projects:${limit}`;
+      
+      const cached = getCachedData<any>(cacheKey);
+      if (cached) {
+        return res.json(cached);
+      }
+
+      const topProjects = await storage.getTopProjects(limit);
+      setCachedData(cacheKey, topProjects);
+      
+      res.json(topProjects);
+    } catch (error) {
+      console.error("Error fetching top projects:", error);
+      res.status(500).json({ error: "Greška pri učitavanju top projekata" });
+    }
+  });
+
+  const httpServer = createServer(app);
+
+  return httpServer;
+}

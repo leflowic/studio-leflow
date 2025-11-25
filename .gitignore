@@ -1,0 +1,69 @@
+# Dependencies
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+# Build outputs
+dist/
+build/
+.vite/
+.cache/
+.esbuild/
+stats.html
+*.tgz
+
+# Environment variables
+.env
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+
+# Logs
+logs/
+*.log
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# Replit specific - MUST BE IGNORED
+.config/
+.replit
+.replit-*
+replit.nix
+.replitignore
+.local/
+.upm/
+.breakpoints
+.cache/
+__pycache__/
+
+# Testing
+coverage/
+
+# Temporary files
+tmp/
+temp/
+*.tmp
+
+# Database
+*.sqlite
+*.db
+
+# Uploads (keep the directory but not the files)
+uploads/*
+!uploads/.gitkeep
+
+# Generated Contracts (PDFs should not be in version control)
+attached_assets/contracts/
+!attached_assets/contracts/.gitkeep

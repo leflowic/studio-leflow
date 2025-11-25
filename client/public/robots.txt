@@ -1,0 +1,38 @@
+# Studio LeFlow - Robots.txt
+# https://studioleflow.com
+
+User-agent: *
+Allow: /
+
+# Sitemap location
+Sitemap: https://studioleflow.com/sitemap.xml
+
+# Disallow admin and private areas
+Disallow: /admin
+Disallow: /admin/*
+Disallow: /dashboard
+Disallow: /dashboard/*
+Disallow: /poruke
+Disallow: /poruke/*
+Disallow: /moje-pesme
+Disallow: /moje-pesme/*
+Disallow: /audio-analyzer
+Disallow: /audio-analyzer/*
+Disallow: /evlfrq-login
+Disallow: /api/
+Disallow: /api/*
+
+# Allow important pages
+Allow: /
+Allow: /usluge
+Allow: /projekti
+Allow: /kontakt
+Allow: /zajednica
+Allow: /tim
+Allow: /giveaway
+Allow: /video-spotovi
+Allow: /auth
+Allow: /registracija
+
+# Crawl-delay for politeness
+Crawl-delay: 1

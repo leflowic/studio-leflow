@@ -1,0 +1,134 @@
+<!doctype html>
+<html lang="sr">
+  <head>
+    <meta charset="UTF-8" />
+    <meta
+      name="viewport"
+      content="width=device-width, initial-scale=1.0, maximum-scale=1, viewport-fit=cover"
+    />
+    <meta
+      http-equiv="Content-Security-Policy"
+      content="upgrade-insecure-requests"
+    />
+    <title>Studio LeFlow (LeFlow Studio) - Profesionalna Muzička Produkcija Beograd</title>
+    <meta
+      name="description"
+      content="Vrhunski muzički studio u Beogradu. Snimanje, mix/mastering, instrumentali, video spotovi. WA-47, Apollo Twin X, UAD plugins. Preko 5 godina iskustva."
+    />
+    <meta name="keywords" content="studio leflow, leflow studio, muzički studio beograd, snimanje pesme beograd, miks mastering, audio produkcija beograd" />
+    <meta name="author" content="Studio LeFlow" />
+    <meta name="robots" content="index, follow, max-image-preview:large, max-snippet:-1, max-video-preview:-1" />
+    
+    <!-- Geo Tags for Local SEO (Belgrade, Serbia) -->
+    <meta name="geo.region" content="RS-00" />
+    <meta name="geo.placename" content="Beograd" />
+    <meta name="geo.position" content="44.8176;20.4633" />
+    <meta name="ICBM" content="44.8176, 20.4633" />
+    
+    <!-- Open Graph Tags -->
+    <meta
+      property="og:title"
+      content="Studio LeFlow - Profesionalni Muzički Studio Beograd"
+    />
+    <meta
+      property="og:description"
+      content="Vrhunski muzički studio u Beogradu. Snimanje, mix/mastering, instrumentali i video produkcija. Najsavremenija oprema i iskusni producenti."
+    />
+    <meta property="og:type" content="website" />
+    <meta property="og:url" content="https://studioleflow.com" />
+    <meta property="og:image" content="https://studioleflow.com/og-image.jpg" />
+    <meta property="og:image:width" content="1200" />
+    <meta property="og:image:height" content="630" />
+    <meta property="og:site_name" content="Studio LeFlow" />
+    <meta property="og:locale" content="sr_RS" />
+    
+    <!-- Twitter Card Tags -->
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:title" content="Studio LeFlow - Profesionalni Muzički Studio Beograd" />
+    <meta name="twitter:description" content="Vrhunski muzički studio u Beogradu. Snimanje, mix/mastering, instrumentali i video produkcija." />
+    <meta name="twitter:image" content="https://studioleflow.com/og-image.jpg" />
+    
+    <!-- Canonical URL -->
+    <link rel="canonical" href="https://studioleflow.com" />
+
+    <!-- Favicons for all devices and Google Search -->
+    <link rel="icon" type="image/x-icon" href="/favicon.ico" />
+    <link rel="icon" type="image/png" sizes="16x16" href="/favicon-16x16.png" />
+    <link rel="icon" type="image/png" sizes="32x32" href="/favicon-32x32.png" />
+    <link rel="icon" type="image/png" sizes="48x48" href="/favicon.png" />
+    <link rel="icon" type="image/png" sizes="192x192" href="/favicon-192x192.png" />
+    <link rel="icon" type="image/png" sizes="512x512" href="/favicon-512x512.png" />
+    <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png" />
+    <meta name="theme-color" content="#4542f5" />
+    
+    <!-- PWA Manifest -->
+    <link rel="manifest" href="/manifest.json" />
+    
+    <!-- iOS PWA Capabilities -->
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+    <meta name="apple-mobile-web-app-title" content="Studio LeFlow" />
+
+    <!-- Theme Script - MUST run before any content renders to prevent flash -->
+    <script>
+      (function() {
+        try {
+          var theme = localStorage.getItem('theme');
+          var systemDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+          
+          // If no saved theme, use system preference or default to light
+          if (!theme) {
+            theme = systemDark ? 'dark' : 'light';
+          }
+          
+          // Apply theme immediately
+          if (theme === 'dark') {
+            document.documentElement.classList.add('dark');
+          } else {
+            document.documentElement.classList.remove('dark');
+          }
+        } catch (e) {}
+      })();
+    </script>
+
+    <!-- Critical inline CSS for LCP optimization - prevents FOUC and speeds up rendering -->
+    <style>
+      html{scroll-behavior:smooth}body{margin:0;font-family:Inter,sans-serif;-webkit-font-smoothing:antialiased;-moz-osx-font-smoothing:grayscale;background-color:#fafafa}html.dark body{background-color:#0a0a0a}#root{min-height:100vh}@media(prefers-reduced-motion:reduce){*,::after,::before{animation-duration:.01ms!important;animation-iteration-count:1!important;transition-duration:.01ms!important;scroll-behavior:auto!important}}
+    </style>
+
+    <!-- DNS Prefetch & Preconnect for external resources (LCP optimization) -->
+    <link rel="dns-prefetch" href="https://fonts.googleapis.com" />
+    <link rel="dns-prefetch" href="https://fonts.gstatic.com" />
+    <link rel="dns-prefetch" href="https://utfs.io" />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+
+    <!-- Optimized async font loading with font-display: swap (LCP optimization) -->
+    <link
+      rel="preload"
+      href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&family=Montserrat:wght@700;800;900&display=swap"
+      as="style"
+      onload="this.onload=null;this.rel='stylesheet'"
+    />
+    <noscript
+      ><link
+        href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&family=Montserrat:wght@700;800;900&display=swap"
+        rel="stylesheet"
+    /></noscript>
+
+    <!-- Preload critical hero image for LCP optimization -->
+    <link
+      rel="preload"
+      as="image"
+      href="/equipment/hero-studio-background.jpg"
+      fetchpriority="high"
+      imagesrcset="/equipment/hero-studio-background.jpg"
+      imagesizes="100vw"
+    />
+
+  </head>
+  <body>
+    <div id="root"></div>
+    <script type="module" src="/src/main.tsx"></script>
+  </body>
+</html>
