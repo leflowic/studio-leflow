@@ -1024,7 +1024,7 @@ Studio LeFlow
             </div>
             
             {/* Ostale informacije */}
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+            <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
               <div>
                 <span className="text-xs text-gray-500 uppercase tracking-wide">Naziv Fajla</span>
                 <p className="text-white font-medium mt-1 truncate" title={report.fileName}>{report.fileName}</p>
@@ -1040,6 +1040,14 @@ Studio LeFlow
               <div>
                 <span className="text-xs text-gray-500 uppercase tracking-wide">Dynamic Range</span>
                 <p className="text-cyan-400 font-mono font-medium mt-1">{report.dynamicRange.toFixed(1)} dB</p>
+              </div>
+              <div>
+                <span className="text-xs text-gray-500 uppercase tracking-wide">Stereo / Mono</span>
+                <div className="flex items-center gap-2 mt-1">
+                  <span className="text-blue-400 font-mono font-medium">{report.stereoWidth}%</span>
+                  <span className="text-gray-600">/</span>
+                  <span className="text-orange-400 font-mono font-medium">{(100 - report.stereoWidth)}%</span>
+                </div>
               </div>
             </div>
           </div>
