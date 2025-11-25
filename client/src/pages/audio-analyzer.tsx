@@ -1004,10 +1004,33 @@ Studio LeFlow
 
     return (
       <div className="space-y-6">
+        {/* Prepoznato - File Info */}
+        <Card title="Prepoznato" icon={FileAudio}>
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+            <div>
+              <span className="text-xs text-gray-500 uppercase tracking-wide">Naziv Fajla</span>
+              <p className="text-white font-medium mt-1 truncate" title={report.fileName}>{report.fileName}</p>
+            </div>
+            <div>
+              <span className="text-xs text-gray-500 uppercase tracking-wide">Trajanje</span>
+              <p className="text-white font-mono font-medium mt-1">{report.duration}</p>
+            </div>
+            <div>
+              <span className="text-xs text-gray-500 uppercase tracking-wide">Tonalitet</span>
+              <p className="text-purple-400 font-medium mt-1">{report.detectedKey}</p>
+            </div>
+            <div>
+              <span className="text-xs text-gray-500 uppercase tracking-wide">Dynamic Range</span>
+              <p className="text-cyan-400 font-mono font-medium mt-1">{report.dynamicRange.toFixed(1)} dB</p>
+            </div>
+          </div>
+        </Card>
+
+        {/* Ocena */}
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
           <Card className="items-center justify-center">
             <span className="text-xs text-gray-500 mb-2">Mix Grade</span>
-            <span className={`text-4xl font-bold ${report.mixGrade === 'S' || report.mixGrade === 'A' ? 'text-green-400' : 'text-yellow-400'}`}>
+            <span className={`text-4xl font-bold ${report.mixGrade === 'S' || report.mixGrade === 'A' ? 'text-green-400' : report.mixGrade === 'B' ? 'text-yellow-400' : 'text-red-400'}`}>
               {report.mixGrade}
             </span>
           </Card>
@@ -1020,13 +1043,13 @@ Studio LeFlow
             <span className="text-2xl font-mono font-bold text-red-400">{report.issues.length}</span>
           </Card>
           <Card className="items-center justify-center">
-            <span className="text-xs text-gray-500 mb-2">Key</span>
-            <span className="text-2xl font-mono font-bold text-purple-400">{report.detectedKey}</span>
+            <span className="text-xs text-gray-500 mb-2">LUFS</span>
+            <span className="text-2xl font-mono font-bold text-emerald-400">{report.lufs.toFixed(1)}</span>
           </Card>
         </div>
 
         {report.summary && (
-          <Card title="Rezime Analize">
+          <Card title="Rezime Analize" icon={Info}>
             <p className="text-gray-300">{report.summary}</p>
           </Card>
         )}
