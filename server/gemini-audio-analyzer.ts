@@ -1,6 +1,9 @@
 import { GoogleGenAI } from "@google/genai";
 import pLimit from "p-limit";
 import pRetry from "p-retry";
+import * as fs from "fs";
+import * as path from "path";
+import * as os from "os";
 
 const ai = new GoogleGenAI({
   apiKey: process.env.AI_INTEGRATIONS_GEMINI_API_KEY!,
@@ -9,6 +12,9 @@ const ai = new GoogleGenAI({
     baseUrl: process.env.AI_INTEGRATIONS_GEMINI_BASE_URL!,
   },
 });
+
+// Threshold for using File API vs inline upload (20MB)
+const FILE_API_THRESHOLD = 20 * 1024 * 1024;
 
 function isRateLimitError(error: any): boolean {
   const errorMsg = error?.message || String(error);
@@ -135,28 +141,113 @@ export async function analyzeAudioWithGemini(
   fileName: string
 ): Promise<AudioAnalysisResult> {
   const limit = pLimit(1);
+  const fileSizeMB = audioBuffer.length / (1024 * 1024);
+  
+  console.log(`[EVLFRQ] Analyzing ${fileName} (${fileSizeMB.toFixed(2)}MB, ${mimeType})`);
+
+  // For large files (>20MB), use File API if available
+  const useLargeFileUpload = audioBuffer.length > FILE_API_THRESHOLD;
+  
+  if (useLargeFileUpload) {
+    console.log(`[EVLFRQ] Using File API for large file (${fileSizeMB.toFixed(2)}MB)`);
+  }
 
   const result = await limit(() =>
     pRetry(
       async () => {
         try {
-          const response = await ai.models.generateContent({
-            model: "gemini-2.5-flash",
-            contents: [
-              {
-                role: "user",
-                parts: [
-                  { text: AUDIO_ANALYSIS_PROMPT },
+          let response;
+          
+          if (useLargeFileUpload) {
+            // For large files, save to temp file and use File API
+            const tempDir = os.tmpdir();
+            const tempFilePath = path.join(tempDir, `evlfrq-${Date.now()}-${fileName}`);
+            
+            try {
+              // Write buffer to temp file
+              fs.writeFileSync(tempFilePath, audioBuffer);
+              console.log(`[EVLFRQ] Saved temp file: ${tempFilePath}`);
+              
+              // Upload file using File API
+              const uploadedFile = await ai.files.upload({
+                file: tempFilePath,
+                config: {
+                  mimeType: mimeType,
+                }
+              });
+              
+              console.log(`[EVLFRQ] File uploaded, URI: ${uploadedFile.uri}`);
+              
+              // Wait for file to be processed
+              let file = uploadedFile;
+              while (file.state === "PROCESSING") {
+                await new Promise(resolve => setTimeout(resolve, 2000));
+                const fileInfo = await ai.files.get({ name: file.name! });
+                file = fileInfo;
+                console.log(`[EVLFRQ] File state: ${file.state}`);
+              }
+              
+              if (file.state === "FAILED") {
+                throw new Error("File processing failed");
+              }
+              
+              // Generate content with uploaded file
+              response = await ai.models.generateContent({
+                model: "gemini-2.5-flash",
+                contents: [
                   {
-                    inlineData: {
-                      mimeType,
-                      data: audioBuffer.toString("base64"),
-                    },
+                    role: "user",
+                    parts: [
+                      { text: AUDIO_ANALYSIS_PROMPT },
+                      {
+                        fileData: {
+                          fileUri: file.uri!,
+                          mimeType: mimeType,
+                        },
+                      },
+                    ],
                   },
                 ],
-              },
-            ],
-          });
+              });
+              
+              // Clean up: delete the uploaded file from Gemini
+              try {
+                await ai.files.delete({ name: file.name! });
+                console.log(`[EVLFRQ] Deleted file from Gemini: ${file.name}`);
+              } catch (deleteError) {
+                console.warn(`[EVLFRQ] Could not delete file from Gemini: ${deleteError}`);
+              }
+            } finally {
+              // Always clean up temp file
+              try {
+                if (fs.existsSync(tempFilePath)) {
+                  fs.unlinkSync(tempFilePath);
+                  console.log(`[EVLFRQ] Deleted temp file: ${tempFilePath}`);
+                }
+              } catch (cleanupError) {
+                console.warn(`[EVLFRQ] Could not delete temp file: ${cleanupError}`);
+              }
+            }
+          } else {
+            // For smaller files, use inline data (faster)
+            response = await ai.models.generateContent({
+              model: "gemini-2.5-flash",
+              contents: [
+                {
+                  role: "user",
+                  parts: [
+                    { text: AUDIO_ANALYSIS_PROMPT },
+                    {
+                      inlineData: {
+                        mimeType,
+                        data: audioBuffer.toString("base64"),
+                      },
+                    },
+                  ],
+                },
+              ],
+            });
+          }
 
           const text = response.text || "";
           
@@ -200,7 +291,7 @@ export async function analyzeAudioWithGemini(
             throw error;
           }
           console.error("[Gemini Audio Analysis] Error:", error);
-          throw new pRetry.AbortError(error);
+          throw error; // Let pRetry handle it
         }
       },
       {
@@ -208,6 +299,9 @@ export async function analyzeAudioWithGemini(
         minTimeout: 2000,
         maxTimeout: 30000,
         factor: 2,
+        onFailedAttempt: (error) => {
+          console.log(`[EVLFRQ] Retry attempt ${error.attemptNumber} failed. ${error.retriesLeft} retries left.`);
+        },
       }
     )
   );

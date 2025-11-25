@@ -51,10 +51,11 @@ const registrationRateLimiter = rateLimit({
 });
 
 // Configure multer for audio uploads (memory storage for Gemini)
+// Supports up to 100MB for WAV files - Gemini File API handles large files
 const audioUpload = multer({
   storage: multer.memoryStorage(),
   limits: {
-    fileSize: 8 * 1024 * 1024, // 8MB max (Gemini inline limit)
+    fileSize: 100 * 1024 * 1024, // 100MB max (for WAV files, uses Gemini File API)
   },
   fileFilter: (_req, file, cb) => {
     const allowedMimes = ['audio/mpeg', 'audio/mp3', 'audio/wav', 'audio/x-wav', 'audio/ogg', 'audio/webm', 'audio/flac'];
@@ -3376,10 +3377,11 @@ Sitemap: ${siteUrl}/sitemap.xml
 
       // Get file info
       const { buffer, mimetype, originalname } = req.file;
+      const fileSizeMB = buffer.length / (1024 * 1024);
 
-      // Check file size (Gemini inline limit is 8MB)
-      if (buffer.length > 8 * 1024 * 1024) {
-        return res.status(400).json({ error: "Fajl je prevelik. Maksimalna veličina je 8MB." });
+      // Check file size - max 100MB (Gemini File API supports up to 2GB)
+      if (buffer.length > 100 * 1024 * 1024) {
+        return res.status(400).json({ error: "Fajl je prevelik. Maksimalna veličina je 100MB." });
       }
 
       // Server-side MIME type validation using file-type (magic bytes)
