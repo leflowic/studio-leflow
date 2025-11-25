@@ -214,7 +214,7 @@ export function Header() {
                         </DropdownMenuItem>
                         <DropdownMenuItem asChild>
                           <Link href="/evlfrq" className="flex items-center gap-2 cursor-pointer" data-testid="link-dropdown-evlfrq">
-                            <img src={evlfrqLogo} alt="" className="h-5 w-5 object-contain" />
+                            <img src={evlfrqLogo} alt="" className="h-4 w-4 object-contain flex-shrink-0" />
                             Evil Frequency
                           </Link>
                         </DropdownMenuItem>
@@ -370,7 +370,7 @@ export function Header() {
                             onClick={() => setMobileMenuOpen(false)}
                             data-testid="link-mobile-evlfrq"
                           >
-                            <img src={evlfrqLogo} alt="" className="h-5 w-5 mr-2 object-contain" />
+                            <img src={evlfrqLogo} alt="" className="h-4 w-4 mr-2 object-contain flex-shrink-0" />
                             Evil Frequency
                           </Button>
                         </Link>
