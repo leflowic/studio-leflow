@@ -292,41 +292,210 @@ const StereoView: React.FC<{ data: AnalysisReport | null }> = ({ data }) => (
   </div>
 );
 
-const SettingsView = () => (
-  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-    <Card title="Audio Settings">
-      <div className="space-y-4">
-        <div>
-          <label className="text-xs font-bold text-gray-400 uppercase">FFT Resolution</label>
-          <select className="w-full mt-2 bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-sm text-white">
-            <option>2048 Points</option>
-            <option>4096 Points</option>
-            <option>8192 Points</option>
-          </select>
-        </div>
-        <div>
-          <label className="text-xs font-bold text-gray-400 uppercase">LUFS Standard</label>
-          <select className="w-full mt-2 bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-sm text-white">
-            <option>EBU R128</option>
-            <option>ITU-R BS.1770</option>
-          </select>
-        </div>
+interface EvlfrqSettings {
+  fftResolution: '2048' | '4096' | '8192';
+  lufsStandard: 'ebu' | 'itu';
+  showGrid: boolean;
+  autoAnalyze: boolean;
+  showPeakMarkers: boolean;
+  smoothingFactor: number;
+}
+
+const DEFAULT_SETTINGS: EvlfrqSettings = {
+  fftResolution: '4096',
+  lufsStandard: 'ebu',
+  showGrid: true,
+  autoAnalyze: false,
+  showPeakMarkers: true,
+  smoothingFactor: 0.8,
+};
+
+const loadSettings = (): EvlfrqSettings => {
+  try {
+    const saved = localStorage.getItem('evlfrq-settings');
+    if (saved) {
+      return { ...DEFAULT_SETTINGS, ...JSON.parse(saved) };
+    }
+  } catch (e) {
+    console.error('Failed to load EVLFRQ settings:', e);
+  }
+  return DEFAULT_SETTINGS;
+};
+
+const saveSettings = (settings: EvlfrqSettings) => {
+  try {
+    localStorage.setItem('evlfrq-settings', JSON.stringify(settings));
+  } catch (e) {
+    console.error('Failed to save EVLFRQ settings:', e);
+  }
+};
+
+const SettingsView: React.FC<{
+  settings: EvlfrqSettings;
+  onSettingsChange: (settings: EvlfrqSettings) => void;
+}> = ({ settings, onSettingsChange }) => {
+  const [saved, setSaved] = React.useState(false);
+
+  const handleChange = <K extends keyof EvlfrqSettings>(key: K, value: EvlfrqSettings[K]) => {
+    const newSettings = { ...settings, [key]: value };
+    onSettingsChange(newSettings);
+    saveSettings(newSettings);
+    setSaved(true);
+    setTimeout(() => setSaved(false), 2000);
+  };
+
+  const handleReset = () => {
+    onSettingsChange(DEFAULT_SETTINGS);
+    saveSettings(DEFAULT_SETTINGS);
+    setSaved(true);
+    setTimeout(() => setSaved(false), 2000);
+  };
+
+  return (
+    <div className="space-y-6">
+      {/* Save indicator */}
+      <div className={`fixed top-20 right-8 flex items-center gap-2 px-4 py-2 rounded-lg bg-green-500/20 border border-green-500/30 text-green-400 text-sm transition-all duration-300 ${saved ? 'opacity-100 translate-y-0' : 'opacity-0 -translate-y-2 pointer-events-none'}`}>
+        <CheckCircle2 size={16} />
+        Podešavanja sačuvana
       </div>
-    </Card>
-    <Card title="Display Settings">
-      <div className="space-y-3">
-        <label className="flex items-center gap-2 cursor-pointer">
-          <input type="checkbox" defaultChecked className="w-4 h-4" />
-          <span className="text-sm text-gray-300">Dark Mode</span>
-        </label>
-        <label className="flex items-center gap-2 cursor-pointer">
-          <input type="checkbox" defaultChecked className="w-4 h-4" />
-          <span className="text-sm text-gray-300">Show Grid</span>
-        </label>
+
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+        <Card title="Audio Podešavanja" icon={Sliders}>
+          <div className="space-y-5">
+            <div>
+              <label className="text-xs font-bold text-gray-400 uppercase tracking-wide">FFT Rezolucija</label>
+              <p className="text-xs text-gray-500 mt-1 mb-2">Veća rezolucija = preciznija analiza frekvencija</p>
+              <select 
+                value={settings.fftResolution}
+                onChange={(e) => handleChange('fftResolution', e.target.value as EvlfrqSettings['fftResolution'])}
+                className="w-full bg-white/5 border border-white/10 rounded-lg px-3 py-2.5 text-sm text-white focus:border-[#4F46E5] focus:ring-1 focus:ring-[#4F46E5] outline-none transition-all cursor-pointer"
+                data-testid="select-fft-resolution"
+              >
+                <option value="2048" className="bg-[#121212]">2048 Tačaka (Brzo)</option>
+                <option value="4096" className="bg-[#121212]">4096 Tačaka (Balansirano)</option>
+                <option value="8192" className="bg-[#121212]">8192 Tačaka (Precizno)</option>
+              </select>
+            </div>
+            <div>
+              <label className="text-xs font-bold text-gray-400 uppercase tracking-wide">LUFS Standard</label>
+              <p className="text-xs text-gray-500 mt-1 mb-2">Standard za merenje glasnoće</p>
+              <select 
+                value={settings.lufsStandard}
+                onChange={(e) => handleChange('lufsStandard', e.target.value as EvlfrqSettings['lufsStandard'])}
+                className="w-full bg-white/5 border border-white/10 rounded-lg px-3 py-2.5 text-sm text-white focus:border-[#4F46E5] focus:ring-1 focus:ring-[#4F46E5] outline-none transition-all cursor-pointer"
+                data-testid="select-lufs-standard"
+              >
+                <option value="ebu" className="bg-[#121212]">EBU R128 (Evropa)</option>
+                <option value="itu" className="bg-[#121212]">ITU-R BS.1770 (Globalni)</option>
+              </select>
+            </div>
+            <div>
+              <label className="text-xs font-bold text-gray-400 uppercase tracking-wide">Smoothing Factor</label>
+              <p className="text-xs text-gray-500 mt-1 mb-2">Izravnavanje spektra (0.0 - 1.0)</p>
+              <div className="flex items-center gap-4">
+                <input 
+                  type="range" 
+                  min="0" 
+                  max="1" 
+                  step="0.1"
+                  value={settings.smoothingFactor}
+                  onChange={(e) => handleChange('smoothingFactor', parseFloat(e.target.value))}
+                  className="flex-1 h-2 bg-white/10 rounded-lg appearance-none cursor-pointer accent-[#4F46E5]"
+                  data-testid="slider-smoothing"
+                />
+                <span className="text-sm font-mono text-white w-12 text-right">{settings.smoothingFactor.toFixed(1)}</span>
+              </div>
+            </div>
+          </div>
+        </Card>
+
+        <Card title="Prikaz" icon={Eye}>
+          <div className="space-y-4">
+            <label className="flex items-center justify-between cursor-pointer group py-2">
+              <div>
+                <span className="text-sm text-gray-200 group-hover:text-white transition-colors">Prikaži Grid</span>
+                <p className="text-xs text-gray-500">Mrežne linije na graficima</p>
+              </div>
+              <div className="relative">
+                <input 
+                  type="checkbox" 
+                  checked={settings.showGrid}
+                  onChange={(e) => handleChange('showGrid', e.target.checked)}
+                  className="sr-only peer"
+                  data-testid="toggle-show-grid"
+                />
+                <div className="w-11 h-6 bg-white/10 peer-focus:ring-2 peer-focus:ring-[#4F46E5] rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-[#4F46E5]"></div>
+              </div>
+            </label>
+
+            <label className="flex items-center justify-between cursor-pointer group py-2">
+              <div>
+                <span className="text-sm text-gray-200 group-hover:text-white transition-colors">Peak Markeri</span>
+                <p className="text-xs text-gray-500">Označi vrhove na spektru</p>
+              </div>
+              <div className="relative">
+                <input 
+                  type="checkbox" 
+                  checked={settings.showPeakMarkers}
+                  onChange={(e) => handleChange('showPeakMarkers', e.target.checked)}
+                  className="sr-only peer"
+                  data-testid="toggle-peak-markers"
+                />
+                <div className="w-11 h-6 bg-white/10 peer-focus:ring-2 peer-focus:ring-[#4F46E5] rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-[#4F46E5]"></div>
+              </div>
+            </label>
+
+            <label className="flex items-center justify-between cursor-pointer group py-2">
+              <div>
+                <span className="text-sm text-gray-200 group-hover:text-white transition-colors">Auto Analiza</span>
+                <p className="text-xs text-gray-500">Automatski analiziraj nakon učitavanja</p>
+              </div>
+              <div className="relative">
+                <input 
+                  type="checkbox" 
+                  checked={settings.autoAnalyze}
+                  onChange={(e) => handleChange('autoAnalyze', e.target.checked)}
+                  className="sr-only peer"
+                  data-testid="toggle-auto-analyze"
+                />
+                <div className="w-11 h-6 bg-white/10 peer-focus:ring-2 peer-focus:ring-[#4F46E5] rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-[#4F46E5]"></div>
+              </div>
+            </label>
+          </div>
+        </Card>
       </div>
-    </Card>
-  </div>
-);
+
+      {/* Additional settings */}
+      <Card title="Sistem" icon={Wrench}>
+        <div className="flex flex-wrap gap-4">
+          <Button 
+            variant="outline" 
+            size="sm" 
+            onClick={handleReset}
+            className="gap-2"
+            data-testid="button-reset-settings"
+          >
+            <Settings size={14} />
+            Resetuj na Podrazumevano
+          </Button>
+          <div className="flex items-center gap-2 text-xs text-gray-500 ml-auto">
+            <Info size={14} />
+            Podešavanja se automatski čuvaju lokalno
+          </div>
+        </div>
+      </Card>
+
+      {/* Info card */}
+      <Card title="O Podešavanjima" icon={Info}>
+        <div className="text-sm text-gray-400 space-y-3">
+          <p><strong className="text-gray-200">FFT Rezolucija:</strong> Određuje koliko detaljno se analizira frekvencijski spektar. Veće vrednosti daju preciznije rezultate ali mogu usporiti analizu.</p>
+          <p><strong className="text-gray-200">LUFS Standard:</strong> EBU R128 je evropski standard, dok je ITU-R BS.1770 globalni. Oba mere integrisanu glasnoću ali sa malim razlikama u algoritmima.</p>
+          <p><strong className="text-gray-200">Smoothing:</strong> Izravnava vizuelni prikaz spektra. Veće vrednosti = glatki grafici, niže vrednosti = odziv u realnom vremenu.</p>
+        </div>
+      </Card>
+    </div>
+  );
+};
 
 export default function AudioAnalyzerPage() {
   const { user, loginMutation } = useAuth();
@@ -403,6 +572,9 @@ export default function AudioAnalyzerPage() {
   const [report, setReport] = useState<AnalysisReport | null>(null);
   const [isDragging, setIsDragging] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  
+  // Settings state - loaded from localStorage
+  const [settings, setSettings] = useState<EvlfrqSettings>(() => loadSettings());
   
   // Login form state
   const [loginUsername, setLoginUsername] = useState('');
@@ -993,7 +1165,7 @@ Studio LeFlow
         </header>
 
         <div className="flex-1 overflow-y-auto p-8">
-          {currentView === 'settings' ? <SettingsView /> : renderContent()}
+          {currentView === 'settings' ? <SettingsView settings={settings} onSettingsChange={setSettings} /> : renderContent()}
         </div>
       </main>
     </div>
