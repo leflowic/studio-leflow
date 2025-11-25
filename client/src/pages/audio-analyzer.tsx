@@ -339,16 +339,55 @@ export default function AudioAnalyzerPage() {
     enabled: !!user,
   });
 
-  // Minimum loading animation time (3 seconds)
+  // Minimum loading animation time (5 seconds)
   const [minLoadingComplete, setMinLoadingComplete] = useState(false);
+  const [mousePos, setMousePos] = useState({ x: 0, y: 0 });
+  const [particles, setParticles] = useState<Array<{ id: number; x: number; y: number; size: number; opacity: number; color: string }>>([]);
   
   useEffect(() => {
     const timer = setTimeout(() => {
       setMinLoadingComplete(true);
-    }, 3000);
+    }, 5000);
     
     return () => clearTimeout(timer);
   }, []);
+
+  // Particle effect that follows cursor during loading
+  useEffect(() => {
+    if (minLoadingComplete) return;
+    
+    const handleMouseMove = (e: MouseEvent) => {
+      setMousePos({ x: e.clientX, y: e.clientY });
+      
+      // Create new particles on mouse move
+      const newParticle = {
+        id: Date.now() + Math.random(),
+        x: e.clientX + (Math.random() - 0.5) * 20,
+        y: e.clientY + (Math.random() - 0.5) * 20,
+        size: Math.random() * 6 + 2,
+        opacity: 1,
+        color: Math.random() > 0.5 ? '#4F46E5' : '#818CF8'
+      };
+      
+      setParticles(prev => [...prev.slice(-30), newParticle]);
+    };
+
+    window.addEventListener('mousemove', handleMouseMove);
+    
+    // Fade out particles over time
+    const fadeInterval = setInterval(() => {
+      setParticles(prev => 
+        prev
+          .map(p => ({ ...p, opacity: p.opacity - 0.05, y: p.y - 1 }))
+          .filter(p => p.opacity > 0)
+      );
+    }, 50);
+
+    return () => {
+      window.removeEventListener('mousemove', handleMouseMove);
+      clearInterval(fadeInterval);
+    };
+  }, [minLoadingComplete]);
 
   const [currentView, setCurrentView] = useState('spectrum');
   const [isAnalyzing, setIsAnalyzing] = useState(false);
@@ -483,17 +522,55 @@ export default function AudioAnalyzerPage() {
     );
   }
 
-  // Show loading while checking access status (minimum 3 seconds for animation)
+  // Show loading while checking access status (minimum 5 seconds for animation)
   if (accessLoading || !minLoadingComplete) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-[#050505] via-[#0a0a15] to-[#0A0A0A] text-white flex items-center justify-center p-6">
-        <div className="text-center max-w-md">
+      <div className="min-h-screen bg-gradient-to-br from-[#050505] via-[#0a0a15] to-[#0A0A0A] text-white flex items-center justify-center p-6 overflow-hidden cursor-none">
+        {/* Particles that follow cursor */}
+        {particles.map(particle => (
+          <div
+            key={particle.id}
+            className="fixed pointer-events-none z-50 rounded-full"
+            style={{
+              left: particle.x,
+              top: particle.y,
+              width: particle.size,
+              height: particle.size,
+              backgroundColor: particle.color,
+              opacity: particle.opacity,
+              transform: 'translate(-50%, -50%)',
+              boxShadow: `0 0 ${particle.size * 2}px ${particle.color}`,
+              transition: 'opacity 0.1s ease-out'
+            }}
+          />
+        ))}
+        
+        {/* Custom cursor glow */}
+        <div 
+          className="fixed pointer-events-none z-40 w-8 h-8 rounded-full bg-indigo-500/30 blur-sm"
+          style={{
+            left: mousePos.x,
+            top: mousePos.y,
+            transform: 'translate(-50%, -50%)'
+          }}
+        />
+        <div 
+          className="fixed pointer-events-none z-40 w-3 h-3 rounded-full bg-white"
+          style={{
+            left: mousePos.x,
+            top: mousePos.y,
+            transform: 'translate(-50%, -50%)',
+            boxShadow: '0 0 10px #4F46E5, 0 0 20px #4F46E5'
+          }}
+        />
+
+        <div className="text-center max-w-md relative z-10">
           {/* Glow effect behind spinner */}
           <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
-            <div className="w-64 h-64 bg-[#4F46E5]/10 rounded-full blur-3xl animate-pulse"></div>
+            <div className="w-64 h-64 bg-[#4F46E5]/15 rounded-full blur-3xl animate-pulse"></div>
           </div>
           
-          <div className="relative w-32 h-32 mx-auto mb-8">
+          <div className="relative w-36 h-36 mx-auto mb-8">
             {/* Outer static ring */}
             <div className="absolute inset-0 rounded-full border-4 border-indigo-500/20"></div>
             
@@ -509,12 +586,18 @@ export default function AudioAnalyzerPage() {
               style={{ animationDuration: '1.8s', animationDirection: 'reverse' }}
             ></div>
             
+            {/* Third spinning ring */}
+            <div 
+              className="absolute inset-4 rounded-full border-2 border-transparent border-t-purple-500/40 animate-spin" 
+              style={{ animationDuration: '2.5s' }}
+            ></div>
+            
             {/* Logo container */}
-            <div className="absolute inset-4 flex items-center justify-center">
+            <div className="absolute inset-6 flex items-center justify-center">
               <img 
                 src={evlfrqLogoWhite} 
                 alt="EVLFRQ" 
-                className="w-16 h-16 object-contain animate-pulse"
+                className="w-14 h-14 object-contain animate-pulse"
                 style={{ animationDuration: '2s' }}
               />
             </div>
@@ -523,15 +606,34 @@ export default function AudioAnalyzerPage() {
           <h1 className="text-3xl font-bold mb-3 bg-gradient-to-r from-white via-indigo-200 to-gray-400 bg-clip-text text-transparent animate-pulse" style={{ animationDuration: '2s' }}>
             EVLFRQ
           </h1>
-          <p className="text-gray-500 text-sm">Učitavanje...</p>
+          <p className="text-gray-400 text-sm mb-2">Professional Audio Analysis</p>
+          <p className="text-indigo-400/60 text-xs">Učitavanje sistema...</p>
+          
+          {/* Loading progress bar */}
+          <div className="w-48 h-1 mx-auto mt-6 bg-white/10 rounded-full overflow-hidden">
+            <div 
+              className="h-full bg-gradient-to-r from-indigo-500 to-purple-500 rounded-full"
+              style={{
+                animation: 'loadingProgress 5s ease-in-out forwards'
+              }}
+            />
+          </div>
           
           {/* Loading dots animation */}
-          <div className="flex justify-center gap-1 mt-4">
+          <div className="flex justify-center gap-1.5 mt-6">
             <div className="w-2 h-2 bg-indigo-500 rounded-full animate-bounce" style={{ animationDelay: '0ms' }}></div>
-            <div className="w-2 h-2 bg-indigo-500 rounded-full animate-bounce" style={{ animationDelay: '150ms' }}></div>
-            <div className="w-2 h-2 bg-indigo-500 rounded-full animate-bounce" style={{ animationDelay: '300ms' }}></div>
+            <div className="w-2 h-2 bg-indigo-400 rounded-full animate-bounce" style={{ animationDelay: '150ms' }}></div>
+            <div className="w-2 h-2 bg-purple-500 rounded-full animate-bounce" style={{ animationDelay: '300ms' }}></div>
           </div>
         </div>
+        
+        {/* CSS for loading progress animation */}
+        <style>{`
+          @keyframes loadingProgress {
+            0% { width: 0%; }
+            100% { width: 100%; }
+          }
+        `}</style>
       </div>
     );
   }
