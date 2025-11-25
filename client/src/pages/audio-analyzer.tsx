@@ -486,22 +486,51 @@ export default function AudioAnalyzerPage() {
   // Show loading while checking access status (minimum 3 seconds for animation)
   if (accessLoading || !minLoadingComplete) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-[#050505] to-[#0A0A0A] text-white flex items-center justify-center p-6">
+      <div className="min-h-screen bg-gradient-to-br from-[#050505] via-[#0a0a15] to-[#0A0A0A] text-white flex items-center justify-center p-6">
         <div className="text-center max-w-md">
-          <div className="relative w-24 h-24 mx-auto mb-8">
-            <div className="absolute inset-0 rounded-full border-4 border-indigo-500/20"></div>
-            <div className="absolute inset-0 rounded-full border-4 border-transparent border-t-indigo-500 animate-spin" style={{ animationDuration: '1s' }}></div>
-            <div className="absolute inset-0 rounded-full border-4 border-transparent border-t-indigo-400/50 animate-spin" style={{ animationDuration: '1.5s', animationDirection: 'reverse' }}></div>
-            <img 
-              src={evlfrqLogoWhite} 
-              alt="EVLFRQ" 
-              className="absolute inset-3 w-18 h-18 object-contain animate-pulse"
-            />
+          {/* Glow effect behind spinner */}
+          <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+            <div className="w-64 h-64 bg-[#4F46E5]/10 rounded-full blur-3xl animate-pulse"></div>
           </div>
-          <h1 className="text-2xl font-bold mb-2 bg-gradient-to-r from-white to-gray-400 bg-clip-text text-transparent">
+          
+          <div className="relative w-32 h-32 mx-auto mb-8">
+            {/* Outer static ring */}
+            <div className="absolute inset-0 rounded-full border-4 border-indigo-500/20"></div>
+            
+            {/* Primary spinning ring */}
+            <div 
+              className="absolute inset-0 rounded-full border-4 border-transparent border-t-indigo-500 border-r-indigo-500/50 animate-spin" 
+              style={{ animationDuration: '1.2s' }}
+            ></div>
+            
+            {/* Secondary counter-spinning ring */}
+            <div 
+              className="absolute inset-2 rounded-full border-4 border-transparent border-b-indigo-400/60 border-l-indigo-400/30 animate-spin" 
+              style={{ animationDuration: '1.8s', animationDirection: 'reverse' }}
+            ></div>
+            
+            {/* Logo container */}
+            <div className="absolute inset-4 flex items-center justify-center">
+              <img 
+                src={evlfrqLogoWhite} 
+                alt="EVLFRQ" 
+                className="w-16 h-16 object-contain animate-pulse"
+                style={{ animationDuration: '2s' }}
+              />
+            </div>
+          </div>
+          
+          <h1 className="text-3xl font-bold mb-3 bg-gradient-to-r from-white via-indigo-200 to-gray-400 bg-clip-text text-transparent animate-pulse" style={{ animationDuration: '2s' }}>
             EVLFRQ
           </h1>
-          <p className="text-gray-500 text-sm animate-pulse">Učitavanje...</p>
+          <p className="text-gray-500 text-sm">Učitavanje...</p>
+          
+          {/* Loading dots animation */}
+          <div className="flex justify-center gap-1 mt-4">
+            <div className="w-2 h-2 bg-indigo-500 rounded-full animate-bounce" style={{ animationDelay: '0ms' }}></div>
+            <div className="w-2 h-2 bg-indigo-500 rounded-full animate-bounce" style={{ animationDelay: '150ms' }}></div>
+            <div className="w-2 h-2 bg-indigo-500 rounded-full animate-bounce" style={{ animationDelay: '300ms' }}></div>
+          </div>
         </div>
       </div>
     );
