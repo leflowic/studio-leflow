@@ -622,13 +622,16 @@ export default function AudioAnalyzerPage() {
 
         {/* Main content */}
         <div className="relative z-10 flex flex-col items-center">
-          {/* Logo with subtle glow */}
+          {/* Logo with rotation and subtle glow */}
           <div className="relative mb-10">
             <div className="absolute inset-0 bg-[#4F46E5]/20 blur-[60px] scale-150" />
             <img 
               src={evlfrqLogoWhite} 
               alt="EVLFRQ" 
               className="relative w-20 h-20 object-contain"
+              style={{
+                animation: 'logoSpin 3s linear infinite'
+              }}
             />
           </div>
 
@@ -668,6 +671,10 @@ export default function AudioAnalyzerPage() {
 
         {/* Animations */}
         <style>{`
+          @keyframes logoSpin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+          }
           @keyframes waveform {
             0%, 100% { height: 8px; opacity: 0.4; }
             50% { height: 32px; opacity: 1; }
