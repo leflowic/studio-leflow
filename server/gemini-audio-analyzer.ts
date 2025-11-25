@@ -188,7 +188,7 @@ export async function analyzeAudioWithGemini(
               
               // Generate content with uploaded file
               response = await ai.models.generateContent({
-                model: "gemini-2.5-flash",
+                model: "gemini-1.5-pro",
                 contents: [
                   {
                     role: "user",
@@ -226,7 +226,7 @@ export async function analyzeAudioWithGemini(
           } else {
             // For smaller files, use inline data (faster)
             response = await ai.models.generateContent({
-              model: "gemini-2.5-flash",
+              model: "gemini-1.5-pro",
               contents: [
                 {
                   role: "user",
