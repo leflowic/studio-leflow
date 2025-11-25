@@ -339,17 +339,26 @@ export default function AudioAnalyzerPage() {
     enabled: !!user,
   });
 
-  // Minimum loading animation time (5 seconds)
+  // Minimum loading animation time (5 seconds) + transition
   const [minLoadingComplete, setMinLoadingComplete] = useState(false);
+  const [isTransitioning, setIsTransitioning] = useState(false);
+  const [showApp, setShowApp] = useState(false);
   const [mousePos, setMousePos] = useState({ x: 0, y: 0 });
   const [particles, setParticles] = useState<Array<{ id: number; x: number; y: number; size: number; opacity: number; color: string }>>([]);
   
   useEffect(() => {
-    const timer = setTimeout(() => {
-      setMinLoadingComplete(true);
+    // After 5 seconds, start transition
+    const loadingTimer = setTimeout(() => {
+      setIsTransitioning(true);
+      
+      // After transition animation (1 second), show app
+      setTimeout(() => {
+        setMinLoadingComplete(true);
+        setShowApp(true);
+      }, 1000);
     }, 5000);
     
-    return () => clearTimeout(timer);
+    return () => clearTimeout(loadingTimer);
   }, []);
 
   // Particle effect that follows cursor during loading
@@ -525,7 +534,11 @@ export default function AudioAnalyzerPage() {
   // Show loading while checking access status (minimum 5 seconds for animation)
   if (accessLoading || !minLoadingComplete) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-[#050505] via-[#0a0a15] to-[#0A0A0A] text-white flex items-center justify-center p-6 overflow-hidden cursor-none">
+      <div 
+        className={`min-h-screen bg-gradient-to-br from-[#050505] via-[#0a0a15] to-[#0A0A0A] text-white flex items-center justify-center p-6 overflow-hidden cursor-none transition-all duration-1000 ${
+          isTransitioning ? 'opacity-0 scale-110' : 'opacity-100 scale-100'
+        }`}
+      >
         {/* Particles that follow cursor */}
         {particles.map(particle => (
           <div
@@ -537,17 +550,17 @@ export default function AudioAnalyzerPage() {
               width: particle.size,
               height: particle.size,
               backgroundColor: particle.color,
-              opacity: particle.opacity,
+              opacity: isTransitioning ? 0 : particle.opacity,
               transform: 'translate(-50%, -50%)',
               boxShadow: `0 0 ${particle.size * 2}px ${particle.color}`,
-              transition: 'opacity 0.1s ease-out'
+              transition: 'opacity 0.3s ease-out'
             }}
           />
         ))}
         
         {/* Custom cursor glow */}
         <div 
-          className="fixed pointer-events-none z-40 w-8 h-8 rounded-full bg-indigo-500/30 blur-sm"
+          className={`fixed pointer-events-none z-40 w-8 h-8 rounded-full bg-indigo-500/30 blur-sm transition-opacity duration-500 ${isTransitioning ? 'opacity-0' : 'opacity-100'}`}
           style={{
             left: mousePos.x,
             top: mousePos.y,
@@ -555,7 +568,7 @@ export default function AudioAnalyzerPage() {
           }}
         />
         <div 
-          className="fixed pointer-events-none z-40 w-3 h-3 rounded-full bg-white"
+          className={`fixed pointer-events-none z-40 w-3 h-3 rounded-full bg-white transition-opacity duration-500 ${isTransitioning ? 'opacity-0' : 'opacity-100'}`}
           style={{
             left: mousePos.x,
             top: mousePos.y,
@@ -564,32 +577,32 @@ export default function AudioAnalyzerPage() {
           }}
         />
 
-        <div className="text-center max-w-md relative z-10">
+        <div className={`text-center max-w-md relative z-10 transition-all duration-700 ${isTransitioning ? 'scale-150 opacity-0' : 'scale-100 opacity-100'}`}>
           {/* Glow effect behind spinner */}
           <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
-            <div className="w-64 h-64 bg-[#4F46E5]/15 rounded-full blur-3xl animate-pulse"></div>
+            <div className={`w-64 h-64 bg-[#4F46E5]/15 rounded-full blur-3xl transition-all duration-700 ${isTransitioning ? 'scale-200 opacity-0' : 'animate-pulse'}`}></div>
           </div>
           
-          <div className="relative w-36 h-36 mx-auto mb-8">
+          <div className={`relative w-36 h-36 mx-auto mb-8 transition-transform duration-700 ${isTransitioning ? 'scale-150' : 'scale-100'}`}>
             {/* Outer static ring */}
             <div className="absolute inset-0 rounded-full border-4 border-indigo-500/20"></div>
             
             {/* Primary spinning ring */}
             <div 
               className="absolute inset-0 rounded-full border-4 border-transparent border-t-indigo-500 border-r-indigo-500/50 animate-spin" 
-              style={{ animationDuration: '1.2s' }}
+              style={{ animationDuration: isTransitioning ? '0.3s' : '1.2s' }}
             ></div>
             
             {/* Secondary counter-spinning ring */}
             <div 
               className="absolute inset-2 rounded-full border-4 border-transparent border-b-indigo-400/60 border-l-indigo-400/30 animate-spin" 
-              style={{ animationDuration: '1.8s', animationDirection: 'reverse' }}
+              style={{ animationDuration: isTransitioning ? '0.4s' : '1.8s', animationDirection: 'reverse' }}
             ></div>
             
             {/* Third spinning ring */}
             <div 
               className="absolute inset-4 rounded-full border-2 border-transparent border-t-purple-500/40 animate-spin" 
-              style={{ animationDuration: '2.5s' }}
+              style={{ animationDuration: isTransitioning ? '0.5s' : '2.5s' }}
             ></div>
             
             {/* Logo container */}
@@ -597,35 +610,43 @@ export default function AudioAnalyzerPage() {
               <img 
                 src={evlfrqLogoWhite} 
                 alt="EVLFRQ" 
-                className="w-14 h-14 object-contain animate-pulse"
+                className={`w-14 h-14 object-contain transition-all duration-500 ${isTransitioning ? 'scale-125 brightness-150' : 'animate-pulse'}`}
                 style={{ animationDuration: '2s' }}
               />
             </div>
           </div>
           
-          <h1 className="text-3xl font-bold mb-3 bg-gradient-to-r from-white via-indigo-200 to-gray-400 bg-clip-text text-transparent animate-pulse" style={{ animationDuration: '2s' }}>
+          <h1 className={`text-3xl font-bold mb-3 bg-gradient-to-r from-white via-indigo-200 to-gray-400 bg-clip-text text-transparent transition-all duration-500 ${isTransitioning ? 'scale-110' : 'animate-pulse'}`} style={{ animationDuration: '2s' }}>
             EVLFRQ
           </h1>
-          <p className="text-gray-400 text-sm mb-2">Professional Audio Analysis</p>
-          <p className="text-indigo-400/60 text-xs">Učitavanje sistema...</p>
+          <p className={`text-gray-400 text-sm mb-2 transition-opacity duration-300 ${isTransitioning ? 'opacity-0' : 'opacity-100'}`}>Professional Audio Analysis</p>
+          <p className={`text-indigo-400/60 text-xs transition-all duration-300 ${isTransitioning ? 'opacity-0' : 'opacity-100'}`}>
+            {isTransitioning ? 'Pokretanje...' : 'Učitavanje sistema...'}
+          </p>
           
           {/* Loading progress bar */}
-          <div className="w-48 h-1 mx-auto mt-6 bg-white/10 rounded-full overflow-hidden">
+          <div className={`w-48 h-1 mx-auto mt-6 bg-white/10 rounded-full overflow-hidden transition-all duration-500 ${isTransitioning ? 'w-64 h-2 bg-indigo-500/30' : ''}`}>
             <div 
-              className="h-full bg-gradient-to-r from-indigo-500 to-purple-500 rounded-full"
+              className={`h-full bg-gradient-to-r from-indigo-500 to-purple-500 rounded-full ${isTransitioning ? 'w-full' : ''}`}
               style={{
-                animation: 'loadingProgress 5s ease-in-out forwards'
+                animation: isTransitioning ? 'none' : 'loadingProgress 5s ease-in-out forwards',
+                width: isTransitioning ? '100%' : undefined
               }}
             />
           </div>
           
           {/* Loading dots animation */}
-          <div className="flex justify-center gap-1.5 mt-6">
+          <div className={`flex justify-center gap-1.5 mt-6 transition-opacity duration-300 ${isTransitioning ? 'opacity-0' : 'opacity-100'}`}>
             <div className="w-2 h-2 bg-indigo-500 rounded-full animate-bounce" style={{ animationDelay: '0ms' }}></div>
             <div className="w-2 h-2 bg-indigo-400 rounded-full animate-bounce" style={{ animationDelay: '150ms' }}></div>
             <div className="w-2 h-2 bg-purple-500 rounded-full animate-bounce" style={{ animationDelay: '300ms' }}></div>
           </div>
         </div>
+        
+        {/* Flash effect on transition */}
+        {isTransitioning && (
+          <div className="fixed inset-0 bg-indigo-500/20 animate-pulse z-0" style={{ animationDuration: '0.3s' }}></div>
+        )}
         
         {/* CSS for loading progress animation */}
         <style>{`
@@ -850,7 +871,33 @@ Studio LeFlow
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-[#050505] to-[#0A0A0A] text-white flex">
+    <div 
+      className={`min-h-screen bg-gradient-to-br from-[#050505] to-[#0A0A0A] text-white flex transition-all duration-700 ${
+        showApp ? 'opacity-100 scale-100' : 'opacity-0 scale-95'
+      }`}
+      style={{
+        animation: showApp ? 'appFadeIn 0.7s ease-out forwards' : 'none'
+      }}
+    >
+      {/* App fade-in animation */}
+      <style>{`
+        @keyframes appFadeIn {
+          0% { 
+            opacity: 0; 
+            transform: scale(0.95) translateY(20px);
+            filter: blur(10px);
+          }
+          50% {
+            filter: blur(5px);
+          }
+          100% { 
+            opacity: 1; 
+            transform: scale(1) translateY(0);
+            filter: blur(0);
+          }
+        }
+      `}</style>
+      
       {/* Sidebar */}
       <aside className="w-64 border-r border-white/5 bg-[#080808] flex flex-col sticky top-0 h-screen">
         <div className="p-6 border-b border-white/5">
