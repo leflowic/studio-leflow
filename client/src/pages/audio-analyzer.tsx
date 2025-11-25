@@ -600,10 +600,100 @@ export default function AudioAnalyzerPage() {
     );
   };
 
-  // Check access - show EVLFRQ styled login
+  // ALWAYS show loading screen first (even for non-logged users)
+  if (!minLoadingComplete) {
+    return (
+      <div 
+        className={`fixed inset-0 bg-gradient-to-br from-[#050505] via-[#0a0a15] to-[#0A0A0A] flex items-center justify-center z-50 transition-all duration-1000 ${
+          isTransitioning ? 'opacity-0 scale-110' : 'opacity-100 scale-100'
+        }`}
+      >
+        {/* Particle trail effect */}
+        {particles.map(particle => (
+          <div
+            key={particle.id}
+            className="absolute rounded-full pointer-events-none"
+            style={{
+              left: particle.x,
+              top: particle.y,
+              width: particle.size,
+              height: particle.size,
+              backgroundColor: particle.color,
+              opacity: particle.opacity,
+              transform: 'translate(-50%, -50%)',
+              transition: 'opacity 0.1s ease-out',
+              boxShadow: `0 0 ${particle.size * 2}px ${particle.color}`
+            }}
+          />
+        ))}
+        
+        {/* Main loading content */}
+        <div className="relative">
+          {/* Animated glow rings */}
+          <div className="absolute inset-0 flex items-center justify-center">
+            <div className="absolute w-48 h-48 border border-[#4F46E5]/20 rounded-full animate-ping" style={{ animationDuration: '3s' }} />
+            <div className="absolute w-64 h-64 border border-[#4F46E5]/10 rounded-full animate-ping" style={{ animationDuration: '4s', animationDelay: '0.5s' }} />
+            <div className="absolute w-80 h-80 border border-[#4F46E5]/5 rounded-full animate-ping" style={{ animationDuration: '5s', animationDelay: '1s' }} />
+          </div>
+          
+          {/* Logo with glow */}
+          <div className="relative z-10 flex flex-col items-center">
+            <div className="relative">
+              <div className="absolute inset-0 bg-[#4F46E5] rounded-full blur-3xl opacity-30 scale-150 animate-pulse" />
+              <img 
+                src={evlfrqLogoWhite} 
+                alt="EVLFRQ" 
+                className="relative w-32 h-32 object-contain drop-shadow-2xl"
+                style={{ filter: 'drop-shadow(0 0 30px rgba(79, 70, 229, 0.5))' }}
+              />
+            </div>
+            
+            {/* Loading text with typewriter effect */}
+            <div className="mt-8 text-center">
+              <h1 className="text-2xl font-bold text-white mb-2 tracking-wider">
+                EVLFRQ
+              </h1>
+              <div className="flex items-center gap-2 text-gray-400">
+                <div className="w-2 h-2 bg-[#4F46E5] rounded-full animate-bounce" style={{ animationDelay: '0ms' }} />
+                <div className="w-2 h-2 bg-[#4F46E5] rounded-full animate-bounce" style={{ animationDelay: '150ms' }} />
+                <div className="w-2 h-2 bg-[#4F46E5] rounded-full animate-bounce" style={{ animationDelay: '300ms' }} />
+              </div>
+            </div>
+            
+            {/* Scanning line effect */}
+            <div className="mt-8 w-48 h-1 bg-gray-800 rounded-full overflow-hidden">
+              <div 
+                className="h-full bg-gradient-to-r from-transparent via-[#4F46E5] to-transparent"
+                style={{
+                  animation: 'scan 2s ease-in-out infinite',
+                }}
+              />
+            </div>
+          </div>
+        </div>
+
+        {/* Scanning animation keyframes */}
+        <style>{`
+          @keyframes scan {
+            0% { transform: translateX(-100%); }
+            100% { transform: translateX(200%); }
+          }
+        `}</style>
+      </div>
+    );
+  }
+
+  // After loading animation - check if user is logged in
   if (!user) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-[#050505] via-[#0a0a15] to-[#0A0A0A] text-white flex flex-col">
+      <div 
+        className={`min-h-screen bg-gradient-to-br from-[#050505] via-[#0a0a15] to-[#0A0A0A] text-white flex flex-col transition-all duration-700 ${
+          showApp ? 'opacity-100 scale-100' : 'opacity-0 scale-95'
+        }`}
+        style={{
+          animation: showApp ? 'appFadeIn 0.7s ease-out forwards' : 'none'
+        }}
+      >
         <header className="h-14 border-b border-white/5 flex items-center px-8 bg-[#050505]/50 backdrop-blur-sm">
           <Link href="/">
             <button className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-white/5 hover:bg-white/10 border border-white/10 text-gray-300 hover:text-white transition-all text-sm">
@@ -703,130 +793,14 @@ export default function AudioAnalyzerPage() {
     );
   }
 
-  // Show loading while checking access status (minimum 5 seconds for animation)
-  if (accessLoading || !minLoadingComplete) {
+  // Show simple loading while checking access status
+  if (accessLoading) {
     return (
-      <div 
-        className={`min-h-screen bg-gradient-to-br from-[#050505] via-[#0a0a15] to-[#0A0A0A] text-white flex items-center justify-center p-6 overflow-hidden cursor-none transition-all duration-1000 ${
-          isTransitioning ? 'opacity-0 scale-110' : 'opacity-100 scale-100'
-        }`}
-      >
-        {/* Particles that follow cursor */}
-        {particles.map(particle => (
-          <div
-            key={particle.id}
-            className="fixed pointer-events-none z-50 rounded-full"
-            style={{
-              left: particle.x,
-              top: particle.y,
-              width: particle.size,
-              height: particle.size,
-              backgroundColor: particle.color,
-              opacity: isTransitioning ? 0 : particle.opacity,
-              transform: 'translate(-50%, -50%)',
-              boxShadow: `0 0 ${particle.size * 2}px ${particle.color}`,
-              transition: 'opacity 0.3s ease-out'
-            }}
-          />
-        ))}
-        
-        {/* Custom cursor glow */}
-        <div 
-          className={`fixed pointer-events-none z-40 w-8 h-8 rounded-full bg-indigo-500/30 blur-sm transition-opacity duration-500 ${isTransitioning ? 'opacity-0' : 'opacity-100'}`}
-          style={{
-            left: mousePos.x,
-            top: mousePos.y,
-            transform: 'translate(-50%, -50%)'
-          }}
-        />
-        <div 
-          className={`fixed pointer-events-none z-40 w-3 h-3 rounded-full bg-white transition-opacity duration-500 ${isTransitioning ? 'opacity-0' : 'opacity-100'}`}
-          style={{
-            left: mousePos.x,
-            top: mousePos.y,
-            transform: 'translate(-50%, -50%)',
-            boxShadow: '0 0 10px #4F46E5, 0 0 20px #4F46E5'
-          }}
-        />
-
-        <div className={`text-center max-w-md relative z-10 transition-all duration-700 ${isTransitioning ? 'scale-150 opacity-0' : 'scale-100 opacity-100'}`}>
-          {/* Glow effect behind spinner */}
-          <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
-            <div className={`w-64 h-64 bg-[#4F46E5]/15 rounded-full blur-3xl transition-all duration-700 ${isTransitioning ? 'scale-200 opacity-0' : 'animate-pulse'}`}></div>
-          </div>
-          
-          <div className={`relative w-36 h-36 mx-auto mb-8 transition-transform duration-700 ${isTransitioning ? 'scale-150' : 'scale-100'}`}>
-            {/* Outer static ring */}
-            <div className="absolute inset-0 rounded-full border-4 border-indigo-500/20"></div>
-            
-            {/* Primary spinning ring */}
-            <div 
-              className="absolute inset-0 rounded-full border-4 border-transparent border-t-indigo-500 border-r-indigo-500/50 animate-spin" 
-              style={{ animationDuration: isTransitioning ? '0.3s' : '1.2s' }}
-            ></div>
-            
-            {/* Secondary counter-spinning ring */}
-            <div 
-              className="absolute inset-2 rounded-full border-4 border-transparent border-b-indigo-400/60 border-l-indigo-400/30 animate-spin" 
-              style={{ animationDuration: isTransitioning ? '0.4s' : '1.8s', animationDirection: 'reverse' }}
-            ></div>
-            
-            {/* Third spinning ring */}
-            <div 
-              className="absolute inset-4 rounded-full border-2 border-transparent border-t-purple-500/40 animate-spin" 
-              style={{ animationDuration: isTransitioning ? '0.5s' : '2.5s' }}
-            ></div>
-            
-            {/* Logo container */}
-            <div className="absolute inset-6 flex items-center justify-center">
-              <img 
-                src={evlfrqLogoWhite} 
-                alt="EVLFRQ" 
-                className={`w-14 h-14 object-contain transition-all duration-500 ${isTransitioning ? 'scale-125 brightness-150' : 'animate-pulse'}`}
-                style={{ animationDuration: '2s' }}
-              />
-            </div>
-          </div>
-          
-          <h1 className={`text-3xl font-bold mb-3 bg-gradient-to-r from-white via-indigo-200 to-gray-400 bg-clip-text text-transparent transition-all duration-500 ${isTransitioning ? 'scale-110' : 'animate-pulse'}`} style={{ animationDuration: '2s' }}>
-            EVLFRQ
-          </h1>
-          <p className={`text-gray-400 text-sm mb-2 transition-opacity duration-300 ${isTransitioning ? 'opacity-0' : 'opacity-100'}`}>Professional Audio Analysis</p>
-          <p className={`text-indigo-400/60 text-xs transition-all duration-300 ${isTransitioning ? 'opacity-0' : 'opacity-100'}`}>
-            {isTransitioning ? 'Pokretanje...' : 'Učitavanje sistema...'}
-          </p>
-          
-          {/* Loading progress bar */}
-          <div className={`w-48 h-1 mx-auto mt-6 bg-white/10 rounded-full overflow-hidden transition-all duration-500 ${isTransitioning ? 'w-64 h-2 bg-indigo-500/30' : ''}`}>
-            <div 
-              className={`h-full bg-gradient-to-r from-indigo-500 to-purple-500 rounded-full ${isTransitioning ? 'w-full' : ''}`}
-              style={{
-                animation: isTransitioning ? 'none' : 'loadingProgress 5s ease-in-out forwards',
-                width: isTransitioning ? '100%' : undefined
-              }}
-            />
-          </div>
-          
-          {/* Loading dots animation */}
-          <div className={`flex justify-center gap-1.5 mt-6 transition-opacity duration-300 ${isTransitioning ? 'opacity-0' : 'opacity-100'}`}>
-            <div className="w-2 h-2 bg-indigo-500 rounded-full animate-bounce" style={{ animationDelay: '0ms' }}></div>
-            <div className="w-2 h-2 bg-indigo-400 rounded-full animate-bounce" style={{ animationDelay: '150ms' }}></div>
-            <div className="w-2 h-2 bg-purple-500 rounded-full animate-bounce" style={{ animationDelay: '300ms' }}></div>
-          </div>
+      <div className="min-h-screen bg-gradient-to-br from-[#050505] via-[#0a0a15] to-[#0A0A0A] text-white flex items-center justify-center">
+        <div className="flex items-center gap-3">
+          <div className="w-5 h-5 border-2 border-[#4F46E5] border-t-transparent rounded-full animate-spin" />
+          <span className="text-gray-400">Proveravanje pristupa...</span>
         </div>
-        
-        {/* Flash effect on transition */}
-        {isTransitioning && (
-          <div className="fixed inset-0 bg-indigo-500/20 animate-pulse z-0" style={{ animationDuration: '0.3s' }}></div>
-        )}
-        
-        {/* CSS for loading progress animation */}
-        <style>{`
-          @keyframes loadingProgress {
-            0% { width: 0%; }
-            100% { width: 100%; }
-          }
-        `}</style>
       </div>
     );
   }
