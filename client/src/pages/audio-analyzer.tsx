@@ -604,79 +604,77 @@ export default function AudioAnalyzerPage() {
   if (!minLoadingComplete) {
     return (
       <div 
-        className={`fixed inset-0 bg-gradient-to-br from-[#050505] via-[#0a0a15] to-[#0A0A0A] flex items-center justify-center z-50 transition-all duration-1000 ${
-          isTransitioning ? 'opacity-0 scale-110' : 'opacity-100 scale-100'
+        className={`fixed inset-0 bg-[#030308] flex items-center justify-center z-50 transition-all duration-1000 ${
+          isTransitioning ? 'opacity-0 scale-105' : 'opacity-100 scale-100'
         }`}
       >
-        {/* Particle trail effect */}
-        {particles.map(particle => (
-          <div
-            key={particle.id}
-            className="absolute rounded-full pointer-events-none"
-            style={{
-              left: particle.x,
-              top: particle.y,
-              width: particle.size,
-              height: particle.size,
-              backgroundColor: particle.color,
-              opacity: particle.opacity,
-              transform: 'translate(-50%, -50%)',
-              transition: 'opacity 0.1s ease-out',
-              boxShadow: `0 0 ${particle.size * 2}px ${particle.color}`
-            }}
-          />
-        ))}
+        {/* Subtle background gradient */}
+        <div className="absolute inset-0 bg-gradient-to-b from-[#4F46E5]/5 via-transparent to-[#4F46E5]/3" />
         
-        {/* Main loading content */}
-        <div className="relative">
-          {/* Animated glow rings */}
-          <div className="absolute inset-0 flex items-center justify-center">
-            <div className="absolute w-48 h-48 border border-[#4F46E5]/20 rounded-full animate-ping" style={{ animationDuration: '3s' }} />
-            <div className="absolute w-64 h-64 border border-[#4F46E5]/10 rounded-full animate-ping" style={{ animationDuration: '4s', animationDelay: '0.5s' }} />
-            <div className="absolute w-80 h-80 border border-[#4F46E5]/5 rounded-full animate-ping" style={{ animationDuration: '5s', animationDelay: '1s' }} />
+        {/* Grid pattern overlay */}
+        <div 
+          className="absolute inset-0 opacity-[0.03]"
+          style={{
+            backgroundImage: 'linear-gradient(rgba(79,70,229,0.3) 1px, transparent 1px), linear-gradient(90deg, rgba(79,70,229,0.3) 1px, transparent 1px)',
+            backgroundSize: '50px 50px'
+          }}
+        />
+
+        {/* Main content */}
+        <div className="relative z-10 flex flex-col items-center">
+          {/* Logo with subtle glow */}
+          <div className="relative mb-10">
+            <div className="absolute inset-0 bg-[#4F46E5]/20 blur-[60px] scale-150" />
+            <img 
+              src={evlfrqLogoWhite} 
+              alt="EVLFRQ" 
+              className="relative w-20 h-20 object-contain"
+            />
           </div>
-          
-          {/* Logo with glow */}
-          <div className="relative z-10 flex flex-col items-center">
-            <div className="relative">
-              <div className="absolute inset-0 bg-[#4F46E5] rounded-full blur-3xl opacity-30 scale-150 animate-pulse" />
-              <img 
-                src={evlfrqLogoWhite} 
-                alt="EVLFRQ" 
-                className="relative w-32 h-32 object-contain drop-shadow-2xl"
-                style={{ filter: 'drop-shadow(0 0 30px rgba(79, 70, 229, 0.5))' }}
-              />
-            </div>
-            
-            {/* Loading text with typewriter effect */}
-            <div className="mt-8 text-center">
-              <h1 className="text-2xl font-bold text-white mb-2 tracking-wider">
-                EVLFRQ
-              </h1>
-              <div className="flex items-center gap-2 text-gray-400">
-                <div className="w-2 h-2 bg-[#4F46E5] rounded-full animate-bounce" style={{ animationDelay: '0ms' }} />
-                <div className="w-2 h-2 bg-[#4F46E5] rounded-full animate-bounce" style={{ animationDelay: '150ms' }} />
-                <div className="w-2 h-2 bg-[#4F46E5] rounded-full animate-bounce" style={{ animationDelay: '300ms' }} />
-              </div>
-            </div>
-            
-            {/* Scanning line effect */}
-            <div className="mt-8 w-48 h-1 bg-gray-800 rounded-full overflow-hidden">
-              <div 
-                className="h-full bg-gradient-to-r from-transparent via-[#4F46E5] to-transparent"
+
+          {/* Audio waveform animation */}
+          <div className="flex items-end gap-[3px] h-12 mb-8">
+            {[...Array(9)].map((_, i) => (
+              <div
+                key={i}
+                className="w-[3px] bg-gradient-to-t from-[#4F46E5] to-[#818CF8] rounded-full"
                 style={{
-                  animation: 'scan 2s ease-in-out infinite',
+                  animation: 'waveform 1s ease-in-out infinite',
+                  animationDelay: `${i * 0.1}s`,
+                  height: '8px'
                 }}
               />
-            </div>
+            ))}
+          </div>
+
+          {/* Text */}
+          <h1 className="text-xl font-semibold text-white tracking-[0.3em] mb-3">
+            EVLFRQ
+          </h1>
+          <p className="text-gray-500 text-xs tracking-widest uppercase">
+            Audio Analysis Platform
+          </p>
+
+          {/* Progress bar */}
+          <div className="mt-10 w-40 h-[2px] bg-white/10 rounded-full overflow-hidden">
+            <div 
+              className="h-full bg-[#4F46E5] rounded-full"
+              style={{
+                animation: 'progress 5s ease-out forwards'
+              }}
+            />
           </div>
         </div>
 
-        {/* Scanning animation keyframes */}
+        {/* Animations */}
         <style>{`
-          @keyframes scan {
-            0% { transform: translateX(-100%); }
-            100% { transform: translateX(200%); }
+          @keyframes waveform {
+            0%, 100% { height: 8px; opacity: 0.4; }
+            50% { height: 32px; opacity: 1; }
+          }
+          @keyframes progress {
+            0% { width: 0%; }
+            100% { width: 100%; }
           }
         `}</style>
       </div>
