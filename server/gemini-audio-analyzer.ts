@@ -62,99 +62,101 @@ export interface AudioAnalysisResult {
 
 const AUDIO_ANALYSIS_PROMPT = `Ti si EVLFRQ - profesionalni audio inženjer i mix analizator. Analiziraj ovaj audio fajl i daj detaljan izveštaj.
 
-PRVO PREPOZNAJ TIP MATERIJALA:
-Detektuj o kakvom tipu audio materijala se radi:
-- "Raw Vocal" - Neobrađen vokal (bez efekata, reverba, kompresije)
-- "Processed Vocal" - Obrađen vokal (sa efektima, autotune, reverb, delay)
-- "Vocal Mix" - Vokal sa backing trackom/beatom
-- "Full Mix" - Kompletna pesma sa svim elementima (vokal + instrumentali)
-- "Instrumental" - Samo instrumentali bez vokala
-- "Beat" - Hip-hop/trap/pop beat/backing track
-- "Acapella" - Samo vokali (može biti više glasova)
-- "Stem" - Pojedinačni stem (bas, bubnjevi, gitara, itd.)
-- "Master" - Finalni masterovani audio
-- "Demo" - Demo snimak (loš kvalitet, skica)
+KRITIČNO - DETEKCIJA TIPA MATERIJALA:
+PAŽLJIVO SLUŠAJ audio i odredi TAČNO o kakvom tipu materijala se radi. NE POGAĐAJ - slušaj!
+
+Ako čuješ SAMO GLAS bez muzike/beata = "Raw Vocal" ili "Processed Vocal"
+Ako čuješ SAMO INSTRUMENTALE bez glasa = "Instrumental" ili "Beat"
+Ako čuješ I GLAS I INSTRUMENTALE = "Full Mix" ili "Vocal Mix"
+
+TIPOVI MATERIJALA:
+- "Raw Vocal" - SAMO glas, neobrađen (bez reverba, delaya, autotune-a, kompresije). Čuješ sobu, dahove, prirodan zvuk.
+- "Processed Vocal" - SAMO glas sa efektima (reverb, delay, autotune, kompresija). Nema beata/muzike u pozadini.
+- "Vocal Mix" - Glas SA backing trackom/beatom u pozadini
+- "Full Mix" - Kompletna pesma (vokal + svi instrumenti + produkcija)
+- "Instrumental" - Samo instrumentali, NEMA vokala uopšte
+- "Beat" - Hip-hop/trap/pop beat bez vokala
+- "Acapella" - Samo vokali (jedan ili više glasova), bez instrumentala
+- "Stem" - Pojedinačni element (samo bas, samo bubnjevi, samo gitara)
+- "Master" - Finalni masterovani audio (limitovan, loud)
+- "Demo" - Loš kvalitet snimka, skica
+
+KLJUČNA PITANJA ZA DETEKCIJU:
+1. Da li čujem SAMO GLAS ili ima i muzike?
+2. Ako je samo glas - da li ima efekata (reverb/delay) ili je suv/raw?
+3. Ako ima muzike - da li ima i vokala ili je instrumental?
 
 ANALIZIRAJ SLEDEĆE ASPEKTE:
 
 1. FREKVENCIJSKI BALANS:
-- Low (20-250Hz): Da li ima previše/premalo basa? Muddy? Boomy?
-- Low-Mid (250-2kHz): Da li je mutno? Boxy? 
-- High-Mid (2-8kHz): Da li je oštro? Harsh? Sibilant?
-- High (8-20kHz): Da li ima dovoljno "air"? Previše šuma?
+- Low (20-250Hz): Previše/premalo basa? Muddy? Boomy?
+- Low-Mid (250-2kHz): Mutno? Boxy? 
+- High-Mid (2-8kHz): Oštro? Harsh? Sibilant?
+- High (8-20kHz): Dovoljno "air"? Previše šuma?
 
 2. DINAMIKA:
-- Da li je previše kompresovano (overcompressed)?
-- Da li nedostaje kontrola (undercompressed)?
-- Proceni dynamic range
+- Previše kompresovano (overcompressed)?
+- Nedostaje kontrola (undercompressed)?
+- Dynamic range procena
 
 3. STEREO SLIKA:
 - Širina stereo polja
 - Phase correlation (mono kompatibilnost)
 
-4. PROBLEMI U MIKSU (detektuj sve):
-- Boomy (80-150Hz previše)
-- Muddy (150-300Hz previše)
-- Boxy (250-500Hz rezonanca)
-- Honky (500-1.2kHz megafon efekat)
-- Nasal (800-1.5kHz nosni zvuk)
-- Harsh (2k-5kHz oštrina)
-- Sibilant (5k-8kHz previše S/SH)
-- Thin (nedostaje telo)
-- Clicks/Noise (šumovi, dahovi)
-- Room problems (loša akustika sobe)
+4. PROBLEMI (detektuj sve prisutne):
+- Boomy, Muddy, Boxy, Honky, Nasal, Harsh, Sibilant, Thin
+- Clicks/Noise, Room problems, Plosives
 
 5. LOUDNESS:
-- Proceni LUFS vrednost
-- Proceni True Peak
+- LUFS vrednost
+- True Peak
 
 ODGOVORI U TAČNO OVOM JSON FORMATU (bez markdown, samo čist JSON):
 {
-  "audioType": "Full Mix",
-  "audioTypeDetails": "Kompletna pesma sa muškim vokalom, trap beat, 808 bas",
-  "detectedKey": "A Minor",
-  "duration": "3:45",
-  "summary": "Kratak opis kvaliteta miksa na srpskom...",
-  "mixScore": 75,
+  "audioType": "[OBAVEZNO POPUNI NA OSNOVU ONOGA ŠTO ČUJEŠ]",
+  "audioTypeDetails": "[Opiši šta tačno čuješ - muški/ženski glas, žanr, instrumenti ako ih ima]",
+  "detectedKey": "C Minor",
+  "duration": "2:30",
+  "summary": "Kratak opis kvaliteta na srpskom...",
+  "mixScore": 70,
   "mixGrade": "B",
   "lufs": -14.0,
   "truePeak": -1.5,
-  "stereoWidth": 80,
-  "correlation": 0.92,
-  "dynamicRange": 8.0,
-  "transientScore": 70,
+  "stereoWidth": 50,
+  "correlation": 0.95,
+  "dynamicRange": 10.0,
+  "transientScore": 65,
   "tonalBalance": {
-    "low": 45,
-    "lowMid": 55,
-    "highMid": 60,
-    "high": 40
+    "low": 40,
+    "lowMid": 50,
+    "highMid": 55,
+    "high": 45
   },
   "issues": [
     {
-      "name": "Muddy",
-      "description": "Opis problema na srpskom...",
-      "solution": "Predlog rešenja sa EQ parametrima..."
+      "name": "ImeProblema",
+      "description": "Opis problema...",
+      "solution": "Rešenje..."
     }
   ],
   "recommendations": [
-    "Preporuka 1 na srpskom...",
-    "Preporuka 2 na srpskom..."
+    "Preporuka..."
   ]
 }
 
-PRAVILA ZA audioType:
-- Budi precizan u određivanju tipa materijala
-- audioTypeDetails treba da sadrži dodatne informacije (žanr, pol vokala, instrumenti)
+PRIMERI audioType ODGOVORA:
+- Ako čuješ samo suv glas bez efekata: "Raw Vocal", "Neobrađen muški vokal, snimljen u sobi"
+- Ako čuješ glas sa reverbom ali bez beata: "Processed Vocal", "Ženski vokal sa reverb i delay efektima"
+- Ako čuješ glas preko trap beata: "Full Mix", "Muški vokal, trap produkcija, 808 bas"
+- Ako čuješ samo beat bez glasa: "Beat", "Trap beat sa 808 basom i hi-hat patternima"
 
 PRAVILA ZA OCENJIVANJE:
 - S (95-100): Profesionalni masterski kvalitet
-- A (80-94): Odličan miks, spremno za release
-- B (65-79): Dobar miks sa manjim problemima
-- C (50-64): Prosečan miks, potrebne korekcije
-- D (35-49): Ispod proseka, značajni problemi
-- F (0-34): Loš miks, potreban remix
-
-Ako ne možeš detaljno analizirati audio, daj procenu na osnovu onoga što čuješ.`;
+- A (80-94): Odličan, spremno za release
+- B (65-79): Dobar sa manjim problemima
+- C (50-64): Prosečan, potrebne korekcije
+- D (35-49): Ispod proseka
+- F (0-34): Loš, potreban remix`;
 
 export async function analyzeAudioWithGemini(
   audioBuffer: Buffer,
