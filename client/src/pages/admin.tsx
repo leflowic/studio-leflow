@@ -38,6 +38,7 @@ const RichTextEditor = lazy(() =>
 import { Separator } from "@/components/ui/separator";
 import { AvatarWithInitials } from "@/components/ui/avatar-with-initials";
 import { ContractsTab } from "@/components/admin/ContractsTab";
+import { CalendarTab } from "@/components/admin/CalendarTab";
 import {
   Select,
   SelectContent,
@@ -218,6 +219,7 @@ export default function AdminPage() {
               <TabsTrigger value="messages" data-testid="tab-messages" className="flex-1 min-w-[100px]">Poruke</TabsTrigger>
               <TabsTrigger value="contracts" data-testid="tab-contracts" className="flex-1 min-w-[100px]">Ugovori</TabsTrigger>
               <TabsTrigger value="invoices" data-testid="tab-invoices" className="flex-1 min-w-[100px]">Fakture</TabsTrigger>
+              <TabsTrigger value="calendar" data-testid="tab-calendar" className="flex-1 min-w-[100px]">Kalendar</TabsTrigger>
               <TabsTrigger value="settings" data-testid="tab-settings" className="flex-1 min-w-[100px]">Podešavanja</TabsTrigger>
             </TabsList>
           </div>
@@ -256,6 +258,10 @@ export default function AdminPage() {
 
           <TabsContent value="invoices">
             <InvoicesTab />
+          </TabsContent>
+
+          <TabsContent value="calendar">
+            <CalendarTab />
           </TabsContent>
 
           <TabsContent value="settings">

@@ -763,4 +763,15 @@ export const insertCommunityMessageSchema = createInsertSchema(communityMessages
 });
 
 export type InsertCommunityMessage = z.infer<typeof insertCommunityMessageSchema>;
+
+// Admin Calendar - day status tracking
+export const calendarDays = pgTable("calendar_days", {
+  date: text("date").primaryKey(), // "YYYY-MM-DD"
+  status: text("status"), // "green" | "red" | "yellow" | "blue" | null
+  note: text("note"),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+  updatedById: integer("updated_by_id").references(() => users.id),
+});
+
+export type CalendarDay = typeof calendarDays.$inferSelect;
 export type CommunityMessage = typeof communityMessages.$inferSelect;

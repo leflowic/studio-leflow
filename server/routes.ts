@@ -2004,6 +2004,38 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // ==================== CALENDAR API ROUTES ====================
+
+  // GET /api/admin/calendar?year=2026&month=6
+  app.get("/api/admin/calendar", requireAdmin, async (req, res) => {
+    try {
+      const year = parseInt(req.query.year as string) || new Date().getFullYear();
+      const month = parseInt(req.query.month as string) || new Date().getMonth() + 1;
+      if (month < 1 || month > 12) return res.status(400).json({ error: "Neispravan mesec" });
+      const days = await storage.getCalendarMonth(year, month);
+      res.json(days);
+    } catch (error) {
+      console.error("Calendar fetch error:", error);
+      res.status(500).json({ error: "Greška na serveru" });
+    }
+  });
+
+  // PUT /api/admin/calendar/:date
+  app.put("/api/admin/calendar/:date", requireAdmin, async (req, res) => {
+    try {
+      const { date } = req.params;
+      if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) return res.status(400).json({ error: "Neispravan format datuma" });
+      const { status, note } = req.body;
+      const validStatuses = ["green", "red", "yellow", "blue", null, ""];
+      if (!validStatuses.includes(status ?? null)) return res.status(400).json({ error: "Neispravani status" });
+      const day = await storage.upsertCalendarDay(date, status || null, note || null, req.jwtUser!.id);
+      res.json(day);
+    } catch (error) {
+      console.error("Calendar update error:", error);
+      res.status(500).json({ error: "Greška na serveru" });
+    }
+  });
+
   // SEO routes - robots.txt
   app.get("/robots.txt", (req, res) => {
     const host = req.get('host') || 'localhost:5000';

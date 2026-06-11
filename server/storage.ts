@@ -56,6 +56,8 @@ import {
   registrationAttempts,
   communityMessages,
   siteAnnouncement,
+  calendarDays,
+  type CalendarDay,
 } from "@shared/schema";
 import { db, pool } from "./db";
 import { eq, and, or, desc, sql, notInArray } from "drizzle-orm";
@@ -231,6 +233,10 @@ export interface IStorage {
   // Site Announcement
   getSiteAnnouncement(): Promise<SiteAnnouncement>;
   upsertSiteAnnouncement(data: InsertSiteAnnouncement): Promise<SiteAnnouncement>;
+
+  // Calendar
+  getCalendarMonth(year: number, month: number): Promise<CalendarDay[]>;
+  upsertCalendarDay(date: string, status: string | null, note: string | null, updatedById: number): Promise<CalendarDay>;
 
   // Dashboard
   getUserProjects(userId: number): Promise<Array<Project & { username: string }>>;
@@ -2321,7 +2327,7 @@ export class DatabaseStorage implements IStorage {
         .values({ id: 1, ...data, updatedAt: new Date() })
         .onConflictDoUpdate({
           target: siteAnnouncement.id,
-          set: { 
+          set: {
             isActive: data.isActive,
             message: data.message,
             updatedAt: new Date()
@@ -2334,6 +2340,26 @@ export class DatabaseStorage implements IStorage {
       console.error('Error upserting site announcement:', error);
       throw new Error('Failed to update site announcement');
     }
+  }
+
+  async getCalendarMonth(year: number, month: number): Promise<CalendarDay[]> {
+    const prefix = `${year}-${String(month).padStart(2, '0')}`;
+    return await db
+      .select()
+      .from(calendarDays)
+      .where(sql`${calendarDays.date} LIKE ${prefix + '-%'}`);
+  }
+
+  async upsertCalendarDay(date: string, status: string | null, note: string | null, updatedById: number): Promise<CalendarDay> {
+    const [day] = await db
+      .insert(calendarDays)
+      .values({ date, status, note, updatedAt: new Date(), updatedById })
+      .onConflictDoUpdate({
+        target: calendarDays.date,
+        set: { status, note, updatedAt: new Date(), updatedById },
+      })
+      .returning();
+    return day!;
   }
 }
 
