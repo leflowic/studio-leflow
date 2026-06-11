@@ -18,6 +18,7 @@ import { ThemeToggle } from "@/components/theme-toggle";
 import { useEditMode } from "@/contexts/EditModeContext";
 import { useWebSocket } from "@/hooks/use-websocket";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { apiRequest } from "@/lib/queryClient";
 import leflowLogo from "@/assets/leflow-logo.png";
 
 
@@ -37,6 +38,19 @@ export function Header() {
   });
 
   const unreadCount = unreadData?.count ?? 0;
+
+  // Game live status (only for verified logged-in users)
+  const { data: gameData } = useQuery<any>({
+    queryKey: ["/api/game/today"],
+    queryFn: async () => {
+      const res = await apiRequest("GET", "/api/game/today");
+      return res.json();
+    },
+    enabled: !!user && user.emailVerified === true,
+    refetchInterval: 60000,
+    staleTime: 30000,
+  });
+  const gameIsLive = gameData?.available === true && !gameData?.alreadyPlayed;
 
   // Subscribe to WebSocket events to update unread count in real-time
   useEffect(() => {
@@ -67,6 +81,8 @@ export function Header() {
     { name: "Tim", href: "/tim" },
     { name: "Pravila", href: "/pravila" }
   ];
+
+  const gameNavItem = user?.emailVerified ? { name: "Pogodi Pesmu", href: "/igra" } : null;
 
   const isActive = (href: string) => {
     if (href === "/") return location === "/";
@@ -107,7 +123,7 @@ export function Header() {
           <nav className="hidden xl:flex items-center gap-0.5 ml-8">
             {navigation.map((item) => (
               <motion.div key={item.name} whileHover={{ y: -2 }} transition={{ duration: 0.2 }} className="flex items-center">
-                <Link 
+                <Link
                   href={item.href}
                   className={`px-3 py-2 rounded-lg text-sm font-medium transition-colors hover-elevate flex items-center min-h-9 ${
                     isActive(item.href)
@@ -120,6 +136,27 @@ export function Header() {
                 </Link>
               </motion.div>
             ))}
+            {gameNavItem && (
+              <motion.div whileHover={{ y: -2 }} transition={{ duration: 0.2 }} className="flex items-center">
+                <Link
+                  href={gameNavItem.href}
+                  className={`px-3 py-2 rounded-lg text-sm font-medium transition-colors hover-elevate flex items-center gap-1.5 min-h-9 ${
+                    isActive(gameNavItem.href) ? "text-primary" : "text-foreground"
+                  }`}
+                >
+                  {gameNavItem.name}
+                  {gameIsLive && (
+                    <span className="flex items-center gap-1">
+                      <span className="relative flex h-2 w-2">
+                        <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-500 opacity-75" />
+                        <span className="relative inline-flex rounded-full h-2 w-2 bg-red-500" />
+                      </span>
+                      <span className="text-[10px] font-bold text-red-500 uppercase tracking-wide">Live</span>
+                    </span>
+                  )}
+                </Link>
+              </motion.div>
+            )}
             {user?.role === 'admin' && (
               <>
                 <motion.div whileHover={{ y: -2 }} transition={{ duration: 0.2 }} className="flex items-center">
@@ -276,8 +313,8 @@ export function Header() {
           <div className="xl:hidden py-4 border-t" data-testid="mobile-menu">
             <nav className="flex flex-col gap-2">
               {navigation.map((item) => (
-                <Link 
-                  key={item.name} 
+                <Link
+                  key={item.name}
                   href={item.href}
                   className={`px-4 py-3 rounded-lg text-sm font-medium transition-colors hover-elevate flex items-center gap-2 ${
                     isActive(item.href)
@@ -290,6 +327,26 @@ export function Header() {
                   {item.name}
                 </Link>
               ))}
+              {gameNavItem && (
+                <Link
+                  href={gameNavItem.href}
+                  className={`px-4 py-3 rounded-lg text-sm font-medium transition-colors hover-elevate flex items-center gap-2 ${
+                    isActive(gameNavItem.href) ? "bg-primary/10 text-primary" : "text-foreground"
+                  }`}
+                  onClick={() => setMobileMenuOpen(false)}
+                >
+                  {gameNavItem.name}
+                  {gameIsLive && (
+                    <span className="flex items-center gap-1 ml-auto">
+                      <span className="relative flex h-2 w-2">
+                        <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-500 opacity-75" />
+                        <span className="relative inline-flex rounded-full h-2 w-2 bg-red-500" />
+                      </span>
+                      <span className="text-[10px] font-bold text-red-500 uppercase tracking-wide">Live</span>
+                    </span>
+                  )}
+                </Link>
+              )}
               {user?.role === 'admin' && (
                 <>
                   <Link 
