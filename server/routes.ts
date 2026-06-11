@@ -3193,8 +3193,8 @@ Sitemap: ${siteUrl}/sitemap.xml
         youtubeUrl,
         correctAnswers,
         clipStartSeconds: Number(clipStartSeconds) || 30,
-        openHour: Number(openHour) || 17,
-        openMinute: Number(openMinute) || 0,
+        openHour: openHour != null ? parseInt(String(openHour), 10) : 17,
+        openMinute: openMinute != null ? parseInt(String(openMinute), 10) : 0,
       });
       res.json({ success: true });
     } catch (e) {
