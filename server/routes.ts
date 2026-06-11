@@ -2137,8 +2137,15 @@ Sitemap: ${siteUrl}/sitemap.xml
         return res.status(404).json({ error: "Korisnik nije pronađen" });
       }
       
-      const sanitized = sanitizeUser(user);
-      res.json(sanitized);
+      // Only expose public profile fields — never email to other users
+      res.json({
+        id: user.id,
+        username: user.username,
+        avatarUrl: user.avatarUrl,
+        lastSeen: user.lastSeen,
+        role: user.role,
+        emailVerified: user.emailVerified,
+      });
     } catch (error: any) {
       console.error("[MESSAGING] Get user error:", error);
       res.status(500).json({ error: "Greška pri učitavanju korisnika" });
@@ -2197,7 +2204,7 @@ Sitemap: ${siteUrl}/sitemap.xml
   // Send a message
   app.post("/api/messages/send", requireVerifiedEmail, async (req, res) => {
     try {
-      const { receiverId, content, imageUrl } = req.body;
+      const { receiverId, content, imageUrl, replyToId } = req.body;
       
       if (!receiverId || typeof receiverId !== 'number') {
         return res.status(400).json({ error: "receiverId je obavezan" });
@@ -2226,10 +2233,11 @@ Sitemap: ${siteUrl}/sitemap.xml
       }
       
       const message = await storage.sendMessage(
-        req.jwtUser!.id, 
-        receiverId, 
+        req.jwtUser!.id,
+        receiverId,
         content.trim(),
-        imageUrl
+        imageUrl,
+        typeof replyToId === 'number' ? replyToId : undefined,
       );
       
       // Broadcast new_message event to receiver via WebSocket
@@ -2250,6 +2258,18 @@ Sitemap: ${siteUrl}/sitemap.xml
     } catch (error: any) {
       console.error("[MESSAGING] Send message error:", error);
       res.status(500).json({ error: "Greška pri slanju poruke" });
+    }
+  });
+
+  // Delete own messages in a conversation (soft-delete)
+  app.delete("/api/messages/conversation/:userId", requireVerifiedEmail, async (req, res) => {
+    try {
+      const otherUserId = parseInt(req.params.userId);
+      if (isNaN(otherUserId)) return res.status(400).json({ error: "Nevažeći ID" });
+      await storage.deleteConversation(req.jwtUser!.id, otherUserId);
+      res.json({ success: true });
+    } catch (error: any) {
+      res.status(500).json({ error: "Greška pri brisanju" });
     }
   });
 
@@ -3076,12 +3096,14 @@ Sitemap: ${siteUrl}/sitemap.xml
       const challenge = await storage.getTodayChallenge();
       if (!challenge) return res.json({ available: false, reason: "no_challenge" });
 
-      // Game only opens at 17:00 local Serbia time (UTC+2 or UTC+1)
       const nowUTC = new Date();
-      const hourBelgrade = (nowUTC.getUTCHours() + 2) % 24; // CEST +2; close enough
-      if (hourBelgrade < 17) {
-        const minutesUntil = (17 - hourBelgrade - 1) * 60 + (60 - nowUTC.getUTCMinutes());
-        return res.json({ available: false, reason: "not_yet", minutesUntil });
+      const belgHour = (nowUTC.getUTCHours() + 2) % 24;
+      const belgMin = nowUTC.getUTCMinutes();
+      const nowTotalMins = belgHour * 60 + belgMin;
+      const openTotalMins = challenge.openHour * 60 + challenge.openMinute;
+      if (nowTotalMins < openTotalMins) {
+        const minutesUntil = openTotalMins - nowTotalMins;
+        return res.json({ available: false, reason: "not_yet", minutesUntil, openHour: challenge.openHour, openMinute: challenge.openMinute });
       }
 
       const guess = await storage.getUserGuessForDate(req.jwtUser!.id as number, today);
@@ -3099,9 +3121,14 @@ Sitemap: ${siteUrl}/sitemap.xml
         return res.status(400).json({ error: "Odgovor je obavezan" });
       }
       const today = new Date().toISOString().split('T')[0]!;
-      const nowUTC = new Date();
-      const hourBelgrade = (nowUTC.getUTCHours() + 2) % 24;
-      if (hourBelgrade < 17) return res.status(403).json({ error: "Igra još nije otvorena" });
+      const challenge2 = await storage.getTodayChallenge();
+      if (!challenge2) return res.status(404).json({ error: "Nema izazova za danas" });
+      const nowUTC2 = new Date();
+      const belgHour2 = (nowUTC2.getUTCHours() + 2) % 24;
+      const belgMin2 = nowUTC2.getUTCMinutes();
+      if (belgHour2 * 60 + belgMin2 < challenge2.openHour * 60 + challenge2.openMinute) {
+        return res.status(403).json({ error: "Igra još nije otvorena" });
+      }
 
       const existing = await storage.getUserGuessForDate(req.jwtUser!.id as number, today);
       if (existing) return res.status(409).json({ error: "Već ste odigrali danas" });
@@ -3136,7 +3163,7 @@ Sitemap: ${siteUrl}/sitemap.xml
   // Admin: POST /api/admin/game/challenges
   app.post("/api/admin/game/challenges", requireAdmin, async (req, res) => {
     try {
-      const { challengeDate, youtubeUrl, correctAnswers, clipStartSeconds } = req.body;
+      const { challengeDate, youtubeUrl, correctAnswers, clipStartSeconds, openHour, openMinute } = req.body;
       if (!challengeDate || !youtubeUrl || !correctAnswers) {
         return res.status(400).json({ error: "Datum, YouTube URL i tačan odgovor su obavezni" });
       }
@@ -3145,6 +3172,8 @@ Sitemap: ${siteUrl}/sitemap.xml
         youtubeUrl,
         correctAnswers,
         clipStartSeconds: Number(clipStartSeconds) || 30,
+        openHour: Number(openHour) || 17,
+        openMinute: Number(openMinute) || 0,
       });
       res.json({ success: true });
     } catch (e) {

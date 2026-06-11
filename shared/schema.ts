@@ -1,5 +1,5 @@
 import { sql } from "drizzle-orm";
-import { pgTable, text, varchar, timestamp, serial, integer, boolean, unique, json, index, pgEnum, numeric } from "drizzle-orm/pg-core";
+import { pgTable, text, varchar, timestamp, serial, integer, boolean, unique, json, index, pgEnum, numeric, type AnyPgColumn } from "drizzle-orm/pg-core";
 import { relations } from "drizzle-orm";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod";
@@ -287,8 +287,9 @@ export const messages = pgTable("messages", {
   senderId: integer("sender_id").notNull().references(() => users.id, { onDelete: "cascade" }),
   receiverId: integer("receiver_id").notNull().references(() => users.id, { onDelete: "cascade" }),
   content: text("content").notNull(),
-  imageUrl: text("image_url"), // Optional image attachment
-  deleted: boolean("deleted").notNull().default(false), // Soft delete
+  imageUrl: text("image_url"),
+  replyToId: integer("reply_to_id").references((): AnyPgColumn => messages.id, { onDelete: "set null" }),
+  deleted: boolean("deleted").notNull().default(false),
   createdAt: timestamp("created_at").defaultNow().notNull(),
 }, (table) => ({
   // Performance indexes for fetching messages
@@ -324,10 +325,12 @@ export const adminMessageAudit = pgTable("admin_message_audit", {
 
 export const dailyChallenges = pgTable("daily_challenges", {
   id: serial("id").primaryKey(),
-  challengeDate: text("challenge_date").notNull().unique(), // "2024-01-15"
+  challengeDate: text("challenge_date").notNull().unique(),
   youtubeUrl: text("youtube_url").notNull(),
-  correctAnswers: text("correct_answers").notNull(), // comma-separated, checked case-insensitively
+  correctAnswers: text("correct_answers").notNull(),
   clipStartSeconds: integer("clip_start_seconds").notNull().default(30),
+  openHour: integer("open_hour").notNull().default(17),
+  openMinute: integer("open_minute").notNull().default(0),
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });
 

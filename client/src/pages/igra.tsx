@@ -18,28 +18,29 @@ declare global {
   }
 }
 
-function useCountdown(targetHour: number) {
+function useCountdown(targetHour: number, targetMinute = 0) {
   const [minutesLeft, setMinutesLeft] = useState(0);
   const [isOpen, setIsOpen] = useState(false);
 
   useEffect(() => {
     const update = () => {
       const now = new Date();
-      // Belgrade time ≈ UTC+2
-      const belgradHour = (now.getUTCHours() + 2) % 24;
-      const belgradMin = now.getUTCMinutes();
-      if (belgradHour >= targetHour) {
+      const belgHour = (now.getUTCHours() + 2) % 24;
+      const belgMin = now.getUTCMinutes();
+      const nowTotalMins = belgHour * 60 + belgMin;
+      const openTotalMins = targetHour * 60 + targetMinute;
+      if (nowTotalMins >= openTotalMins) {
         setIsOpen(true);
         setMinutesLeft(0);
       } else {
         setIsOpen(false);
-        setMinutesLeft((targetHour - belgradHour - 1) * 60 + (60 - belgradMin));
+        setMinutesLeft(openTotalMins - nowTotalMins);
       }
     };
     update();
-    const id = setInterval(update, 30000);
+    const id = setInterval(update, 15000);
     return () => clearInterval(id);
-  }, [targetHour]);
+  }, [targetHour, targetMinute]);
 
   return { isOpen, minutesLeft };
 }
@@ -47,7 +48,6 @@ function useCountdown(targetHour: number) {
 export default function IgraPage() {
   const { user } = useAuth();
   const queryClient = useQueryClient();
-  const { isOpen, minutesLeft } = useCountdown(17);
 
   const playerRef = useRef<any>(null);
   const playerDivRef = useRef<HTMLDivElement>(null);
@@ -63,6 +63,10 @@ export default function IgraPage() {
     enabled: !!user,
     refetchOnWindowFocus: false,
   });
+
+  const openHour = data?.openHour ?? data?.challenge?.openHour ?? 17;
+  const openMinute = data?.openMinute ?? data?.challenge?.openMinute ?? 0;
+  const { isOpen, minutesLeft } = useCountdown(openHour, openMinute);
 
   const { data: leaderboardData } = useQuery<any>({
     queryKey: ["/api/game/leaderboard"],
@@ -176,7 +180,7 @@ export default function IgraPage() {
             ) : !isOpen ? (
               <div className="text-center py-8 space-y-3">
                 <Clock className="w-12 h-12 mx-auto text-primary opacity-70" />
-                <p className="text-lg font-semibold">Igra se otvara u 17:00</p>
+                <p className="text-lg font-semibold">Igra se otvara u {String(openHour).padStart(2,'0')}:{String(openMinute).padStart(2,'0')}</p>
                 <p className="text-muted-foreground">
                   Još {minutesLeft > 60
                     ? `${Math.floor(minutesLeft / 60)}h ${minutesLeft % 60}min`

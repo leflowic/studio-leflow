@@ -76,6 +76,17 @@ async function runMigrations() {
         created_at TIMESTAMP NOT NULL DEFAULT NOW()
       );
     `);
+    // Add game open time control columns
+    await client.query(`
+      ALTER TABLE daily_challenges
+        ADD COLUMN IF NOT EXISTS open_hour INTEGER NOT NULL DEFAULT 17,
+        ADD COLUMN IF NOT EXISTS open_minute INTEGER NOT NULL DEFAULT 0;
+    `);
+    // Add reply-to column on messages
+    await client.query(`
+      ALTER TABLE messages
+        ADD COLUMN IF NOT EXISTS reply_to_id INTEGER REFERENCES messages(id) ON DELETE SET NULL;
+    `);
     log('[Migrations] Schema migrations applied successfully', 'express');
   } catch (err: any) {
     log(`[Migrations] Warning: ${err.message}`, 'express');

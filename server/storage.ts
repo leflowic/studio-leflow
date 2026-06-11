@@ -193,7 +193,8 @@ export interface IStorage {
   getOrCreateConversation(user1Id: number, user2Id: number): Promise<Conversation>;
   getConversation(user1Id: number, user2Id: number): Promise<Conversation | undefined>;
   getUserConversations(userId: number): Promise<Array<Conversation & { otherUser: { id: number; username: string; avatarUrl: string | null }; lastMessage?: Message; unreadCount: number }>>;
-  sendMessage(senderId: number, receiverId: number, content: string, imageUrl?: string): Promise<Message>;
+  sendMessage(senderId: number, receiverId: number, content: string, imageUrl?: string, replyToId?: number): Promise<Message>;
+  deleteConversation(userId: number, otherUserId: number): Promise<void>;
   getMessageById(messageId: number): Promise<Message | undefined>;
   getConversationMessages(conversationId: number, userId: number): Promise<Message[]>;
   markMessagesAsRead(conversationId: number, userId: number): Promise<void>;
@@ -264,13 +265,13 @@ export interface IStorage {
   getUnreadConversationsCount(): Promise<number>;
 
   // Daily Game
-  getTodayChallenge(): Promise<{ id: number; challengeDate: string; clipStartSeconds: number; youtubeVideoId: string } | null>;
+  getTodayChallenge(): Promise<{ id: number; challengeDate: string; clipStartSeconds: number; youtubeVideoId: string; openHour: number; openMinute: number } | null>;
   getUserGuessForDate(userId: number, date: string): Promise<{ answer: string; correct: boolean } | null>;
   submitGuess(userId: number, challengeDate: string, answer: string): Promise<{ correct: boolean; points: number }>;
   getWeeklyLeaderboard(weekStart: string): Promise<Array<{ userId: number; username: string; avatarUrl: string | null; correctCount: number; points: number }>>;
   getWeeklyPrize(weekStart: string): Promise<{ discountPct: number; prizeDescription: string; promoCode: string | null; winnerUserId: number | null } | null>;
-  adminGetChallenges(): Promise<Array<{ id: number; challengeDate: string; youtubeUrl: string; correctAnswers: string; clipStartSeconds: number }>>;
-  adminUpsertChallenge(data: { challengeDate: string; youtubeUrl: string; correctAnswers: string; clipStartSeconds: number }): Promise<void>;
+  adminGetChallenges(): Promise<Array<{ id: number; challengeDate: string; youtubeUrl: string; correctAnswers: string; clipStartSeconds: number; openHour: number; openMinute: number }>>;
+  adminUpsertChallenge(data: { challengeDate: string; youtubeUrl: string; correctAnswers: string; clipStartSeconds: number; openHour: number; openMinute: number }): Promise<void>;
   adminDeleteChallenge(id: number): Promise<void>;
   adminGetWeeklyPrizes(): Promise<Array<{ id: number; weekStart: string; discountPct: number; prizeDescription: string; promoCode: string | null; winnerUserId: number | null; winnerUsername: string | null }>>;
   adminUpsertWeeklyPrize(data: { weekStart: string; discountPct: number; prizeDescription: string; promoCode?: string }): Promise<void>;
@@ -1360,7 +1361,7 @@ export class DatabaseStorage implements IStorage {
     return results;
   }
 
-  async sendMessage(senderId: number, receiverId: number, content: string, imageUrl?: string): Promise<Message> {
+  async sendMessage(senderId: number, receiverId: number, content: string, imageUrl?: string, replyToId?: number): Promise<Message> {
     const conversation = await this.getOrCreateConversation(senderId, receiverId);
 
     const [message] = await db
@@ -1371,6 +1372,7 @@ export class DatabaseStorage implements IStorage {
         receiverId,
         content,
         imageUrl,
+        replyToId: replyToId ?? null,
       })
       .returning();
 
@@ -1380,6 +1382,16 @@ export class DatabaseStorage implements IStorage {
       .where(eq(conversations.id, conversation.id));
 
     return message!;
+  }
+
+  async deleteConversation(userId: number, otherUserId: number): Promise<void> {
+    const conv = await this.getConversation(userId, otherUserId);
+    if (!conv) return;
+    // Soft-delete: mark all messages as deleted for this user's perspective
+    // We do a hard delete of only messages sent by this user in this conversation
+    await db.update(messages)
+      .set({ deleted: true })
+      .where(and(eq(messages.conversationId, conv.id), eq(messages.senderId, userId)));
   }
 
   async getMessageById(messageId: number): Promise<Message | undefined> {
@@ -2397,7 +2409,7 @@ export class DatabaseStorage implements IStorage {
     return d.toISOString().split('T')[0]!;
   }
 
-  async getTodayChallenge(): Promise<{ id: number; challengeDate: string; clipStartSeconds: number; youtubeVideoId: string } | null> {
+  async getTodayChallenge(): Promise<{ id: number; challengeDate: string; clipStartSeconds: number; youtubeVideoId: string; openHour: number; openMinute: number } | null> {
     const today = this.getTodayDateString();
     const [row] = await db.select().from(dailyChallenges).where(eq(dailyChallenges.challengeDate, today));
     if (!row) return null;
@@ -2406,6 +2418,8 @@ export class DatabaseStorage implements IStorage {
       challengeDate: row.challengeDate,
       clipStartSeconds: row.clipStartSeconds,
       youtubeVideoId: this.extractYouTubeId(row.youtubeUrl),
+      openHour: row.openHour,
+      openMinute: row.openMinute,
     };
   }
 
@@ -2461,19 +2475,21 @@ export class DatabaseStorage implements IStorage {
     return { discountPct: row.discountPct, prizeDescription: row.prizeDescription, promoCode: row.promoCode, winnerUserId: row.winnerUserId };
   }
 
-  async adminGetChallenges(): Promise<Array<{ id: number; challengeDate: string; youtubeUrl: string; correctAnswers: string; clipStartSeconds: number }>> {
+  async adminGetChallenges(): Promise<Array<{ id: number; challengeDate: string; youtubeUrl: string; correctAnswers: string; clipStartSeconds: number; openHour: number; openMinute: number }>> {
     return db.select({
       id: dailyChallenges.id,
       challengeDate: dailyChallenges.challengeDate,
       youtubeUrl: dailyChallenges.youtubeUrl,
       correctAnswers: dailyChallenges.correctAnswers,
       clipStartSeconds: dailyChallenges.clipStartSeconds,
+      openHour: dailyChallenges.openHour,
+      openMinute: dailyChallenges.openMinute,
     }).from(dailyChallenges).orderBy(desc(dailyChallenges.challengeDate));
   }
 
-  async adminUpsertChallenge(data: { challengeDate: string; youtubeUrl: string; correctAnswers: string; clipStartSeconds: number }): Promise<void> {
+  async adminUpsertChallenge(data: { challengeDate: string; youtubeUrl: string; correctAnswers: string; clipStartSeconds: number; openHour: number; openMinute: number }): Promise<void> {
     await db.insert(dailyChallenges).values(data)
-      .onConflictDoUpdate({ target: dailyChallenges.challengeDate, set: { youtubeUrl: data.youtubeUrl, correctAnswers: data.correctAnswers, clipStartSeconds: data.clipStartSeconds } });
+      .onConflictDoUpdate({ target: dailyChallenges.challengeDate, set: { youtubeUrl: data.youtubeUrl, correctAnswers: data.correctAnswers, clipStartSeconds: data.clipStartSeconds, openHour: data.openHour, openMinute: data.openMinute } });
   }
 
   async adminDeleteChallenge(id: number): Promise<void> {
