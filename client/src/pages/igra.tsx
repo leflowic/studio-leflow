@@ -55,7 +55,7 @@ export default function IgraPage() {
   const [playing, setPlaying] = useState(false);
   const [answer, setAnswer] = useState("");
   const [submitted, setSubmitted] = useState(false);
-  const [result, setResult] = useState<{ correct: boolean; correctAnswers: string; youtubeUrl: string } | null>(null);
+  const [result, setResult] = useState<{ correct: boolean; points: number } | null>(null);
 
   const { data, isLoading } = useQuery<any>({
     queryKey: ["/api/game/today"],
@@ -136,7 +136,7 @@ export default function IgraPage() {
 
   const alreadyPlayed = data?.alreadyPlayed || submitted;
   const prevGuess = data?.guess;
-  const finalResult = result || (prevGuess ? { correct: prevGuess.correct, correctAnswers: "", youtubeUrl: "" } : null);
+  const finalResult = result || (prevGuess ? { correct: prevGuess.correct, points: 0 } : null);
 
   return (
     <div className="min-h-screen py-12">
@@ -187,24 +187,14 @@ export default function IgraPage() {
                   <>
                     <CheckCircle2 className="w-14 h-14 mx-auto text-green-500" />
                     <p className="text-xl font-bold text-green-500">Tačno! 🎉</p>
+                    <p className="text-lg font-semibold text-green-600">+10 poena</p>
                   </>
                 ) : (
                   <>
                     <XCircle className="w-14 h-14 mx-auto text-destructive" />
                     <p className="text-xl font-bold text-destructive">Netačno</p>
+                    <p className="text-sm text-muted-foreground">Više sreće sutra!</p>
                   </>
-                )}
-                {result?.correctAnswers && (
-                  <p className="text-muted-foreground">
-                    Tačan odgovor: <strong className="text-foreground">{result.correctAnswers.split(',')[0]?.trim()}</strong>
-                  </p>
-                )}
-                {result?.youtubeUrl && (
-                  <a href={result.youtubeUrl} target="_blank" rel="noopener noreferrer"
-                    className="inline-flex items-center gap-2 text-primary hover:underline text-sm">
-                    <Play className="w-4 h-4" />
-                    Pogledaj na YouTube
-                  </a>
                 )}
                 <p className="text-sm text-muted-foreground">Vrati se sutra za novi izazov!</p>
               </div>
@@ -286,7 +276,7 @@ export default function IgraPage() {
                         className="w-7 h-7"
                       />
                       <span className="flex-1 font-medium text-sm">{entry.username}</span>
-                      <span className="text-sm text-muted-foreground">{entry.correctCount} tačno</span>
+                      <span className="text-sm font-semibold text-primary">{entry.points} pt</span>
                     </li>
                   ))}
                 </ul>

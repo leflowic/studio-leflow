@@ -266,8 +266,8 @@ export interface IStorage {
   // Daily Game
   getTodayChallenge(): Promise<{ id: number; challengeDate: string; clipStartSeconds: number; youtubeVideoId: string } | null>;
   getUserGuessForDate(userId: number, date: string): Promise<{ answer: string; correct: boolean } | null>;
-  submitGuess(userId: number, challengeDate: string, answer: string): Promise<{ correct: boolean; correctAnswers: string; youtubeUrl: string }>;
-  getWeeklyLeaderboard(weekStart: string): Promise<Array<{ userId: number; username: string; avatarUrl: string | null; correctCount: number }>>;
+  submitGuess(userId: number, challengeDate: string, answer: string): Promise<{ correct: boolean; points: number }>;
+  getWeeklyLeaderboard(weekStart: string): Promise<Array<{ userId: number; username: string; avatarUrl: string | null; correctCount: number; points: number }>>;
   getWeeklyPrize(weekStart: string): Promise<{ discountPct: number; prizeDescription: string; promoCode: string | null; winnerUserId: number | null } | null>;
   adminGetChallenges(): Promise<Array<{ id: number; challengeDate: string; youtubeUrl: string; correctAnswers: string; clipStartSeconds: number }>>;
   adminUpsertChallenge(data: { challengeDate: string; youtubeUrl: string; correctAnswers: string; clipStartSeconds: number }): Promise<void>;
@@ -2416,18 +2416,19 @@ export class DatabaseStorage implements IStorage {
     return { answer: row.answer, correct: row.correct };
   }
 
-  async submitGuess(userId: number, challengeDate: string, answer: string): Promise<{ correct: boolean; correctAnswers: string; youtubeUrl: string }> {
+  async submitGuess(userId: number, challengeDate: string, answer: string): Promise<{ correct: boolean; points: number }> {
     const [challenge] = await db.select().from(dailyChallenges).where(eq(dailyChallenges.challengeDate, challengeDate));
     if (!challenge) throw new Error('Challenge not found');
 
     const accepted = challenge.correctAnswers.split(',').map(s => s.trim().toLowerCase());
     const correct = accepted.some(a => a === answer.trim().toLowerCase());
+    const points = correct ? 10 : 0;
 
     await db.insert(dailyGuesses).values({ userId, challengeDate, answer: answer.trim(), correct });
-    return { correct, correctAnswers: challenge.correctAnswers, youtubeUrl: challenge.youtubeUrl };
+    return { correct, points };
   }
 
-  async getWeeklyLeaderboard(weekStart: string): Promise<Array<{ userId: number; username: string; avatarUrl: string | null; correctCount: number }>> {
+  async getWeeklyLeaderboard(weekStart: string): Promise<Array<{ userId: number; username: string; avatarUrl: string | null; correctCount: number; points: number }>> {
     // Compute week end (Sunday)
     const start = new Date(weekStart);
     const end = new Date(weekStart);
@@ -2451,7 +2452,7 @@ export class DatabaseStorage implements IStorage {
       .groupBy(dailyGuesses.userId, users.username, users.avatarUrl)
       .orderBy(desc(count(dailyGuesses.id)));
 
-    return rows.map(r => ({ ...r, correctCount: Number(r.correctCount) }));
+    return rows.map(r => ({ ...r, correctCount: Number(r.correctCount), points: Number(r.correctCount) * 10 }));
   }
 
   async getWeeklyPrize(weekStart: string): Promise<{ discountPct: number; prizeDescription: string; promoCode: string | null; winnerUserId: number | null } | null> {
