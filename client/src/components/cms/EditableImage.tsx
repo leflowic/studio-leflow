@@ -32,12 +32,14 @@ export function EditableImage({
   const queryClient = useQueryClient();
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [isUploading, setIsUploading] = useState(false);
-  const [previewUrl, setPreviewUrl] = useState(currentImageUrl);
+  const [previewUrl, setPreviewUrl] = useState(currentImageUrl || fallbackSrc);
+  const [errored, setErrored] = useState(false);
 
   // Sync when the CMS data loads asynchronously after initial render
   useEffect(() => {
-    if (currentImageUrl) setPreviewUrl(currentImageUrl);
-  }, [currentImageUrl]);
+    setErrored(false);
+    setPreviewUrl(currentImageUrl || fallbackSrc);
+  }, [currentImageUrl, fallbackSrc]);
 
   const updateImageMutation = useMutation({
     mutationFn: async (imageUrl: string) => {
@@ -128,10 +130,11 @@ export function EditableImage({
   return (
     <div className={cn("relative group", containerClassName)}>
       <img
-        src={previewUrl || fallbackSrc}
+        src={errored ? fallbackSrc : (previewUrl || fallbackSrc)}
         alt={alt}
         draggable={false}
         onContextMenu={(e) => e.preventDefault()}
+        onError={() => { if (!errored && fallbackSrc) setErrored(true); }}
         className={cn(
           "select-none",
           className,

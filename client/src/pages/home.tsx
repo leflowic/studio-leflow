@@ -313,7 +313,8 @@ export default function Home() {
                           page="home"
                           section="services"
                           contentKey={service.imageKey}
-                          currentImageUrl={getCmsValue("services", service.imageKey, service.imageFallback)}
+                          currentImageUrl={getCmsValue("services", service.imageKey, undefined)}
+                          fallbackSrc={service.imageFallback}
                           alt={service.title}
                           className="w-full h-full object-cover transition-all duration-500"
                         />
@@ -378,7 +379,8 @@ export default function Home() {
                     page="home"
                     section="equipment"
                     contentKey="equipment_image"
-                    currentImageUrl={getCmsValue("equipment", "equipment_image", "/services/yamaha-hs8-service.jpg")}
+                    currentImageUrl={getCmsValue("equipment", "equipment_image", undefined)}
+                    fallbackSrc="/services/yamaha-hs8-service.jpg"
                     alt="Studio oprema"
                     className="rounded-xl shadow-2xl w-full relative z-10"
                   />
