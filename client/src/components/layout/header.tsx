@@ -19,7 +19,7 @@ import { useEditMode } from "@/contexts/EditModeContext";
 import { useWebSocket } from "@/hooks/use-websocket";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import leflowLogo from "@/assets/leflow-logo.png";
-import evlfrqLogo from "@assets/Original Logo EVLFRQ_1764063214953.png";
+
 
 export function Header() {
   const [location, setLocation] = useLocation();
@@ -213,12 +213,6 @@ export function Header() {
                           </Link>
                         </DropdownMenuItem>
                         <DropdownMenuItem asChild>
-                          <Link href="/evlfrq" className="flex items-center gap-2 cursor-pointer" data-testid="link-dropdown-evlfrq">
-                            <img src={evlfrqLogo} alt="" className="h-4 w-4 object-contain flex-shrink-0" />
-                            Evil Frequency
-                          </Link>
-                        </DropdownMenuItem>
-                        <DropdownMenuItem asChild>
                           <Link href="/inbox" className="flex items-center gap-2 cursor-pointer" data-testid="link-dropdown-inbox">
                             <MessageCircle className="h-4 w-4" />
                             Poruke
@@ -361,17 +355,6 @@ export function Header() {
                           >
                             <LayoutDashboard className="h-4 w-4 mr-2" />
                             Dashboard
-                          </Button>
-                        </Link>
-                        <Link href="/evlfrq">
-                          <Button 
-                            variant="outline" 
-                            className="w-full justify-start"
-                            onClick={() => setMobileMenuOpen(false)}
-                            data-testid="link-mobile-evlfrq"
-                          >
-                            <img src={evlfrqLogo} alt="" className="h-4 w-4 mr-2 object-contain flex-shrink-0" />
-                            Evil Frequency
                           </Button>
                         </Link>
                         <Link href="/inbox">

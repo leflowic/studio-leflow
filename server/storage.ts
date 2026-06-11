@@ -56,10 +56,6 @@ import {
   registrationAttempts,
   communityMessages,
   siteAnnouncement,
-  evlfrqAuthKeys,
-  evlfrqSecurityLogs,
-  type EvlfrqAuthKey,
-  type EvlfrqSecurityLog,
 } from "@shared/schema";
 import { db, pool } from "./db";
 import { eq, and, or, desc, sql, notInArray } from "drizzle-orm";
@@ -229,25 +225,6 @@ export interface IStorage {
   clearAllCommunityMessages(): Promise<void>;
   canUserSendMessage(userId: number): Promise<boolean>;
   updateUserRank(userId: number, rank: string): Promise<void>;
-
-  // EVLFRQ Auth Keys
-  createEvlfrqAuthKey(data: { key: string; durationDays: number; createdBy: number }): Promise<EvlfrqAuthKey>;
-  getEvlfrqAuthKeyByKey(key: string): Promise<EvlfrqAuthKey | undefined>;
-  activateEvlfrqAuthKey(keyId: number, userId: number, expiresAt: Date): Promise<EvlfrqAuthKey>;
-  getUserEvlfrqAccessStatus(userId: number): Promise<EvlfrqAuthKey | undefined>;
-  getAllEvlfrqAuthKeys(): Promise<EvlfrqAuthKey[]>;
-  deleteEvlfrqAuthKey(keyId: number): Promise<void>;
-  
-  // EVLFRQ Security Logging
-  logEvlfrqSecurityEvent(data: { 
-    eventType: string; 
-    userId?: number; 
-    ipAddress?: string; 
-    keyId?: number; 
-    details?: string;
-  }): Promise<EvlfrqSecurityLog>;
-  getEvlfrqSecurityLogs(limit?: number): Promise<EvlfrqSecurityLog[]>;
-  getRecentActivationAttempts(ipAddress: string, minutes: number): Promise<number>;
 
   // Site Announcement
   getSiteAnnouncement(): Promise<SiteAnnouncement>;
@@ -2302,97 +2279,6 @@ export class DatabaseStorage implements IStorage {
       }
       throw new Error('Failed to update user rank');
     }
-  }
-
-  // EVLFRQ Auth Keys
-  async createEvlfrqAuthKey(data: { key: string; durationDays: number; createdBy: number }): Promise<EvlfrqAuthKey> {
-    const [key] = await db.insert(evlfrqAuthKeys).values({
-      key: data.key,
-      durationDays: data.durationDays,
-      createdBy: data.createdBy,
-    }).returning();
-    return key!;
-  }
-
-  async getEvlfrqAuthKeyByKey(key: string): Promise<EvlfrqAuthKey | undefined> {
-    const [authKey] = await db.select().from(evlfrqAuthKeys).where(eq(evlfrqAuthKeys.key, key));
-    return authKey || undefined;
-  }
-
-  async activateEvlfrqAuthKey(keyId: number, userId: number, expiresAt: Date): Promise<EvlfrqAuthKey> {
-    const [updated] = await db
-      .update(evlfrqAuthKeys)
-      .set({
-        isUsed: true,
-        usedBy: userId,
-        usedAt: new Date(),
-        expiresAt,
-      })
-      .where(eq(evlfrqAuthKeys.id, keyId))
-      .returning();
-    return updated!;
-  }
-
-  async getUserEvlfrqAccessStatus(userId: number): Promise<EvlfrqAuthKey | undefined> {
-    const [key] = await db
-      .select()
-      .from(evlfrqAuthKeys)
-      .where(and(eq(evlfrqAuthKeys.usedBy, userId), eq(evlfrqAuthKeys.isUsed, true)))
-      .orderBy(desc(evlfrqAuthKeys.expiresAt))
-      .limit(1);
-    return key || undefined;
-  }
-
-  async getAllEvlfrqAuthKeys(): Promise<EvlfrqAuthKey[]> {
-    return await db.select().from(evlfrqAuthKeys).orderBy(desc(evlfrqAuthKeys.createdAt));
-  }
-
-  async deleteEvlfrqAuthKey(keyId: number): Promise<void> {
-    // First delete related security logs to avoid foreign key constraint
-    await db.delete(evlfrqSecurityLogs).where(eq(evlfrqSecurityLogs.keyId, keyId));
-    // Then delete the key
-    await db.delete(evlfrqAuthKeys).where(eq(evlfrqAuthKeys.id, keyId));
-  }
-
-  // EVLFRQ Security Logging
-  async logEvlfrqSecurityEvent(data: { 
-    eventType: string; 
-    userId?: number; 
-    ipAddress?: string; 
-    keyId?: number; 
-    details?: string;
-  }): Promise<EvlfrqSecurityLog> {
-    const [log] = await db.insert(evlfrqSecurityLogs).values({
-      eventType: data.eventType,
-      userId: data.userId || null,
-      ipAddress: data.ipAddress || null,
-      keyId: data.keyId || null,
-      details: data.details || null,
-    }).returning();
-    return log!;
-  }
-
-  async getEvlfrqSecurityLogs(limit: number = 100): Promise<EvlfrqSecurityLog[]> {
-    return await db
-      .select()
-      .from(evlfrqSecurityLogs)
-      .orderBy(desc(evlfrqSecurityLogs.createdAt))
-      .limit(limit);
-  }
-
-  async getRecentActivationAttempts(ipAddress: string, minutes: number): Promise<number> {
-    const cutoffTime = new Date(Date.now() - minutes * 60 * 1000);
-    const result = await db
-      .select({ count: sql<number>`count(*)::int` })
-      .from(evlfrqSecurityLogs)
-      .where(
-        and(
-          eq(evlfrqSecurityLogs.ipAddress, ipAddress),
-          eq(evlfrqSecurityLogs.eventType, 'ACTIVATION_ATTEMPT'),
-          sql`${evlfrqSecurityLogs.createdAt} > ${cutoffTime}`
-        )
-      );
-    return result[0]?.count || 0;
   }
 
   // Site Announcement

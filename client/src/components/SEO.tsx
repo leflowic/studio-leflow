@@ -334,33 +334,5 @@ export const pageStructuredData = {
       "name": "Studio LeFlow Portfolio",
       "itemListOrder": "https://schema.org/ItemListOrderDescending"
     }
-  },
-  
-  evlfrq: {
-    "@context": "https://schema.org",
-    "@type": "SoftwareApplication",
-    "name": "EVLFRQ Audio Analyzer",
-    "applicationCategory": "MultimediaApplication",
-    "operatingSystem": "Web Browser",
-    "description": "AI-powered professional audio analysis tool for music producers. FFT spectral analysis, resonance detection, LUFS metering, stereo width analysis.",
-    "provider": {
-      "@type": "Organization",
-      "name": "Studio LeFlow",
-      "url": "https://studioleflow.com"
-    },
-    "offers": {
-      "@type": "Offer",
-      "price": "0",
-      "priceCurrency": "EUR",
-      "availability": "https://schema.org/LimitedAvailability"
-    },
-    "featureList": [
-      "FFT Spectral Analysis",
-      "Resonance Detection",
-      "LUFS Metering",
-      "Stereo Width Analysis",
-      "Tonal Balance Check",
-      "Mix Quality Grading"
-    ]
   }
 };

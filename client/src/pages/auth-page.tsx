@@ -3,9 +3,9 @@ import { useLocation, Link } from "wouter";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
-import { Music, ArrowLeft, Mail, Lock, CheckCircle2, AlertTriangle, Zap, Waves, Key } from "lucide-react";
+import { Music, ArrowLeft, Mail, Lock, CheckCircle2, AlertTriangle, Zap } from "lucide-react";
 import { motion } from "framer-motion";
-import evlfrqLogo from "@assets/Evlfrq logo beli_1764051642891.png";
+import leflowLogo from "@/assets/leflow-logo.png";
 import { insertUserSchema } from "@shared/schema";
 import { useAuth } from "@/hooks/use-auth";
 import { Button } from "@/components/ui/button";
@@ -845,10 +845,10 @@ export default function AuthPage() {
             />
             
             {/* Floating logo */}
-            <motion.img 
-              src={evlfrqLogo} 
-              alt="EVLFRQ" 
-              className="w-32 h-32 relative z-10"
+            <motion.img
+              src={leflowLogo}
+              alt="Studio LeFlow"
+              className="w-32 h-32 relative z-10 dark:invert"
               animate={{
                 y: [0, -8, 0],
               }}
@@ -867,10 +867,10 @@ export default function AuthPage() {
             className="space-y-4"
           >
             <h2 className="text-4xl lg:text-5xl font-bold tracking-tight font-[Montserrat] max-w-2xl mx-auto">
-              EVLFRQ
+              Studio LeFlow
             </h2>
             <p className="text-lg text-white/70 font-medium">
-              Evil Frequency Audio Analyzer
+              Profesionalna Muzička Produkcija
             </p>
           </motion.div>
           
@@ -880,14 +880,14 @@ export default function AuthPage() {
             transition={{ duration: 0.6, delay: 0.7 }}
             className="text-xl max-w-md mx-auto leading-relaxed text-white/80"
           >
-            Ekskluzivna aplikacija za profesionalnu audio analizu dostupna samo registrovanim producentima.
+            Registruj se i postani deo zajednice producentov u Studiju LeFlow.
           </motion.p>
 
           <div className="grid grid-cols-1 gap-4 max-w-sm w-full mt-4">
             {[
-              { icon: Waves, title: "Spektralna Analiza", desc: "Real-time frekvencijska vizualizacija" },
-              { icon: Zap, title: "LUFS Metering", desc: "Precizno merenje glasnoće" },
-              { icon: Key, title: "Ekskluzivan Pristup", desc: "Aktivacioni ključ za producente" }
+              { icon: Music, title: "Snimanje & Mix", desc: "Profesionalna audio produkcija" },
+              { icon: Zap, title: "Brza Produkcija", desc: "Efikasna izrada instrumentala" },
+              { icon: CheckCircle2, title: "Ekskluzivni Sadržaj", desc: "Giveaway i zajednica za producente" }
             ].map((feature, index) => (
               <motion.div
                 key={feature.title}

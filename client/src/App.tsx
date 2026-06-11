@@ -36,8 +36,6 @@ const ZajednicaPage = lazy(() => import("@/pages/zajednica"));
 const NotFoundPage = lazy(() => import("@/pages/not-found"));
 const MaintenancePage = lazy(() => import("@/pages/maintenance"));
 const NewsletterConfirmationPage = lazy(() => import("@/pages/newsletter-confirmation"));
-const AudioAnalyzerPage = lazy(() => import("@/pages/audio-analyzer"));
-
 function Router() {
   const [location] = useLocation();
   const { user } = useAuth();
@@ -67,19 +65,6 @@ function Router() {
     );
   }
 
-  // EVLFRQ Audio Analyzer - exclusive full-screen layout without Header/Footer
-  if (location === '/audio-analyzer' || location === '/evlfrq') {
-    return (
-      <Suspense fallback={
-        <div className="flex items-center justify-center min-h-screen bg-[#050505]">
-          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-indigo-500"></div>
-        </div>
-      }>
-        <AudioAnalyzerPage />
-      </Suspense>
-    );
-  }
-  
   return (
     <>
       <Header />

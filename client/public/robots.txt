@@ -16,9 +16,6 @@ Disallow: /poruke
 Disallow: /poruke/*
 Disallow: /moje-pesme
 Disallow: /moje-pesme/*
-Disallow: /audio-analyzer
-Disallow: /audio-analyzer/*
-Disallow: /evlfrq-login
 Disallow: /api/
 Disallow: /api/*
 

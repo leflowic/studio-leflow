@@ -14,7 +14,7 @@ import { ScrollIndicator } from "@/components/ScrollIndicator";
 import { SEO } from "@/components/SEO";
 import { NewsletterForm } from "@/components/newsletter-form";
 import { ParallaxHero, ParallaxSection, Parallax3DCard } from "@/components/parallax/ParallaxHero";
-import { EVLFRQShowcase } from "@/components/EVLFRQShowcase";
+
 import type { CmsContent } from "@shared/schema";
 import videoSetupImage from "@assets/generated_images/Video_camera_production_setup_199f7c64.png";
 
@@ -580,9 +580,6 @@ export default function Home() {
           </div>
         </div>
       </section>
-
-      {/* EVLFRQ Exclusive Feature Section - Parallax Showcase */}
-      <EVLFRQShowcase />
 
       <section className="py-20 lg:py-32 bg-primary text-primary-foreground">
         <div className="max-w-4xl mx-auto px-4 md:px-6 text-center">
