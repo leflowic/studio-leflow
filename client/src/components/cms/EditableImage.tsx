@@ -2,6 +2,7 @@ import { useState, useRef } from "react";
 import { Upload, Loader2 } from "lucide-react";
 import { useEditMode } from "@/contexts/EditModeContext";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { apiRequest, getAuthToken } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import { cn } from "@/lib/utils";
 
@@ -35,19 +36,12 @@ export function EditableImage({
 
   const updateImageMutation = useMutation({
     mutationFn: async (imageUrl: string) => {
-      const response = await fetch("/api/cms/content/single", {
-        method: "PUT",
-        headers: { "Content-Type": "application/json" },
-        credentials: "include",
-        body: JSON.stringify({
-          page,
-          section,
-          contentKey,
-          contentValue: imageUrl,
-        }),
+      const response = await apiRequest("PUT", "/api/cms/content/single", {
+        page,
+        section,
+        contentKey,
+        contentValue: imageUrl,
       });
-
-      if (!response.ok) throw new Error("Failed to update image");
       return response.json();
     },
     onSuccess: () => {
@@ -97,8 +91,10 @@ export function EditableImage({
       const formData = new FormData();
       formData.append("file", file);
 
+      const token = getAuthToken();
       const uploadResponse = await fetch("/api/upload-image", {
         method: "POST",
+        headers: token ? { Authorization: `Bearer ${token}` } : {},
         body: formData,
         credentials: "include",
       });

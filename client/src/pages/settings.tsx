@@ -392,7 +392,7 @@ export default function Settings() {
                   disabled={changePasswordMutation.isPending}
                 />
                 <p className="text-xs text-muted-foreground">
-                  Lozinka mora imati najmanje 6 karaktera
+                  Lozinka mora imati najmanje 8 karaktera
                 </p>
               </div>
 

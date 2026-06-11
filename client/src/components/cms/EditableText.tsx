@@ -1,6 +1,7 @@
 import { useState, useRef, useEffect } from "react";
 import { useEditMode } from "@/contexts/EditModeContext";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import { Edit2, Check, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -46,22 +47,12 @@ export function EditableText({
 
   const updateMutation = useMutation({
     mutationFn: async (newValue: string) => {
-      const response = await fetch("/api/cms/content/single", {
-        method: "PUT",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          page,
-          section,
-          contentKey,
-          contentValue: newValue,
-        }),
-        credentials: "include",
+      const response = await apiRequest("PUT", "/api/cms/content/single", {
+        page,
+        section,
+        contentKey,
+        contentValue: newValue,
       });
-
-      if (!response.ok) {
-        throw new Error("Greška pri čuvanju izmena");
-      }
-
       return response.json();
     },
     onSuccess: () => {

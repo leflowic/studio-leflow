@@ -376,8 +376,7 @@ function NewsletterTab() {
   const { data: subscribers = [], isLoading: subscribersLoading } = useQuery({
     queryKey: ["/api/newsletter/subscribers"],
     queryFn: async () => {
-      const response = await fetch("/api/newsletter/subscribers");
-      if (!response.ok) throw new Error("Failed to load subscribers");
+      const response = await apiRequest("GET", "/api/newsletter/subscribers");
       return await response.json();
     },
   });
@@ -385,18 +384,14 @@ function NewsletterTab() {
   const { data: stats, isLoading: statsLoading } = useQuery({
     queryKey: ["/api/newsletter/stats"],
     queryFn: async () => {
-      const response = await fetch("/api/newsletter/stats");
-      if (!response.ok) throw new Error("Failed to load stats");
+      const response = await apiRequest("GET", "/api/newsletter/stats");
       return await response.json();
     },
   });
 
   const deleteSubscriberMutation = useMutation({
     mutationFn: async (id: number) => {
-      const response = await fetch(`/api/newsletter/subscribers/${id}`, {
-        method: "DELETE",
-      });
-      if (!response.ok) throw new Error("Failed to delete subscriber");
+      const response = await apiRequest("DELETE", `/api/newsletter/subscribers/${id}`);
       return response.json();
     },
     onSuccess: () => {
@@ -428,11 +423,7 @@ function NewsletterTab() {
 
     setIsSending(true);
     try {
-      const response = await fetch("/api/newsletter/send", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ subject, htmlContent }),
-      });
+      const response = await apiRequest("POST", "/api/newsletter/send", { subject, htmlContent });
 
       if (!response.ok) {
         const error = await response.json();
@@ -702,8 +693,7 @@ function MessagesTab() {
   const { data: conversations = [], isLoading: conversationsLoading } = useQuery<ConversationWithUsers[]>({
     queryKey: ["/api/admin/messages/conversations"],
     queryFn: async () => {
-      const response = await fetch("/api/admin/messages/conversations");
-      if (!response.ok) throw new Error("Failed to load conversations");
+      const response = await apiRequest("GET", "/api/admin/messages/conversations");
       return await response.json();
     },
   });
@@ -712,8 +702,7 @@ function MessagesTab() {
     queryKey: ["/api/admin/messages/conversation", selectedConversation?.user1Id, selectedConversation?.user2Id],
     queryFn: async () => {
       if (!selectedConversation) return [];
-      const response = await fetch(`/api/admin/messages/conversation/${selectedConversation.user1Id}/${selectedConversation.user2Id}`);
-      if (!response.ok) throw new Error("Failed to load messages");
+      const response = await apiRequest("GET", `/api/admin/messages/conversation/${selectedConversation.user1Id}/${selectedConversation.user2Id}`);
       return await response.json();
     },
     enabled: !!selectedConversation,
@@ -722,8 +711,7 @@ function MessagesTab() {
   const { data: auditLogs = [], isLoading: auditLoading } = useQuery<AuditLogEntry[]>({
     queryKey: ["/api/admin/messages/audit-logs"],
     queryFn: async () => {
-      const response = await fetch("/api/admin/messages/audit-logs");
-      if (!response.ok) throw new Error("Failed to load audit logs");
+      const response = await apiRequest("GET", "/api/admin/messages/audit-logs");
       return await response.json();
     },
   });
@@ -731,17 +719,14 @@ function MessagesTab() {
   const { data: stats, isLoading: statsLoading } = useQuery<MessagingStats>({
     queryKey: ["/api/admin/messages/stats"],
     queryFn: async () => {
-      const response = await fetch("/api/admin/messages/stats");
-      if (!response.ok) throw new Error("Failed to load messaging stats");
+      const response = await apiRequest("GET", "/api/admin/messages/stats");
       return await response.json();
     },
   });
 
   const deleteMessageMutation = useMutation({
     mutationFn: async (messageId: number) => {
-      const response = await fetch(`/api/admin/messages/${messageId}`, {
-        method: "DELETE",
-      });
+      const response = await apiRequest("DELETE", `/api/admin/messages/${messageId}`);
       if (!response.ok) throw new Error("Failed to delete message");
       return response.json();
     },
