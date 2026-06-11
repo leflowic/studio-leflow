@@ -56,7 +56,7 @@ There are no automated tests in this project.
 
 **Admin panel tabs:**
 - Each tab is its own component, either defined inline in `client/src/pages/admin.tsx` or as a separate file in `client/src/components/admin/`.
-- Separate-file tabs: `ContractsTab`, `CalendarTab`, `KatastarTab` — import and add a `<TabsTrigger>` + `<TabsContent>` pair in `admin.tsx`.
+- Separate-file tabs: `ContractsTab`, `CalendarTab`, `KatastarTab`, `GameTab` — import and add a `<TabsTrigger>` + `<TabsContent>` pair in `admin.tsx`.
 - Admin-only API routes go in `server/routes.ts` under `requireAdmin` middleware. Always use `requireAdmin`, never trust `req.jwtUser?.role` manually in route handlers.
 - `GET /api/admin/katastar/:userId` returns `{ user, projects, contracts, invoices }` for the Katastar (client registry) tab.
 
@@ -66,6 +66,8 @@ There are no automated tests in this project.
 - `GET /api/messages/conversation/:userId` auto-marks messages as read and broadcasts `message_read` to **both** parties (sender and reader). The header invalidates `/api/messages/unread-count` on `message_read`. `ChatInterface` also invalidates it on messages load.
 - Notification sound: `attached_assets/universfield-new-notification-035-485894.mp3`, imported via `@assets` alias in `WebSocketContext.tsx`.
 - When adding new badge-like counters, follow this pattern: server broadcasts to both parties, client uses `setQueryData` for instant update + `invalidateQueries` for sync.
+- Messages support: reply-to (`replyToId` FK → `messages.id`), image attachments (`imageUrl`), emoji picker. `DELETE /api/messages/conversation/:userId` soft-deletes the caller's side.
+- `GET /api/users/:id` returns only public fields — **no email**. Never expose email through user-lookup endpoints.
 
 **Admin file downloads:**
 - Never use `window.open(url)` for admin-only endpoints — it doesn't send `Authorization` headers. Use `fetch()` with `Authorization: Bearer <token>` header, then create a blob URL and trigger download via a temporary `<a>` element.
@@ -75,9 +77,19 @@ There are no automated tests in this project.
 - CMS values stored in `cms_content` table. Media stored in `cms_media` table.
 - `EditableImage` uses a separate `fallbackSrc` prop for the local image to show when the stored CMS URL is broken.
 
+**Daily game ("Pogodi Pesmu"):**
+- Schema: `daily_challenges` table — `challengeDate` (unique), `youtubeUrl`, `clipUrl` (Cloudinary MP3), `correctAnswers` (comma-separated variants), `clipStartSeconds`, `openHour`, `openMinute` (Belgrade time, UTC+2).
+- Audio playback uses the Web `AudioContext` API in `client/src/pages/igra.tsx` — fetch the Cloudinary MP3, decode via `ctx.decodeAudioData`, play a 2s slice with `source.start(0, clipStartSeconds, 2)`. No YouTube IFrame API.
+- Open-time check is Belgrade local time: `(utcHour + 2) % 24`. `getTodayDateString()` in `storage.ts` also adds the 2h offset.
+- Parsing hour/minute: **never** use `Number(x) || fallback` when x can be 0 — use `x != null ? parseInt(String(x), 10) : fallback`. The admin form uses `<Input type="time">` which returns `"HH:MM"`.
+- Game clip upload: `POST /api/upload/game-clip` (requireAdmin) → `server/cloudinary.ts` `uploadAudioToCloudinary()`. Each upload gets a unique public_id (`basename_timestamp`) to avoid Cloudinary duplicate-key errors.
+- User-facing game routes use `requireNotBanned` (not `requireAuth`, which doesn't exist).
+- `submitGuess()` returns `{ correct, points }` where points = correct ? 10 : 0. The correct answer is **not** exposed in the response.
+
 **File uploads:**
 - Avatar/image uploads: `POST /api/upload/avatar` → Cloudinary (`server/cloudinary.ts`).
 - Audio uploads: `POST /api/upload/audio` → Cloudinary, with `fileTypeFromBuffer` magic-bytes validation.
+- Game clip: `POST /api/upload/game-clip` (admin) → Cloudinary `studioleflow/game-clips` folder.
 - CMS media: multer to `attached_assets/temp/`, then moved to `attached_assets/`.
 
 **Email:**
