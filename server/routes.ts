@@ -6,13 +6,11 @@ import { insertContactSubmissionSchema, insertCmsContentSchema, insertCmsMediaSc
 import { sendEmail, getLastVerificationCode } from "./resend-client";
 import { resendVerificationEmail, adminLoginEmail, contactFormEmail, newsletterConfirmEmail, licenseDeliveryEmail } from "./email-templates";
 import { setupAuth, hashPassword, comparePasswords } from "./auth";
-import multer from "multer";
 import fs from "fs";
 import path from "path";
 import { z } from "zod";
 import { randomBytes, createHmac } from "crypto";
-import { createRouteHandler } from "uploadthing/express";
-import { uploadRouter } from "./uploadthing";
+import { upload, uploadImageToCloudinary, uploadAudioToCloudinary } from "./cloudinary";
 import { generateMixMasterPDF, generateCopyrightTransferPDF, generateInstrumentalSalePDF, type MixMasterContract, type CopyrightTransferContract, type InstrumentalSaleContract } from "./pdf-generators";
 import rateLimit from "express-rate-limit";
 import { fileTypeFromBuffer } from "file-type";
@@ -346,17 +344,35 @@ export async function registerRoutes(app: Express): Promise<Server> {
     });
   });
 
-  // Setup UploadThing routes for file uploads
-  // UPLOADTHING_TOKEN is the base64 JSON format required by v7
-  app.use(
-    "/api/uploadthing",
-    createRouteHandler({
-      router: uploadRouter,
-      config: {
-        token: process.env.UPLOADTHING_TOKEN,
-      },
-    })
-  );
+  // Avatar upload
+  app.post("/api/upload/avatar", requireVerifiedEmail, upload.single("file"), async (req, res) => {
+    try {
+      if (!req.file) return res.status(400).json({ error: "Fajl nije pronađen" });
+      const allowed = ["image/jpeg", "image/png", "image/webp"];
+      if (!allowed.includes(req.file.mimetype)) return res.status(400).json({ error: "Dozvoljeni su samo JPG, PNG i WebP fajlovi" });
+      const url = await uploadImageToCloudinary(req.file.buffer, "studioleflow/avatars", `user_${req.jwtUser!.id}`);
+      res.json({ url });
+    } catch (e: any) {
+      console.error("[UPLOAD] Avatar error:", e.message);
+      res.status(500).json({ error: "Greška pri otpremanju slike" });
+    }
+  });
+
+  // Audio upload (giveaway MP3)
+  app.post("/api/upload/audio", requireVerifiedEmail, upload.single("file"), async (req, res) => {
+    try {
+      if (!req.file) return res.status(400).json({ error: "Fajl nije pronađen" });
+      if (req.file.mimetype !== "audio/mpeg" && !req.file.originalname.toLowerCase().endsWith(".mp3")) {
+        return res.status(400).json({ error: "Dozvoljeni su samo MP3 fajlovi" });
+      }
+      if (req.file.size > 16 * 1024 * 1024) return res.status(400).json({ error: "Fajl ne sme biti veći od 16MB" });
+      const url = await uploadAudioToCloudinary(req.file.buffer, "studioleflow/audio", req.file.originalname);
+      res.json({ url });
+    } catch (e: any) {
+      console.error("[UPLOAD] Audio error:", e.message);
+      res.status(500).json({ error: "Greška pri otpremanju audio fajla" });
+    }
+  });
 
   // Apply maintenance mode middleware to all API routes (except allowed paths)
   // This allows static files and index.html to load, but blocks API calls when in maintenance mode

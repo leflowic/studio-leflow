@@ -8,7 +8,6 @@ import { Link } from "wouter";
 import { motion } from "framer-motion";
 import { FadeInWhenVisible } from "@/components/motion/FadeIn";
 import { Heart, Upload, MessageCircle, Send, Music, Trophy } from "lucide-react";
-import { useUploadThing, getAuthHeaders } from "@/lib/uploadthing";
 import { SEO } from "@/components/SEO";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from "@/components/ui/card";
@@ -82,46 +81,28 @@ export default function Giveaway() {
   });
   const [isUploading, setIsUploading] = useState(false);
 
-  const { startUpload } = useUploadThing("audioUploader", {
-    headers: getAuthHeaders,
-    onClientUploadComplete: async (files) => {
-      if (files && files.length > 0) {
-        const file = files[0];
-        if (!file) return;
-        
-        // Save project metadata to database
-        const response = await apiRequest("POST", "/api/giveaway/projects", {
-          title: uploadForm.title.trim(),
-          description: uploadForm.description.trim(),
-          genre: uploadForm.genre,
-          mp3Url: file.url,
-        });
-
-        queryClient.invalidateQueries({ queryKey: ["/api/giveaway/projects"] });
-        setUploadDialogOpen(false);
-        setUploadForm({
-          title: "",
-          description: "",
-          genre: "",
-          file: null,
-        });
-        setIsUploading(false);
-        
-        toast({
-          title: "Projekat uploadovan",
-          description: "Vaš projekat je uspešno dodat u konkurs!",
-        });
-      }
-    },
-    onUploadError: (error: Error) => {
-      setIsUploading(false);
-      toast({
-        title: "Greška pri upload-u",
-        description: error.message,
-        variant: "destructive",
-      });
-    },
-  });
+  const startUpload = async (file: File) => {
+    const formData = new FormData();
+    formData.append("file", file);
+    const token = localStorage.getItem("auth_token");
+    const res = await fetch("/api/upload/audio", {
+      method: "POST",
+      headers: token ? { Authorization: `Bearer ${token}` } : {},
+      body: formData,
+    });
+    if (!res.ok) throw new Error((await res.json()).error || "Greška pri upload-u");
+    const { url } = await res.json();
+    await apiRequest("POST", "/api/giveaway/projects", {
+      title: uploadForm.title.trim(),
+      description: uploadForm.description.trim(),
+      genre: uploadForm.genre,
+      mp3Url: url,
+    });
+    queryClient.invalidateQueries({ queryKey: ["/api/giveaway/projects"] });
+    setUploadDialogOpen(false);
+    setUploadForm({ title: "", description: "", genre: "", file: null });
+    toast({ title: "Projekat uploadovan", description: "Vaš projekat je uspešno dodat u konkurs!" });
+  };
 
   const { data: settings } = useQuery<{ isActive: boolean }>({
     queryKey: ["/api/giveaway/settings"],
@@ -257,9 +238,9 @@ export default function Giveaway() {
     }
 
     setIsUploading(true);
-    
+
     try {
-      await startUpload([uploadForm.file]);
+      await startUpload(uploadForm.file);
     } catch (error) {
       setIsUploading(false);
       toast({

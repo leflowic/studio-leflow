@@ -3,7 +3,6 @@ import { useAuth } from "@/hooks/use-auth";
 import { useMutation } from "@tanstack/react-query";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
-import { useUploadThing, getAuthHeaders } from "@/lib/uploadthing";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -29,50 +28,28 @@ export default function Settings() {
     confirmPassword: "",
   });
 
-  const { startUpload: startAvatarUpload } = useUploadThing("avatarUploader", {
-    headers: getAuthHeaders,
-    onClientUploadComplete: async (files) => {
-      if (files && files.length > 0) {
-        const file = files[0];
-        if (!file) return;
-        
-        try {
-          await apiRequest("PUT", "/api/user/avatar", {
-            avatarUrl: file.url,
-          });
-          
-          queryClient.invalidateQueries({ queryKey: ["/api/user"] });
-          setIsUploadingAvatar(false);
-          
-          toast({
-            title: "Avatar ažuriran",
-            description: "Vaša profilna slika je uspešno promenjena",
-          });
-        } catch (error: any) {
-          setIsUploadingAvatar(false);
-          toast({
-            title: "Greška",
-            description: error.message || "Greška pri čuvanju avatara",
-            variant: "destructive",
-          });
-        }
-      }
-    },
-    onUploadError: (error: Error) => {
-      setIsUploadingAvatar(false);
-      toast({
-        title: "Greška",
-        description: error.message || "Greška pri upload-u slike",
-        variant: "destructive",
-      });
-    },
-  });
-
   const handleAvatarUpload = async (file: File) => {
     if (!file) return;
-    
     setIsUploadingAvatar(true);
-    await startAvatarUpload([file]);
+    try {
+      const formData = new FormData();
+      formData.append("file", file);
+      const token = localStorage.getItem("auth_token");
+      const res = await fetch("/api/upload/avatar", {
+        method: "POST",
+        headers: token ? { Authorization: `Bearer ${token}` } : {},
+        body: formData,
+      });
+      if (!res.ok) throw new Error((await res.json()).error || "Greška pri upload-u");
+      const { url } = await res.json();
+      await apiRequest("PUT", "/api/user/avatar", { avatarUrl: url });
+      queryClient.invalidateQueries({ queryKey: ["/api/user"] });
+      toast({ title: "Avatar ažuriran", description: "Vaša profilna slika je uspešno promenjena" });
+    } catch (error: any) {
+      toast({ title: "Greška", description: error.message || "Greška pri upload-u slike", variant: "destructive" });
+    } finally {
+      setIsUploadingAvatar(false);
+    }
   };
 
   const removeAvatarMutation = useMutation({
