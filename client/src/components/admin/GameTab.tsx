@@ -31,8 +31,7 @@ export default function GameTab() {
   const [cUrl, setCUrl] = useState("");
   const [cAnswer, setCAnswer] = useState("");
   const [cClip, setCClip] = useState("30");
-  const [cHour, setCHour] = useState("17");
-  const [cMinute, setCMinute] = useState("00");
+  const [cTime, setCTime] = useState("17:00");
 
   // Prize form
   const [pWeek, setPWeek] = useState(getMonday());
@@ -46,13 +45,13 @@ export default function GameTab() {
       youtubeUrl: cUrl,
       correctAnswers: cAnswer,
       clipStartSeconds: Number(cClip) || 30,
-      openHour: Number(cHour) || 17,
-      openMinute: Number(cMinute) || 0,
+      openHour: parseInt(cTime.split(':')[0] ?? '17', 10),
+      openMinute: parseInt(cTime.split(':')[1] ?? '0', 10),
     }),
     onSuccess: () => {
       toast({ title: "Sačuvano", description: "Izazov je sačuvan" });
       queryClient.invalidateQueries({ queryKey: ["/api/admin/game/challenges"] });
-      setCUrl(""); setCAnswer(""); setCClip("30"); setCHour("17"); setCMinute("00");
+      setCUrl(""); setCAnswer(""); setCClip("30"); setCTime("17:00");
     },
     onError: () => toast({ title: "Greška", variant: "destructive", description: "Nije moguće sačuvati izazov" }),
   });
@@ -114,15 +113,9 @@ export default function GameTab() {
               <Input type="number" min={0} value={cClip} onChange={e => setCClip(e.target.value)} placeholder="30" />
             </div>
           </div>
-          <div className="grid grid-cols-2 gap-4">
-            <div className="space-y-1">
-              <Label>Vreme otvaranja — sat (0–23)</Label>
-              <Input type="number" min={0} max={23} value={cHour} onChange={e => setCHour(e.target.value)} placeholder="17" />
-            </div>
-            <div className="space-y-1">
-              <Label>Vreme otvaranja — minuti (0–59)</Label>
-              <Input type="number" min={0} max={59} value={cMinute} onChange={e => setCMinute(e.target.value)} placeholder="00" />
-            </div>
+          <div className="space-y-1">
+            <Label>Vreme otvaranja</Label>
+            <Input type="time" value={cTime} onChange={e => setCTime(e.target.value)} className="w-40" />
           </div>
           <div className="space-y-1">
             <Label>YouTube URL</Label>
