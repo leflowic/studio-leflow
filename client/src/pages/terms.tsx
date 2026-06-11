@@ -32,7 +32,7 @@ export default function Terms() {
         "Izmene termina moguće su uz obavezu da nas obavestite <strong>najmanje 48 sati unapred</strong>.",
         "Promena termina uz poštovanje ovog roka ne utiče na avans - jednostavno prenosimo rezervaciju.",
         "Otkazivanje ili pomeranje termina sa manje od 48 sati najave rezultira gubitkom avansa.",
-        "Nepojavljanje na zakazanom terminu bez prethodne najave smatra se otkazivanjem i avans se ne vraća.",
+        "Nepojavljivanje na zakazanom terminu bez prethodne najave smatra se otkazivanjem i avans se ne vraća.",
         "Studio LeFlow zadržava pravo da ponudi alternativni termin u slučaju tehničkih problema ili više sile."
       ]
     },
