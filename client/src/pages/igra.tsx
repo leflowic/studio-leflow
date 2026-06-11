@@ -83,6 +83,11 @@ export default function IgraPage() {
       s.src = 'https://www.youtube.com/iframe_api';
       document.head.appendChild(s);
     }
+    // Polling fallback in case the callback fires before we set it
+    const poll = setInterval(() => {
+      if (window.YT?.Player) { setYtReady(true); clearInterval(poll); }
+    }, 200);
+    return () => clearInterval(poll);
   }, []);
 
   // Create hidden player when challenge + YT API are ready
