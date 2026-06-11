@@ -41,6 +41,41 @@ async function runMigrations() {
         updated_by_id INTEGER REFERENCES users(id)
       );
     `);
+    // Create daily_challenges table
+    await client.query(`
+      CREATE TABLE IF NOT EXISTS daily_challenges (
+        id SERIAL PRIMARY KEY,
+        challenge_date TEXT NOT NULL UNIQUE,
+        youtube_url TEXT NOT NULL,
+        correct_answers TEXT NOT NULL,
+        clip_start_seconds INTEGER NOT NULL DEFAULT 30,
+        created_at TIMESTAMP NOT NULL DEFAULT NOW()
+      );
+    `);
+    // Create daily_guesses table
+    await client.query(`
+      CREATE TABLE IF NOT EXISTS daily_guesses (
+        id SERIAL PRIMARY KEY,
+        user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+        challenge_date TEXT NOT NULL,
+        answer TEXT NOT NULL,
+        correct BOOLEAN NOT NULL,
+        guessed_at TIMESTAMP NOT NULL DEFAULT NOW(),
+        UNIQUE(user_id, challenge_date)
+      );
+    `);
+    // Create weekly_prizes table
+    await client.query(`
+      CREATE TABLE IF NOT EXISTS weekly_prizes (
+        id SERIAL PRIMARY KEY,
+        week_start TEXT NOT NULL UNIQUE,
+        discount_pct INTEGER NOT NULL DEFAULT 20,
+        prize_description TEXT NOT NULL,
+        promo_code TEXT,
+        winner_user_id INTEGER REFERENCES users(id),
+        created_at TIMESTAMP NOT NULL DEFAULT NOW()
+      );
+    `);
     log('[Migrations] Schema migrations applied successfully', 'express');
   } catch (err: any) {
     log(`[Migrations] Warning: ${err.message}`, 'express');

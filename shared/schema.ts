@@ -320,6 +320,42 @@ export const adminMessageAudit = pgTable("admin_message_audit", {
   viewedAt: timestamp("viewed_at").defaultNow().notNull(),
 });
 
+// ─── Daily Game tables ───────────────────────────────────────────────────────
+
+export const dailyChallenges = pgTable("daily_challenges", {
+  id: serial("id").primaryKey(),
+  challengeDate: text("challenge_date").notNull().unique(), // "2024-01-15"
+  youtubeUrl: text("youtube_url").notNull(),
+  correctAnswers: text("correct_answers").notNull(), // comma-separated, checked case-insensitively
+  clipStartSeconds: integer("clip_start_seconds").notNull().default(30),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+
+export const dailyGuesses = pgTable("daily_guesses", {
+  id: serial("id").primaryKey(),
+  userId: integer("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  challengeDate: text("challenge_date").notNull(),
+  answer: text("answer").notNull(),
+  correct: boolean("correct").notNull(),
+  guessedAt: timestamp("guessed_at").defaultNow().notNull(),
+}, (table) => ({
+  uniqueUserDate: unique().on(table.userId, table.challengeDate),
+}));
+
+export const weeklyPrizes = pgTable("weekly_prizes", {
+  id: serial("id").primaryKey(),
+  weekStart: text("week_start").notNull().unique(), // ISO Monday date "2024-01-15"
+  discountPct: integer("discount_pct").notNull().default(20),
+  prizeDescription: text("prize_description").notNull(),
+  promoCode: text("promo_code"),
+  winnerUserId: integer("winner_user_id").references(() => users.id),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+
+export type DailyChallenge = typeof dailyChallenges.$inferSelect;
+export type DailyGuess = typeof dailyGuesses.$inferSelect;
+export type WeeklyPrize = typeof weeklyPrizes.$inferSelect;
+
 // Relations
 export const usersRelations = relations(users, ({ many }) => ({
   projects: many(projects),

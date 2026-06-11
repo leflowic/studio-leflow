@@ -58,9 +58,12 @@ import {
   siteAnnouncement,
   calendarDays,
   type CalendarDay,
+  dailyChallenges,
+  dailyGuesses,
+  weeklyPrizes,
 } from "@shared/schema";
 import { db, pool } from "./db";
-import { eq, and, or, desc, sql, notInArray } from "drizzle-orm";
+import { eq, and, or, desc, sql, notInArray, gte, lte, count } from "drizzle-orm";
 import session from "express-session";
 import connectPg from "connect-pg-simple";
 import type { Store } from "express-session";
@@ -259,6 +262,19 @@ export interface IStorage {
   getApprovedSongsCount(period: 'today' | 'week' | 'month'): Promise<number>;
   getContractStats(): Promise<{ total: number; byType: Record<string, number> }>;
   getUnreadConversationsCount(): Promise<number>;
+
+  // Daily Game
+  getTodayChallenge(): Promise<{ id: number; challengeDate: string; clipStartSeconds: number; youtubeVideoId: string } | null>;
+  getUserGuessForDate(userId: number, date: string): Promise<{ answer: string; correct: boolean } | null>;
+  submitGuess(userId: number, challengeDate: string, answer: string): Promise<{ correct: boolean; correctAnswers: string; youtubeUrl: string }>;
+  getWeeklyLeaderboard(weekStart: string): Promise<Array<{ userId: number; username: string; avatarUrl: string | null; correctCount: number }>>;
+  getWeeklyPrize(weekStart: string): Promise<{ discountPct: number; prizeDescription: string; promoCode: string | null; winnerUserId: number | null } | null>;
+  adminGetChallenges(): Promise<Array<{ id: number; challengeDate: string; youtubeUrl: string; correctAnswers: string; clipStartSeconds: number }>>;
+  adminUpsertChallenge(data: { challengeDate: string; youtubeUrl: string; correctAnswers: string; clipStartSeconds: number }): Promise<void>;
+  adminDeleteChallenge(id: number): Promise<void>;
+  adminGetWeeklyPrizes(): Promise<Array<{ id: number; weekStart: string; discountPct: number; prizeDescription: string; promoCode: string | null; winnerUserId: number | null; winnerUsername: string | null }>>;
+  adminUpsertWeeklyPrize(data: { weekStart: string; discountPct: number; prizeDescription: string; promoCode?: string }): Promise<void>;
+  adminSetPrizeWinner(weekStart: string): Promise<{ winnerUsername: string | null; promoCode: string | null }>;
 
   // Session store
   sessionStore: Store;
@@ -2360,6 +2376,139 @@ export class DatabaseStorage implements IStorage {
       })
       .returning();
     return day!;
+  }
+
+  // ─── Daily Game ─────────────────────────────────────────────────────────────
+
+  private extractYouTubeId(url: string): string {
+    const m = url.match(/(?:v=|youtu\.be\/|embed\/)([a-zA-Z0-9_-]{11})/);
+    return m?.[1] ?? '';
+  }
+
+  private getTodayDateString(): string {
+    return new Date().toISOString().split('T')[0]!;
+  }
+
+  private getWeekStart(date?: string): string {
+    const d = date ? new Date(date) : new Date();
+    const day = d.getUTCDay();
+    const diff = (day === 0 ? -6 : 1 - day);
+    d.setUTCDate(d.getUTCDate() + diff);
+    return d.toISOString().split('T')[0]!;
+  }
+
+  async getTodayChallenge(): Promise<{ id: number; challengeDate: string; clipStartSeconds: number; youtubeVideoId: string } | null> {
+    const today = this.getTodayDateString();
+    const [row] = await db.select().from(dailyChallenges).where(eq(dailyChallenges.challengeDate, today));
+    if (!row) return null;
+    return {
+      id: row.id,
+      challengeDate: row.challengeDate,
+      clipStartSeconds: row.clipStartSeconds,
+      youtubeVideoId: this.extractYouTubeId(row.youtubeUrl),
+    };
+  }
+
+  async getUserGuessForDate(userId: number, date: string): Promise<{ answer: string; correct: boolean } | null> {
+    const [row] = await db.select().from(dailyGuesses)
+      .where(and(eq(dailyGuesses.userId, userId), eq(dailyGuesses.challengeDate, date)));
+    if (!row) return null;
+    return { answer: row.answer, correct: row.correct };
+  }
+
+  async submitGuess(userId: number, challengeDate: string, answer: string): Promise<{ correct: boolean; correctAnswers: string; youtubeUrl: string }> {
+    const [challenge] = await db.select().from(dailyChallenges).where(eq(dailyChallenges.challengeDate, challengeDate));
+    if (!challenge) throw new Error('Challenge not found');
+
+    const accepted = challenge.correctAnswers.split(',').map(s => s.trim().toLowerCase());
+    const correct = accepted.some(a => a === answer.trim().toLowerCase());
+
+    await db.insert(dailyGuesses).values({ userId, challengeDate, answer: answer.trim(), correct });
+    return { correct, correctAnswers: challenge.correctAnswers, youtubeUrl: challenge.youtubeUrl };
+  }
+
+  async getWeeklyLeaderboard(weekStart: string): Promise<Array<{ userId: number; username: string; avatarUrl: string | null; correctCount: number }>> {
+    // Compute week end (Sunday)
+    const start = new Date(weekStart);
+    const end = new Date(weekStart);
+    end.setUTCDate(end.getUTCDate() + 6);
+    const weekEnd = end.toISOString().split('T')[0];
+
+    const rows = await db
+      .select({
+        userId: dailyGuesses.userId,
+        username: users.username,
+        avatarUrl: users.avatarUrl,
+        correctCount: count(dailyGuesses.id),
+      })
+      .from(dailyGuesses)
+      .innerJoin(users, eq(dailyGuesses.userId, users.id))
+      .where(and(
+        eq(dailyGuesses.correct, true),
+        sql`${dailyGuesses.challengeDate} >= ${weekStart}`,
+        sql`${dailyGuesses.challengeDate} <= ${weekEnd}`,
+      ))
+      .groupBy(dailyGuesses.userId, users.username, users.avatarUrl)
+      .orderBy(desc(count(dailyGuesses.id)));
+
+    return rows.map(r => ({ ...r, correctCount: Number(r.correctCount) }));
+  }
+
+  async getWeeklyPrize(weekStart: string): Promise<{ discountPct: number; prizeDescription: string; promoCode: string | null; winnerUserId: number | null } | null> {
+    const [row] = await db.select().from(weeklyPrizes).where(eq(weeklyPrizes.weekStart, weekStart));
+    if (!row) return null;
+    return { discountPct: row.discountPct, prizeDescription: row.prizeDescription, promoCode: row.promoCode, winnerUserId: row.winnerUserId };
+  }
+
+  async adminGetChallenges(): Promise<Array<{ id: number; challengeDate: string; youtubeUrl: string; correctAnswers: string; clipStartSeconds: number }>> {
+    return db.select({
+      id: dailyChallenges.id,
+      challengeDate: dailyChallenges.challengeDate,
+      youtubeUrl: dailyChallenges.youtubeUrl,
+      correctAnswers: dailyChallenges.correctAnswers,
+      clipStartSeconds: dailyChallenges.clipStartSeconds,
+    }).from(dailyChallenges).orderBy(desc(dailyChallenges.challengeDate));
+  }
+
+  async adminUpsertChallenge(data: { challengeDate: string; youtubeUrl: string; correctAnswers: string; clipStartSeconds: number }): Promise<void> {
+    await db.insert(dailyChallenges).values(data)
+      .onConflictDoUpdate({ target: dailyChallenges.challengeDate, set: { youtubeUrl: data.youtubeUrl, correctAnswers: data.correctAnswers, clipStartSeconds: data.clipStartSeconds } });
+  }
+
+  async adminDeleteChallenge(id: number): Promise<void> {
+    await db.delete(dailyChallenges).where(eq(dailyChallenges.id, id));
+  }
+
+  async adminGetWeeklyPrizes(): Promise<Array<{ id: number; weekStart: string; discountPct: number; prizeDescription: string; promoCode: string | null; winnerUserId: number | null; winnerUsername: string | null }>> {
+    const rows = await db
+      .select({
+        id: weeklyPrizes.id,
+        weekStart: weeklyPrizes.weekStart,
+        discountPct: weeklyPrizes.discountPct,
+        prizeDescription: weeklyPrizes.prizeDescription,
+        promoCode: weeklyPrizes.promoCode,
+        winnerUserId: weeklyPrizes.winnerUserId,
+        winnerUsername: users.username,
+      })
+      .from(weeklyPrizes)
+      .leftJoin(users, eq(weeklyPrizes.winnerUserId, users.id))
+      .orderBy(desc(weeklyPrizes.weekStart));
+    return rows.map(r => ({ ...r, winnerUsername: r.winnerUsername ?? null }));
+  }
+
+  async adminUpsertWeeklyPrize(data: { weekStart: string; discountPct: number; prizeDescription: string; promoCode?: string }): Promise<void> {
+    await db.insert(weeklyPrizes).values({ ...data, promoCode: data.promoCode ?? null })
+      .onConflictDoUpdate({ target: weeklyPrizes.weekStart, set: { discountPct: data.discountPct, prizeDescription: data.prizeDescription, promoCode: data.promoCode ?? null } });
+  }
+
+  async adminSetPrizeWinner(weekStart: string): Promise<{ winnerUsername: string | null; promoCode: string | null }> {
+    const leaderboard = await this.getWeeklyLeaderboard(weekStart);
+    const winner = leaderboard[0] ?? null;
+    if (winner) {
+      await db.update(weeklyPrizes).set({ winnerUserId: winner.userId }).where(eq(weeklyPrizes.weekStart, weekStart));
+    }
+    const [prize] = await db.select().from(weeklyPrizes).where(eq(weeklyPrizes.weekStart, weekStart));
+    return { winnerUsername: winner?.username ?? null, promoCode: prize?.promoCode ?? null };
   }
 }
 

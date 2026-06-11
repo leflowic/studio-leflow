@@ -880,7 +880,7 @@ export default function AuthPage() {
             transition={{ duration: 0.6, delay: 0.7 }}
             className="text-xl max-w-md mx-auto leading-relaxed text-white/80"
           >
-            Registruj se i postani deo zajednice producentov u Studiju LeFlow.
+            Registruj se i postani deo zajednice producenata u Studiju LeFlow.
           </motion.p>
 
           <div className="grid grid-cols-1 gap-4 max-w-sm w-full mt-4">

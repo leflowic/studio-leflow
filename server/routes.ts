@@ -3067,7 +3067,135 @@ Sitemap: ${siteUrl}/sitemap.xml
     }
   });
 
+  // ─── Daily Game ─────────────────────────────────────────────────────────────
+
+  // GET /api/game/today — challenge info for current user (no correct answers)
+  app.get("/api/game/today", requireNotBanned, async (req, res) => {
+    try {
+      const today = new Date().toISOString().split('T')[0]!;
+      const challenge = await storage.getTodayChallenge();
+      if (!challenge) return res.json({ available: false, reason: "no_challenge" });
+
+      // Game only opens at 17:00 local Serbia time (UTC+2 or UTC+1)
+      const nowUTC = new Date();
+      const hourBelgrade = (nowUTC.getUTCHours() + 2) % 24; // CEST +2; close enough
+      if (hourBelgrade < 17) {
+        const minutesUntil = (17 - hourBelgrade - 1) * 60 + (60 - nowUTC.getUTCMinutes());
+        return res.json({ available: false, reason: "not_yet", minutesUntil });
+      }
+
+      const guess = await storage.getUserGuessForDate(req.jwtUser!.id as number, today);
+      res.json({ available: true, challenge, alreadyPlayed: !!guess, guess });
+    } catch (e) {
+      res.status(500).json({ error: "Greška na serveru" });
+    }
+  });
+
+  // POST /api/game/guess
+  app.post("/api/game/guess", requireNotBanned, async (req, res) => {
+    try {
+      const { answer } = req.body;
+      if (!answer || typeof answer !== 'string' || !answer.trim()) {
+        return res.status(400).json({ error: "Odgovor je obavezan" });
+      }
+      const today = new Date().toISOString().split('T')[0]!;
+      const nowUTC = new Date();
+      const hourBelgrade = (nowUTC.getUTCHours() + 2) % 24;
+      if (hourBelgrade < 17) return res.status(403).json({ error: "Igra još nije otvorena" });
+
+      const existing = await storage.getUserGuessForDate(req.jwtUser!.id as number, today);
+      if (existing) return res.status(409).json({ error: "Već ste odigrali danas" });
+
+      const result = await storage.submitGuess(req.jwtUser!.id as number, today, answer);
+      res.json(result);
+    } catch (e: any) {
+      if (e.message === 'Challenge not found') return res.status(404).json({ error: "Nema izazova za danas" });
+      res.status(500).json({ error: "Greška na serveru" });
+    }
+  });
+
+  // GET /api/game/leaderboard
+  app.get("/api/game/leaderboard", requireNotBanned, async (req, res) => {
+    try {
+      const weekStart = getWeekStart();
+      const [leaderboard, prize] = await Promise.all([
+        storage.getWeeklyLeaderboard(weekStart),
+        storage.getWeeklyPrize(weekStart),
+      ]);
+      res.json({ weekStart, leaderboard, prize });
+    } catch (e) {
+      res.status(500).json({ error: "Greška na serveru" });
+    }
+  });
+
+  // Admin: GET /api/admin/game/challenges
+  app.get("/api/admin/game/challenges", requireAdmin, async (_req, res) => {
+    res.json(await storage.adminGetChallenges());
+  });
+
+  // Admin: POST /api/admin/game/challenges
+  app.post("/api/admin/game/challenges", requireAdmin, async (req, res) => {
+    try {
+      const { challengeDate, youtubeUrl, correctAnswers, clipStartSeconds } = req.body;
+      if (!challengeDate || !youtubeUrl || !correctAnswers) {
+        return res.status(400).json({ error: "Datum, YouTube URL i tačan odgovor su obavezni" });
+      }
+      await storage.adminUpsertChallenge({
+        challengeDate,
+        youtubeUrl,
+        correctAnswers,
+        clipStartSeconds: Number(clipStartSeconds) || 30,
+      });
+      res.json({ success: true });
+    } catch (e) {
+      res.status(500).json({ error: "Greška na serveru" });
+    }
+  });
+
+  // Admin: DELETE /api/admin/game/challenges/:id
+  app.delete("/api/admin/game/challenges/:id", requireAdmin, async (req, res) => {
+    await storage.adminDeleteChallenge(Number(req.params.id));
+    res.json({ success: true });
+  });
+
+  // Admin: GET /api/admin/game/prizes
+  app.get("/api/admin/game/prizes", requireAdmin, async (_req, res) => {
+    res.json(await storage.adminGetWeeklyPrizes());
+  });
+
+  // Admin: POST /api/admin/game/prizes
+  app.post("/api/admin/game/prizes", requireAdmin, async (req, res) => {
+    try {
+      const { weekStart, discountPct, prizeDescription, promoCode } = req.body;
+      if (!weekStart || !discountPct || !prizeDescription) {
+        return res.status(400).json({ error: "Nedeljа, popust i opis su obavezni" });
+      }
+      await storage.adminUpsertWeeklyPrize({ weekStart, discountPct: Number(discountPct), prizeDescription, promoCode });
+      res.json({ success: true });
+    } catch (e) {
+      res.status(500).json({ error: "Greška na serveru" });
+    }
+  });
+
+  // Admin: POST /api/admin/game/prizes/:weekStart/set-winner
+  app.post("/api/admin/game/prizes/:weekStart/set-winner", requireAdmin, async (req, res) => {
+    try {
+      const result = await storage.adminSetPrizeWinner(req.params.weekStart);
+      res.json(result);
+    } catch (e) {
+      res.status(500).json({ error: "Greška na serveru" });
+    }
+  });
+
   const httpServer = createServer(app);
 
   return httpServer;
+}
+
+function getWeekStart(date?: Date): string {
+  const d = date ? new Date(date) : new Date();
+  const day = d.getUTCDay();
+  const diff = day === 0 ? -6 : 1 - day;
+  d.setUTCDate(d.getUTCDate() + diff);
+  return d.toISOString().split('T')[0]!;
 }

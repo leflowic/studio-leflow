@@ -326,7 +326,7 @@ export default function MojePesme() {
           <DialogHeader>
             <DialogTitle>Dodaj Novu Pesmu</DialogTitle>
             <DialogDescription>
-              Unesite YouTube link pesme koja želite da podelite. Možete dodati novu pesmu svakih 36 sati.
+              Unesite YouTube link pesme koju želite da podelite. Možete dodati novu pesmu svakih 36 sati.
             </DialogDescription>
           </DialogHeader>
           <Form {...form}>

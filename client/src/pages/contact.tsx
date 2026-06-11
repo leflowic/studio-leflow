@@ -337,7 +337,7 @@ export default function Contact() {
                   Pozovite nas direktno
                 </h3>
                 <p className="text-sm text-muted-foreground mb-4">
-                  Za hitne zakazivanje ili dodatna pitanja, slobodno nas pozovite.
+                  Za hitno zakazivanje ili dodatna pitanja, slobodno nas pozovite.
                 </p>
                 <Button variant="outline" className="w-full" asChild data-testid="button-call">
                   <a href="tel:+381637347023">

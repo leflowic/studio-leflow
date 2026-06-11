@@ -177,7 +177,7 @@ export function adminLoginEmail(code: string): string {
 export function newsletterConfirmEmail(confirmUrl: string): string {
   return wrap(`
     ${heading('Potvrdite Prijavu na Newsletter')}
-    ${paragraph('Hvala što ste se prijavili na Studio LeFlow newsletter! Kliknite dugme ispod da potvrdite Vašu email adresu i počnete da primamo najnovije vesti, promocije i ekskluzivan sadržaj.')}
+    ${paragraph('Hvala što ste se prijavili na Studio LeFlow newsletter! Kliknite dugme ispod da potvrdite Vašu email adresu i počnete da primate najnovije vesti, promocije i ekskluzivan sadržaj.')}
     ${button('Potvrdi Email Adresu', confirmUrl)}
     ${paragraph(`Ili kopirajte link u pretraživač:<br><span style="color:#6d28d9;font-size:12px;word-break:break-all;">${confirmUrl}</span>`)}
     ${notice('Ako niste zatražili prijavu na newsletter, ignorišite ovaj email.')}

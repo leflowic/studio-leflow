@@ -70,6 +70,7 @@ const InboxPage = lazy(() => import("@/pages/inbox"));
 const MojePesmePage = lazy(() => import("@/pages/moje-pesme"));
 const ZajednicaPage = lazy(() => import("@/pages/zajednica"));
 const NotFoundPage = lazy(() => import("@/pages/not-found"));
+const IgraPage = lazy(() => import("@/pages/igra"));
 const VerifyLicensePage = lazy(() => import("@/pages/verify-license"));
 const MaintenancePage = lazy(() => import("@/pages/maintenance"));
 const NewsletterConfirmationPage = lazy(() => import("@/pages/newsletter-confirmation"));
@@ -128,6 +129,7 @@ function Router() {
                 <Route path="/proveri"><VerifyLicensePage /></Route>
                 <Route path="/newsletter/potvrda/:token"><NewsletterConfirmationPage /></Route>
                 <Route path="/uslovi-koriscenja"><TermsOfUsePage /></Route>
+                <ProtectedRoute path="/igra" component={() => <IgraPage />} />
                 <ProtectedRoute path="/zajednica" component={() => <ZajednicaPage />} />
                 <ProtectedRoute path="/giveaway" component={() => <GiveawayPage />} />
                 <ProtectedRoute path="/moje-pesme" component={() => <MojePesmePage />} />

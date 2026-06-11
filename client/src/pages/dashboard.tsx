@@ -270,7 +270,7 @@ export default function Dashboard() {
                 <p>Nemate još uvek nijedan projekat.</p>
                 <Link href="/giveaway">
                   <Button variant="outline" className="mt-4" data-testid="button-upload-project">
-                    Upload projekat
+                    Uploaduj projekat
                   </Button>
                 </Link>
               </div>

@@ -40,6 +40,7 @@ import { AvatarWithInitials } from "@/components/ui/avatar-with-initials";
 import { ContractsTab } from "@/components/admin/ContractsTab";
 import { CalendarTab } from "@/components/admin/CalendarTab";
 import { KatastarTab } from "@/components/admin/KatastarTab";
+import GameTab from "@/components/admin/GameTab";
 import {
   Select,
   SelectContent,
@@ -222,6 +223,7 @@ export default function AdminPage() {
               <TabsTrigger value="invoices" data-testid="tab-invoices" className="flex-1 min-w-[100px]">Fakture</TabsTrigger>
               <TabsTrigger value="calendar" data-testid="tab-calendar" className="flex-1 min-w-[100px]">Kalendar</TabsTrigger>
               <TabsTrigger value="katastar" data-testid="tab-katastar" className="flex-1 min-w-[100px]">Katastar</TabsTrigger>
+              <TabsTrigger value="game" data-testid="tab-game" className="flex-1 min-w-[100px]">Igra</TabsTrigger>
               <TabsTrigger value="settings" data-testid="tab-settings" className="flex-1 min-w-[100px]">Podešavanja</TabsTrigger>
             </TabsList>
           </div>
@@ -268,6 +270,10 @@ export default function AdminPage() {
 
           <TabsContent value="katastar">
             <KatastarTab />
+          </TabsContent>
+
+          <TabsContent value="game">
+            <GameTab />
           </TabsContent>
 
           <TabsContent value="settings">
