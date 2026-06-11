@@ -3,7 +3,7 @@ import { useAuth } from "@/hooks/use-auth";
 import { useMutation } from "@tanstack/react-query";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
-import { useUploadThing } from "@/lib/uploadthing";
+import { useUploadThing, getAuthHeaders } from "@/lib/uploadthing";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -30,6 +30,7 @@ export default function Settings() {
   });
 
   const { startUpload: startAvatarUpload } = useUploadThing("avatarUploader", {
+    headers: getAuthHeaders,
     onClientUploadComplete: async (files) => {
       if (files && files.length > 0) {
         const file = files[0];

@@ -8,7 +8,7 @@ import { Link } from "wouter";
 import { motion } from "framer-motion";
 import { FadeInWhenVisible } from "@/components/motion/FadeIn";
 import { Heart, Upload, MessageCircle, Send, Music, Trophy } from "lucide-react";
-import { useUploadThing } from "@/lib/uploadthing";
+import { useUploadThing, getAuthHeaders } from "@/lib/uploadthing";
 import { SEO } from "@/components/SEO";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from "@/components/ui/card";
@@ -83,6 +83,7 @@ export default function Giveaway() {
   const [isUploading, setIsUploading] = useState(false);
 
   const { startUpload } = useUploadThing("audioUploader", {
+    headers: getAuthHeaders,
     onClientUploadComplete: async (files) => {
       if (files && files.length > 0) {
         const file = files[0];
