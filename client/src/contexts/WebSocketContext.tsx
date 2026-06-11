@@ -3,6 +3,24 @@ import { useAuth } from "@/hooks/use-auth";
 import { useToast } from "@/hooks/use-toast";
 import notificationSound from "@assets/bottle-opening-wine-cork-pop-352701_1762664855578.mp3";
 
+function requestNotificationPermission() {
+  if ("Notification" in window && Notification.permission === "default") {
+    Notification.requestPermission();
+  }
+}
+
+function showBrowserNotification(title: string, body: string, senderUsername?: string) {
+  if (!("Notification" in window) || Notification.permission !== "granted") return;
+  if (!document.hidden) return; // Only show when tab is in background
+  const n = new Notification(title, {
+    body,
+    icon: "/leflow-logo-white.png",
+    tag: senderUsername || "message",
+    renotify: true,
+  });
+  n.onclick = () => { window.focus(); n.close(); };
+}
+
 export type WebSocketMessage = 
   | { type: 'online_status'; userId: number; online: boolean }
   | { type: 'typing_start'; userId: number }
@@ -51,7 +69,8 @@ export function WebSocketProvider({ children }: { children: ReactNode }) {
     ws.current.onopen = () => {
       console.log('[WebSocket] Connected');
       setIsConnected(true);
-      
+      requestNotificationPermission();
+
       const authUser = userRef.current;
       if (authUser) {
         const token = localStorage.getItem('auth_token');
@@ -81,22 +100,42 @@ export function WebSocketProvider({ children }: { children: ReactNode }) {
           });
         }
         
-        // Play notification sound for new messages from other users
+        // Handle new messages from other users
         if (message.type === 'new_message') {
           const currentUserId = userRef.current?.id;
           const messageSenderId = message.message?.senderId;
-          
-          // Only play sound if message is from another user
+          const senderUsername = message.message?.senderUsername || "Novi msg";
+
           if (currentUserId && messageSenderId && messageSenderId !== currentUserId) {
-            if (!audioRef.current) {
-              audioRef.current = new Audio(notificationSound);
-              audioRef.current.volume = 0.5; // 50% volume
+            // Play sound only when tab is hidden or user is not actively reading
+            if (document.hidden) {
+              if (!audioRef.current) {
+                audioRef.current = new Audio(notificationSound);
+                audioRef.current.volume = 0.5;
+              }
+              audioRef.current.currentTime = 0;
+              audioRef.current.play().catch(() => {});
+
+              // Browser notification
+              showBrowserNotification(
+                `Nova poruka od ${senderUsername}`,
+                message.message?.content || "Poslao ti je poruku",
+                senderUsername,
+              );
+            } else {
+              // Tab is visible — play sound quietly
+              if (!audioRef.current) {
+                audioRef.current = new Audio(notificationSound);
+              }
+              audioRef.current.volume = 0.3;
+              audioRef.current.currentTime = 0;
+              audioRef.current.play().catch(() => {});
             }
-            
-            // Play notification sound
-            audioRef.current.play().catch((error) => {
-              console.log('[WebSocket] Could not play notification sound:', error);
-            });
+
+            // Update document title with unread indicator
+            if (document.hidden) {
+              document.title = `💬 Nova poruka — Studio LeFlow`;
+            }
           }
         }
         
@@ -154,8 +193,19 @@ export function WebSocketProvider({ children }: { children: ReactNode }) {
   }, []);
 
   useEffect(() => {
-    userRef.current = user; // Always update userRef when user changes
+    userRef.current = user;
   }, [user]);
+
+  // Reset document title when user returns to the tab
+  useEffect(() => {
+    const handleVisibilityChange = () => {
+      if (!document.hidden && document.title.startsWith("💬")) {
+        document.title = "Studio LeFlow";
+      }
+    };
+    document.addEventListener("visibilitychange", handleVisibilityChange);
+    return () => document.removeEventListener("visibilitychange", handleVisibilityChange);
+  }, []);
 
   useEffect(() => {
     if (user) {
