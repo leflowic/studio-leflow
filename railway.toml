@@ -3,7 +3,7 @@ builder = "nixpacks"
 buildCommand = "npm run build"
 
 [deploy]
-deployCommand = "npx drizzle-kit push --force"
+deployCommand = "npx drizzle-kit push --force && npx tsx server/create-admin.ts"
 startCommand = "npm run start"
 healthcheckPath = "/"
 healthcheckTimeout = 30
