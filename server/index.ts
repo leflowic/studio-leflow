@@ -82,6 +82,11 @@ async function runMigrations() {
         ADD COLUMN IF NOT EXISTS open_hour INTEGER NOT NULL DEFAULT 17,
         ADD COLUMN IF NOT EXISTS open_minute INTEGER NOT NULL DEFAULT 0;
     `);
+    // Add audio clip URL column
+    await client.query(`
+      ALTER TABLE daily_challenges
+        ADD COLUMN IF NOT EXISTS clip_url TEXT;
+    `);
     // Add reply-to column on messages
     await client.query(`
       ALTER TABLE messages

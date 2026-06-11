@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useRef } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
@@ -8,7 +8,7 @@ import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
-import { Music, Trophy, Trash2, Plus, Gift } from "lucide-react";
+import { Music, Trophy, Trash2, Plus, Gift, Upload, CheckCircle2, Loader2 } from "lucide-react";
 import { format } from "date-fns";
 
 function getMonday(offset = 0): string {
@@ -29,9 +29,12 @@ export default function GameTab() {
   // Challenge form
   const [cDate, setCDate] = useState(new Date().toISOString().split('T')[0]);
   const [cUrl, setCUrl] = useState("");
+  const [cClipUrl, setCClipUrl] = useState("");
   const [cAnswer, setCAnswer] = useState("");
   const [cClip, setCClip] = useState("30");
   const [cTime, setCTime] = useState("17:00");
+  const [uploadingClip, setUploadingClip] = useState(false);
+  const clipFileRef = useRef<HTMLInputElement>(null);
 
   // Prize form
   const [pWeek, setPWeek] = useState(getMonday());
@@ -39,10 +42,36 @@ export default function GameTab() {
   const [pDesc, setPDesc] = useState("");
   const [pPromo, setPPromo] = useState("");
 
+  const handleClipUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setUploadingClip(true);
+    try {
+      const formData = new FormData();
+      formData.append("file", file);
+      const token = localStorage.getItem("auth_token");
+      const res = await fetch("/api/upload/game-clip", {
+        method: "POST",
+        headers: token ? { Authorization: `Bearer ${token}` } : {},
+        body: formData,
+      });
+      if (!res.ok) throw new Error("Upload failed");
+      const { url } = await res.json();
+      setCClipUrl(url);
+      toast({ title: "Clip uploadovan", description: "Audio clip je spreman" });
+    } catch {
+      toast({ title: "Greška", description: "Upload nije uspeo", variant: "destructive" });
+    } finally {
+      setUploadingClip(false);
+      if (clipFileRef.current) clipFileRef.current.value = "";
+    }
+  };
+
   const saveChallenges = useMutation({
     mutationFn: async () => apiRequest("POST", "/api/admin/game/challenges", {
       challengeDate: cDate,
       youtubeUrl: cUrl,
+      clipUrl: cClipUrl || null,
       correctAnswers: cAnswer,
       clipStartSeconds: Number(cClip) || 30,
       openHour: parseInt(cTime.split(':')[0] ?? '17', 10),
@@ -51,7 +80,7 @@ export default function GameTab() {
     onSuccess: () => {
       toast({ title: "Sačuvano", description: "Izazov je sačuvan" });
       queryClient.invalidateQueries({ queryKey: ["/api/admin/game/challenges"] });
-      setCUrl(""); setCAnswer(""); setCClip("30"); setCTime("17:00");
+      setCUrl(""); setCClipUrl(""); setCAnswer(""); setCClip("30"); setCTime("17:00");
     },
     onError: () => toast({ title: "Greška", variant: "destructive", description: "Nije moguće sačuvati izazov" }),
   });
@@ -118,8 +147,31 @@ export default function GameTab() {
             <Input type="time" value={cTime} onChange={e => setCTime(e.target.value)} className="w-40" />
           </div>
           <div className="space-y-1">
-            <Label>YouTube URL</Label>
+            <Label>YouTube URL (referenca)</Label>
             <Input value={cUrl} onChange={e => setCUrl(e.target.value)} placeholder="https://www.youtube.com/watch?v=..." />
+          </div>
+          <div className="space-y-1">
+            <Label>Audio clip (MP3, max 5MB)</Label>
+            <div className="flex items-center gap-2">
+              <input ref={clipFileRef} type="file" accept=".mp3,audio/mpeg" className="hidden" onChange={handleClipUpload} />
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                className="gap-2"
+                disabled={uploadingClip}
+                onClick={() => clipFileRef.current?.click()}
+              >
+                {uploadingClip ? <Loader2 className="w-4 h-4 animate-spin" /> : <Upload className="w-4 h-4" />}
+                {uploadingClip ? "Uploadovanje..." : "Izaberi MP3"}
+              </Button>
+              {cClipUrl && !uploadingClip && (
+                <span className="flex items-center gap-1 text-sm text-green-600">
+                  <CheckCircle2 className="w-4 h-4" />
+                  Clip uploadovan
+                </span>
+              )}
+            </div>
           </div>
           <div className="space-y-1">
             <Label>Tačan odgovor (više odgovora odvojiti zarezom)</Label>

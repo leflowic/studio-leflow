@@ -380,6 +380,23 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Game clip upload (admin only, MP3 for daily challenge)
+  app.post("/api/upload/game-clip", requireAdmin, upload.single("file"), async (req, res) => {
+    try {
+      if (!req.file) return res.status(400).json({ error: "Fajl nije pronađen" });
+      if (req.file.size > 5 * 1024 * 1024) return res.status(400).json({ error: "Clip ne sme biti veći od 5MB" });
+      const detectedType = await fileTypeFromBuffer(req.file.buffer);
+      if (!detectedType || detectedType.mime !== "audio/mpeg") {
+        return res.status(400).json({ error: "Dozvoljeni su samo MP3 fajlovi" });
+      }
+      const url = await uploadAudioToCloudinary(req.file.buffer, "studioleflow/game-clips", req.file.originalname);
+      res.json({ url });
+    } catch (e: any) {
+      console.error("[UPLOAD] Game clip error:", e.message);
+      res.status(500).json({ error: "Greška pri otpremanju klipa" });
+    }
+  });
+
   // Apply maintenance mode middleware to all API routes (except allowed paths)
   // This allows static files and index.html to load, but blocks API calls when in maintenance mode
   app.use('/api', checkMaintenanceMode);
@@ -3184,13 +3201,14 @@ Sitemap: ${siteUrl}/sitemap.xml
   // Admin: POST /api/admin/game/challenges
   app.post("/api/admin/game/challenges", requireAdmin, async (req, res) => {
     try {
-      const { challengeDate, youtubeUrl, correctAnswers, clipStartSeconds, openHour, openMinute } = req.body;
+      const { challengeDate, youtubeUrl, clipUrl, correctAnswers, clipStartSeconds, openHour, openMinute } = req.body;
       if (!challengeDate || !youtubeUrl || !correctAnswers) {
         return res.status(400).json({ error: "Datum, YouTube URL i tačan odgovor su obavezni" });
       }
       await storage.adminUpsertChallenge({
         challengeDate,
         youtubeUrl,
+        clipUrl: clipUrl || null,
         correctAnswers,
         clipStartSeconds: Number(clipStartSeconds) || 30,
         openHour: openHour != null ? parseInt(String(openHour), 10) : 17,

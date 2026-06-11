@@ -11,13 +11,6 @@ import { SEO } from "@/components/SEO";
 import { Music, Play, Trophy, Clock, CheckCircle2, XCircle, Lock } from "lucide-react";
 import { cn } from "@/lib/utils";
 
-declare global {
-  interface Window {
-    YT: any;
-    onYouTubeIframeAPIReady: () => void;
-  }
-}
-
 function useCountdown(targetHour: number, targetMinute = 0) {
   const [minutesLeft, setMinutesLeft] = useState(0);
   const [isOpen, setIsOpen] = useState(false);
@@ -49,9 +42,10 @@ export default function IgraPage() {
   const { user } = useAuth();
   const queryClient = useQueryClient();
 
-  const playerRef = useRef<any>(null);
-  const playerDivRef = useRef<HTMLDivElement>(null);
-  const [ytReady, setYtReady] = useState(false);
+  const audioCtxRef = useRef<AudioContext | null>(null);
+  const audioBufferRef = useRef<AudioBuffer | null>(null);
+  const [audioReady, setAudioReady] = useState(false);
+  const [audioError, setAudioError] = useState(false);
   const [playing, setPlaying] = useState(false);
   const [playsLeft, setPlaysLeft] = useState(4);
   const [answer, setAnswer] = useState("");
@@ -73,52 +67,56 @@ export default function IgraPage() {
     enabled: !!user,
   });
 
-  // Load YouTube IFrame API once
+  // Load audio clip via AudioContext
   useEffect(() => {
-    if (window.YT?.Player) { setYtReady(true); return; }
-    window.onYouTubeIframeAPIReady = () => setYtReady(true);
-    if (!document.getElementById('yt-api-script')) {
-      const s = document.createElement('script');
-      s.id = 'yt-api-script';
-      s.src = 'https://www.youtube.com/iframe_api';
-      document.head.appendChild(s);
-    }
-    // Polling fallback in case the callback fires before we set it
-    const poll = setInterval(() => {
-      if (window.YT?.Player) { setYtReady(true); clearInterval(poll); }
-    }, 200);
-    return () => clearInterval(poll);
-  }, []);
+    const clipUrl = data?.challenge?.clipUrl;
+    if (!clipUrl) return;
 
-  // Create hidden player when challenge + YT API are ready
-  useEffect(() => {
-    const challenge = data?.challenge;
-    if (!ytReady || !challenge?.youtubeVideoId || !playerDivRef.current || playerRef.current) return;
+    setAudioReady(false);
+    setAudioError(false);
 
-    playerRef.current = new window.YT.Player(playerDivRef.current, {
-      height: '1',
-      width: '1',
-      videoId: challenge.youtubeVideoId,
-      playerVars: { autoplay: 0, controls: 0, disablekb: 1, modestbranding: 1 },
-      events: {
-        onReady: () => {},
-        onStateChange: () => {},
-      },
-    });
-  }, [ytReady, data?.challenge?.youtubeVideoId]);
+    const ctx = new AudioContext();
+    audioCtxRef.current = ctx;
+
+    fetch(clipUrl)
+      .then(r => {
+        if (!r.ok) throw new Error("fetch failed");
+        return r.arrayBuffer();
+      })
+      .then(buf => ctx.decodeAudioData(buf))
+      .then(decoded => {
+        audioBufferRef.current = decoded;
+        setAudioReady(true);
+      })
+      .catch(() => {
+        setAudioError(true);
+      });
+
+    return () => {
+      audioBufferRef.current = null;
+      setAudioReady(false);
+      ctx.close().catch(() => {});
+    };
+  }, [data?.challenge?.clipUrl]);
 
   const playClip = useCallback(() => {
-    const challenge = data?.challenge;
-    if (!playerRef.current || !challenge || playsLeft <= 0) return;
+    const ctx = audioCtxRef.current;
+    const buffer = audioBufferRef.current;
+    const clipStart = data?.challenge?.clipStartSeconds ?? 0;
+    if (!ctx || !buffer || playsLeft <= 0 || playing) return;
+
+    if (ctx.state === "suspended") ctx.resume();
+
     setPlaying(true);
     setPlaysLeft(p => p - 1);
-    playerRef.current.seekTo(challenge.clipStartSeconds, true);
-    playerRef.current.playVideo();
-    setTimeout(() => {
-      playerRef.current?.pauseVideo();
-      setPlaying(false);
-    }, 2000);
-  }, [data?.challenge, playsLeft]);
+
+    const source = ctx.createBufferSource();
+    source.buffer = buffer;
+    source.connect(ctx.destination);
+    source.start(0, clipStart, 2);
+
+    setTimeout(() => setPlaying(false), 2000);
+  }, [data?.challenge?.clipStartSeconds, playsLeft, playing]);
 
   const guessMutation = useMutation({
     mutationFn: async (ans: string) => {
@@ -149,6 +147,15 @@ export default function IgraPage() {
   const prevGuess = data?.guess;
   const finalResult = result || (prevGuess ? { correct: prevGuess.correct, points: prevGuess.correct ? 10 : 0 } : null);
   const displayedAnswer = result ? answer : prevGuess?.answer ?? "";
+
+  const noClip = data?.available && !data?.challenge?.clipUrl;
+
+  let playBtnLabel = `▶ Pusti isečak (2s)`;
+  if (playing) playBtnLabel = "Svira...";
+  else if (audioError) playBtnLabel = "Greška pri učitavanju";
+  else if (noClip) playBtnLabel = "Nema audio klipa";
+  else if (!audioReady) playBtnLabel = "Učitavanje...";
+  else if (playsLeft <= 0) playBtnLabel = "Nema više puštanja";
 
   return (
     <div className="min-h-screen py-12">
@@ -217,18 +224,15 @@ export default function IgraPage() {
               </div>
             ) : (
               <div className="space-y-5">
-                {/* Hidden YT player div */}
-                <div ref={playerDivRef} className="hidden" />
-
                 <div className="space-y-2">
                   <Button
                     onClick={playClip}
-                    disabled={playing || !ytReady || playsLeft <= 0}
+                    disabled={playing || !audioReady || playsLeft <= 0 || audioError || noClip}
                     size="lg"
                     className="w-full gap-2 text-base"
                   >
                     <Play className={cn("w-5 h-5", playing && "animate-pulse")} />
-                    {playing ? "Svira..." : !ytReady ? "Učitavanje..." : playsLeft <= 0 ? "Nema više puštanja" : `▶ Pusti isečak (2s)`}
+                    {playBtnLabel}
                   </Button>
                   <p className="text-xs text-center text-muted-foreground">
                     {playsLeft > 0 ? `Preostalo puštanja: ${playsLeft}/4` : "Iskoristio si sva puštanja"}
