@@ -3098,7 +3098,7 @@ Sitemap: ${siteUrl}/sitemap.xml
       const nowUTC = new Date();
       const belgHour = (nowUTC.getUTCHours() + 2) % 24;
       const belgMin = nowUTC.getUTCMinutes();
-      const todayStr = nowUTC.toISOString().split('T')[0]!;
+      const todayStr = new Date(nowUTC.getTime() + 2 * 60 * 60 * 1000).toISOString().split('T')[0]!;
       const isToday = next.challengeDate === todayStr;
       const nowMins = belgHour * 60 + belgMin;
       const openMins = next.openHour * 60 + next.openMinute;
@@ -3113,7 +3113,7 @@ Sitemap: ${siteUrl}/sitemap.xml
   // GET /api/game/today — challenge info for current user (no correct answers)
   app.get("/api/game/today", requireNotBanned, async (req, res) => {
     try {
-      const today = new Date().toISOString().split('T')[0]!;
+      const today = new Date(Date.now() + 2 * 60 * 60 * 1000).toISOString().split('T')[0]!;
       const challenge = await storage.getTodayChallenge();
       if (!challenge) return res.json({ available: false, reason: "no_challenge" });
 
@@ -3141,7 +3141,7 @@ Sitemap: ${siteUrl}/sitemap.xml
       if (!answer || typeof answer !== 'string' || !answer.trim()) {
         return res.status(400).json({ error: "Odgovor je obavezan" });
       }
-      const today = new Date().toISOString().split('T')[0]!;
+      const today = new Date(Date.now() + 2 * 60 * 60 * 1000).toISOString().split('T')[0]!;
       const challenge2 = await storage.getTodayChallenge();
       if (!challenge2) return res.status(404).json({ error: "Nema izazova za danas" });
       const nowUTC2 = new Date();

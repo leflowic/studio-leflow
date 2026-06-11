@@ -2399,7 +2399,10 @@ export class DatabaseStorage implements IStorage {
   }
 
   private getTodayDateString(): string {
-    return new Date().toISOString().split('T')[0]!;
+    // Use Belgrade time (UTC+2) so dates match what admin enters
+    const now = new Date();
+    const belgrade = new Date(now.getTime() + 2 * 60 * 60 * 1000);
+    return belgrade.toISOString().split('T')[0]!;
   }
 
   private getWeekStart(date?: string): string {
