@@ -2,7 +2,6 @@ import { defineConfig, createLogger, splitVendorChunkPlugin } from "vite";
 import react from "@vitejs/plugin-react";
 import path from "path";
 import { fileURLToPath } from "url";
-import runtimeErrorModal from "@replit/vite-plugin-runtime-error-modal";
 import tailwindcss from "tailwindcss";
 import autoprefixer from "autoprefixer";
 import { visualizer } from 'rollup-plugin-visualizer';
@@ -22,7 +21,6 @@ export default defineConfig({
   customLogger: logger,
   plugins: [
     react(),
-    runtimeErrorModal(),
     splitVendorChunkPlugin(),
     visualizer({
       filename: 'dist/stats.html',
@@ -127,8 +125,8 @@ export default defineConfig({
       usePolling: true,
     },
     allowedHosts: [
-      '.replit.app',
-      '.repl.co',
+      '.railway.app',
+      '.up.railway.app',
       'localhost',
     ],
   },

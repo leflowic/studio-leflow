@@ -58,53 +58,7 @@ async function getCredentials() {
     return cachedCredentials;
   }
 
-  // Fallback to Replit connector
-  const hostname = process.env.REPLIT_CONNECTORS_HOSTNAME;
-  const xReplitToken = process.env.REPL_IDENTITY 
-    ? 'repl ' + process.env.REPL_IDENTITY 
-    : process.env.WEB_REPL_RENEWAL 
-    ? 'depl ' + process.env.WEB_REPL_RENEWAL 
-    : null;
-
-  if (!xReplitToken) {
-    console.error('[RESEND] X_REPLIT_TOKEN not found and no direct API key');
-    throw new Error('Resend API key not configured');
-  }
-
-  console.log('[RESEND] Fetching connection settings from:', hostname);
-  
-  const response = await fetch(
-    'https://' + hostname + '/api/v2/connection?include_secrets=true&connector_names=resend',
-    {
-      headers: {
-        'Accept': 'application/json',
-        'X_REPLIT_TOKEN': xReplitToken
-      }
-    }
-  );
-  
-  const data = await response.json();
-  const connectionSettings = data.items?.[0];
-
-  if (!connectionSettings || (!connectionSettings.settings?.api_key)) {
-    console.error('[RESEND] Connection settings invalid:', connectionSettings);
-    throw new Error('Resend not connected');
-  }
-
-  if (!connectionSettings.settings.from_email) {
-    console.error('[RESEND] Missing from_email in connection settings');
-    throw new Error('Resend from_email not configured');
-  }
-  
-  console.log('[RESEND] Successfully retrieved API key from connector');
-  
-  // Cache credentials for future use
-  cachedCredentials = {
-    apiKey: connectionSettings.settings.api_key, 
-    fromEmail: connectionSettings.settings.from_email
-  };
-  
-  return cachedCredentials;
+  throw new Error('RESEND_API_KEY is not configured. Add it to your environment variables.');
 }
 
 export async function getResendClient() {

@@ -706,9 +706,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           
           // Send confirmation email
           try {
-            const baseUrl = process.env.REPLIT_DOMAINS 
-              ? `https://${process.env.REPLIT_DOMAINS}` 
-              : 'http://localhost:5000';
+            const baseUrl = process.env.APP_URL || 'http://localhost:5000';
             const confirmUrl = `${baseUrl}/newsletter/potvrda/${confirmationToken}`;
             
             await sendEmail({
@@ -749,9 +747,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       // Send confirmation email
       try {
-        const baseUrl = process.env.REPLIT_DOMAINS 
-          ? `https://${process.env.REPLIT_DOMAINS}` 
-          : 'http://localhost:5000';
+        const baseUrl = process.env.APP_URL || 'http://localhost:5000';
         const confirmUrl = `${baseUrl}/newsletter/potvrda/${confirmationToken}`;
         
         await sendEmail({
