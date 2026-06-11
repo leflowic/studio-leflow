@@ -151,7 +151,9 @@ export default function GameTab() {
                 <li key={c.id} className="flex items-center gap-3 py-3">
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-2">
-                      <span className="font-medium text-sm">{c.challengeDate}</span>
+                      <span className="font-medium text-sm">
+                        {new Date(c.challengeDate + "T12:00:00Z").toLocaleDateString('sr-Latn', { day: 'numeric', month: 'long', year: 'numeric', timeZone: 'UTC' })}
+                      </span>
                       {c.challengeDate === today && <Badge className="text-xs">Danas</Badge>}
                     </div>
                     <p className="text-xs text-muted-foreground truncate">{c.correctAnswers.split(',')[0].trim()}</p>
