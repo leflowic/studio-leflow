@@ -19,7 +19,7 @@ export default function Terms() {
       icon: AlertCircle,
       title: "Razlozi Nepovrativosti Avansa",
       content: [
-        "<strong>Rezervacija studio vremena:</strong> Vaš termin se rezerviše ekskluzivno za vas, što znači da studio odbija druge klijente u tom periodu. Otkazivanje termina u kratkom roku rezultira gubicima koje studio ne može nadoknaditi.",
+        "<strong>Rezervacija studijskog vremena:</strong> Vaš termin se rezerviše ekskluzivno za vas, što znači da studio odbija druge klijente u tom periodu. Otkazivanje termina u kratkom roku rezultira gubicima koje studio ne može nadoknaditi.",
         "<strong>Tehnička i kreativna priprema:</strong> Pre svakog termina, naš tim priprema opremu, podešava akustiku prostora i planira kreativni pristup na osnovu vaših potreba. Ova priprema zahteva vreme i stručnost.",
         "<strong>Angažovanje kreativnog tima:</strong> Za vaš projekat angažujemo profesionalce (producente, mix inženjere, video operatere) koji se pripremaju i rezervišu vreme specifično za vaš projekat.",
         "<strong>Organizacioni troškovi:</strong> Koordinacija rasporeda, komunikacija sa klijentom, priprema materijala i administracija projekta predstavljaju značajan uloženi trud pre same realizacije."
@@ -32,7 +32,7 @@ export default function Terms() {
         "Izmene termina moguće su uz obavezu da nas obavestite <strong>najmanje 48 sati unapred</strong>.",
         "Promena termina uz poštovanje ovog roka ne utiče na avans - jednostavno prenosimo rezervaciju.",
         "Otkazivanje ili pomeranje termina sa manje od 48 sati najave rezultira gubitkom avansa.",
-        "Nepojavljivan je na zakazanom terminu bez prethodne najave smatra se otkazivanjem i avans se ne vraća.",
+        "Nepojavljanje na zakazanom terminu bez prethodne najave smatra se otkazivanjem i avans se ne vraća.",
         "Studio LeFlow zadržava pravo da ponudi alternativni termin u slučaju tehničkih problema ili više sile."
       ]
     },
@@ -63,7 +63,7 @@ export default function Terms() {
       content: [
         "<strong>Šta je digitalna licenca?</strong> Studio LeFlow izdaje digitalne licence kao zvanični dokaz o pruženim uslugama, prenosu prava ili kupovini instrumentala. Svaka licenca ima jedinstven broj i verifikacioni kod koji garantuje njenu autentičnost.",
         "<strong>Verifikacija autentičnosti:</strong> Svaku licencu možete proveriti na adresi <strong>studioleflow.com/proveri/[kod]</strong>. Verifikaciona stranica prikazuje sve relevantne podatke o licenci — kome je izdata, tip licence i datum izdavanja.",
-        "<strong>Anti-falsifikacija:</strong> Svaka licenca je kriptografski zaštićena HMAC algoritmom. Nije moguće kreirati validnu licencu bez zvaničnog sistema Studio LeFlow, što čini falsifikovanje dokumenta praktično nemogućim.",
+        "<strong>Zaštita od falsifikacija:</strong> Svaka licenca je kriptografski zaštićena HMAC algoritmom. Nije moguće kreirati validnu licencu bez zvaničnog sistema Studio LeFlow, što čini falsifikovanje dokumenta praktično nemogućim.",
         "<strong>Tipovi licenci:</strong> Izdajemo tri tipa licenci — <strong>Mix & Master licenca</strong> (za usluge miksanja i masteringa), <strong>Licenca za prenos autorskih prava</strong> (za prenos prava na muzičko delo) i <strong>Licenca za prodaju instrumentala</strong> (za kupovinu beat-a).",
         "<strong>Čuvanje licence:</strong> Preporučujemo da sačuvate PDF licence koji ste dobili od nas. U slučaju gubitka, autentičnost uvek možete proveriti verifikacionim kodom koji ostaje trajno dostupan na našem sajtu.",
         "<strong>Pravna vrednost:</strong> Licence predstavljaju zvaničan dokument koji potvrđuje poslovni odnos između Studio LeFlow i klijenta. U slučaju spora, verifikacioni sistem služi kao neutralan i proveriv izvor istine."
