@@ -1,10 +1,12 @@
 import { useEffect } from "react";
 import { Link, useLocation } from "wouter";
-import { Music, Mic2, Video, ArrowRight, CheckCircle2, Headphones, Phone, Play, Mail, AlertCircle } from "lucide-react";
+import { Music, Mic2, Video, ArrowRight, CheckCircle2, Headphones, Phone, Play, Mail, AlertCircle, Gamepad2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { useQuery } from "@tanstack/react-query";
+import { useAuth } from "@/hooks/use-auth";
+import { apiRequest } from "@/lib/queryClient";
 import { motion } from "framer-motion";
 import { FadeInWhenVisible } from "@/components/motion/FadeIn";
 import { EditableText } from "@/components/cms/EditableText";
@@ -20,6 +22,19 @@ import videoSetupImage from "@assets/generated_images/Video_camera_production_se
 
 export default function Home() {
   const [location] = useLocation();
+  const { user } = useAuth();
+
+  const { data: gameData } = useQuery<any>({
+    queryKey: ["/api/game/today"],
+    queryFn: async () => {
+      const res = await apiRequest("GET", "/api/game/today");
+      return res.json();
+    },
+    enabled: !!user && user.emailVerified === true,
+    refetchInterval: 60000,
+    staleTime: 30000,
+  });
+  const gameIsLive = gameData?.available === true && !gameData?.alreadyPlayed;
   
   const { data: cmsContent = [] } = useQuery<CmsContent[]>({
     queryKey: ["/api/cms/content", "home"],
@@ -256,9 +271,9 @@ export default function Home() {
                 </Button>
               </Link>
               <Link href="/projekti">
-                <Button 
-                  size="lg" 
-                  variant="outline" 
+                <Button
+                  size="lg"
+                  variant="outline"
                   className="text-lg px-8 py-6 backdrop-blur-md bg-white/10 text-white border-white/30 hover:bg-white/20 transition-all hover:scale-105 hover:shadow-xl font-semibold"
                   data-testid="button-view-projects"
                 >
@@ -266,6 +281,27 @@ export default function Home() {
                   Pogledaj Projekte
                 </Button>
               </Link>
+              {user?.emailVerified && (
+                <Link href="/igra">
+                  <Button
+                    size="lg"
+                    variant="outline"
+                    className="text-lg px-8 py-6 backdrop-blur-md bg-white/10 text-white border-white/30 hover:bg-white/20 transition-all hover:scale-105 hover:shadow-xl font-semibold relative"
+                  >
+                    <Gamepad2 className="mr-2 w-5 h-5" />
+                    Pogodi Pesmu
+                    {gameIsLive && (
+                      <span className="absolute -top-1.5 -right-1.5 flex items-center gap-0.5 bg-red-500 text-white text-[10px] font-bold px-1.5 py-0.5 rounded-full">
+                        <span className="relative flex h-1.5 w-1.5">
+                          <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-white opacity-75" />
+                          <span className="relative inline-flex rounded-full h-1.5 w-1.5 bg-white" />
+                        </span>
+                        LIVE
+                      </span>
+                    )}
+                  </Button>
+                </Link>
+              )}
             </motion.div>
           </div>
         </div>
