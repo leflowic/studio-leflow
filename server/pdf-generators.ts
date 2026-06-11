@@ -1,6 +1,16 @@
 import PDFDocument from "pdfkit";
 import type { Readable } from "stream";
 import path from "path";
+import { fileURLToPath } from "url";
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+
+function fontPath(name: string): string {
+  // Bundled fonts (always available)
+  const bundled = path.resolve(__dirname, '..', 'attached_assets', 'fonts', name);
+  return bundled;
+}
 
 export interface MixMasterContract {
   // Osnovno
@@ -225,8 +235,8 @@ export function generateMixMasterPDF(data: MixMasterContract, licenseNumber: str
     });
     
     // Register DejaVu Sans font for Serbian characters support
-    doc.registerFont('DejaVuSans', '/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf');
-    doc.registerFont('DejaVuSans-Bold', '/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf');
+    doc.registerFont('DejaVuSans', fontPath('DejaVuSans.ttf'));
+    doc.registerFont('DejaVuSans-Bold', fontPath('DejaVuSans-Bold.ttf'));
     
     const buffers: Buffer[] = [];
     doc.on('data', buffers.push.bind(buffers));
@@ -377,8 +387,8 @@ export function generateCopyrightTransferPDF(data: CopyrightTransferContract, li
     });
     
     // Register DejaVu Sans font for Serbian characters support
-    doc.registerFont('DejaVuSans', '/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf');
-    doc.registerFont('DejaVuSans-Bold', '/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf');
+    doc.registerFont('DejaVuSans', fontPath('DejaVuSans.ttf'));
+    doc.registerFont('DejaVuSans-Bold', fontPath('DejaVuSans-Bold.ttf'));
     
     const buffers: Buffer[] = [];
     doc.on('data', buffers.push.bind(buffers));
@@ -527,8 +537,8 @@ export function generateInstrumentalSalePDF(data: InstrumentalSaleContract, lice
     });
     
     // Register DejaVu Sans font for Serbian characters support
-    doc.registerFont('DejaVuSans', '/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf');
-    doc.registerFont('DejaVuSans-Bold', '/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf');
+    doc.registerFont('DejaVuSans', fontPath('DejaVuSans.ttf'));
+    doc.registerFont('DejaVuSans-Bold', fontPath('DejaVuSans-Bold.ttf'));
     
     const buffers: Buffer[] = [];
     doc.on('data', buffers.push.bind(buffers));

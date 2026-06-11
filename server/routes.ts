@@ -2590,7 +2590,7 @@ Sitemap: ${siteUrl}/sitemap.xml
       });
     } catch (error: any) {
       console.error("[CONTRACTS] Generate error:", error);
-      res.status(500).json({ error: "Greška pri generisanju licence" });
+      res.status(500).json({ error: "Greška pri generisanju licence", detail: error?.message });
     }
   });
 
