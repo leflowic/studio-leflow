@@ -119,9 +119,19 @@ export default function ChatInterface({ selectedUserId, onBack }: ChatInterfaceP
       });
       return res.json();
     },
-    onSuccess: () => {
+    onSuccess: (newMsg: Message) => {
+      // Immediately add sent message to cache so sender sees it instantly
+      queryClient.setQueryData(
+        ["/api/messages/conversation", selectedUserId],
+        (old: Message[] | undefined) => {
+          if (!old) return [newMsg];
+          if (old.some((m) => m.id === newMsg.id)) return old;
+          return [...old, newMsg];
+        }
+      );
       queryClient.invalidateQueries({ queryKey: ["/api/messages/conversation", selectedUserId] });
       setMessageText("");
+      scrollToBottom();
     },
   });
 
@@ -150,18 +160,31 @@ export default function ChatInterface({ selectedUserId, onBack }: ChatInterfaceP
   useEffect(() => {
     const unsubscribe = subscribe((message) => {
       if (message.type === "new_message") {
+        const newMsg = message.message;
+        // Immediately inject message into cache so it appears without a round-trip
+        if (newMsg && (newMsg.senderId === selectedUserId || newMsg.receiverId === selectedUserId)) {
+          queryClient.setQueryData(
+            ["/api/messages/conversation", selectedUserId],
+            (old: Message[] | undefined) => {
+              if (!old) return [newMsg];
+              if (old.some((m) => m.id === newMsg.id)) return old;
+              return [...old, newMsg];
+            }
+          );
+          scrollToBottom();
+        }
+        // Also invalidate to sync any server-side state (read receipts, etc.)
         queryClient.invalidateQueries({ queryKey: ["/api/messages/conversation", selectedUserId] });
-        scrollToBottom();
       }
-      
+
       if (message.type === "message_deleted") {
         queryClient.invalidateQueries({ queryKey: ["/api/messages/conversation", selectedUserId] });
       }
-      
+
       if (message.type === "typing_start" && message.userId === selectedUserId) {
         setOtherUserTyping(true);
       }
-      
+
       if (message.type === "typing_stop" && message.userId === selectedUserId) {
         setOtherUserTyping(false);
       }
