@@ -1,7 +1,7 @@
 import { createContext, useContext, useEffect, useRef, useState, useCallback, ReactNode } from "react";
 import { useAuth } from "@/hooks/use-auth";
 import { useToast } from "@/hooks/use-toast";
-import notificationSound from "@assets/bottle-opening-wine-cork-pop-352701_1762664855578.mp3";
+import notificationSound from "@assets/universfield-new-notification-035-485894.mp3";
 
 function requestNotificationPermission() {
   if ("Notification" in window && Notification.permission === "default") {
