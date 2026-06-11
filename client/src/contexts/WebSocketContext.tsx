@@ -50,19 +50,23 @@ export function WebSocketProvider({ children }: { children: ReactNode }) {
   const reconnectTimeout = useRef<NodeJS.Timeout>();
   const messageListeners = useRef<Set<(message: WebSocketMessage) => void>>(new Set());
   const userRef = useRef(user); // Track current user to prevent stale reconnects
-  const audioRef = useRef<HTMLAudioElement | null>(null);
+  const audioCtxRef = useRef<AudioContext | null>(null);
+  const audioBufferRef = useRef<AudioBuffer | null>(null);
 
-  // Pre-create and unlock audio on first user interaction (browser autoplay policy)
+  // Load audio via AudioContext — works reliably in background tabs
   useEffect(() => {
-    const audio = new Audio(notificationSound);
-    audio.preload = 'auto';
-    audioRef.current = audio;
+    const ctx = new AudioContext();
+    audioCtxRef.current = ctx;
 
+    fetch(notificationSound)
+      .then(r => r.arrayBuffer())
+      .then(buf => ctx.decodeAudioData(buf))
+      .then(decoded => { audioBufferRef.current = decoded; })
+      .catch(e => console.warn('[Audio] Failed to load sound:', e));
+
+    // AudioContext starts suspended — resume on first user interaction
     const unlock = () => {
-      audio.play().then(() => {
-        audio.pause();
-        audio.currentTime = 0;
-      }).catch(() => {});
+      ctx.resume().catch(() => {});
       document.removeEventListener('click', unlock);
       document.removeEventListener('keydown', unlock);
     };
@@ -72,6 +76,7 @@ export function WebSocketProvider({ children }: { children: ReactNode }) {
     return () => {
       document.removeEventListener('click', unlock);
       document.removeEventListener('keydown', unlock);
+      ctx.close().catch(() => {});
     };
   }, []);
 
@@ -114,12 +119,7 @@ export function WebSocketProvider({ children }: { children: ReactNode }) {
             variant: message.variant || 'default',
           });
           
-          // Play notification sound
-          if (audioRef.current) {
-            audioRef.current.volume = 0.5;
-            audioRef.current.currentTime = 0;
-            audioRef.current.play().catch((e) => console.warn('[WebSocket] Audio play blocked:', e));
-          }
+          playNotificationSound();
         }
         
         // Handle new messages from other users
@@ -196,10 +196,23 @@ export function WebSocketProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const playNotificationSound = useCallback(() => {
-    if (audioRef.current) {
-      audioRef.current.volume = document.hidden ? 0.5 : 0.3;
-      audioRef.current.currentTime = 0;
-      audioRef.current.play().catch((e) => console.warn('[WebSocket] Audio play blocked:', e));
+    const ctx = audioCtxRef.current;
+    const buffer = audioBufferRef.current;
+    if (!ctx || !buffer) return;
+    if (ctx.state === 'suspended') {
+      ctx.resume().catch(() => {});
+      return;
+    }
+    try {
+      const gain = ctx.createGain();
+      gain.gain.value = document.hidden ? 0.5 : 0.3;
+      gain.connect(ctx.destination);
+      const source = ctx.createBufferSource();
+      source.buffer = buffer;
+      source.connect(gain);
+      source.start(0);
+    } catch (e) {
+      console.warn('[Audio] Playback failed:', e);
     }
   }, []);
 
