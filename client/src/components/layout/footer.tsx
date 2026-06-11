@@ -1,5 +1,5 @@
 import { Link } from "wouter";
-import { MapPin, Phone, Mail, Instagram } from "lucide-react";
+import { MapPin, Phone, Mail, Instagram, BadgeCheck } from "lucide-react";
 import { FadeInWhenVisible } from "@/components/motion/FadeIn";
 import { NewsletterForm } from "@/components/newsletter-form";
 import leflowLogo from "@/assets/leflow-logo.png";
@@ -132,16 +132,24 @@ export function Footer() {
             © {currentYear} Studio LeFlow. Sva prava zadržana.
           </p>
           <div className="flex gap-6 text-sm text-muted-foreground">
-            <Link 
+            <Link
+              href="/proveri"
+              className="hover:text-primary transition-colors flex items-center gap-1.5"
+              data-testid="link-footer-verify"
+            >
+              <BadgeCheck className="w-3.5 h-3.5" />
+              Proveri Licencu
+            </Link>
+            <Link
               href="/pravila"
-              className="hover:text-primary transition-colors" 
+              className="hover:text-primary transition-colors"
               data-testid="link-footer-privacy"
             >
               Politika Privatnosti
             </Link>
-            <Link 
+            <Link
               href="/pravila"
-              className="hover:text-primary transition-colors" 
+              className="hover:text-primary transition-colors"
               data-testid="link-footer-terms"
             >
               Uslovi Korišćenja
