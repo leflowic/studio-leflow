@@ -60,10 +60,12 @@ There are no automated tests in this project.
 - Admin-only API routes go in `server/routes.ts` under `requireAdmin` middleware. Always use `requireAdmin`, never trust `req.jwtUser?.role` manually in route handlers.
 - `GET /api/admin/katastar/:userId` returns `{ user, projects, contracts, invoices }` for the Katastar (client registry) tab.
 
-**Unread message badge:**
-- `GET /api/messages/conversation/:userId` auto-marks messages as read server-side and broadcasts `message_read` to **both** the sender and the reader via WebSocket.
-- The header subscribes to `message_read` and invalidates `/api/messages/unread-count`. `ChatInterface` also invalidates it via `useEffect` on messages load as a safety net.
-- When adding new badge-like counters, follow this same pattern: server broadcasts to both parties, client invalidates the count query.
+**Real-time messaging:**
+- `WebSocketContext` is the single shared WS connection (app-level). `ChatInterface` and `ConversationList` subscribe to it via `useWebSocketContext()`. The header uses a separate `useWebSocket()` hook (its own connection) only for the unread badge.
+- When a `new_message` WS event arrives, `ChatInterface` calls `queryClient.setQueryData` to inject the message directly into the cache — no network round-trip. `invalidateQueries` is also called afterward to sync server state (read receipts etc). This is the correct pattern for instant real-time UI updates; do **not** rely on `invalidateQueries` alone for real-time features since `staleTime: Infinity` means it triggers a fetch, not an instant update.
+- `GET /api/messages/conversation/:userId` auto-marks messages as read and broadcasts `message_read` to **both** parties (sender and reader). The header invalidates `/api/messages/unread-count` on `message_read`. `ChatInterface` also invalidates it on messages load.
+- Notification sound: `attached_assets/universfield-new-notification-035-485894.mp3`, imported via `@assets` alias in `WebSocketContext.tsx`.
+- When adding new badge-like counters, follow this pattern: server broadcasts to both parties, client uses `setQueryData` for instant update + `invalidateQueries` for sync.
 
 **Admin file downloads:**
 - Never use `window.open(url)` for admin-only endpoints — it doesn't send `Authorization` headers. Use `fetch()` with `Authorization: Bearer <token>` header, then create a blob URL and trigger download via a temporary `<a>` element.
