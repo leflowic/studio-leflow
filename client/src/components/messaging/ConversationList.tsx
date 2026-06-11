@@ -1,4 +1,5 @@
 import { useQuery } from "@tanstack/react-query";
+import { apiRequest } from "@/lib/queryClient";
 import { useAuth } from "@/hooks/use-auth";
 import { useWebSocketContext } from "@/contexts/WebSocketContext";
 import { ScrollArea } from "@/components/ui/scroll-area";
@@ -63,8 +64,7 @@ export default function ConversationList({ selectedUserId, onSelectConversation,
   const { data: conversations, isLoading, refetch } = useQuery<ConversationData[]>({
     queryKey: ["/api/conversations"],
     queryFn: async () => {
-      const res = await fetch("/api/conversations", { cache: "no-store" });
-      if (!res.ok) throw new Error("Failed to fetch conversations");
+      const res = await apiRequest("GET", "/api/conversations");
       return res.json();
     },
   });

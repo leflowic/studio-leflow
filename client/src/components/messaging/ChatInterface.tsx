@@ -91,8 +91,7 @@ export default function ChatInterface({ selectedUserId, onBack }: ChatInterfaceP
   const { data: messages, isLoading: messagesLoading } = useQuery<Message[]>({
     queryKey: ["/api/messages/conversation", selectedUserId],
     queryFn: async () => {
-      const res = await fetch(`/api/messages/conversation/${selectedUserId}`, { cache: "no-store" });
-      if (!res.ok) throw new Error("Failed to fetch messages");
+      const res = await apiRequest("GET", `/api/messages/conversation/${selectedUserId}`);
       return res.json();
     },
   });
@@ -100,23 +99,17 @@ export default function ChatInterface({ selectedUserId, onBack }: ChatInterfaceP
   const { data: otherUser } = useQuery<OtherUser>({
     queryKey: ["/api/users", selectedUserId],
     queryFn: async () => {
-      const res = await fetch(`/api/users/${selectedUserId}`, { cache: "no-store" });
-      if (!res.ok) throw new Error("Failed to fetch user");
+      const res = await apiRequest("GET", `/api/users/${selectedUserId}`);
       return res.json();
     },
   });
 
   const sendMessageMutation = useMutation({
     mutationFn: async (content: string) => {
-      const res = await fetch("/api/messages/send", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          receiverId: selectedUserId,
-          content,
-        }),
+      const res = await apiRequest("POST", "/api/messages/send", {
+        receiverId: selectedUserId,
+        content,
       });
-      if (!res.ok) throw new Error("Failed to send message");
       return res.json();
     },
     onSuccess: () => {

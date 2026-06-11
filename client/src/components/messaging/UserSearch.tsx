@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef } from "react";
 import { useQuery } from "@tanstack/react-query";
+import { apiRequest } from "@/lib/queryClient";
 import { Input } from "@/components/ui/input";
 import { Card } from "@/components/ui/card";
 import { Search, Loader2, User } from "lucide-react";
@@ -44,8 +45,7 @@ export default function UserSearch({ onSelectUser }: UserSearchProps) {
     queryKey: ["/api/users/search", debouncedQuery],
     queryFn: async () => {
       if (debouncedQuery.length < 2) return [];
-      const res = await fetch(`/api/users/search?q=${encodeURIComponent(debouncedQuery)}`, { cache: "no-store" });
-      if (!res.ok) throw new Error("Failed to search users");
+      const res = await apiRequest("GET", `/api/users/search?q=${encodeURIComponent(debouncedQuery)}`);
       return res.json();
     },
     enabled: debouncedQuery.length >= 2,
