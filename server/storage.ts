@@ -102,6 +102,7 @@ export interface IStorage {
   getPendingUserByEmail(email: string): Promise<PendingUser | undefined>;
   getPendingUserByUsername(username: string): Promise<PendingUser | undefined>;
   getPendingUserByCode(code: string): Promise<PendingUser | undefined>;
+  updatePendingUserCode(pendingUserId: number, code: string): Promise<void>;
   deletePendingUser(id: number): Promise<void>;
   movePendingToUsers(pendingUserId: number): Promise<User>;
   cleanupExpiredPendingUsers(): Promise<number>; // Returns count of deleted records
@@ -493,6 +494,10 @@ export class DatabaseStorage implements IStorage {
   async getPendingUserByCode(code: string): Promise<PendingUser | undefined> {
     const results = await db.select().from(pendingUsers).where(eq(pendingUsers.verificationCode, code)).limit(1);
     return results[0];
+  }
+
+  async updatePendingUserCode(pendingUserId: number, code: string): Promise<void> {
+    await db.update(pendingUsers).set({ verificationCode: code }).where(eq(pendingUsers.id, pendingUserId));
   }
 
   async deletePendingUser(id: number): Promise<void> {

@@ -456,18 +456,19 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(400).json({ error: "Email je obavezan" });
       }
       
-      const user = await storage.getUserByEmail(email);
-      if (!user) {
-        return res.status(404).json({ error: "Korisnik sa ovim emailom nije pronađen" });
+      const pendingUser = await storage.getPendingUserByEmail(email);
+      if (!pendingUser) {
+        return res.status(404).json({ error: "Korisnik sa ovim emailom nije pronađen ili je već verifikovan" });
       }
-      
-      if (user.emailVerified) {
-        return res.status(400).json({ error: "Email je već verifikovan" });
+
+      if (new Date() > new Date(pendingUser.expiresAt)) {
+        await storage.deletePendingUser(pendingUser.id);
+        return res.status(400).json({ error: "Prethodni zahtev za registraciju je istekao. Molimo registrujte se ponovo." });
       }
-      
+
       // Generate new verification code
       const verificationCode = Math.floor(100000 + Math.random() * 900000).toString();
-      await storage.setVerificationCode(user.id, verificationCode);
+      await storage.updatePendingUserCode(pendingUser.id, verificationCode);
       
       // Send verification email
       try {

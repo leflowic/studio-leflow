@@ -9,7 +9,7 @@ import {
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { apiRequest, queryClient } from "@/lib/queryClient";
+import { apiRequest, queryClient, setAuthToken } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 
 interface VerificationModalProps {
@@ -52,13 +52,14 @@ export function VerificationModal({
       });
       const data = await res.json();
       
+      setAuthToken(data.token);
       queryClient.setQueryData(["/api/user"], data.user);
-      
+
       toast({
         title: "Uspešno!",
         description: "Vaš email je verifikovan. Dobrodošli u Studio LeFlow!",
       });
-      
+
       onSuccess();
     } catch (error: any) {
       toast({
