@@ -37,6 +37,7 @@ interface WebSocketContextType {
   isConnected: boolean;
   send: (message: any) => void;
   subscribe: (listener: (message: WebSocketMessage) => void) => () => void;
+  playNotificationSound: () => void;
 }
 
 const WebSocketContext = createContext<WebSocketContextType | null>(null);
@@ -128,23 +129,14 @@ export function WebSocketProvider({ children }: { children: ReactNode }) {
           const senderUsername = message.message?.senderUsername || "Novi msg";
 
           if (currentUserId && messageSenderId && messageSenderId !== currentUserId) {
-            if (audioRef.current) {
-              audioRef.current.volume = document.hidden ? 0.5 : 0.3;
-              audioRef.current.currentTime = 0;
-              audioRef.current.play().catch((e) => console.warn('[WebSocket] Audio play blocked:', e));
-            }
+            playNotificationSound();
 
             if (document.hidden) {
-              // Browser notification
               showBrowserNotification(
                 `Nova poruka od ${senderUsername}`,
                 message.message?.content || "Poslao ti je poruku",
                 senderUsername,
               );
-            }
-
-            // Update document title with unread indicator
-            if (document.hidden) {
               document.title = `💬 Nova poruka — Studio LeFlow`;
             }
           }
@@ -197,10 +189,18 @@ export function WebSocketProvider({ children }: { children: ReactNode }) {
 
   const subscribe = useCallback((listener: (message: WebSocketMessage) => void) => {
     messageListeners.current.add(listener);
-    
+
     return () => {
       messageListeners.current.delete(listener);
     };
+  }, []);
+
+  const playNotificationSound = useCallback(() => {
+    if (audioRef.current) {
+      audioRef.current.volume = document.hidden ? 0.5 : 0.3;
+      audioRef.current.currentTime = 0;
+      audioRef.current.play().catch((e) => console.warn('[WebSocket] Audio play blocked:', e));
+    }
   }, []);
 
   useEffect(() => {
@@ -231,7 +231,7 @@ export function WebSocketProvider({ children }: { children: ReactNode }) {
   }, [user, connect, disconnect]);
 
   return (
-    <WebSocketContext.Provider value={{ isConnected, send, subscribe }}>
+    <WebSocketContext.Provider value={{ isConnected, send, subscribe, playNotificationSound }}>
       {children}
     </WebSocketContext.Provider>
   );

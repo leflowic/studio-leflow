@@ -78,7 +78,7 @@ interface ChatInterfaceProps {
 
 export default function ChatInterface({ selectedUserId, onBack }: ChatInterfaceProps) {
   const { user } = useAuth();
-  const { send, subscribe } = useWebSocketContext();
+  const { send, subscribe, playNotificationSound } = useWebSocketContext();
   const queryClient = useQueryClient();
   const [messageText, setMessageText] = useState("");
   const [isTyping, setIsTyping] = useState(false);
@@ -87,6 +87,7 @@ export default function ChatInterface({ selectedUserId, onBack }: ChatInterfaceP
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const typingTimeoutRef = useRef<NodeJS.Timeout>();
   const lastUnreadMessagesRef = useRef<Set<number>>(new Set());
+  const knownMessageIdsRef = useRef<Set<number>>(new Set());
 
   const { data: messages, isLoading: messagesLoading } = useQuery<Message[]>({
     queryKey: ["/api/messages/conversation", selectedUserId],
@@ -97,6 +98,22 @@ export default function ChatInterface({ selectedUserId, onBack }: ChatInterfaceP
     refetchInterval: 3000, // Polling fallback in case WS event is missed
     staleTime: 0,
   });
+
+  // Play sound for new messages that arrived via polling (WS fallback)
+  useEffect(() => {
+    if (!messages || !user) return;
+    const isFirstLoad = knownMessageIdsRef.current.size === 0;
+    let hasNewFromOther = false;
+    for (const msg of messages) {
+      if (!knownMessageIdsRef.current.has(msg.id)) {
+        if (!isFirstLoad && msg.senderId !== user.id) {
+          hasNewFromOther = true;
+        }
+        knownMessageIdsRef.current.add(msg.id);
+      }
+    }
+    if (hasNewFromOther) playNotificationSound();
+  }, [messages, user, playNotificationSound]);
 
   // Clear unread badge whenever this conversation is opened/refreshed
   useEffect(() => {
