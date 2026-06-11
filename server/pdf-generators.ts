@@ -8,7 +8,7 @@ export interface MixMasterContract {
   contractPlace: string;
   studioName: string;
   studioAddress: string;
-  studioMaticniBroj: string;
+  studioMaticniBroj?: string;
   clientName: string;
   clientAddress: string;
   clientMaticniBroj: string;
@@ -251,7 +251,6 @@ export function generateMixMasterPDF(data: MixMasterContract, licenseNumber: str
     doc.fontSize(10).font('DejaVuSans');
     doc.text(`Ime i prezime / poslovno ime: ${data.studioName}`);
     doc.text(`Adresa: ${data.studioAddress}`);
-    doc.text(`Matični broj: ${data.studioMaticniBroj}`);
     doc.moveDown();
 
     // Naručilac

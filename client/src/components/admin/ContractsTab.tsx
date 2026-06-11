@@ -588,7 +588,6 @@ function MixMasterForm({ onSubmit, isSubmitting }: { onSubmit: (data: any) => vo
     contractPlace: "Beograd",
     studioName: "LeFlow Studio",
     studioAddress: "",
-    studioMaticniBroj: "",
     clientName: "",
     clientAddress: "",
     clientMaticniBroj: "",
@@ -646,10 +645,6 @@ function MixMasterForm({ onSubmit, isSubmitting }: { onSubmit: (data: any) => vo
           <div className="space-y-2">
             <Label>Adresa Studija</Label>
             <Input value={formData.studioAddress} onChange={(e) => handleChange("studioAddress", e.target.value)} data-testid="input-studio-address" />
-          </div>
-          <div className="space-y-2">
-            <Label>Matični Broj Studija</Label>
-            <Input value={formData.studioMaticniBroj} onChange={(e) => handleChange("studioMaticniBroj", e.target.value)} data-testid="input-studio-mb" />
           </div>
         </div>
       </div>
