@@ -1050,15 +1050,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Upload a project - now using UploadThing for file hosting
   app.post("/api/giveaway/projects", requireVerifiedEmail, async (req, res) => {
     // SECURITY: Enforce terms acceptance on server side
     if (!req.jwtUser!.termsAccepted) {
       return res.status(403).json({ error: "Morate prihvatiti pravila pre učešća u giveaway-u" });
     }
-    
+
     try {
-      // Check if mp3Url was provided (uploaded via UploadThing)
       if (!req.body.mp3Url) {
         return res.status(400).json({ error: "MP3 URL je obavezan" });
       }
@@ -1077,7 +1075,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         title: req.body.title,
         description: req.body.description || '',
         genre: req.body.genre,
-        mp3Url: req.body.mp3Url, // Use the URL from UploadThing
+        mp3Url: req.body.mp3Url,
       });
       
       const project = await storage.createProject({

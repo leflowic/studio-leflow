@@ -1,4 +1,4 @@
-import { useState, useRef } from "react";
+import { useState, useRef, useEffect } from "react";
 import { Upload, Loader2 } from "lucide-react";
 import { useEditMode } from "@/contexts/EditModeContext";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
@@ -14,7 +14,7 @@ interface EditableImageProps {
   alt: string;
   className?: string;
   containerClassName?: string;
-  fallbackSrc?: string;
+  fallbackSrc?: string | undefined;
 }
 
 export function EditableImage({
@@ -25,7 +25,7 @@ export function EditableImage({
   alt,
   className,
   containerClassName,
-  fallbackSrc = "/placeholder.png"
+  fallbackSrc
 }: EditableImageProps) {
   const { isEditMode } = useEditMode();
   const { toast } = useToast();
@@ -33,6 +33,11 @@ export function EditableImage({
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [isUploading, setIsUploading] = useState(false);
   const [previewUrl, setPreviewUrl] = useState(currentImageUrl);
+
+  // Sync when the CMS data loads asynchronously after initial render
+  useEffect(() => {
+    if (currentImageUrl) setPreviewUrl(currentImageUrl);
+  }, [currentImageUrl]);
 
   const updateImageMutation = useMutation({
     mutationFn: async (imageUrl: string) => {
@@ -87,12 +92,11 @@ export function EditableImage({
     setIsUploading(true);
 
     try {
-      // Upload to UploadThing
       const formData = new FormData();
       formData.append("file", file);
 
       const token = getAuthToken();
-      const uploadResponse = await fetch("/api/upload-image", {
+      const uploadResponse = await fetch("/api/upload/avatar", {
         method: "POST",
         headers: token ? { Authorization: `Bearer ${token}` } : {},
         body: formData,

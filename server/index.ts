@@ -104,8 +104,8 @@ app.use((req, res, next) => {
     "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; " +
     "font-src 'self' https://fonts.gstatic.com; " +
     "img-src 'self' data: https:; " +
-    "media-src 'self' https://utfs.io https://*.uploadthing.com; " +
-    "connect-src 'self' https://*.uploadthing.com https://uploadthing-prod.s3.us-west-2.amazonaws.com; " +
+    "media-src 'self' https://res.cloudinary.com; " +
+    "connect-src 'self' https://api.cloudinary.com; " +
     "frame-src 'self' https://www.youtube.com https://www.youtube-nocookie.com; " +
     "frame-ancestors 'none';"
   );

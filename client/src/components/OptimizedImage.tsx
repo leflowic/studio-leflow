@@ -1,4 +1,4 @@
-import { ImgHTMLAttributes, useState, type MouseEvent } from 'react';
+import { ImgHTMLAttributes, useState, useEffect, useRef, type MouseEvent } from 'react';
 
 interface OptimizedImageProps extends Omit<ImgHTMLAttributes<HTMLImageElement>, 'loading'> {
   src: string;
@@ -8,17 +8,26 @@ interface OptimizedImageProps extends Omit<ImgHTMLAttributes<HTMLImageElement>, 
   sizes?: string;
 }
 
-export function OptimizedImage({ 
-  src, 
-  alt, 
+export function OptimizedImage({
+  src,
+  alt,
   priority = false,
   className = "",
   sizes,
-  ...props 
+  ...props
 }: OptimizedImageProps) {
   const [isLoaded, setIsLoaded] = useState(false);
+  const imgRef = useRef<HTMLImageElement>(null);
+
+  // Handle cached images: onLoad won't fire if the browser already has the image cached
+  useEffect(() => {
+    if (imgRef.current?.complete) {
+      setIsLoaded(true);
+    }
+  }, [src]);
 
   const imgAttributes: any = {
+    ref: imgRef,
     src,
     alt,
     loading: priority ? "eager" : "lazy",
