@@ -376,7 +376,7 @@ function SettingsTab() {
               </div>
             </div>
             <Button
-              onClick={() => window.open("https://mail.zoho.eu", "_blank")}
+              onClick={() => window.open("https://accounts.zoho.eu/signin", "_blank")}
               className="gap-2"
             >
               <Mail className="w-4 h-4" />
