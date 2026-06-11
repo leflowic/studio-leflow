@@ -70,6 +70,7 @@ const InboxPage = lazy(() => import("@/pages/inbox"));
 const MojePesmePage = lazy(() => import("@/pages/moje-pesme"));
 const ZajednicaPage = lazy(() => import("@/pages/zajednica"));
 const NotFoundPage = lazy(() => import("@/pages/not-found"));
+const VerifyLicensePage = lazy(() => import("@/pages/verify-license"));
 const MaintenancePage = lazy(() => import("@/pages/maintenance"));
 const NewsletterConfirmationPage = lazy(() => import("@/pages/newsletter-confirmation"));
 function Router() {
@@ -123,6 +124,7 @@ function Router() {
                 <Route path="/prijava"><AuthPageComponent /></Route>
                 <Route path="/registracija"><AuthPageComponent /></Route>
                 <Route path="/verify-email"><VerifyEmailPageComponent /></Route>
+                <Route path="/proveri/:hash"><VerifyLicensePage /></Route>
                 <Route path="/newsletter/potvrda/:token"><NewsletterConfirmationPage /></Route>
                 <Route path="/uslovi-koriscenja"><TermsOfUsePage /></Route>
                 <ProtectedRoute path="/zajednica" component={() => <ZajednicaPage />} />

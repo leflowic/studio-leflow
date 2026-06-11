@@ -133,9 +133,30 @@ export interface InstrumentalSaleContract {
   finalDate: string;
 }
 
-/**
- * Helper function to draw Studio LeFlow logo at top-right of contract
- */
+function drawLicenseFooter(doc: PDFKit.PDFDocument, licenseNumber: string, verificationHash: string): void {
+  const pageWidth = doc.page.width;
+  const leftMargin = doc.page.margins.left;
+  const rightMargin = doc.page.margins.right;
+  const contentWidth = pageWidth - leftMargin - rightMargin;
+
+  doc.moveDown(2);
+  doc.strokeColor('#aaaaaa').lineWidth(0.5)
+    .moveTo(leftMargin, doc.y)
+    .lineTo(pageWidth - rightMargin, doc.y)
+    .stroke();
+  doc.moveDown(0.5);
+
+  doc.fontSize(8).font('DejaVuSans-Bold').fillColor('#222222');
+  doc.text('DIGITALNA LICENCA — Studio LeFlow', leftMargin, doc.y, { width: contentWidth, align: 'center' });
+  doc.moveDown(0.4);
+  doc.fontSize(8).font('DejaVuSans').fillColor('#444444');
+  doc.text(`Broj licence: ${licenseNumber}`, { width: contentWidth, align: 'center' });
+  doc.moveDown(0.3);
+  doc.text(`Proverite autenticnost ove licence na:`, { width: contentWidth, align: 'center' });
+  doc.text(`studioleflow.com/proveri/${verificationHash}`, { width: contentWidth, align: 'center' });
+  doc.fillColor('#000000');
+}
+
 /**
  * Draw professional contract header with Studio LeFlow logo
  * Returns the Y position where body content should start
@@ -196,7 +217,7 @@ function drawContractLogo(doc: PDFKit.PDFDocument): number {
 /**
  * Generate PDF buffer for Mix/Master contract
  */
-export function generateMixMasterPDF(data: MixMasterContract): Promise<Buffer> {
+export function generateMixMasterPDF(data: MixMasterContract, licenseNumber: string, verificationHash: string): Promise<Buffer> {
   return new Promise((resolve, reject) => {
     const doc = new PDFDocument({ 
       size: 'A4', 
@@ -216,13 +237,13 @@ export function generateMixMasterPDF(data: MixMasterContract): Promise<Buffer> {
     const bodyStartY = drawContractLogo(doc);
     doc.y = bodyStartY;
 
-    // Contract title
-    doc.fontSize(14).font('DejaVuSans-Bold').text('UGOVOR O PRUŽANJU USLUGA MIXINGA I MASTERINGA', { align: 'center' });
+    // License title
+    doc.fontSize(14).font('DejaVuSans-Bold').text('LICENCA ZA USLUGE MIXINGA I MASTERINGA', { align: 'center' });
     doc.moveDown(2);
 
-    // Contract metadata
+    // License metadata
     doc.fontSize(10).font('DejaVuSans')
-      .text(`Zaključen dana ${data.contractDate} godine u ${data.contractPlace}, između sledećih ugovornih strana:`, { align: 'left' });
+      .text(`Izdata dana ${data.contractDate} godine u ${data.contractPlace}, između sledećih strana:`, { align: 'left' });
     doc.moveDown();
 
     // Pružalac usluge
@@ -336,17 +357,11 @@ export function generateMixMasterPDF(data: MixMasterContract): Promise<Buffer> {
     doc.fontSize(12).font('DejaVuSans-Bold').text('Član 9. Završne odredbe', { align: 'center' });
     doc.moveDown();
     doc.fontSize(10).font('DejaVuSans');
-    doc.text(`Ovaj ugovor je sačinjen u ${data.copies} istovetnih primeraka, od kojih svaka ugovorna strana zadržava po jedan.`);
+    doc.text(`Ova licenca je izdata dana ${data.finalDate} i stupa na snagu danom plaćanja naknade.`);
     doc.moveDown();
-    doc.text('Potpisivanjem ugovora, strane potvrđuju da su saglasne sa svim odredbama i da ga zaključuju slobodnom voljom.');
-    doc.moveDown(3);
+    doc.text('Korišćenjem usluge, Naručilac potvrđuje da prihvata sve uslove navedene u ovoj licenci.');
 
-    // Signatures
-    doc.fontSize(10).font('DejaVuSans');
-    doc.text('____________________________', 100, doc.y, { continued: true, width: 200 });
-    doc.text('____________________________', 320, doc.y - doc.currentLineHeight(), { width: 200 });
-    doc.moveDown(2);
-    doc.text(`Datum: ${data.finalDate}`, { align: 'center' });
+    drawLicenseFooter(doc, licenseNumber, verificationHash);
 
     doc.end();
   });
@@ -355,7 +370,7 @@ export function generateMixMasterPDF(data: MixMasterContract): Promise<Buffer> {
 /**
  * Generate PDF buffer for Copyright Transfer contract
  */
-export function generateCopyrightTransferPDF(data: CopyrightTransferContract): Promise<Buffer> {
+export function generateCopyrightTransferPDF(data: CopyrightTransferContract, licenseNumber: string, verificationHash: string): Promise<Buffer> {
   return new Promise((resolve, reject) => {
     const doc = new PDFDocument({ 
       size: 'A4', 
@@ -375,13 +390,13 @@ export function generateCopyrightTransferPDF(data: CopyrightTransferContract): P
     const bodyStartY = drawContractLogo(doc);
     doc.y = bodyStartY;
 
-    // Contract title
-    doc.fontSize(14).font('DejaVuSans-Bold').text('UGOVOR O PRENOSU IMOVINSKIH AUTORSKIH PRAVA', { align: 'center' });
+    // License title
+    doc.fontSize(14).font('DejaVuSans-Bold').text('LICENCA ZA PRENOS IMOVINSKIH AUTORSKIH PRAVA', { align: 'center' });
     doc.moveDown(2);
 
-    // Contract metadata
+    // License metadata
     doc.fontSize(10).font('DejaVuSans')
-      .text(`Zaključen dana ${data.contractDate} godine u ${data.contractPlace}, između sledećih ugovornih strana:`, { align: 'left' });
+      .text(`Izdata dana ${data.contractDate} godine u ${data.contractPlace}, između sledećih strana:`, { align: 'left' });
     doc.moveDown(2);
 
     // Autor/Prodavac
@@ -493,19 +508,10 @@ export function generateCopyrightTransferPDF(data: CopyrightTransferContract): P
     doc.fontSize(12).font('DejaVuSans-Bold').text('Član 9. Završne odredbe', { align: 'center' });
     doc.moveDown();
     doc.fontSize(10).font('DejaVuSans');
-    doc.text(`Ovaj ugovor je sačinjen u ${data.copies} istovetnih primeraka, od kojih svaka ugovorna strana zadržava po jedan.`);
-    doc.text('Potpisivanjem ugovora strane potvrđuju da su saglasne sa svim odredbama i da ga zaključuju slobodnom voljom.');
-    doc.moveDown(3);
+    doc.text(`Ova licenca je izdata dana ${data.finalDate} i stupa na snagu danom plaćanja naknade.`);
+    doc.text('Prenosom prava, Kupac potvrđuje da prihvata sve uslove navedene u ovoj licenci.');
 
-    // Signatures
-    doc.fontSize(10).font('DejaVuSans');
-    doc.text('____________________________', { align: 'left' });
-    doc.text('Autor/Prodavac', { align: 'left' });
-    doc.moveDown(2);
-    doc.text('____________________________', { align: 'left' });
-    doc.text('Kupac', { align: 'left' });
-    doc.moveDown(2);
-    doc.text(`Datum: ${data.finalDate}`, { align: 'center' });
+    drawLicenseFooter(doc, licenseNumber, verificationHash);
 
     doc.end();
   });
@@ -514,7 +520,7 @@ export function generateCopyrightTransferPDF(data: CopyrightTransferContract): P
 /**
  * Generate PDF buffer for Instrumental Sale contract
  */
-export function generateInstrumentalSalePDF(data: InstrumentalSaleContract): Promise<Buffer> {
+export function generateInstrumentalSalePDF(data: InstrumentalSaleContract, licenseNumber: string, verificationHash: string): Promise<Buffer> {
   return new Promise((resolve, reject) => {
     const doc = new PDFDocument({ 
       size: 'A4', 
@@ -645,14 +651,8 @@ export function generateInstrumentalSalePDF(data: InstrumentalSaleContract): Pro
     doc.text(`Ova licenca je izdata u ${data.copies} primerka i stupa na snagu danom plaćanja naknade.`);
     doc.moveDown();
     doc.text('Korišćenjem instrumentala, Korisnik potvrđuje da prihvata sve uslove navedene u ovoj licenci.');
-    doc.moveDown(3);
 
-    // Signatures
-    doc.fontSize(10).font('DejaVuSans');
-    doc.text('____________________________', 100, doc.y, { continued: true, width: 200 });
-    doc.text('____________________________', 320, doc.y - doc.currentLineHeight(), { width: 200 });
-    doc.moveDown(2);
-    doc.text(`Datum izdavanja: ${data.finalDate}`, { align: 'center' });
+    drawLicenseFooter(doc, licenseNumber, verificationHash);
 
     doc.end();
   });

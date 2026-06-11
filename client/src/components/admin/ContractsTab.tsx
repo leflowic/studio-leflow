@@ -14,7 +14,7 @@ import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { FileText, Download, Mail, Trash2, Music, Scale, DollarSign, UserPlus } from "lucide-react";
+import { FileText, Download, Mail, Trash2, Music, Scale, DollarSign, UserPlus, ExternalLink } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { format } from "date-fns";
@@ -28,6 +28,7 @@ interface Contract {
   contractData: any;
   pdfPath: string | null;
   clientEmail: string | null;
+  verificationHash: string | null;
   createdAt: string;
   createdBy: number;
   userId: number | null;
@@ -60,7 +61,7 @@ export function ContractsTab() {
       queryClient.invalidateQueries({ queryKey: ["/api/admin/contracts"] });
       toast({
         title: "Uspeh",
-        description: "Ugovor je uspešno generisan!",
+        description: "Licenca je uspešno generisana!",
       });
       setActiveTab("history");
     },
@@ -68,7 +69,7 @@ export function ContractsTab() {
       toast({
         variant: "destructive",
         title: "Greška",
-        description: error.message || "Greška pri generisanju ugovora",
+        description: error.message || "Greška pri generisanju licence",
       });
     },
   });
@@ -82,14 +83,14 @@ export function ContractsTab() {
       queryClient.invalidateQueries({ queryKey: ["/api/admin/contracts"] });
       toast({
         title: "Uspeh",
-        description: "Ugovor je uspešno obrisan!",
+        description: "Licenca je uspešno obrisana!",
       });
     },
     onError: () => {
       toast({
         variant: "destructive",
         title: "Greška",
-        description: "Greška pri brisanju ugovora",
+        description: "Greška pri brisanju licence",
       });
     },
   });
@@ -103,7 +104,7 @@ export function ContractsTab() {
       queryClient.invalidateQueries({ queryKey: ["/api/admin/contracts"] });
       toast({
         title: "Uspeh",
-        description: "Korisnik uspešno dodeljen ugovoru!",
+        description: "Korisnik uspešno dodeljen licenci!",
       });
     },
     onError: () => {
@@ -133,7 +134,7 @@ export function ContractsTab() {
       if (!response.ok) throw new Error("Download failed");
       const disposition = response.headers.get("Content-Disposition") || "";
       const filenameMatch = disposition.match(/filename="?([^"]+)"?/);
-      const filename = filenameMatch?.[1] || `ugovor_${contractNumber.replace("/", "_")}.pdf`;
+      const filename = filenameMatch?.[1] || `licenca_${contractNumber.replace(/-/g, "_")}.pdf`;
       const blob = await response.blob();
       const url = URL.createObjectURL(blob);
       const a = document.createElement("a");
@@ -152,16 +153,16 @@ export function ContractsTab() {
     <div className="space-y-6">
       <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as any)}>
         <TabsList>
-          <TabsTrigger value="new">Kreiraj Novi Ugovor</TabsTrigger>
-          <TabsTrigger value="history">Istorija Ugovora</TabsTrigger>
+          <TabsTrigger value="new">Kreiraj Novu Licencu</TabsTrigger>
+          <TabsTrigger value="history">Istorija Licenci</TabsTrigger>
         </TabsList>
 
         <TabsContent value="new" className="space-y-4">
           <Card>
             <CardHeader>
-              <CardTitle>Izaberite Tip Ugovora</CardTitle>
+              <CardTitle>Kreiraj Novu Licencu</CardTitle>
               <CardDescription>
-                Popunite formu i automatski generiš PDF ugovor
+                Popunite formu i automatski generiši PDF licencu sa verifikacionim kodom
               </CardDescription>
             </CardHeader>
             <CardContent>
@@ -202,10 +203,10 @@ export function ContractsTab() {
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
                 <FileText className="w-5 h-5" />
-                Istorija Ugovora
+                Istorija Licenci
               </CardTitle>
               <CardDescription>
-                Svi generisani ugovori sa opcijama za download i slanje emailom
+                Sve generisane licence sa opcijama za download, verifikaciju i slanje emailom
               </CardDescription>
             </CardHeader>
             <CardContent>
@@ -218,7 +219,7 @@ export function ContractsTab() {
               ) : contracts.length === 0 ? (
                 <div className="text-center py-8 text-muted-foreground">
                   <FileText className="w-12 h-12 mx-auto mb-2 opacity-50" />
-                  <p>Još uvek nema kreiranih ugovora</p>
+                  <p>Još uvek nema kreiranih licenci</p>
                 </div>
               ) : (
                 <>
@@ -281,9 +282,9 @@ export function ContractsTab() {
                               </AlertDialogTrigger>
                               <AlertDialogContent>
                                 <AlertDialogHeader>
-                                  <AlertDialogTitle>Obriši Ugovor?</AlertDialogTitle>
+                                  <AlertDialogTitle>Obriši Licencu?</AlertDialogTitle>
                                   <AlertDialogDescription>
-                                    Da li ste sigurni da želite da obrišete ugovor {contract.contractNumber}?
+                                    Da li ste sigurni da želite da obrišete licencu {contract.contractNumber}?
                                     Ova akcija se ne može poništiti.
                                   </AlertDialogDescription>
                                 </AlertDialogHeader>
@@ -296,6 +297,18 @@ export function ContractsTab() {
                               </AlertDialogContent>
                             </AlertDialog>
                           </div>
+
+                          {contract.verificationHash && (
+                            <a
+                              href={`/proveri/${contract.verificationHash}`}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="flex items-center gap-1 text-xs text-muted-foreground hover:text-primary pt-1"
+                            >
+                              <ExternalLink className="w-3 h-3" />
+                              Verifikacioni link
+                            </a>
+                          )}
                         </div>
                     ))}
                   </div>
@@ -358,6 +371,19 @@ export function ContractsTab() {
 
                                 <SendEmailDialog contractId={contract.id} contractNumber={contract.contractNumber} />
 
+                                {contract.verificationHash && (
+                                  <a
+                                    href={`/proveri/${contract.verificationHash}`}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    title="Otvori verifikacionu stranicu"
+                                  >
+                                    <Button variant="ghost" size="sm">
+                                      <ExternalLink className="w-4 h-4" />
+                                    </Button>
+                                  </a>
+                                )}
+
                                 <AlertDialog>
                                   <AlertDialogTrigger asChild>
                                     <Button variant="ghost" size="sm" data-testid={`button-delete-contract-${contract.id}`}>
@@ -366,9 +392,9 @@ export function ContractsTab() {
                                   </AlertDialogTrigger>
                                   <AlertDialogContent>
                                     <AlertDialogHeader>
-                                      <AlertDialogTitle>Obriši Ugovor?</AlertDialogTitle>
+                                      <AlertDialogTitle>Obriši Licencu?</AlertDialogTitle>
                                       <AlertDialogDescription>
-                                        Da li ste sigurni da želite da obrišete ugovor {contract.contractNumber}?
+                                        Da li ste sigurni da želite da obrišete licencu {contract.contractNumber}?
                                         Ova akcija se ne može poništiti.
                                       </AlertDialogDescription>
                                     </AlertDialogHeader>
@@ -438,9 +464,9 @@ function AssignUserDialog({
       </DialogTrigger>
       <DialogContent>
         <DialogHeader>
-          <DialogTitle>Dodeli Ugovor Korisniku</DialogTitle>
+          <DialogTitle>Dodeli Licencu Korisniku</DialogTitle>
           <DialogDescription>
-            Ugovor {contractNumber} - Izaberite korisnika koji će videti ovaj ugovor u svom dashboard-u
+            Licenca {contractNumber} - Izaberite korisnika koji će videti ovu licencu u svom dashboard-u
           </DialogDescription>
         </DialogHeader>
         <div className="space-y-4 py-4">
@@ -520,9 +546,9 @@ function SendEmailDialog({ contractId, contractNumber }: { contractId: number; c
       </DialogTrigger>
       <DialogContent>
         <DialogHeader>
-          <DialogTitle>Pošalji Ugovor Email-om</DialogTitle>
+          <DialogTitle>Pošalji Licencu Email-om</DialogTitle>
           <DialogDescription>
-            Unesite email adresu klijenta za ugovor {contractNumber}
+            Unesite email adresu klijenta za licencu {contractNumber}
           </DialogDescription>
         </DialogHeader>
         <div className="space-y-4 py-4">
@@ -601,7 +627,7 @@ function MixMasterForm({ onSubmit, isSubmitting }: { onSubmit: (data: any) => vo
     <form onSubmit={(e) => { e.preventDefault(); onSubmit(formData); }} className="space-y-6 mt-4">
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
         <div className="space-y-2">
-          <Label>Datum Ugovora</Label>
+          <Label>Datum Licence</Label>
           <Input value={formData.contractDate} onChange={(e) => handleChange("contractDate", e.target.value)} data-testid="input-contract-date" />
         </div>
         <div className="space-y-2">
@@ -725,7 +751,7 @@ function MixMasterForm({ onSubmit, isSubmitting }: { onSubmit: (data: any) => vo
       </div>
 
       <Button type="submit" disabled={isSubmitting} className="w-full" data-testid="button-generate-contract">
-        {isSubmitting ? "Generiše se..." : "Generiši Ugovor"}
+        {isSubmitting ? "Generiše se..." : "Generiši Licencu"}
       </Button>
     </form>
   );
@@ -797,7 +823,7 @@ function CopyrightTransferForm({ onSubmit, isSubmitting }: { onSubmit: (data: an
     <form onSubmit={(e) => { e.preventDefault(); onSubmit(formData); }} className="space-y-6 mt-4">
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
         <div className="space-y-2">
-          <Label>Datum Ugovora</Label>
+          <Label>Datum Licence</Label>
           <Input value={formData.contractDate} onChange={(e) => handleChange("contractDate", e.target.value)} data-testid="input-contract-date-copyright" />
         </div>
         <div className="space-y-2">
@@ -946,7 +972,7 @@ function CopyrightTransferForm({ onSubmit, isSubmitting }: { onSubmit: (data: an
       </div>
 
       <Button type="submit" disabled={isSubmitting} className="w-full" data-testid="button-generate-contract-copyright">
-        {isSubmitting ? "Generiše se..." : "Generiši Ugovor"}
+        {isSubmitting ? "Generiše se..." : "Generiši Licencu"}
       </Button>
     </form>
   );
@@ -1016,7 +1042,7 @@ function InstrumentalSaleForm({ onSubmit, isSubmitting }: { onSubmit: (data: any
     <form onSubmit={(e) => { e.preventDefault(); onSubmit(formData); }} className="space-y-6 mt-4">
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
         <div className="space-y-2">
-          <Label>Datum Ugovora</Label>
+          <Label>Datum Licence</Label>
           <Input value={formData.contractDate} onChange={(e) => handleChange("contractDate", e.target.value)} data-testid="input-contract-date-instrumental" />
         </div>
         <div className="space-y-2">
@@ -1158,7 +1184,7 @@ function InstrumentalSaleForm({ onSubmit, isSubmitting }: { onSubmit: (data: any
       </div>
 
       <Button type="submit" disabled={isSubmitting} className="w-full" data-testid="button-generate-contract-instrumental">
-        {isSubmitting ? "Generiše se..." : "Generiši Ugovor"}
+        {isSubmitting ? "Generiše se..." : "Generiši Licencu"}
       </Button>
     </form>
   );

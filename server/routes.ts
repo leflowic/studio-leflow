@@ -9,7 +9,7 @@ import multer from "multer";
 import fs from "fs";
 import path from "path";
 import { z } from "zod";
-import { randomBytes } from "crypto";
+import { randomBytes, createHmac } from "crypto";
 import { createRouteHandler } from "uploadthing/express";
 import { uploadRouter } from "./uploadthing";
 import { generateMixMasterPDF, generateCopyrightTransferPDF, generateInstrumentalSalePDF, type MixMasterContract, type CopyrightTransferContract, type InstrumentalSaleContract } from "./pdf-generators";
@@ -2497,7 +2497,7 @@ Sitemap: ${siteUrl}/sitemap.xml
       const { contractType, contractData } = req.body;
 
       if (!contractType || !contractData) {
-        return res.status(400).json({ error: "Tip ugovora i podaci su obavezni" });
+        return res.status(400).json({ error: "Tip licence i podaci su obavezni" });
       }
 
       // Validate contractData based on contract type
@@ -2524,67 +2524,73 @@ Sitemap: ${siteUrl}/sitemap.xml
         });
       }
 
-      // Get next contract number
+      // Get next license number
       const contractNumber = await storage.getNextContractNumber();
+
+      // Generate HMAC-SHA256 verification hash (anti-falsification)
+      const verificationHash = createHmac('sha256', process.env.SESSION_SECRET || 'leflow-license-secret')
+        .update(`${contractNumber}|${contractType}|${Date.now()}`)
+        .digest('hex');
 
       // Generate PDF based on contract type
       let pdfBuffer: Buffer;
       switch (contractType) {
         case "mix_master":
-          pdfBuffer = await generateMixMasterPDF(validatedData as MixMasterContract);
+          pdfBuffer = await generateMixMasterPDF(validatedData as MixMasterContract, contractNumber, verificationHash);
           break;
         case "copyright_transfer":
-          pdfBuffer = await generateCopyrightTransferPDF(validatedData as CopyrightTransferContract);
+          pdfBuffer = await generateCopyrightTransferPDF(validatedData as CopyrightTransferContract, contractNumber, verificationHash);
           break;
         case "instrumental_sale":
-          pdfBuffer = await generateInstrumentalSalePDF(validatedData as InstrumentalSaleContract);
+          pdfBuffer = await generateInstrumentalSalePDF(validatedData as InstrumentalSaleContract, contractNumber, verificationHash);
           break;
         default:
-          return res.status(400).json({ error: "Nevažeći tip ugovora" });
+          return res.status(400).json({ error: "Nevažeći tip licence" });
       }
 
       // Save PDF to disk
       const contractsDir = path.join(process.cwd(), 'attached_assets', 'contracts');
       fs.mkdirSync(contractsDir, { recursive: true });
-      
+
       // Extract client/buyer name based on contract type
       let clientName = '';
       if (contractType === 'mix_master') {
         clientName = validatedData.clientName || '';
       } else {
-        // copyright_transfer and instrumental_sale use buyerName
         clientName = validatedData.buyerName || '';
       }
       const sanitizedName = sanitizeNameForFilename(clientName);
-      
-      // Build filename with client name suffix (or without if name is empty)
-      const filename = sanitizedName 
-        ? `ugovor_${contractNumber.replace('/', '_')}_${sanitizedName}.pdf`
-        : `ugovor_${contractNumber.replace('/', '_')}.pdf`;
+
+      // Build filename
+      const filename = sanitizedName
+        ? `licenca_${contractNumber.replace(/-/g, '_')}_${sanitizedName}.pdf`
+        : `licenca_${contractNumber.replace(/-/g, '_')}.pdf`;
       const pdfPath = path.join(contractsDir, filename);
       fs.writeFileSync(pdfPath, pdfBuffer);
 
-      // Save contract to database
+      // Save license to database
       const contract = await storage.createContract({
         contractNumber,
         contractType,
         contractData,
         pdfPath: `attached_assets/contracts/${filename}`,
         clientEmail: contractData.clientEmail || null,
+        verificationHash,
         createdBy: req.jwtUser!.id,
       });
 
-      res.json({ 
-        success: true, 
+      res.json({
+        success: true,
         contract: {
           id: contract.id,
           contractNumber: contract.contractNumber,
           contractType: contract.contractType,
+          verificationHash: contract.verificationHash,
         }
       });
     } catch (error: any) {
       console.error("[CONTRACTS] Generate error:", error);
-      res.status(500).json({ error: "Greška pri generisanju ugovora" });
+      res.status(500).json({ error: "Greška pri generisanju licence" });
     }
   });
 
@@ -2696,12 +2702,11 @@ Sitemap: ${siteUrl}/sitemap.xml
               </h2>
               
               <p style="margin: 0 0 16px; color: #4a4a4a; font-size: 16px; line-height: 1.6;">
-                U prilogu Vam dostavljamo ugovor broj <strong>${contract.contractNumber}</strong>.
+                U prilogu Vam dostavljamo licencu broj <strong>${contract.contractNumber}</strong>.
               </p>
 
               <p style="margin: 0 0 24px; color: #4a4a4a; font-size: 16px; line-height: 1.6;">
-                Molimo Vas da pažljivo pregledate dokument. Ukoliko imate bilo kakvih pitanja ili nedoumica, 
-                slobodno nas kontaktirajte.
+                Molimo Vas da pažljivo pregledate licencu. Autentičnost možete proveriti na studioleflow.com. Ukoliko imate bilo kakvih pitanja, slobodno nas kontaktirajte.
               </p>
 
               <!-- Contract Info Box -->
@@ -2711,7 +2716,7 @@ Sitemap: ${siteUrl}/sitemap.xml
                     <table role="presentation" cellspacing="0" cellpadding="0" border="0" width="100%">
                       <tr>
                         <td style="padding: 8px 0; color: #6b7280; font-size: 14px;">
-                          Broj ugovora:
+                          Broj licence:
                         </td>
                         <td style="padding: 8px 0; color: #1a1a1a; font-size: 14px; font-weight: 600; text-align: right;">
                           ${contract.contractNumber}
@@ -2769,11 +2774,11 @@ Sitemap: ${siteUrl}/sitemap.xml
 
       // Send email with PDF attachment
       // Extract filename from pdfPath for consistent email attachment name
-      const emailFilename = path.basename(contract.pdfPath || `ugovor_${contract.contractNumber.replace('/', '_')}.pdf`);
+      const emailFilename = path.basename(contract.pdfPath || `licenca_${contract.contractNumber.replace(/-/g, '_')}.pdf`);
 
       await sendEmail({
         to: email,
-        subject: `Studio LeFlow - Ugovor ${contract.contractNumber}`,
+        subject: `Studio LeFlow - Licenca ${contract.contractNumber}`,
         html: emailHtml,
         attachments: [{
           filename: emailFilename,
@@ -2859,6 +2864,48 @@ Sitemap: ${siteUrl}/sitemap.xml
     } catch (error: any) {
       console.error("[CONTRACTS] Delete error:", error);
       res.status(500).json({ error: "Greška pri brisanju ugovora" });
+    }
+  });
+
+  // ============================================================================
+  // PUBLIC LICENSE VERIFICATION ENDPOINT
+  // ============================================================================
+
+  // Verify license by hash (public, no auth required)
+  app.get("/api/verify/:hash", async (req, res) => {
+    try {
+      const { hash } = req.params;
+      if (!hash || hash.length < 32) {
+        return res.json({ valid: false });
+      }
+      const contract = await storage.getContractByHash(hash);
+      if (!contract) {
+        return res.json({ valid: false });
+      }
+      const contractData = contract.contractData as any;
+      const issuedTo = contract.contractType === 'mix_master'
+        ? contractData.clientName
+        : contractData.buyerName;
+      const typeLabel = contract.contractType === 'mix_master'
+        ? 'Mix & Master'
+        : contract.contractType === 'copyright_transfer'
+          ? 'Prenos autorskih prava'
+          : 'Prodaja instrumentala';
+      const subject = contract.contractType === 'mix_master'
+        ? contractData.projectName
+        : contract.contractType === 'copyright_transfer'
+          ? contractData.songTitle
+          : contractData.instrumentalName;
+      res.json({
+        valid: true,
+        licenseNumber: contract.contractNumber,
+        licenseType: typeLabel,
+        issuedTo: issuedTo || 'N/A',
+        subject: subject || 'N/A',
+        issuedAt: contract.createdAt,
+      });
+    } catch (error) {
+      res.status(500).json({ valid: false });
     }
   });
 

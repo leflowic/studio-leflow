@@ -21,7 +21,8 @@ import {
   LayoutDashboard,
   Download,
   AlertCircle,
-  Loader2
+  Loader2,
+  ExternalLink
 } from "lucide-react";
 import { FadeInWhenVisible } from "@/components/motion/FadeIn";
 
@@ -41,6 +42,7 @@ type Contract = {
   contractNumber: string;
   contractType: string;
   pdfPath: string | null;
+  verificationHash: string | null;
   createdAt: string;
   username: string;
 };
@@ -166,13 +168,13 @@ export default function Dashboard() {
 
             <Card data-testid="card-stat-contracts">
               <CardHeader className="flex flex-row items-center justify-between gap-2 space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium">Ugovori</CardTitle>
+                <CardTitle className="text-sm font-medium">Licence</CardTitle>
                 <FileText className="h-4 w-4 text-muted-foreground" />
               </CardHeader>
               <CardContent>
                 <div className="text-2xl font-bold" data-testid="text-total-contracts">{overview.totalContracts}</div>
                 <p className="text-xs text-muted-foreground">
-                  Ukupno ugovora
+                  Ukupno licenci
                 </p>
               </CardContent>
             </Card>
@@ -283,10 +285,10 @@ export default function Dashboard() {
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
               <FileText className="w-5 h-5" />
-              Ugovori
+              Licence
             </CardTitle>
             <CardDescription>
-              Vaši ugovori sa Studio LeFlow
+              Vaše licence od Studio LeFlow
             </CardDescription>
           </CardHeader>
           <CardContent>
@@ -312,7 +314,7 @@ export default function Dashboard() {
                   >
                     <div className="flex-1">
                       <h4 className="font-medium" data-testid={`text-contract-number-${contract.id}`}>
-                        Ugovor #{contract.contractNumber}
+                        Licenca #{contract.contractNumber}
                       </h4>
                       <p className="text-sm text-muted-foreground">
                         {contract.contractType === "mix_master" && "Mix & Master"}
@@ -322,26 +324,35 @@ export default function Dashboard() {
                         {format(new Date(contract.createdAt), "dd.MM.yyyy.")}
                       </p>
                     </div>
-                    {contract.pdfPath && (
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        asChild
-                        data-testid={`button-download-contract-${contract.id}`}
-                      >
-                        <a href={contract.pdfPath} download>
-                          <Download className="w-4 h-4 mr-2" />
-                          Preuzmi PDF
-                        </a>
-                      </Button>
-                    )}
+                    <div className="flex gap-2 flex-shrink-0">
+                      {contract.verificationHash && (
+                        <Button variant="ghost" size="sm" asChild title="Proveri autentičnost">
+                          <a href={`/proveri/${contract.verificationHash}`} target="_blank" rel="noopener noreferrer">
+                            <ExternalLink className="w-4 h-4" />
+                          </a>
+                        </Button>
+                      )}
+                      {contract.pdfPath && (
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          asChild
+                          data-testid={`button-download-contract-${contract.id}`}
+                        >
+                          <a href={contract.pdfPath} download>
+                            <Download className="w-4 h-4 mr-2" />
+                            Preuzmi PDF
+                          </a>
+                        </Button>
+                      )}
+                    </div>
                   </div>
                 ))}
               </div>
             ) : (
               <div className="text-center py-8 text-muted-foreground">
                 <FileText className="w-12 h-12 mx-auto mb-3 opacity-50" />
-                <p>Nemate nijedan ugovor.</p>
+                <p>Nemate nijednu licencu.</p>
               </div>
             )}
           </CardContent>

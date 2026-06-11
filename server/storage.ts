@@ -206,6 +206,7 @@ export interface IStorage {
   createContract(data: InsertContract): Promise<Contract>;
   getAllContracts(): Promise<Array<Contract & { username: string | null }>>;
   getContractById(id: number): Promise<Contract | undefined>;
+  getContractByHash(hash: string): Promise<Contract | undefined>;
   getNextContractNumber(): Promise<string>;
   updateContractUser(contractId: number, userId: number | null): Promise<void>;
   deleteContract(id: number): Promise<void>;
@@ -1691,6 +1692,7 @@ export class DatabaseStorage implements IStorage {
         contractData: contracts.contractData,
         pdfPath: contracts.pdfPath,
         clientEmail: contracts.clientEmail,
+        verificationHash: contracts.verificationHash,
         createdAt: contracts.createdAt,
         createdBy: contracts.createdBy,
         userId: contracts.userId,
@@ -1708,32 +1710,31 @@ export class DatabaseStorage implements IStorage {
     return contract || undefined;
   }
 
+  async getContractByHash(hash: string): Promise<Contract | undefined> {
+    const [contract] = await db.select().from(contracts).where(eq(contracts.verificationHash, hash));
+    return contract || undefined;
+  }
+
   async getNextContractNumber(): Promise<string> {
     const currentYear = new Date().getFullYear();
-    const yearSuffix = `${currentYear}`;
-    
-    // Get the latest contract for this year (format: NNN/YYYY)
+    const prefix = `LFL-${currentYear}-`;
+
     const [latestContract] = await db
       .select()
       .from(contracts)
-      .where(sql`${contracts.contractNumber} LIKE ${'%/' + yearSuffix}`)
+      .where(sql`${contracts.contractNumber} LIKE ${prefix + '%'}`)
       .orderBy(desc(contracts.contractNumber))
       .limit(1);
 
     if (!latestContract) {
-      return `001/${yearSuffix}`;
+      return `${prefix}00000001`;
     }
 
-    // Extract number from format "NNN/YYYY"
-    const parts = latestContract.contractNumber.split('/');
-    if (parts.length < 2 || !parts[0]) {
-      return `001/${yearSuffix}`;
-    }
-    
-    const lastNumber = parseInt(parts[0]);
-    const nextNumber = lastNumber + 1;
-    
-    return `${nextNumber.toString().padStart(3, '0')}/${yearSuffix}`;
+    const parts = latestContract.contractNumber.split('-');
+    const lastNumber = parseInt(parts[2] || '0');
+    const nextNumber = isNaN(lastNumber) ? 1 : lastNumber + 1;
+
+    return `${prefix}${nextNumber.toString().padStart(8, '0')}`;
   }
 
   async updateContractUser(contractId: number, userId: number | null): Promise<void> {
@@ -1911,6 +1912,7 @@ export class DatabaseStorage implements IStorage {
         userId: contracts.userId,
         pdfPath: contracts.pdfPath,
         contractData: contracts.contractData,
+        verificationHash: contracts.verificationHash,
         createdAt: contracts.createdAt,
         createdBy: contracts.createdBy,
         username: users.username,
@@ -1933,6 +1935,7 @@ export class DatabaseStorage implements IStorage {
       userId: r.userId,
       pdfPath: r.pdfPath,
       contractData: r.contractData,
+      verificationHash: r.verificationHash,
       createdAt: r.createdAt,
       createdBy: r.createdBy,
       username: r.username || "Unknown",

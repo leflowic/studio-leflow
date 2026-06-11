@@ -584,12 +584,13 @@ export function normalizeConversationUsers(userId1: number, userId2: number): [n
 // Contracts table - for legal contract generation and management
 export const contracts = pgTable("contracts", {
   id: serial("id").primaryKey(),
-  contractNumber: varchar("contract_number", { length: 20 }).notNull().unique(),
+  contractNumber: varchar("contract_number", { length: 25 }).notNull().unique(),
   contractType: varchar("contract_type", { length: 50 }).notNull(), // "mix_master" | "copyright_transfer" | "instrumental_sale"
   contractData: json("contract_data").notNull(), // All contract-specific fields stored as JSON
   pdfPath: text("pdf_path"), // Path to generated PDF file
   clientEmail: text("client_email"), // Client's email for sending contract
   userId: integer("user_id").references(() => users.id, { onDelete: "set null" }), // Optional: Direct link to user account
+  verificationHash: varchar("verification_hash", { length: 64 }).unique(), // HMAC-SHA256 for anti-falsification
   createdAt: timestamp("created_at").defaultNow().notNull(),
   createdBy: integer("created_by").notNull().references(() => users.id), // Admin who created the contract
 });
