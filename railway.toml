@@ -3,6 +3,7 @@ builder = "nixpacks"
 buildCommand = "npm run build"
 
 [deploy]
+deployCommand = "npx drizzle-kit push --force"
 startCommand = "npm run start"
 healthcheckPath = "/"
 healthcheckTimeout = 30
