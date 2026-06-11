@@ -2391,6 +2391,30 @@ Sitemap: ${siteUrl}/sitemap.xml
     }
   });
 
+  // ===== ADMIN KATASTAR ENDPOINTS =====
+
+  // Get full client profile for Katastar (projects + contracts + invoices)
+  app.get("/api/admin/katastar/:userId", requireAdmin, async (req, res) => {
+    try {
+      const userId = parseInt(req.params.userId);
+      if (isNaN(userId)) return res.status(400).json({ error: "Nevažeći ID korisnika" });
+
+      const [user, userProjects, userContracts, userInvoices] = await Promise.all([
+        storage.getUser(userId),
+        storage.getUserProjects(userId),
+        storage.getUserContracts(userId),
+        storage.getUserInvoices(userId),
+      ]);
+
+      if (!user) return res.status(404).json({ error: "Korisnik nije pronađen" });
+
+      res.json({ user, projects: userProjects, contracts: userContracts, invoices: userInvoices });
+    } catch (error: any) {
+      console.error("[KATASTAR] Get client profile error:", error);
+      res.status(500).json({ error: "Greška pri učitavanju profila klijenta" });
+    }
+  });
+
   // ===== ADMIN MESSAGING ENDPOINTS =====
   
   // Get all conversations (admin only)
