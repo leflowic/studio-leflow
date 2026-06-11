@@ -2174,14 +2174,17 @@ Sitemap: ${siteUrl}/sitemap.xml
       const messages = await storage.getConversationMessages(conversation.id, req.jwtUser!.id);
       
       await storage.markMessagesAsRead(conversation.id, req.jwtUser!.id);
-      
-      // Broadcast message_read event to the sender (otherUserId)
+
       if (wsHelpers.broadcastToUser) {
-        wsHelpers.broadcastToUser(otherUserId, {
+        const readEvent = {
           type: 'message_read',
           conversationId: conversation.id,
           readBy: req.jwtUser!.id,
-        });
+        };
+        // Notify the sender their messages were read
+        wsHelpers.broadcastToUser(otherUserId, readEvent);
+        // Also notify the reader so their own unread badge clears immediately
+        wsHelpers.broadcastToUser(req.jwtUser!.id, readEvent);
       }
       
       res.json(messages);

@@ -96,6 +96,13 @@ export default function ChatInterface({ selectedUserId, onBack }: ChatInterfaceP
     },
   });
 
+  // Clear unread badge whenever this conversation is opened/refreshed
+  useEffect(() => {
+    if (messages) {
+      queryClient.invalidateQueries({ queryKey: ["/api/messages/unread-count"] });
+    }
+  }, [messages, queryClient]);
+
   const { data: otherUser } = useQuery<OtherUser>({
     queryKey: ["/api/users", selectedUserId],
     queryFn: async () => {
