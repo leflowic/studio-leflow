@@ -125,6 +125,7 @@ function Router() {
                 <Route path="/registracija"><AuthPageComponent /></Route>
                 <Route path="/verify-email"><VerifyEmailPageComponent /></Route>
                 <Route path="/proveri/:hash"><VerifyLicensePage /></Route>
+                <Route path="/proveri"><VerifyLicensePage /></Route>
                 <Route path="/newsletter/potvrda/:token"><NewsletterConfirmationPage /></Route>
                 <Route path="/uslovi-koriscenja"><TermsOfUsePage /></Route>
                 <ProtectedRoute path="/zajednica" component={() => <ZajednicaPage />} />

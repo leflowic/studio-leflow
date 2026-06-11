@@ -1,8 +1,11 @@
-import { useRoute } from "wouter";
+import { useState } from "react";
+import { useRoute, useLocation } from "wouter";
 import { useQuery } from "@tanstack/react-query";
-import { CheckCircle2, XCircle, Shield, Loader2 } from "lucide-react";
+import { CheckCircle2, XCircle, Shield, Loader2, Search } from "lucide-react";
 import { format } from "date-fns";
 import { sr } from "date-fns/locale";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 
 interface VerifyResult {
   valid: boolean;
@@ -16,6 +19,8 @@ interface VerifyResult {
 export default function VerifyLicensePage() {
   const [, params] = useRoute("/proveri/:hash");
   const hash = params?.hash ?? "";
+  const [, navigate] = useLocation();
+  const [inputCode, setInputCode] = useState("");
 
   const { data, isLoading, isError } = useQuery<VerifyResult>({
     queryKey: [`/api/verify/${hash}`],
@@ -27,6 +32,11 @@ export default function VerifyLicensePage() {
     enabled: !!hash,
     retry: false,
   });
+
+  const handleSearch = () => {
+    const code = inputCode.trim();
+    if (code) navigate(`/proveri/${code}`);
+  };
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-background px-4 py-16">
@@ -42,14 +52,42 @@ export default function VerifyLicensePage() {
 
         {/* Card */}
         <div className="rounded-2xl border bg-card shadow-lg overflow-hidden">
-          {isLoading && (
+
+          {/* No hash — show search input */}
+          {!hash && (
+            <div className="px-6 py-8 space-y-5">
+              <div className="text-center space-y-1">
+                <Shield className="w-12 h-12 text-primary mx-auto mb-3 opacity-80" />
+                <p className="font-semibold text-base">Unesite verifikacioni kod</p>
+                <p className="text-sm text-muted-foreground">
+                  Kod se nalazi na dnu PDF licence koju ste dobili od Studio LeFlow.
+                </p>
+              </div>
+              <div className="flex gap-2">
+                <Input
+                  placeholder="Nalepite verifikacioni kod..."
+                  value={inputCode}
+                  onChange={(e) => setInputCode(e.target.value)}
+                  onKeyDown={(e) => e.key === "Enter" && handleSearch()}
+                  className="font-mono text-sm"
+                />
+                <Button onClick={handleSearch} disabled={!inputCode.trim()}>
+                  <Search className="w-4 h-4" />
+                </Button>
+              </div>
+            </div>
+          )}
+
+          {/* Loading */}
+          {hash && isLoading && (
             <div className="flex flex-col items-center justify-center py-16 gap-4">
               <Loader2 className="w-10 h-10 animate-spin text-muted-foreground" />
               <p className="text-muted-foreground text-sm">Provera licence...</p>
             </div>
           )}
 
-          {isError && (
+          {/* Error */}
+          {hash && isError && (
             <div className="flex flex-col items-center justify-center py-16 gap-4 px-6 text-center">
               <XCircle className="w-14 h-14 text-destructive" />
               <div>
@@ -59,9 +97,9 @@ export default function VerifyLicensePage() {
             </div>
           )}
 
-          {!isLoading && !isError && data && (
+          {/* Result */}
+          {hash && !isLoading && !isError && data && (
             <>
-              {/* Status banner */}
               <div className={`px-6 py-5 flex items-center gap-4 ${data.valid ? "bg-green-500/10" : "bg-destructive/10"}`}>
                 {data.valid ? (
                   <CheckCircle2 className="w-10 h-10 text-green-500 flex-shrink-0" />
@@ -80,7 +118,6 @@ export default function VerifyLicensePage() {
                 </div>
               </div>
 
-              {/* License details */}
               {data.valid && (
                 <div className="px-6 py-5 space-y-4">
                   <Detail label="Broj licence" value={data.licenseNumber} />
@@ -97,14 +134,23 @@ export default function VerifyLicensePage() {
                   )}
                 </div>
               )}
-            </>
-          )}
 
-          {!isLoading && !isError && !data && !hash && (
-            <div className="flex flex-col items-center justify-center py-16 gap-4 px-6 text-center">
-              <XCircle className="w-14 h-14 text-muted-foreground" />
-              <p className="text-muted-foreground text-sm">Nevažeći verifikacioni link.</p>
-            </div>
+              {/* Search another */}
+              <div className="px-6 pb-5">
+                <div className="flex gap-2 pt-2 border-t">
+                  <Input
+                    placeholder="Proveri drugi kod..."
+                    value={inputCode}
+                    onChange={(e) => setInputCode(e.target.value)}
+                    onKeyDown={(e) => e.key === "Enter" && handleSearch()}
+                    className="font-mono text-sm"
+                  />
+                  <Button variant="outline" onClick={handleSearch} disabled={!inputCode.trim()}>
+                    <Search className="w-4 h-4" />
+                  </Button>
+                </div>
+              </div>
+            </>
           )}
         </div>
 
