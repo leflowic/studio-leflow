@@ -142,7 +142,8 @@ export default function IgraPage() {
 
   const alreadyPlayed = data?.alreadyPlayed || submitted;
   const prevGuess = data?.guess;
-  const finalResult = result || (prevGuess ? { correct: prevGuess.correct, points: 0 } : null);
+  const finalResult = result || (prevGuess ? { correct: prevGuess.correct, points: prevGuess.correct ? 10 : 0 } : null);
+  const displayedAnswer = result ? answer : prevGuess?.answer ?? "";
 
   return (
     <div className="min-h-screen py-12">
@@ -201,6 +202,11 @@ export default function IgraPage() {
                     <p className="text-xl font-bold text-destructive">Netačno</p>
                     <p className="text-sm text-muted-foreground">Više sreće sutra!</p>
                   </>
+                )}
+                {displayedAnswer && (
+                  <p className="text-sm text-muted-foreground">
+                    Tvoj odgovor: <strong className="text-foreground">{displayedAnswer}</strong>
+                  </p>
                 )}
                 <p className="text-sm text-muted-foreground">Vrati se sutra za novi izazov!</p>
               </div>
