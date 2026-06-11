@@ -243,6 +243,6 @@ export function licenseDeliveryEmail(data: {
       </tbody>
     </table>
     ${verifySection}
-    ${notice('Ova poruka je automatski generisana. Za sva pitanja kontaktirajte nas na <a href="mailto:info@studioleflow.com" style="color:#6d28d9;text-decoration:none;">info@studioleflow.com</a>.')}
+    ${notice('Ova poruka je automatski generisana. Za sva pitanja kontaktirajte nas na <a href="mailto:podrska@studioleflow.com" style="color:#6d28d9;text-decoration:none;">podrska@studioleflow.com</a>.')}
   `);
 }

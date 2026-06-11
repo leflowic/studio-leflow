@@ -638,7 +638,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Šalji email notifikaciju
       try {
         await sendEmail({
-          to: 'business@studioleflow.com',
+          to: 'podrska@studioleflow.com',
           subject: `Novi Upit — ${escapeHtml(validatedData.service)} — Studio LeFlow`,
           html: contactFormEmail({
             service: escapeHtml(validatedData.service),

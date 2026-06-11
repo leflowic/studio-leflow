@@ -75,8 +75,8 @@ export default function Contact() {
     {
       icon: Mail,
       title: "Email",
-      content: "info@studioleflow.com",
-      link: "mailto:info@studioleflow.com"
+      content: "podrska@studioleflow.com",
+      link: "mailto:podrska@studioleflow.com"
     },
     {
       icon: Instagram,

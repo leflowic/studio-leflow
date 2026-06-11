@@ -61,8 +61,8 @@ export function Footer() {
               </div>
               <div className="flex items-center gap-2 text-muted-foreground">
                 <Mail className="w-4 h-4" />
-                <a href="mailto:info@studioleflow.com" className="hover:text-primary transition-colors">
-                  info@studioleflow.com
+                <a href="mailto:podrska@studioleflow.com" className="hover:text-primary transition-colors">
+                  podrska@studioleflow.com
                 </a>
               </div>
               <div className="flex items-center gap-2 text-muted-foreground">
