@@ -123,7 +123,10 @@ function sanitizeUser<T extends Record<string, any>>(user: T): Omit<T, 'password
 // Rate limiting za kontakt formu - čuva IP adrese i timestamps
 const contactRateLimits = new Map<string, number[]>();
 const RATE_LIMIT_WINDOW = 60 * 60 * 1000; // 1 sat u milisekundama
-const MAX_REQUESTS_PER_HOUR = 3;
+const MAX_REQUESTS_PER_HOUR = 10;
+
+// Per-user lock to prevent concurrent giveaway uploads bypassing monthly limit
+const giveawayUploadLocks = new Set<number>();
 
 // Rate limiting za community chat - 10 sekundi između poruka
 const communityMessageRateLimits = new Map<number, number>();
@@ -325,7 +328,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Development debug endpoint for verification codes (only in development mode)
   app.get("/api/debug/verification-code", (req, res) => {
     if (process.env.NODE_ENV !== 'development') {
-      return res.status(404).json({ error: "Not found" });
+      return res.status(404).json({ error: "Nije pronađeno" });
     }
 
     const lastCode = getLastVerificationCode();
@@ -363,10 +366,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.post("/api/upload/audio", requireVerifiedEmail, upload.single("file"), async (req, res) => {
     try {
       if (!req.file) return res.status(400).json({ error: "Fajl nije pronađen" });
-      if (req.file.mimetype !== "audio/mpeg" && !req.file.originalname.toLowerCase().endsWith(".mp3")) {
+      if (req.file.size > 16 * 1024 * 1024) return res.status(400).json({ error: "Fajl ne sme biti veći od 16MB" });
+      // Validate actual file content, not just MIME type claimed by client
+      const detectedType = await fileTypeFromBuffer(req.file.buffer);
+      if (!detectedType || detectedType.mime !== "audio/mpeg") {
         return res.status(400).json({ error: "Dozvoljeni su samo MP3 fajlovi" });
       }
-      if (req.file.size > 16 * 1024 * 1024) return res.status(400).json({ error: "Fajl ne sme biti veći od 16MB" });
       const url = await uploadAudioToCloudinary(req.file.buffer, "studioleflow/audio", req.file.originalname);
       res.json({ url });
     } catch (e: any) {
@@ -1060,12 +1065,22 @@ export async function registerRoutes(app: Express): Promise<Server> {
       if (!req.body.mp3Url) {
         return res.status(400).json({ error: "MP3 URL je obavezan" });
       }
-      
+
+      const userId = req.jwtUser!.id;
+
+      // Prevent race condition: block concurrent uploads from same user
+      if (giveawayUploadLocks.has(userId)) {
+        return res.status(429).json({ error: "Vaš upload je već u toku. Sačekajte." });
+      }
+      giveawayUploadLocks.add(userId);
+
+      try {
       // Check if user has already uploaded this month
-      const currentMonth = new Date().toISOString().substring(0, 7); // "2025-01"
-      const userProjects = await storage.getUserProjectsForMonth(req.jwtUser!.id, currentMonth);
-      
+      const currentMonth = new Date().toISOString().substring(0, 7);
+      const userProjects = await storage.getUserProjectsForMonth(userId, currentMonth);
+
       if (userProjects.length > 0) {
+        giveawayUploadLocks.delete(userId);
         return res.status(400).json({ error: "Već ste uploadovali projekat ovog meseca. Možete uploadovati samo 1 projekat mesečno." });
       }
       
@@ -1080,7 +1095,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       const project = await storage.createProject({
         ...validatedData,
-        userId: req.jwtUser!.id,
+        userId,
         currentMonth,
       });
       
@@ -1102,6 +1117,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
       });
       
       res.status(201).json(project);
+      } finally {
+        giveawayUploadLocks.delete(userId);
+      }
     } catch (error: any) {
       if (error.name === "ZodError") {
         res.status(400).json({ error: "Validacija nije uspela", details: error.errors });
@@ -1530,7 +1548,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.post("/api/cms/media", requireAdmin, multerUpload.single("file"), async (req, res) => {
     try {
       if (!req.file) {
-        return res.status(400).json({ error: "No file uploaded" });
+        return res.status(400).json({ error: "Fajl nije priložen" });
       }
 
       // Validacija metadata iz req.body
@@ -1994,6 +2012,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
     
     const robotsTxt = `User-agent: *
 Allow: /
+Disallow: /admin
+Disallow: /api/
+Disallow: /inbox
 
 Sitemap: ${siteUrl}/sitemap.xml
 `;

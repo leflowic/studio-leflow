@@ -521,7 +521,7 @@ export const insertVideoSpotSchema = createInsertSchema(videoSpots).omit({
   title: z.string().min(3, "Naslov mora imati najmanje 3 karaktera"),
   description: z.string().min(10, "Opis mora imati najmanje 10 karaktera"),
   artist: z.string().min(2, "Ime izvođača mora imati najmanje 2 karaktera"),
-  youtubeUrl: z.string().url("Unesite validan YouTube URL").regex(/^https?:\/\/(www\.)?(youtube\.com|youtu\.be)\//, "URL mora biti sa YouTube-a"),
+  youtubeUrl: z.string().url("Unesite validan YouTube URL").regex(/^https?:\/\/(www\.)?youtube\.com\/watch\?v=[a-zA-Z0-9_-]{11}|^https?:\/\/youtu\.be\/[a-zA-Z0-9_-]{11}/, "URL mora biti validan YouTube link sa video ID-jem"),
 });
 
 export type InsertVideoSpot = z.infer<typeof insertVideoSpotSchema>;
@@ -536,7 +536,7 @@ export const insertUserSongSchema = createInsertSchema(userSongs).omit({
 }).extend({
   songTitle: z.string().min(3, "Naslov pesme mora imati najmanje 3 karaktera").max(100, "Naslov pesme može imati najviše 100 karaktera"),
   artistName: z.string().min(2, "Ime izvođača mora imati najmanje 2 karaktera").max(100, "Ime izvođača može imati najviše 100 karaktera"),
-  youtubeUrl: z.string().url("Unesite validan YouTube URL").regex(/^https?:\/\/(www\.)?(youtube\.com|youtu\.be)\//, "URL mora biti sa YouTube-a"),
+  youtubeUrl: z.string().url("Unesite validan YouTube URL").regex(/^https?:\/\/(www\.)?youtube\.com\/watch\?v=[a-zA-Z0-9_-]{11}|^https?:\/\/youtu\.be\/[a-zA-Z0-9_-]{11}/, "URL mora biti validan YouTube link sa video ID-jem"),
 });
 
 export type InsertUserSong = z.infer<typeof insertUserSongSchema>;
