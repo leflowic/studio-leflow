@@ -19,6 +19,7 @@ import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { format } from "date-fns";
 import { cn } from "@/lib/utils";
+import { getAuthToken } from "@/lib/queryClient";
 
 interface Contract {
   id: number;
@@ -120,6 +121,30 @@ export function ContractsTab() {
       case "copyright_transfer": return "Prenos autorskih prava";
       case "instrumental_sale": return "Prodaja instrumentala";
       default: return type;
+    }
+  };
+
+  const handleDownload = async (contractId: number, contractNumber: string) => {
+    try {
+      const token = getAuthToken();
+      const response = await fetch(`/api/admin/contracts/${contractId}/download`, {
+        headers: token ? { Authorization: `Bearer ${token}` } : {},
+      });
+      if (!response.ok) throw new Error("Download failed");
+      const disposition = response.headers.get("Content-Disposition") || "";
+      const filenameMatch = disposition.match(/filename="?([^"]+)"?/);
+      const filename = filenameMatch?.[1] || `ugovor_${contractNumber.replace("/", "_")}.pdf`;
+      const blob = await response.blob();
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = filename;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+    } catch {
+      toast({ variant: "destructive", title: "Greška", description: "Greška pri preuzimanju ugovora" });
     }
   };
 
@@ -238,7 +263,7 @@ export function ContractsTab() {
                             <Button
                               variant="ghost"
                               size="sm"
-                              onClick={() => window.open(`/api/admin/contracts/${contract.id}/download`, '_blank')}
+                              onClick={() => handleDownload(contract.id, contract.contractNumber)}
                               data-testid={`button-download-contract-${contract.id}`}
                               className="flex-1"
                             >
@@ -325,7 +350,7 @@ export function ContractsTab() {
                                 <Button
                                   variant="ghost"
                                   size="sm"
-                                  onClick={() => window.open(`/api/admin/contracts/${contract.id}/download`, '_blank')}
+                                  onClick={() => handleDownload(contract.id, contract.contractNumber)}
                                   data-testid={`button-download-contract-${contract.id}`}
                                 >
                                   <Download className="w-4 h-4" />
