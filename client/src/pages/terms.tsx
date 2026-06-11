@@ -1,5 +1,5 @@
 import { Link } from "wouter";
-import { AlertCircle, CheckCircle2, Clock, CreditCard, FileText, Shield, ArrowLeft, MessageSquare } from "lucide-react";
+import { AlertCircle, CheckCircle2, Clock, CreditCard, FileText, Shield, ArrowLeft, MessageSquare, BadgeCheck } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { FadeInWhenVisible } from "@/components/motion/FadeIn";
@@ -55,6 +55,18 @@ export default function Terms() {
         "<strong>Instrumentali (Beatovi):</strong> U zavisnosti od dogovora, možete kupiti ekskluzivna prava (samo vi možete koristiti beat) ili neekskluzivnu licencu (beat može biti prodat i drugima). Uslovi se preciziraju u ugovoru.",
         "<strong>Video produkcija:</strong> Finalni video je vaše vlasništvo. Studio LeFlow zadržava pravo da koristi isečke videa u promotivne svrhe (portfolio, društvene mreže) uz vašu saglasnost.",
         "Za komercijalne projekte velikih razmera, autorska prava se detaljno definišu pisanim ugovorom."
+      ]
+    },
+    {
+      icon: BadgeCheck,
+      title: "Digitalne Licence",
+      content: [
+        "<strong>Šta je digitalna licenca?</strong> Studio LeFlow izdaje digitalne licence kao zvanični dokaz o pruženim uslugama, prenosu prava ili kupovini instrumentala. Svaka licenca ima jedinstven broj i verifikacioni kod koji garantuje njenu autentičnost.",
+        "<strong>Verifikacija autentičnosti:</strong> Svaku licencu možete proveriti na adresi <strong>studioleflow.com/proveri/[kod]</strong>. Verifikaciona stranica prikazuje sve relevantne podatke o licenci — kome je izdata, tip licence i datum izdavanja.",
+        "<strong>Anti-falsifikacija:</strong> Svaka licenca je kriptografski zaštićena HMAC algoritmom. Nije moguće kreirati validnu licencu bez zvaničnog sistema Studio LeFlow, što čini falsifikovanje dokumenta praktično nemogućim.",
+        "<strong>Tipovi licenci:</strong> Izdajemo tri tipa licenci — <strong>Mix & Master licenca</strong> (za usluge miksanja i masteringa), <strong>Licenca za prenos autorskih prava</strong> (za prenos prava na muzičko delo) i <strong>Licenca za prodaju instrumentala</strong> (za kupovinu beat-a).",
+        "<strong>Čuvanje licence:</strong> Preporučujemo da sačuvate PDF licence koji ste dobili od nas. U slučaju gubitka, autentičnost uvek možete proveriti verifikacionim kodom koji ostaje trajno dostupan na našem sajtu.",
+        "<strong>Pravna vrednost:</strong> Licence predstavljaju zvaničan dokument koji potvrđuje poslovni odnos između Studio LeFlow i klijenta. U slučaju spora, verifikacioni sistem služi kao neutralan i proveriv izvor istine."
       ]
     },
     {
