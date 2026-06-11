@@ -53,6 +53,7 @@ export default function IgraPage() {
   const playerDivRef = useRef<HTMLDivElement>(null);
   const [ytReady, setYtReady] = useState(false);
   const [playing, setPlaying] = useState(false);
+  const [playsLeft, setPlaysLeft] = useState(4);
   const [answer, setAnswer] = useState("");
   const [submitted, setSubmitted] = useState(false);
   const [result, setResult] = useState<{ correct: boolean; points: number } | null>(null);
@@ -99,15 +100,16 @@ export default function IgraPage() {
 
   const playClip = useCallback(() => {
     const challenge = data?.challenge;
-    if (!playerRef.current || !challenge) return;
+    if (!playerRef.current || !challenge || playsLeft <= 0) return;
     setPlaying(true);
+    setPlaysLeft(p => p - 1);
     playerRef.current.seekTo(challenge.clipStartSeconds, true);
     playerRef.current.playVideo();
     setTimeout(() => {
       playerRef.current?.pauseVideo();
       setPlaying(false);
     }, 2000);
-  }, [data?.challenge]);
+  }, [data?.challenge, playsLeft]);
 
   const guessMutation = useMutation({
     mutationFn: async (ans: string) => {
@@ -203,19 +205,25 @@ export default function IgraPage() {
                 {/* Hidden YT player div */}
                 <div ref={playerDivRef} className="hidden" />
 
-                <Button
-                  onClick={playClip}
-                  disabled={playing || !ytReady}
-                  size="lg"
-                  className="w-full gap-2 text-base"
-                >
-                  <Play className={cn("w-5 h-5", playing && "animate-pulse")} />
-                  {playing ? "Svira..." : ytReady ? "▶ Pusti isečak (2s)" : "Učitavanje..."}
-                </Button>
+                <div className="space-y-2">
+                  <Button
+                    onClick={playClip}
+                    disabled={playing || !ytReady || playsLeft <= 0}
+                    size="lg"
+                    className="w-full gap-2 text-base"
+                  >
+                    <Play className={cn("w-5 h-5", playing && "animate-pulse")} />
+                    {playing ? "Svira..." : !ytReady ? "Učitavanje..." : playsLeft <= 0 ? "Nema više puštanja" : `▶ Pusti isečak (2s)`}
+                  </Button>
+                  <p className="text-xs text-center text-muted-foreground">
+                    {playsLeft > 0 ? `Preostalo puštanja: ${playsLeft}/4` : "Iskoristio si sva puštanja"}
+                  </p>
+                </div>
 
                 <div className="space-y-2">
+                  <p className="text-xs text-muted-foreground">Upiši samo naziv pesme (bez izvođača)</p>
                   <Input
-                    placeholder="Upiši naziv pesme (izvođač – naziv)..."
+                    placeholder="npr. Mufasa"
                     value={answer}
                     onChange={e => setAnswer(e.target.value)}
                     onKeyDown={e => { if (e.key === 'Enter' && answer.trim()) guessMutation.mutate(answer); }}
