@@ -185,16 +185,9 @@ app.use((req, res, next) => {
     // Warn about optional environment variables in production
     const optionalWarnings: string[] = [];
     
-    // UploadThing: Check for both TOKEN and SECRET (both needed for file uploads)
-    const hasUploadThingToken = !!process.env.UPLOADTHING_TOKEN;
-    const hasUploadThingSecret = !!process.env.UPLOADTHING_SECRET;
-    
-    if (!hasUploadThingToken && !hasUploadThingSecret) {
-      optionalWarnings.push('UPLOADTHING_TOKEN and UPLOADTHING_SECRET not set - file upload features (avatars, MP3 files) will be completely disabled');
-    } else if (!hasUploadThingToken) {
-      optionalWarnings.push('UPLOADTHING_TOKEN not set - file upload features will NOT work (UPLOADTHING_SECRET alone is insufficient)');
-    } else if (!hasUploadThingSecret) {
-      optionalWarnings.push('UPLOADTHING_SECRET not set - file upload features will NOT work (UPLOADTHING_TOKEN alone is insufficient)');
+    // Cloudinary: Check for required vars for file uploads
+    if (!process.env.CLOUDINARY_CLOUD_NAME || !process.env.CLOUDINARY_API_KEY || !process.env.CLOUDINARY_API_SECRET) {
+      optionalWarnings.push('CLOUDINARY_CLOUD_NAME / CLOUDINARY_API_KEY / CLOUDINARY_API_SECRET not set - file upload features (avatars, MP3 files) will be disabled');
     }
     
     // Resend: Check API key and from email separately
