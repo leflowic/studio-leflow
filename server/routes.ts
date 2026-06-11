@@ -386,7 +386,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
       if (!req.file) return res.status(400).json({ error: "Fajl nije pronađen" });
       if (req.file.size > 5 * 1024 * 1024) return res.status(400).json({ error: "Clip ne sme biti veći od 5MB" });
       const detectedType = await fileTypeFromBuffer(req.file.buffer);
-      if (!detectedType || detectedType.mime !== "audio/mpeg") {
+      const allowedMimes = ["audio/mpeg", "audio/mp3", "audio/x-mpeg", "audio/mpeg3"];
+      if (!detectedType || !allowedMimes.includes(detectedType.mime)) {
         return res.status(400).json({ error: "Dozvoljeni su samo MP3 fajlovi" });
       }
       const url = await uploadAudioToCloudinary(req.file.buffer, "studioleflow/game-clips", req.file.originalname);

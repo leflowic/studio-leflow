@@ -34,12 +34,14 @@ export async function uploadImageToCloudinary(buffer: Buffer, folder: string, pu
 
 export async function uploadAudioToCloudinary(buffer: Buffer, folder: string, filename: string): Promise<string> {
   return new Promise((resolve, reject) => {
+    const base = filename.replace(/\.[^/.]+$/, "").replace(/[^a-zA-Z0-9_-]/g, "_");
+    const uid = `${base}_${Date.now()}`;
     const stream = cloudinary.uploader.upload_stream(
       {
         folder,
-        public_id: filename.replace(/\.[^/.]+$/, ""),
+        public_id: uid,
         resource_type: "video", // Cloudinary uses "video" type for audio
-        overwrite: false,
+        overwrite: true,
       },
       (error, result) => {
         if (error || !result) return reject(error || new Error("Upload failed"));
