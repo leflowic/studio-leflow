@@ -41,7 +41,7 @@ function wrap(body: string): string {
           <!-- HEADER -->
           <tr>
             <td style="background:linear-gradient(145deg,#130826 0%,#0c1a4a 100%);border-radius:16px 16px 0 0;padding:36px 32px 28px;text-align:center;border:1px solid #2a1a5e;border-bottom:none;">
-              <img src="${BASE_URL}/leflow-logo.png" alt="Studio LeFlow" width="48" height="48" style="display:block;margin:0 auto 12px;filter:brightness(0) invert(1);" />
+              <img src="${BASE_URL}/leflow-logo-white.png" alt="Studio LeFlow" width="48" height="48" style="display:block;margin:0 auto 12px;" />
               <div style="font-size:10px;letter-spacing:5px;color:#8b5cf6;text-transform:uppercase;margin-bottom:4px;font-weight:600;">Muzički Studio</div>
               <div style="font-size:28px;font-weight:900;color:#ffffff;letter-spacing:3px;text-transform:uppercase;line-height:1;">LeFlow</div>
             </td>
