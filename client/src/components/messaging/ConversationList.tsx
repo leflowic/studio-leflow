@@ -67,6 +67,8 @@ export default function ConversationList({ selectedUserId, onSelectConversation,
       const res = await apiRequest("GET", "/api/conversations");
       return res.json();
     },
+    refetchInterval: 5000,
+    staleTime: 0,
   });
 
   // Filter conversations based on search query

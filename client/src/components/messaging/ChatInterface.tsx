@@ -94,6 +94,8 @@ export default function ChatInterface({ selectedUserId, onBack }: ChatInterfaceP
       const res = await apiRequest("GET", `/api/messages/conversation/${selectedUserId}`);
       return res.json();
     },
+    refetchInterval: 3000, // Polling fallback in case WS event is missed
+    staleTime: 0,
   });
 
   // Clear unread badge whenever this conversation is opened/refreshed
