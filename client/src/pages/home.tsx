@@ -1,4 +1,4 @@
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { Link, useLocation } from "wouter";
 import { Music, Mic2, Video, ArrowRight, CheckCircle2, Headphones, Phone, Play, Mail, AlertCircle, Gamepad2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -19,6 +19,71 @@ import { ParallaxHero, ParallaxSection, Parallax3DCard } from "@/components/para
 
 import type { CmsContent } from "@shared/schema";
 import videoSetupImage from "@assets/generated_images/Video_camera_production_setup_199f7c64.png";
+
+function GameAnnouncement() {
+  const { data } = useQuery<any>({
+    queryKey: ["/api/game/upcoming"],
+    refetchInterval: 60000,
+    staleTime: 30000,
+  });
+
+  const [countdown, setCountdown] = useState("");
+
+  useEffect(() => {
+    if (!data?.isToday || data?.isOpen) return;
+    const tick = () => {
+      const now = new Date();
+      const belgHour = (now.getUTCHours() + 2) % 24;
+      const belgMin = now.getUTCMinutes();
+      const belgSec = now.getUTCSeconds();
+      const nowSecs = belgHour * 3600 + belgMin * 60 + belgSec;
+      const openSecs = data.openHour * 3600 + data.openMinute * 60;
+      const left = openSecs - nowSecs;
+      if (left <= 0) { setCountdown(""); return; }
+      const h = Math.floor(left / 3600);
+      const m = Math.floor((left % 3600) / 60);
+      const s = left % 60;
+      setCountdown(h > 0
+        ? `${h}h ${String(m).padStart(2,'0')}min`
+        : `${m}:${String(s).padStart(2,'0')}`
+      );
+    };
+    tick();
+    const id = setInterval(tick, 1000);
+    return () => clearInterval(id);
+  }, [data]);
+
+  if (!data) return null;
+
+  const openTime = `${String(data.openHour).padStart(2,'0')}:${String(data.openMinute).padStart(2,'0')}`;
+
+  if (data.isOpen) return null; // dugme već pokazuje LIVE
+
+  const dateLabel = (() => {
+    if (data.isToday) return `danas u ${openTime}`;
+    const d = new Date(data.challengeDate + "T12:00:00Z");
+    const days = ["nedeljom","ponedeljkom","utorkom","sredom","četvrtkom","petkom","subotom"];
+    const day = days[d.getUTCDay()];
+    return `${day} ${d.getUTCDate()}. ${d.toLocaleString('sr-Latn', { month: 'long', timeZone: 'UTC' })} u ${openTime}`;
+  })();
+
+  return (
+    <motion.div
+      initial={{ opacity: 0, y: 10 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.5, delay: 1.1 }}
+      className="mt-4 flex justify-center"
+    >
+      <div className="flex items-center gap-2 px-4 py-2 rounded-full bg-white/10 backdrop-blur-md border border-white/20 text-white text-sm">
+        <span className="text-base">🎵</span>
+        <span>
+          Sledeća igra počinje <strong>{dateLabel}</strong>
+          {countdown && <span className="ml-1.5 font-mono text-white/80">— još {countdown}</span>}
+        </span>
+      </div>
+    </motion.div>
+  );
+}
 
 export default function Home() {
   const [location] = useLocation();
@@ -303,6 +368,9 @@ export default function Home() {
                 </Link>
               )}
             </motion.div>
+
+            {/* Upcoming game announcement */}
+            <GameAnnouncement />
           </div>
         </div>
         <ScrollIndicator targetId="usluge" />

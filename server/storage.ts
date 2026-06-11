@@ -266,6 +266,7 @@ export interface IStorage {
 
   // Daily Game
   getTodayChallenge(): Promise<{ id: number; challengeDate: string; clipStartSeconds: number; youtubeVideoId: string; openHour: number; openMinute: number } | null>;
+  getNextUpcomingChallenge(): Promise<{ challengeDate: string; openHour: number; openMinute: number } | null>;
   getUserGuessForDate(userId: number, date: string): Promise<{ answer: string; correct: boolean } | null>;
   submitGuess(userId: number, challengeDate: string, answer: string): Promise<{ correct: boolean; points: number }>;
   getWeeklyLeaderboard(weekStart: string): Promise<Array<{ userId: number; username: string; avatarUrl: string | null; correctCount: number; points: number }>>;
@@ -2421,6 +2422,18 @@ export class DatabaseStorage implements IStorage {
       openHour: row.openHour,
       openMinute: row.openMinute,
     };
+  }
+
+  async getNextUpcomingChallenge(): Promise<{ challengeDate: string; openHour: number; openMinute: number } | null> {
+    const today = this.getTodayDateString();
+    // Find the next challenge on or after today, ordered by date ascending
+    const rows = await db
+      .select({ challengeDate: dailyChallenges.challengeDate, openHour: dailyChallenges.openHour, openMinute: dailyChallenges.openMinute })
+      .from(dailyChallenges)
+      .where(sql`${dailyChallenges.challengeDate} >= ${today}`)
+      .orderBy(dailyChallenges.challengeDate)
+      .limit(1);
+    return rows[0] ?? null;
   }
 
   async getUserGuessForDate(userId: number, date: string): Promise<{ answer: string; correct: boolean } | null> {

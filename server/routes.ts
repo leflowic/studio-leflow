@@ -3089,6 +3089,27 @@ Sitemap: ${siteUrl}/sitemap.xml
 
   // ─── Daily Game ─────────────────────────────────────────────────────────────
 
+  // GET /api/game/upcoming — public, returns next scheduled challenge date+time (no song info)
+  app.get("/api/game/upcoming", async (_req, res) => {
+    try {
+      const next = await storage.getNextUpcomingChallenge();
+      if (!next) return res.json(null);
+      // Compute whether it's already open
+      const nowUTC = new Date();
+      const belgHour = (nowUTC.getUTCHours() + 2) % 24;
+      const belgMin = nowUTC.getUTCMinutes();
+      const todayStr = nowUTC.toISOString().split('T')[0]!;
+      const isToday = next.challengeDate === todayStr;
+      const nowMins = belgHour * 60 + belgMin;
+      const openMins = next.openHour * 60 + next.openMinute;
+      const isOpen = isToday && nowMins >= openMins;
+      const minutesUntil = isToday && !isOpen ? openMins - nowMins : 0;
+      res.json({ challengeDate: next.challengeDate, openHour: next.openHour, openMinute: next.openMinute, isToday, isOpen, minutesUntil });
+    } catch (e) {
+      res.status(500).json({ error: "Greška na serveru" });
+    }
+  });
+
   // GET /api/game/today — challenge info for current user (no correct answers)
   app.get("/api/game/today", requireNotBanned, async (req, res) => {
     try {
