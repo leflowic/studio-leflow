@@ -2516,6 +2516,34 @@ Sitemap: ${siteUrl}/sitemap.xml
         createdBy: req.jwtUser!.id,
       });
 
+      // Auto-send license email if client email provided
+      if (contractData.clientEmail) {
+        try {
+          const pdfBase64 = pdfBuffer.toString('base64');
+          const emailHtml = licenseDeliveryEmail({
+            contractNumber: contract.contractNumber,
+            contractType: contract.contractType,
+            createdAt: new Date(contract.createdAt),
+            verificationHash: contract.verificationHash,
+          });
+          await sendEmail({
+            to: contractData.clientEmail,
+            subject: `Studio LeFlow — Licenca ${contract.contractNumber}`,
+            html: emailHtml,
+            attachments: [{
+              filename,
+              content: pdfBase64,
+              encoding: 'base64',
+              contentType: 'application/pdf',
+            }],
+          });
+          console.log(`[CONTRACTS] License email auto-sent to ${contractData.clientEmail}`);
+        } catch (emailError: any) {
+          console.error("[CONTRACTS] Auto email failed:", emailError.message);
+          // Don't fail the request if email fails — license is already saved
+        }
+      }
+
       res.json({
         success: true,
         contract: {
