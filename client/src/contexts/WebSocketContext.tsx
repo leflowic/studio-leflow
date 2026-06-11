@@ -54,7 +54,8 @@ export function WebSocketProvider({ children }: { children: ReactNode }) {
       
       const authUser = userRef.current;
       if (authUser) {
-        ws.current?.send(JSON.stringify({ type: 'auth', userId: authUser.id }));
+        const token = localStorage.getItem('auth_token');
+        ws.current?.send(JSON.stringify({ type: 'auth', token }));
       }
     };
 

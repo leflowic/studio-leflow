@@ -31,7 +31,8 @@ export function useWebSocket() {
       
       // Send authentication
       if (user) {
-        ws.current?.send(JSON.stringify({ type: 'auth', userId: user.id }));
+        const token = localStorage.getItem('auth_token');
+        ws.current?.send(JSON.stringify({ type: 'auth', token }));
       }
     };
 

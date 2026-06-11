@@ -98,15 +98,23 @@ declare module 'http' {
   }
 }
 app.use(express.json({
+  limit: '10kb',
   verify: (req, _res, buf) => {
     req.rawBody = buf;
   }
 }));
-app.use(express.urlencoded({ extended: false }));
+app.use(express.urlencoded({ limit: '10kb', extended: false }));
 
-// Add security headers with relaxed CSP for Vite in production
+// Security headers
 app.use((req, res, next) => {
-  // Allow eval for Vite build chunks (needed for dynamic imports)
+  res.setHeader('X-Content-Type-Options', 'nosniff');
+  res.setHeader('X-Frame-Options', 'DENY');
+  res.setHeader('X-XSS-Protection', '1; mode=block');
+  res.setHeader('Referrer-Policy', 'strict-origin-when-cross-origin');
+  res.setHeader('Permissions-Policy', 'camera=(), microphone=(), geolocation=()');
+  if (process.env.NODE_ENV === 'production') {
+    res.setHeader('Strict-Transport-Security', 'max-age=31536000; includeSubDomains');
+  }
   res.setHeader(
     'Content-Security-Policy',
     "default-src 'self'; " +
@@ -367,13 +375,17 @@ app.use((req, res, next) => {
           try {
             const message = JSON.parse(data.toString());
 
-            // Authentication handshake
+            // Authentication handshake — validate JWT token
             if (message.type === 'auth' && !userId) {
-              // Verify user is authenticated (you'd check session here)
-              // For simplicity, we trust the client sends correct userId after auth
-              // In production, validate against session store
-              userId = message.userId;
-              
+              const { verifyToken } = await import('./jwt-auth');
+              const token = message.token;
+              if (!token) { ws.close(1008, 'Authentication failed'); return; }
+              const payload = verifyToken(token);
+              if (!payload) { ws.close(1008, 'Invalid token'); return; }
+              const user = await storage.getUser(payload.userId);
+              if (!user || user.banned) { ws.close(1008, 'Authentication failed'); return; }
+              userId = user.id;
+
               if (!userId) {
                 ws.close(1008, 'Authentication failed');
                 return;

@@ -4,7 +4,7 @@ import { storage } from "./storage";
 import { User as SelectUser } from "@shared/schema";
 
 const JWT_SECRET = process.env.SESSION_SECRET || "fallback-secret-key";
-const TOKEN_EXPIRY = "30d";
+const TOKEN_EXPIRY = "7d";
 
 export interface JWTPayload {
   userId: number;
