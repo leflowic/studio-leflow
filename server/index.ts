@@ -31,6 +31,16 @@ async function runMigrations() {
         END IF;
       END$$;
     `);
+    // Create calendar_days table if it doesn't exist
+    await client.query(`
+      CREATE TABLE IF NOT EXISTS calendar_days (
+        date TEXT PRIMARY KEY,
+        status TEXT,
+        note TEXT,
+        updated_at TIMESTAMP NOT NULL DEFAULT NOW(),
+        updated_by_id INTEGER REFERENCES users(id)
+      );
+    `);
     log('[Migrations] Schema migrations applied successfully', 'express');
   } catch (err: any) {
     log(`[Migrations] Warning: ${err.message}`, 'express');
