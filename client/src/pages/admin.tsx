@@ -357,6 +357,38 @@ function SettingsTab() {
       <Card>
         <CardHeader>
           <div className="flex items-center gap-2">
+            <Mail className="w-5 h-5 text-primary" />
+            <CardTitle>Email</CardTitle>
+          </div>
+          <CardDescription>
+            Pristupite poslovnom email nalogu Studio LeFlow
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <div className="flex items-center justify-between p-4 rounded-lg border border-border bg-muted/30">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center">
+                <Mail className="w-5 h-5 text-primary" />
+              </div>
+              <div>
+                <p className="font-medium text-sm">podrska@studioleflow.com</p>
+                <p className="text-xs text-muted-foreground">Zoho Mail — Studio LeFlow</p>
+              </div>
+            </div>
+            <Button
+              onClick={() => window.open("https://mail.zoho.eu", "_blank")}
+              className="gap-2"
+            >
+              <Mail className="w-4 h-4" />
+              Otvori Inbox
+            </Button>
+          </div>
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader>
+          <div className="flex items-center gap-2">
             <Settings className="w-5 h-5 text-primary" />
             <CardTitle>Giveaway Podešavanja</CardTitle>
           </div>
