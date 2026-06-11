@@ -182,8 +182,8 @@ export default function TermsOfUsePage() {
               <div>
                 <h3 className="font-semibold text-foreground mb-2">4.3 Automatsko Brisanje</h3>
                 <p className="text-muted-foreground">
-                  Svi uploadovani projekti se čuvaju na Ufile.io servisu koji <strong>automatski briše 
-                  fajlove nakon 30 dana</strong>. Učesnici su odgovorni za čuvanje originalnih kopija 
+                  Uploadovani projekti se čuvaju na platformi i <strong>automatski brišu
+                  nakon 30 dana</strong>. Učesnici su odgovorni za čuvanje originalnih kopija
                   svojih projekata.
                 </p>
               </div>
@@ -214,7 +214,7 @@ export default function TermsOfUsePage() {
                   u Studio LeFlow-u, koja uključuje:
                 </p>
                 <ul className="list-disc list-inside space-y-2 text-muted-foreground ml-4">
-                  <li>Profesionalni recording vokal(a)</li>
+                  <li>Profesionalno snimanje vokala</li>
                   <li>Mixing & Mastering finalnog projekta</li>
                   <li>Konsultacije sa producentima i inženjerima</li>
                 </ul>
@@ -262,7 +262,7 @@ export default function TermsOfUsePage() {
                 <h3 className="font-semibold text-foreground mb-2">6.1 Platforma "Takva Kakva Jeste"</h3>
                 <p className="text-muted-foreground">
                   Platforma se pruža <strong>"as is"</strong> bez garancija bilo koje vrste. Studio LeFlow 
-                  ne garantuje neprekinut ili bezgreshan rad Platforme.
+                  ne garantuje neprekinut ili bezgrešan rad Platforme.
                 </p>
               </div>
 
