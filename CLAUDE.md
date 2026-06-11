@@ -54,6 +54,20 @@ There are no automated tests in this project.
 - `EditModeContext` (`client/src/contexts/EditModeContext.tsx`) — CMS in-place editing toggle (admin only).
 - All pages are lazy-loaded via `React.lazy`. Routes are defined in `client/src/App.tsx` using `wouter`.
 
+**Admin panel tabs:**
+- Each tab is its own component, either defined inline in `client/src/pages/admin.tsx` or as a separate file in `client/src/components/admin/`.
+- Separate-file tabs: `ContractsTab`, `CalendarTab`, `KatastarTab` — import and add a `<TabsTrigger>` + `<TabsContent>` pair in `admin.tsx`.
+- Admin-only API routes go in `server/routes.ts` under `requireAdmin` middleware. Always use `requireAdmin`, never trust `req.jwtUser?.role` manually in route handlers.
+- `GET /api/admin/katastar/:userId` returns `{ user, projects, contracts, invoices }` for the Katastar (client registry) tab.
+
+**Unread message badge:**
+- `GET /api/messages/conversation/:userId` auto-marks messages as read server-side and broadcasts `message_read` to **both** the sender and the reader via WebSocket.
+- The header subscribes to `message_read` and invalidates `/api/messages/unread-count`. `ChatInterface` also invalidates it via `useEffect` on messages load as a safety net.
+- When adding new badge-like counters, follow this same pattern: server broadcasts to both parties, client invalidates the count query.
+
+**Admin file downloads:**
+- Never use `window.open(url)` for admin-only endpoints — it doesn't send `Authorization` headers. Use `fetch()` with `Authorization: Bearer <token>` header, then create a blob URL and trigger download via a temporary `<a>` element.
+
 **CMS:**
 - `EditableText` and `EditableImage` components let admins edit content in-place when edit mode is on.
 - CMS values stored in `cms_content` table. Media stored in `cms_media` table.
