@@ -51,6 +51,29 @@ export function WebSocketProvider({ children }: { children: ReactNode }) {
   const userRef = useRef(user); // Track current user to prevent stale reconnects
   const audioRef = useRef<HTMLAudioElement | null>(null);
 
+  // Pre-create and unlock audio on first user interaction (browser autoplay policy)
+  useEffect(() => {
+    const audio = new Audio(notificationSound);
+    audio.preload = 'auto';
+    audioRef.current = audio;
+
+    const unlock = () => {
+      audio.play().then(() => {
+        audio.pause();
+        audio.currentTime = 0;
+      }).catch(() => {});
+      document.removeEventListener('click', unlock);
+      document.removeEventListener('keydown', unlock);
+    };
+    document.addEventListener('click', unlock);
+    document.addEventListener('keydown', unlock);
+
+    return () => {
+      document.removeEventListener('click', unlock);
+      document.removeEventListener('keydown', unlock);
+    };
+  }, []);
+
   const connect = useCallback(() => {
     // CRITICAL: Read from ref, not closure, to prevent stale reconnects
     const currentUser = userRef.current;
@@ -91,13 +114,11 @@ export function WebSocketProvider({ children }: { children: ReactNode }) {
           });
           
           // Play notification sound
-          if (!audioRef.current) {
-            audioRef.current = new Audio(notificationSound);
+          if (audioRef.current) {
             audioRef.current.volume = 0.5;
+            audioRef.current.currentTime = 0;
+            audioRef.current.play().catch((e) => console.warn('[WebSocket] Audio play blocked:', e));
           }
-          audioRef.current.play().catch((error) => {
-            console.log('[WebSocket] Could not play notification sound:', error);
-          });
         }
         
         // Handle new messages from other users
@@ -107,29 +128,19 @@ export function WebSocketProvider({ children }: { children: ReactNode }) {
           const senderUsername = message.message?.senderUsername || "Novi msg";
 
           if (currentUserId && messageSenderId && messageSenderId !== currentUserId) {
-            // Play sound only when tab is hidden or user is not actively reading
-            if (document.hidden) {
-              if (!audioRef.current) {
-                audioRef.current = new Audio(notificationSound);
-                audioRef.current.volume = 0.5;
-              }
+            if (audioRef.current) {
+              audioRef.current.volume = document.hidden ? 0.5 : 0.3;
               audioRef.current.currentTime = 0;
-              audioRef.current.play().catch(() => {});
+              audioRef.current.play().catch((e) => console.warn('[WebSocket] Audio play blocked:', e));
+            }
 
+            if (document.hidden) {
               // Browser notification
               showBrowserNotification(
                 `Nova poruka od ${senderUsername}`,
                 message.message?.content || "Poslao ti je poruku",
                 senderUsername,
               );
-            } else {
-              // Tab is visible — play sound quietly
-              if (!audioRef.current) {
-                audioRef.current = new Audio(notificationSound);
-              }
-              audioRef.current.volume = 0.3;
-              audioRef.current.currentTime = 0;
-              audioRef.current.play().catch(() => {});
             }
 
             // Update document title with unread indicator
