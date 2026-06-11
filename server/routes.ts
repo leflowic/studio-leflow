@@ -347,13 +347,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Setup UploadThing routes for file uploads
-  // Use UPLOADTHING_SECRET (same as UPLOADTHING_TOKEN, just different name)
+  // UPLOADTHING_TOKEN is the base64 JSON format required by v7
   app.use(
     "/api/uploadthing",
     createRouteHandler({
       router: uploadRouter,
       config: {
-        token: process.env.UPLOADTHING_SECRET || process.env.UPLOADTHING_TOKEN,
+        token: process.env.UPLOADTHING_TOKEN,
       },
     })
   );
