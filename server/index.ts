@@ -7,6 +7,37 @@ import { seedCmsContent } from "./seed";
 import { WebSocketServer, WebSocket } from "ws";
 import { storage } from "./storage";
 import { setBroadcastFunction, setNotificationFunction, setOnlineUsersAccessor } from "./websocket-helpers";
+import { pool } from "./db";
+
+async function runMigrations() {
+  const client = await pool.connect();
+  try {
+    // Add verification_hash column if it doesn't exist (license system)
+    await client.query(`
+      ALTER TABLE contracts
+        ADD COLUMN IF NOT EXISTS verification_hash VARCHAR(64) UNIQUE;
+    `);
+    // Widen contract_number column if it's still VARCHAR(20)
+    await client.query(`
+      DO $$
+      BEGIN
+        IF EXISTS (
+          SELECT 1 FROM information_schema.columns
+          WHERE table_name = 'contracts'
+            AND column_name = 'contract_number'
+            AND character_maximum_length < 25
+        ) THEN
+          ALTER TABLE contracts ALTER COLUMN contract_number TYPE VARCHAR(25);
+        END IF;
+      END$$;
+    `);
+    log('[Migrations] Schema migrations applied successfully', 'express');
+  } catch (err: any) {
+    log(`[Migrations] Warning: ${err.message}`, 'express');
+  } finally {
+    client.release();
+  }
+}
 
 const app = express();
 
@@ -184,6 +215,9 @@ app.use((req, res, next) => {
       console.warn('-'.repeat(80) + '\n');
     }
     
+    // Run safe schema migrations (idempotent - safe to run on every startup)
+    await runMigrations();
+
     // Seed CMS content if needed
     await seedCmsContent();
     
