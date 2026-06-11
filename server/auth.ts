@@ -6,6 +6,7 @@ import { z } from "zod";
 import { storage } from "./storage";
 import { User as SelectUser } from "@shared/schema";
 import { sendEmail } from "./resend-client";
+import { verificationEmail, passwordResetEmail } from "./email-templates";
 import { generateToken, verifyToken, jwtAuthMiddleware } from "./jwt-auth";
 import rateLimit from "express-rate-limit";
 
@@ -137,21 +138,8 @@ export function setupAuth(app: Express) {
       try {
         const result = await sendEmail({
           to: validatedData.email,
-          subject: 'Potvrdite Vašu Email Adresu - Studio LeFlow',
-          html: `
-            <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
-              <h2 style="color: #7c3aed;">Studio LeFlow</h2>
-              <h3>Dobrodošli u Studio LeFlow zajednicu!</h3>
-              <p>Hvala što ste se registrovali. Da biste završili registraciju, unesite sledeći verifikacioni kod:</p>
-              <div style="background-color: #f3f4f6; padding: 20px; text-align: center; margin: 30px 0; border-radius: 8px;">
-                <h1 style="color: #7c3aed; font-size: 36px; letter-spacing: 8px; margin: 0;">${verificationCode}</h1>
-              </div>
-              <p>Ovaj kod ističe za 24 sata.</p>
-              <p>Ako niste kreirali nalog, ignorišite ovaj email.</p>
-              <hr style="margin: 30px 0; border: none; border-top: 1px solid #e5e7eb;">
-              <p style="color: #666; font-size: 12px;">Studio LeFlow - Profesionalna Muzička Produkcija</p>
-            </div>
-          `
+          subject: 'Potvrdite Vašu Email Adresu — Studio LeFlow',
+          html: verificationEmail(verificationCode, validatedData.username),
         });
         console.log(`[AUTH] Verification email sent successfully to ${validatedData.email}. Message ID: ${result.messageId}`);
       } catch (emailError: any) {
@@ -280,21 +268,8 @@ export function setupAuth(app: Express) {
       try {
         await sendEmail({
           to: email,
-          subject: 'Resetovanje Lozinke - Studio LeFlow',
-          html: `
-            <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
-              <h2 style="color: #7c3aed;">Studio LeFlow</h2>
-              <h3>Zahtev za Resetovanje Lozinke</h3>
-              <p>Primili smo zahtev za resetovanje vaše lozinke. Unesite sledeći kod da biste kreirali novu lozinku:</p>
-              <div style="background-color: #f3f4f6; padding: 20px; text-align: center; margin: 30px 0; border-radius: 8px;">
-                <h1 style="color: #7c3aed; font-size: 36px; letter-spacing: 8px; margin: 0;">${resetToken}</h1>
-              </div>
-              <p>Ovaj kod ističe za 15 minuta.</p>
-              <p>Ako niste zatražili resetovanje lozinke, ignorišite ovaj email. Vaša lozinka neće biti promenjena.</p>
-              <hr style="margin: 30px 0; border: none; border-top: 1px solid #e5e7eb;">
-              <p style="color: #666; font-size: 12px;">Studio LeFlow - Profesionalna Muzička Produkcija</p>
-            </div>
-          `
+          subject: 'Resetovanje Lozinke — Studio LeFlow',
+          html: passwordResetEmail(resetToken),
         });
         console.log(`[AUTH] Password reset email sent successfully to ${email}`);
       } catch (emailError: any) {

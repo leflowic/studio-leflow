@@ -4,6 +4,7 @@ import { storage } from "./storage";
 import { wsHelpers, notifyUser, getOnlineUsersSnapshot } from "./websocket-helpers";
 import { insertContactSubmissionSchema, insertCmsContentSchema, insertCmsMediaSchema, insertVideoSpotSchema, insertUserSongSchema, insertNewsletterSubscriberSchema, insertInvoiceSchema, insertCommunityMessageSchema, insertSiteAnnouncementSchema, mixMasterContractDataSchema, copyrightTransferContractDataSchema, instrumentalSaleContractDataSchema, type CmsContent, type CmsMedia, type VideoSpot, type UserSong } from "@shared/schema";
 import { sendEmail, getLastVerificationCode } from "./resend-client";
+import { resendVerificationEmail, adminLoginEmail, contactFormEmail, newsletterConfirmEmail, licenseDeliveryEmail } from "./email-templates";
 import { setupAuth, hashPassword, comparePasswords } from "./auth";
 import multer from "multer";
 import fs from "fs";
@@ -474,20 +475,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
       try {
         await sendEmail({
           to: email,
-          subject: 'Novi Verifikacioni Kod - Studio LeFlow',
-          html: `
-            <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
-              <h2 style="color: #7c3aed;">Studio LeFlow</h2>
-              <h3>Novi Verifikacioni Kod</h3>
-              <p>Ovde je Vaš novi verifikacioni kod:</p>
-              <div style="background-color: #f3f4f6; padding: 20px; text-align: center; margin: 30px 0; border-radius: 8px;">
-                <h1 style="color: #7c3aed; font-size: 36px; letter-spacing: 8px; margin: 0;">${verificationCode}</h1>
-              </div>
-              <p>Ovaj kod ističe za 15 minuta.</p>
-              <hr style="margin: 30px 0; border: none; border-top: 1px solid #e5e7eb;">
-              <p style="color: #666; font-size: 12px;">Studio LeFlow - Profesionalna Muzička Produkcija</p>
-            </div>
-          `
+          subject: 'Novi Verifikacioni Kod — Studio LeFlow',
+          html: resendVerificationEmail(verificationCode),
         });
         return res.json({ success: true, message: "Novi verifikacioni kod je poslat" });
       } catch (emailError) {
@@ -547,20 +536,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
       try {
         await sendEmail({
           to: user.email,
-          subject: 'Verifikacioni Kod Za Admin Prijavu - Studio LeFlow',
-          html: `
-            <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
-              <h2 style="color: #7c3aed;">Studio LeFlow - Admin Prijava</h2>
-              <h3>Verifikacioni Kod</h3>
-              <p>Pokušaj prijave na admin panel. Ako ovo niste Vi, ignorišite ovaj email.</p>
-              <div style="background-color: #f3f4f6; padding: 20px; text-align: center; margin: 30px 0; border-radius: 8px;">
-                <h1 style="color: #7c3aed; font-size: 36px; letter-spacing: 8px; margin: 0;">${verificationCode}</h1>
-              </div>
-              <p>Ovaj kod ističe za 15 minuta.</p>
-              <hr style="margin: 30px 0; border: none; border-top: 1px solid #e5e7eb;">
-              <p style="color: #666; font-size: 12px;">Studio LeFlow - Profesionalna Muzička Produkcija</p>
-            </div>
-          `
+          subject: 'Admin Prijava — Verifikacioni Kod — Studio LeFlow',
+          html: adminLoginEmail(verificationCode),
         });
         
         return res.json({ 
@@ -645,19 +622,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
       try {
         await sendEmail({
           to: 'business@studioleflow.com',
-          subject: `Novi upit - ${escapeHtml(validatedData.service)}`,
-          html: `
-            <h2>Novi upit sa Studio LeFlow sajta</h2>
-            <p><strong>Usluga:</strong> ${escapeHtml(validatedData.service)}</p>
-            <p><strong>Ime:</strong> ${escapeHtml(validatedData.name)}</p>
-            <p><strong>Email:</strong> ${escapeHtml(validatedData.email)}</p>
-            <p><strong>Telefon:</strong> ${escapeHtml(validatedData.phone)}</p>
-            ${validatedData.preferredDate ? `<p><strong>Željeni termin:</strong> ${escapeHtml(validatedData.preferredDate)}</p>` : ''}
-            <p><strong>Poruka:</strong></p>
-            <p>${escapeHtml(validatedData.message).replace(/\n/g, '<br>')}</p>
-            <hr>
-            <p style="color: #666; font-size: 12px;">Poslato automatski sa Studio LeFlow sajta</p>
-          `
+          subject: `Novi Upit — ${escapeHtml(validatedData.service)} — Studio LeFlow`,
+          html: contactFormEmail({
+            service: escapeHtml(validatedData.service),
+            name: escapeHtml(validatedData.name),
+            email: escapeHtml(validatedData.email),
+            phone: escapeHtml(validatedData.phone),
+            message: escapeHtml(validatedData.message),
+            preferredDate: validatedData.preferredDate ? escapeHtml(validatedData.preferredDate) : undefined,
+          }),
         });
       } catch (emailError) {
         console.error("Greška pri slanju email-a:", emailError);
@@ -711,26 +684,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
             
             await sendEmail({
               to: email,
-              subject: 'Potvrdite prijavu na Studio LeFlow newsletter',
-              html: `
-                <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
-                  <div style="background-color: #4542f5; padding: 30px; text-align: center;">
-                    <h1 style="color: white; margin: 0;">Studio LeFlow</h1>
-                  </div>
-                  <div style="padding: 30px; background-color: #ffffff;">
-                    <h2 style="color: #333;">Potvrdite svoju email adresu</h2>
-                    <p>Hvala što ste se prijavili na Studio LeFlow newsletter!</p>
-                    <p>Kliknite na dugme ispod da potvrdite svoju email adresu:</p>
-                    <div style="text-align: center; margin: 30px 0;">
-                      <a href="${confirmUrl}" style="background-color: #4542f5; color: white; padding: 15px 40px; text-decoration: none; border-radius: 5px; font-weight: bold; display: inline-block;">Potvrdi email</a>
-                    </div>
-                    <p style="color: #666; font-size: 14px;">Ili kopirajte i nalepite ovaj link u pretraživač:</p>
-                    <p style="color: #4542f5; word-break: break-all; font-size: 12px;">${confirmUrl}</p>
-                    <hr style="margin: 30px 0; border: none; border-top: 1px solid #e5e7eb;">
-                    <p style="color: #666; font-size: 12px;">Ako niste zatražili prijavu na newsletter, ignorišite ovaj email.</p>
-                  </div>
-                </div>
-              `
+              subject: 'Potvrdite Prijavu na Newsletter — Studio LeFlow',
+              html: newsletterConfirmEmail(confirmUrl),
             });
           } catch (emailError) {
             console.error("Greška pri slanju confirmation email-a:", emailError);
@@ -752,26 +707,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
         
         await sendEmail({
           to: email,
-          subject: 'Potvrdite prijavu na Studio LeFlow newsletter',
-          html: `
-            <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
-              <div style="background-color: #4542f5; padding: 30px; text-align: center;">
-                <h1 style="color: white; margin: 0;">Studio LeFlow</h1>
-              </div>
-              <div style="padding: 30px; background-color: #ffffff;">
-                <h2 style="color: #333;">Potvrdite svoju email adresu</h2>
-                <p>Hvala što ste se prijavili na Studio LeFlow newsletter!</p>
-                <p>Kliknite na dugme ispod da potvrdite svoju email adresu:</p>
-                <div style="text-align: center; margin: 30px 0;">
-                  <a href="${confirmUrl}" style="background-color: #4542f5; color: white; padding: 15px 40px; text-decoration: none; border-radius: 5px; font-weight: bold; display: inline-block;">Potvrdi email</a>
-                </div>
-                <p style="color: #666; font-size: 14px;">Ili kopirajte i nalepite ovaj link u pretraživač:</p>
-                <p style="color: #4542f5; word-break: break-all; font-size: 12px;">${confirmUrl}</p>
-                <hr style="margin: 30px 0; border: none; border-top: 1px solid #e5e7eb;">
-                <p style="color: #666; font-size: 12px;">Ako niste zatražili prijavu na newsletter, ignorišite ovaj email.</p>
-              </div>
-            </div>
-          `
+          subject: 'Potvrdite Prijavu na Newsletter — Studio LeFlow',
+          html: newsletterConfirmEmail(confirmUrl),
         });
       } catch (emailError) {
         console.error("Greška pri slanju confirmation email-a:", emailError);
@@ -2668,109 +2605,12 @@ Sitemap: ${siteUrl}/sitemap.xml
       const pdfBuffer = fs.readFileSync(pdfPath);
       const pdfBase64 = pdfBuffer.toString('base64');
 
-      // Professional HTML email template
-      const emailHtml = `
-<!DOCTYPE html>
-<html lang="sr">
-<head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-</head>
-<body style="margin: 0; padding: 0; font-family: 'Arial', sans-serif; background-color: #f4f4f7;">
-  <table role="presentation" cellspacing="0" cellpadding="0" border="0" width="100%" style="background-color: #f4f4f7;">
-    <tr>
-      <td style="padding: 40px 20px;">
-        <table role="presentation" cellspacing="0" cellpadding="0" border="0" width="100%" style="max-width: 600px; margin: 0 auto; background-color: #ffffff; border-radius: 8px; overflow: hidden; box-shadow: 0 4px 12px rgba(0,0,0,0.1);">
-          
-          <!-- Header -->
-          <tr>
-            <td style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); padding: 40px 30px; text-align: center;">
-              <h1 style="margin: 0; color: #ffffff; font-size: 28px; font-weight: 700; letter-spacing: -0.5px;">
-                Studio LeFlow
-              </h1>
-              <p style="margin: 8px 0 0; color: rgba(255,255,255,0.9); font-size: 14px;">
-                Profesionalna muzička produkcija
-              </p>
-            </td>
-          </tr>
-
-          <!-- Content -->
-          <tr>
-            <td style="padding: 40px 30px;">
-              <h2 style="margin: 0 0 16px; color: #1a1a1a; font-size: 22px; font-weight: 600;">
-                Poštovani,
-              </h2>
-              
-              <p style="margin: 0 0 16px; color: #4a4a4a; font-size: 16px; line-height: 1.6;">
-                U prilogu Vam dostavljamo licencu broj <strong>${contract.contractNumber}</strong>.
-              </p>
-
-              <p style="margin: 0 0 24px; color: #4a4a4a; font-size: 16px; line-height: 1.6;">
-                Molimo Vas da pažljivo pregledate licencu. Autentičnost možete proveriti na studioleflow.com. Ukoliko imate bilo kakvih pitanja, slobodno nas kontaktirajte.
-              </p>
-
-              <!-- Contract Info Box -->
-              <table role="presentation" cellspacing="0" cellpadding="0" border="0" width="100%" style="background-color: #f8f9fa; border-radius: 6px; margin-bottom: 24px;">
-                <tr>
-                  <td style="padding: 20px;">
-                    <table role="presentation" cellspacing="0" cellpadding="0" border="0" width="100%">
-                      <tr>
-                        <td style="padding: 8px 0; color: #6b7280; font-size: 14px;">
-                          Broj licence:
-                        </td>
-                        <td style="padding: 8px 0; color: #1a1a1a; font-size: 14px; font-weight: 600; text-align: right;">
-                          ${contract.contractNumber}
-                        </td>
-                      </tr>
-                      <tr>
-                        <td style="padding: 8px 0; color: #6b7280; font-size: 14px;">
-                          Tip:
-                        </td>
-                        <td style="padding: 8px 0; color: #1a1a1a; font-size: 14px; font-weight: 600; text-align: right;">
-                          ${contract.contractType === 'mix_master' ? 'Mix & Master' : contract.contractType === 'copyright_transfer' ? 'Prenos autorskih prava' : 'Prodaja instrumentala'}
-                        </td>
-                      </tr>
-                      <tr>
-                        <td style="padding: 8px 0; color: #6b7280; font-size: 14px;">
-                          Datum:
-                        </td>
-                        <td style="padding: 8px 0; color: #1a1a1a; font-size: 14px; font-weight: 600; text-align: right;">
-                          ${new Date(contract.createdAt).toLocaleDateString('sr-RS')}
-                        </td>
-                      </tr>
-                    </table>
-                  </td>
-                </tr>
-              </table>
-
-              <p style="margin: 0 0 8px; color: #4a4a4a; font-size: 16px; line-height: 1.6;">
-                Srdačan pozdrav,
-              </p>
-              <p style="margin: 0 0 24px; color: #667eea; font-size: 16px; font-weight: 600; line-height: 1.6;">
-                Studio LeFlow tim
-              </p>
-            </td>
-          </tr>
-
-          <!-- Footer -->
-          <tr>
-            <td style="background-color: #f8f9fa; padding: 30px; text-align: center; border-top: 1px solid #e5e7eb;">
-              <p style="margin: 0 0 8px; color: #6b7280; font-size: 14px;">
-                Studio LeFlow | Beograd, Srbija
-              </p>
-              <p style="margin: 0; color: #9ca3af; font-size: 12px;">
-                Ova poruka je automatski generisana. Molimo ne odgovarajte direktno na ovaj email.
-              </p>
-            </td>
-          </tr>
-
-        </table>
-      </td>
-    </tr>
-  </table>
-</body>
-</html>
-      `;
+      const emailHtml = licenseDeliveryEmail({
+        contractNumber: contract.contractNumber,
+        contractType: contract.contractType,
+        createdAt: new Date(contract.createdAt),
+        verificationHash: contract.verificationHash,
+      });
 
       // Send email with PDF attachment
       // Extract filename from pdfPath for consistent email attachment name

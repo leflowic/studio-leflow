@@ -97,6 +97,7 @@ export async function sendEmail({
     content: string;
     encoding?: string;
     contentType?: string;
+    contentId?: string;
   }>;
 }) {
   const isDevelopment = process.env.NODE_ENV === 'development';
@@ -114,7 +115,15 @@ export async function sendEmail({
       to,
       subject,
       html,
-      ...(attachments && { attachments }),
+      ...(attachments && {
+        attachments: attachments.map(a => ({
+          filename: a.filename,
+          content: a.content,
+          ...(a.encoding && { encoding: a.encoding }),
+          ...(a.contentType && { content_type: a.contentType }),
+          ...(a.contentId && { inline: true, content_id: a.contentId }),
+        })),
+      }),
     });
 
     if (error) {
