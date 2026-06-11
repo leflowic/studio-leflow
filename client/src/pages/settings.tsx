@@ -180,10 +180,10 @@ export default function Settings() {
       return;
     }
 
-    if (passwordForm.newPassword.length < 6) {
+    if (passwordForm.newPassword.length < 8) {
       toast({
         title: "Lozinka je prekratka",
-        description: "Nova lozinka mora imati najmanje 6 karaktera",
+        description: "Nova lozinka mora imati najmanje 8 karaktera",
         variant: "destructive",
       });
       return;

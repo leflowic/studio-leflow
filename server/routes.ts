@@ -999,8 +999,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(400).json({ error: "Trenutna i nova lozinka su obavezne" });
       }
 
-      if (newPassword.length < 6) {
-        return res.status(400).json({ error: "Nova lozinka mora imati najmanje 6 karaktera" });
+      if (newPassword.length < 8) {
+        return res.status(400).json({ error: "Nova lozinka mora imati najmanje 8 karaktera" });
       }
 
       // Verify current password
