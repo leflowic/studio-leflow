@@ -1,4 +1,4 @@
-import { lazy, Suspense } from "react";
+import { lazy, Suspense, Component, ReactNode } from "react";
 import { Switch, Route, useLocation } from "wouter";
 import { queryClient } from "./lib/queryClient";
 import { QueryClientProvider } from "@tanstack/react-query";
@@ -17,6 +17,42 @@ import { HelmetProvider } from "react-helmet-async";
 import { useAuth } from "@/hooks/use-auth";
 import { useQuery } from "@tanstack/react-query";
 import { InstallPrompt } from "@/components/pwa/InstallPrompt";
+
+class ChunkErrorBoundary extends Component<{ children: ReactNode }, { failed: boolean }> {
+  state = { failed: false };
+
+  static getDerivedStateFromError(error: Error) {
+    const isChunkError =
+      error?.message?.includes("Failed to fetch dynamically imported module") ||
+      error?.message?.includes("Importing a module script failed") ||
+      error?.message?.includes("Loading chunk") ||
+      error?.name === "ChunkLoadError";
+
+    if (isChunkError && !sessionStorage.getItem("chunk-reload")) {
+      sessionStorage.setItem("chunk-reload", "1");
+      window.location.reload();
+      return { failed: false };
+    }
+    return { failed: true };
+  }
+
+  render() {
+    if (this.state.failed) {
+      return (
+        <div className="flex flex-col items-center justify-center min-h-screen gap-4 text-center px-4">
+          <p className="text-muted-foreground">Došlo je do greške pri učitavanju stranice.</p>
+          <button
+            className="text-primary underline text-sm"
+            onClick={() => { sessionStorage.removeItem("chunk-reload"); window.location.reload(); }}
+          >
+            Pokušaj ponovo
+          </button>
+        </div>
+      );
+    }
+    return this.props.children;
+  }
+}
 
 const HomePage = lazy(() => import("@/pages/home"));
 const TermsPage = lazy(() => import("@/pages/terms"));
@@ -69,6 +105,7 @@ function Router() {
     <>
       <Header />
       <main className="min-h-[calc(100vh-200px)]">
+        <ChunkErrorBoundary>
         <Suspense fallback={
           <div className="flex items-center justify-center min-h-[60vh]">
             <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
@@ -99,6 +136,7 @@ function Router() {
             </Switch>
           </div>
         </Suspense>
+        </ChunkErrorBoundary>
       </main>
       <Footer />
     </>

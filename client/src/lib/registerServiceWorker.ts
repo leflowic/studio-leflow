@@ -4,7 +4,7 @@ export function registerServiceWorker() {
   if (
     import.meta.env.PROD &&
     'serviceWorker' in navigator &&
-    window.location.protocol === 'https:' || window.location.hostname === 'localhost'
+    (window.location.protocol === 'https:' || window.location.hostname === 'localhost')
   ) {
     window.addEventListener('load', async () => {
       try {
