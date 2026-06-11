@@ -6,6 +6,7 @@ import { insertContactSubmissionSchema, insertCmsContentSchema, insertCmsMediaSc
 import { sendEmail, getLastVerificationCode } from "./resend-client";
 import { resendVerificationEmail, adminLoginEmail, contactFormEmail, newsletterConfirmEmail, licenseDeliveryEmail } from "./email-templates";
 import { setupAuth, hashPassword, comparePasswords } from "./auth";
+import multer from "multer";
 import fs from "fs";
 import path from "path";
 import { z } from "zod";
