@@ -131,7 +131,7 @@ export function Footer() {
           <p className="text-sm text-muted-foreground text-center md:text-left">
             © {currentYear} Studio LeFlow. Sva prava zadržana.
           </p>
-          <div className="flex gap-6 text-sm text-muted-foreground">
+          <div className="flex flex-wrap gap-4 justify-center md:justify-end text-sm text-muted-foreground">
             <Link
               href="/proveri"
               className="hover:text-primary transition-colors flex items-center gap-1.5"

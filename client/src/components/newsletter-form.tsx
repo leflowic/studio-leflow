@@ -65,7 +65,7 @@ export function NewsletterForm({ variant = "default", className = "" }: Newslett
 
   if (variant === "footer") {
     return (
-      <form onSubmit={handleSubmit} className={`flex gap-2 ${className}`}>
+      <form onSubmit={handleSubmit} className={`flex flex-col gap-2 ${className}`}>
         <Input
           type="email"
           placeholder="Vaša email adresa"

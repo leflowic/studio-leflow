@@ -32,7 +32,7 @@ export default function NotFound() {
                 <AlertCircle className="h-20 w-20 mx-auto mb-6 text-destructive" />
                 
                 <div className="mb-6">
-                  <h1 className="text-8xl font-bold mb-2">404</h1>
+                  <h1 className="text-5xl sm:text-7xl md:text-8xl font-bold mb-2">404</h1>
                   <div className="flex items-center justify-center gap-2 text-xl font-semibold text-muted-foreground">
                     <Music className="h-6 w-6" />
                     <span>Stranica nije pronađena</span>
@@ -54,13 +54,13 @@ export default function NotFound() {
                 className="flex flex-col sm:flex-row items-center justify-center gap-4"
               >
                 <Link href="/">
-                  <Button size="lg" className="gap-2 min-w-[200px]" data-testid="button-home">
+                  <Button size="lg" className="gap-2 w-full sm:w-auto sm:min-w-[200px]" data-testid="button-home">
                     <Home className="h-5 w-5" />
                     Početna Stranica
                   </Button>
                 </Link>
                 <Link href="/kontakt">
-                  <Button variant="outline" size="lg" className="gap-2 min-w-[200px]" data-testid="button-contact">
+                  <Button variant="outline" size="lg" className="gap-2 w-full sm:w-auto sm:min-w-[200px]" data-testid="button-contact">
                     <AlertCircle className="h-5 w-5" />
                     Kontaktiraj Nas
                   </Button>

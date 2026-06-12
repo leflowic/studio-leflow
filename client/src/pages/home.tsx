@@ -283,7 +283,7 @@ export default function Home() {
                 contentKey="title"
                 value={getCmsValue("hero", "title", "Studio LeFlow")}
                 as="h1"
-                className="text-6xl md:text-7xl lg:text-8xl font-bold mb-6 text-white tracking-tight font-[Montserrat] drop-shadow-2xl"
+                className="text-4xl sm:text-5xl md:text-7xl lg:text-8xl font-bold mb-6 text-white tracking-tight font-[Montserrat] drop-shadow-2xl"
               />
             </motion.div>
             
