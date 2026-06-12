@@ -40,7 +40,7 @@ There are no automated tests in this project.
 2. In dev, Vite middleware serves the SPA and handles HMR. In prod, Express serves `dist/public/` as static files.
 3. API routes are registered in `server/routes.ts` under `/api/*`.
 4. Auth is dual: Passport sessions (legacy) + JWT (`Authorization: Bearer <token>`, stored in `localStorage` as `auth_token`). New routes use JWT middleware from `server/jwt-auth.ts`. The authenticated user is available on routes as `req.jwtUser`.
-5. WebSocket server (`/api/ws`) runs alongside HTTP on the same port. Auth is validated on the WS `auth` message using `verifyToken()` from `server/jwt-auth.ts` — never trust client-sent user IDs.
+5. WebSocket server (`/api/ws`) runs alongside HTTP on the same port. Auth is validated on the WS `auth` message using `verifyToken()` from `server/jwt-auth.ts` — never trust client-sent user IDs. No cookie check on WS connection — auth is purely JWT via the `auth` message.
 
 **Database:**
 - Schema defined in `shared/schema.ts`, consumed by both Drizzle ORM queries (server) and Zod validators.
@@ -61,12 +61,13 @@ There are no automated tests in this project.
 - `GET /api/admin/katastar/:userId` returns `{ user, projects, contracts, invoices }` for the Katastar (client registry) tab.
 
 **Real-time messaging:**
-- `WebSocketContext` is the single shared WS connection (app-level). `ChatInterface` and `ConversationList` subscribe to it via `useWebSocketContext()`. The header uses a separate `useWebSocket()` hook (its own connection) only for the unread badge.
+- `WebSocketContext` is the single shared WS connection (app-level). `ChatInterface` and `ConversationList` subscribe to it via `useWebSocketContext()`. Reconnect uses exponential backoff: 3s → 6s → 12s → 30s max, reset on successful open.
 - When a `new_message` WS event arrives, `ChatInterface` calls `queryClient.setQueryData` to inject the message directly into the cache — no network round-trip. `invalidateQueries` is also called afterward to sync server state (read receipts etc). This is the correct pattern for instant real-time UI updates; do **not** rely on `invalidateQueries` alone for real-time features since `staleTime: Infinity` means it triggers a fetch, not an instant update.
 - `GET /api/messages/conversation/:userId` auto-marks messages as read and broadcasts `message_read` to **both** parties (sender and reader). The header invalidates `/api/messages/unread-count` on `message_read`. `ChatInterface` also invalidates it on messages load.
 - Notification sound: `attached_assets/universfield-new-notification-035-485894.mp3`, imported via `@assets` alias in `WebSocketContext.tsx`.
 - When adding new badge-like counters, follow this pattern: server broadcasts to both parties, client uses `setQueryData` for instant update + `invalidateQueries` for sync.
 - Messages support: reply-to (`replyToId` FK → `messages.id`), image attachments (`imageUrl`), emoji picker. `DELETE /api/messages/conversation/:userId` soft-deletes the caller's side.
+- Chat image uploads go to `POST /api/upload/message-image` (NOT `/api/upload/avatar`). Avatar uses a fixed `user_${id}` public_id with overwrite — sending chat images there would wipe the user's profile picture.
 - `GET /api/users/:id` returns only public fields — **no email**. Never expose email through user-lookup endpoints.
 
 **Admin file downloads:**
@@ -78,24 +79,27 @@ There are no automated tests in this project.
 - `EditableImage` uses a separate `fallbackSrc` prop for the local image to show when the stored CMS URL is broken.
 
 **Daily game ("Pogodi Pesmu"):**
-- Schema: `daily_challenges` table — `challengeDate` (unique), `youtubeUrl`, `clipUrl` (Cloudinary MP3), `correctAnswers` (comma-separated variants), `clipStartSeconds`, `openHour`, `openMinute` (Belgrade time, UTC+2).
-- Audio playback uses the Web `AudioContext` API in `client/src/pages/igra.tsx` — fetch the Cloudinary MP3, decode via `ctx.decodeAudioData`, play a 2s slice with `source.start(0, clipStartSeconds, 2)`. No YouTube IFrame API.
-- Open-time check is Belgrade local time: `(utcHour + 2) % 24`. `getTodayDateString()` in `storage.ts` also adds the 2h offset.
+- Schema: `daily_challenges` table — `challengeDate` (unique), `clipUrl` (Cloudinary MP3), `correctAnswers` (comma-separated variants), `clipStartSeconds`, `openHour`, `openMinute` (Belgrade time, UTC+2).
+- Audio playback uses the Web `AudioContext` API in `client/src/pages/igra.tsx` — fetch the Cloudinary MP3, decode via `ctx.decodeAudioData`, play a 2s slice with `source.start(0, clipStartSeconds, 2)`. No YouTube IFrame API. The `useEffect` that loads the clip uses a `cancelled` flag to discard stale async callbacks when `clipUrl` changes.
+- Open-time check uses DST-safe Belgrade time — **never** hardcode `(utcHour + 2) % 24`. Use `new Date(new Date().toLocaleString('en-US', { timeZone: 'Europe/Belgrade' }))` for hour/minute, and `new Intl.DateTimeFormat('sv', { timeZone: 'Europe/Belgrade' }).format(new Date())` for date strings. `getTodayDateString()` in `storage.ts` uses this pattern.
 - Parsing hour/minute: **never** use `Number(x) || fallback` when x can be 0 — use `x != null ? parseInt(String(x), 10) : fallback`. The admin form uses `<Input type="time">` which returns `"HH:MM"`.
 - Game clip upload: `POST /api/upload/game-clip` (requireAdmin) → `server/cloudinary.ts` `uploadAudioToCloudinary()`. Each upload gets a unique public_id (`basename_timestamp`) to avoid Cloudinary duplicate-key errors.
 - User-facing game routes use `requireNotBanned` (not `requireAuth`, which doesn't exist).
 - `submitGuess()` returns `{ correct, points }` where points = correct ? 10 : 0. The correct answer is **not** exposed in the response.
 
 **File uploads:**
-- Avatar/image uploads: `POST /api/upload/avatar` → Cloudinary (`server/cloudinary.ts`).
+- Avatar/image uploads: `POST /api/upload/avatar` → Cloudinary (`server/cloudinary.ts`), fixed `user_${id}` public_id with face-crop transformation.
+- Message images: `POST /api/upload/message-image` → Cloudinary `studioleflow/messages` folder, unique `msg_${userId}_${timestamp}` public_id (no overwrite, no crop).
 - Audio uploads: `POST /api/upload/audio` → Cloudinary, with `fileTypeFromBuffer` magic-bytes validation.
 - Game clip: `POST /api/upload/game-clip` (admin) → Cloudinary `studioleflow/game-clips` folder.
 - CMS media: multer to `attached_assets/temp/`, then moved to `attached_assets/`.
+- All upload routes have `uploadRateLimiter` applied (30/hr). Avatar and message-image routes also validate magic bytes via `fileTypeFromBuffer`.
 
 **Email:**
 - Transactional: Resend SDK (`server/resend-client.ts`), from `noreply@mail.studioleflow.com`.
 - Templates in `server/email-templates.ts` — all use white logo at `${BASE_URL}/leflow-logo-white.png`.
 - Business inbox: Zoho Mail at `podrska@studioleflow.com`.
+- License auto-email: when admin assigns a user to a contract (`PATCH /api/admin/contracts/:id/assign-user`), the PDF is fetched and emailed automatically to the user's registered email. Email failure does not fail the request.
 
 **Deployment:**
 - Railway auto-deploys from GitHub `main` branch.
@@ -105,6 +109,8 @@ There are no automated tests in this project.
 
 **Security notes:**
 - Admin 2FA: one-time token emailed on admin login (`adminLoginToken` / `adminLoginExpiry` fields on user).
-- Rate limiters on login (5/15 min), registration (3/hr), uploads (30/hr), contact (10/hr).
+- Rate limiters on login (5/15 min), registration (3/hr), uploads (30/hr), contact (10/hr). All upload routes have `uploadRateLimiter` applied.
+- `GET /api/admin/users` strips `passwordHash`, `adminLoginToken`, `adminLoginExpiry` before sending the response.
+- Logout calls `queryClient.clear()` to wipe all cached private data, not just the user query.
 - Production build disables React DevTools and blocks F12/DevTools keyboard shortcuts via `client/src/main.tsx`.
 - JWT expiry: 7 days. Secret: `SESSION_SECRET` env var.

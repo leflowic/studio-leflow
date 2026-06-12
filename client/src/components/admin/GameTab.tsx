@@ -29,7 +29,6 @@ export default function GameTab() {
   // Challenge form
   const [editingId, setEditingId] = useState<number | null>(null);
   const [cDate, setCDate] = useState(new Date().toISOString().split('T')[0]);
-  const [cUrl, setCUrl] = useState("");
   const [cClipUrl, setCClipUrl] = useState("");
   const [cAnswer, setCAnswer] = useState("");
   const [cClip, setCClip] = useState("30");
@@ -40,7 +39,6 @@ export default function GameTab() {
   const startEdit = (c: any) => {
     setEditingId(c.id);
     setCDate(c.challengeDate);
-    setCUrl(c.youtubeUrl);
     setCClipUrl(c.clipUrl ?? "");
     setCAnswer(c.correctAnswers);
     setCClip(String(c.clipStartSeconds));
@@ -51,7 +49,7 @@ export default function GameTab() {
   const cancelEdit = () => {
     setEditingId(null);
     setCDate(new Date().toISOString().split('T')[0]!);
-    setCUrl(""); setCClipUrl(""); setCAnswer(""); setCClip("30"); setCTime("17:00");
+    setCClipUrl(""); setCAnswer(""); setCClip("30"); setCTime("17:00");
   };
 
   // Prize form
@@ -88,7 +86,6 @@ export default function GameTab() {
   const saveChallenges = useMutation({
     mutationFn: async () => apiRequest("POST", "/api/admin/game/challenges", {
       challengeDate: cDate,
-      youtubeUrl: cUrl,
       clipUrl: cClipUrl || null,
       correctAnswers: cAnswer,
       clipStartSeconds: Number(cClip) || 30,
@@ -171,10 +168,6 @@ export default function GameTab() {
             <Input type="time" value={cTime} onChange={e => setCTime(e.target.value)} className="w-40" />
           </div>
           <div className="space-y-1">
-            <Label>YouTube URL (referenca)</Label>
-            <Input value={cUrl} onChange={e => setCUrl(e.target.value)} placeholder="https://www.youtube.com/watch?v=..." />
-          </div>
-          <div className="space-y-1">
             <Label>Audio clip (MP3, max 5MB)</Label>
             <div className="flex items-center gap-2">
               <input ref={clipFileRef} type="file" accept=".mp3,audio/mpeg" className="hidden" onChange={handleClipUpload} />
@@ -205,7 +198,7 @@ export default function GameTab() {
           <div className="flex gap-2">
             <Button
               onClick={() => saveChallenges.mutate()}
-              disabled={!cDate || !cUrl || !cAnswer || saveChallenges.isPending}
+              disabled={!cDate || !cAnswer || saveChallenges.isPending}
               className="gap-2"
             >
               {editingId ? <Pencil className="w-4 h-4" /> : <Plus className="w-4 h-4" />}

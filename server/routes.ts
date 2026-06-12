@@ -3256,13 +3256,12 @@ Sitemap: ${siteUrl}/sitemap.xml
   // Admin: POST /api/admin/game/challenges
   app.post("/api/admin/game/challenges", requireAdmin, async (req, res) => {
     try {
-      const { challengeDate, youtubeUrl, clipUrl, correctAnswers, clipStartSeconds, openHour, openMinute } = req.body;
-      if (!challengeDate || !youtubeUrl || !correctAnswers) {
-        return res.status(400).json({ error: "Datum, YouTube URL i tačan odgovor su obavezni" });
+      const { challengeDate, clipUrl, correctAnswers, clipStartSeconds, openHour, openMinute } = req.body;
+      if (!challengeDate || !correctAnswers) {
+        return res.status(400).json({ error: "Datum i tačan odgovor su obavezni" });
       }
       await storage.adminUpsertChallenge({
         challengeDate,
-        youtubeUrl,
         clipUrl: clipUrl || null,
         correctAnswers,
         clipStartSeconds: Number(clipStartSeconds) || 30,

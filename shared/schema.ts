@@ -326,7 +326,6 @@ export const adminMessageAudit = pgTable("admin_message_audit", {
 export const dailyChallenges = pgTable("daily_challenges", {
   id: serial("id").primaryKey(),
   challengeDate: text("challenge_date").notNull().unique(),
-  youtubeUrl: text("youtube_url").notNull(),
   clipUrl: text("clip_url"),
   correctAnswers: text("correct_answers").notNull(),
   clipStartSeconds: integer("clip_start_seconds").notNull().default(30),
