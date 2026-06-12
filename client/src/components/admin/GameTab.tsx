@@ -8,7 +8,7 @@ import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
-import { Music, Trophy, Trash2, Plus, Gift, Upload, CheckCircle2, Loader2 } from "lucide-react";
+import { Music, Trophy, Trash2, Plus, Gift, Upload, CheckCircle2, Loader2, Pencil, X } from "lucide-react";
 import { format } from "date-fns";
 
 function getMonday(offset = 0): string {
@@ -27,6 +27,7 @@ export default function GameTab() {
   const { data: prizes = [] } = useQuery<any[]>({ queryKey: ["/api/admin/game/prizes"] });
 
   // Challenge form
+  const [editingId, setEditingId] = useState<number | null>(null);
   const [cDate, setCDate] = useState(new Date().toISOString().split('T')[0]);
   const [cUrl, setCUrl] = useState("");
   const [cClipUrl, setCClipUrl] = useState("");
@@ -35,6 +36,23 @@ export default function GameTab() {
   const [cTime, setCTime] = useState("17:00");
   const [uploadingClip, setUploadingClip] = useState(false);
   const clipFileRef = useRef<HTMLInputElement>(null);
+
+  const startEdit = (c: any) => {
+    setEditingId(c.id);
+    setCDate(c.challengeDate);
+    setCUrl(c.youtubeUrl);
+    setCClipUrl(c.clipUrl ?? "");
+    setCAnswer(c.correctAnswers);
+    setCClip(String(c.clipStartSeconds));
+    setCTime(`${String(c.openHour ?? 17).padStart(2, '0')}:${String(c.openMinute ?? 0).padStart(2, '0')}`);
+    window.scrollTo({ top: 0, behavior: "smooth" });
+  };
+
+  const cancelEdit = () => {
+    setEditingId(null);
+    setCDate(new Date().toISOString().split('T')[0]!);
+    setCUrl(""); setCClipUrl(""); setCAnswer(""); setCClip("30"); setCTime("17:00");
+  };
 
   // Prize form
   const [pWeek, setPWeek] = useState(getMonday());
@@ -78,9 +96,9 @@ export default function GameTab() {
       openMinute: parseInt(cTime.split(':')[1] ?? '0', 10),
     }),
     onSuccess: () => {
-      toast({ title: "Sačuvano", description: "Izazov je sačuvan" });
+      toast({ title: "Sačuvano", description: editingId ? "Izazov je izmenjen" : "Izazov je dodat" });
       queryClient.invalidateQueries({ queryKey: ["/api/admin/game/challenges"] });
-      setCUrl(""); setCClipUrl(""); setCAnswer(""); setCClip("30"); setCTime("17:00");
+      cancelEdit();
     },
     onError: () => toast({ title: "Greška", variant: "destructive", description: "Nije moguće sačuvati izazov" }),
   });
@@ -128,7 +146,12 @@ export default function GameTab() {
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
             <Music className="w-5 h-5 text-primary" />
-            Dodaj izazov
+            {editingId ? "Izmeni izazov" : "Dodaj izazov"}
+            {editingId && (
+              <Button variant="ghost" size="sm" className="ml-auto gap-1 text-muted-foreground" onClick={cancelEdit}>
+                <X className="w-4 h-4" /> Otkaži
+              </Button>
+            )}
           </CardTitle>
         </CardHeader>
         <CardContent className="space-y-4">
@@ -178,14 +201,19 @@ export default function GameTab() {
             <Input value={cAnswer} onChange={e => setCAnswer(e.target.value)} placeholder="Ceza - Sus, ceza sus" />
             <p className="text-xs text-muted-foreground">Poređenje je case-insensitive. Navedi varijante koje se prihvataju.</p>
           </div>
-          <Button
-            onClick={() => saveChallenges.mutate()}
-            disabled={!cDate || !cUrl || !cAnswer || saveChallenges.isPending}
-            className="gap-2"
-          >
-            <Plus className="w-4 h-4" />
-            {saveChallenges.isPending ? "Čuvanje..." : "Sačuvaj izazov"}
-          </Button>
+          <div className="flex gap-2">
+            <Button
+              onClick={() => saveChallenges.mutate()}
+              disabled={!cDate || !cUrl || !cAnswer || saveChallenges.isPending}
+              className="gap-2"
+            >
+              {editingId ? <Pencil className="w-4 h-4" /> : <Plus className="w-4 h-4" />}
+              {saveChallenges.isPending ? "Čuvanje..." : editingId ? "Sačuvaj izmene" : "Sačuvaj izazov"}
+            </Button>
+            {editingId && (
+              <Button variant="outline" onClick={cancelEdit}>Otkaži</Button>
+            )}
+          </div>
         </CardContent>
       </Card>
 
@@ -200,7 +228,7 @@ export default function GameTab() {
           ) : (
             <ul className="divide-y">
               {challenges.map((c: any) => (
-                <li key={c.id} className="flex items-center gap-3 py-3">
+                <li key={c.id} className={`flex items-center gap-3 py-3 ${editingId === c.id ? "bg-primary/5 -mx-2 px-2 rounded-lg" : ""}`}>
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-2">
                       <span className="font-medium text-sm">
@@ -213,6 +241,14 @@ export default function GameTab() {
                       Clip: {c.clipStartSeconds}s &nbsp;·&nbsp; Otvara: {String(c.openHour ?? 17).padStart(2,'0')}:{String(c.openMinute ?? 0).padStart(2,'0')}
                     </p>
                   </div>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="text-muted-foreground hover:text-foreground"
+                    onClick={() => startEdit(c)}
+                  >
+                    <Pencil className="w-4 h-4" />
+                  </Button>
                   <Button
                     variant="ghost"
                     size="icon"
