@@ -2825,8 +2825,39 @@ Sitemap: ${siteUrl}/sitemap.xml
       // Update contract userId (can be null to remove assignment)
       await storage.updateContractUser(contractId, parsedUserId);
 
-      const message = parsedUserId === null 
-        ? "Dodela ugovora uspešno uklonjena" 
+      // Auto-send license email to user's registered email when assigning
+      if (parsedUserId !== null) {
+        try {
+          const user = await storage.getUser(parsedUserId);
+          const contract = await storage.getContractById(contractId);
+          if (user?.email && contract?.pdfPath) {
+            const pdfPath = path.join(process.cwd(), contract.pdfPath);
+            if (fs.existsSync(pdfPath)) {
+              const pdfBase64 = fs.readFileSync(pdfPath).toString('base64');
+              const emailFilename = path.basename(contract.pdfPath);
+              const emailHtml = licenseDeliveryEmail({
+                contractNumber: contract.contractNumber,
+                contractType: contract.contractType,
+                createdAt: new Date(contract.createdAt),
+                verificationHash: contract.verificationHash,
+              });
+              await sendEmail({
+                to: user.email,
+                subject: `Studio LeFlow — Licenca ${contract.contractNumber}`,
+                html: emailHtml,
+                attachments: [{ filename: emailFilename, content: pdfBase64, encoding: 'base64', contentType: 'application/pdf' }],
+              });
+              console.log(`[CONTRACTS] License auto-sent to user ${user.email} on assignment`);
+            }
+          }
+        } catch (emailError: any) {
+          console.error("[CONTRACTS] Auto email on assign failed:", emailError.message);
+          // Don't fail the request if email fails
+        }
+      }
+
+      const message = parsedUserId === null
+        ? "Dodela ugovora uspešno uklonjena"
         : "Ugovor uspešno dodeljen korisniku";
 
       res.json({ success: true, message });

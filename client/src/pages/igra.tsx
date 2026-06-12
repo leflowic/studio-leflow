@@ -8,6 +8,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { AvatarWithInitials } from "@/components/ui/avatar-with-initials";
 import { SEO } from "@/components/SEO";
+import { useToast } from "@/hooks/use-toast";
 import { Music, Play, Trophy, Clock, CheckCircle2, XCircle, Lock } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -41,6 +42,7 @@ function useCountdown(targetHour: number, targetMinute = 0) {
 export default function IgraPage() {
   const { user } = useAuth();
   const queryClient = useQueryClient();
+  const { toast } = useToast();
 
   const audioCtxRef = useRef<AudioContext | null>(null);
   const audioBufferRef = useRef<AudioBuffer | null>(null);
@@ -63,12 +65,12 @@ export default function IgraPage() {
   const openMinute = data?.openMinute ?? data?.challenge?.openMinute ?? 0;
   const { isOpen, minutesLeft } = useCountdown(openHour, openMinute);
 
-  // When countdown hits zero, refetch to get the challenge data
+  // When countdown hits zero (or data loads while already open), refetch to get challenge data
   useEffect(() => {
     if (isOpen && data && !data.available) {
       refetch();
     }
-  }, [isOpen]);
+  }, [isOpen, data?.available]);
 
   const { data: leaderboardData } = useQuery<any>({
     queryKey: ["/api/game/leaderboard"],
@@ -137,6 +139,9 @@ export default function IgraPage() {
       queryClient.invalidateQueries({ queryKey: ["/api/game/today"] });
       queryClient.invalidateQueries({ queryKey: ["/api/game/leaderboard"] });
     },
+    onError: (err: any) => {
+      toast({ title: "Greška", description: err?.message || "Nije moguće poslati odgovor", variant: "destructive" });
+    },
   });
 
   if (!user) {
@@ -197,6 +202,10 @@ export default function IgraPage() {
               <div className="text-center py-8 text-muted-foreground">
                 <Music className="w-12 h-12 mx-auto mb-3 opacity-40" />
                 <p>Nema izazova za danas. Vrati se sutra!</p>
+              </div>
+            ) : isOpen && data && !data.available ? (
+              <div className="flex justify-center py-8">
+                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary" />
               </div>
             ) : !isOpen ? (
               <div className="text-center py-8 space-y-3">
