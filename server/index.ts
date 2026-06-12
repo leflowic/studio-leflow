@@ -402,24 +402,9 @@ app.use((req, res, next) => {
     // ===== WEBSOCKET SERVER FOR REAL-TIME MESSAGING =====
     const wss = new WebSocketServer({ server, path: '/api/ws' });
 
-    wss.on('connection', async (ws: WebSocket, req) => {
+    wss.on('connection', async (ws: WebSocket, _req) => {
       try {
-        // Parse session cookie to authenticate user
-        const cookieHeader = req.headers.cookie;
-        if (!cookieHeader) {
-          ws.close(1008, 'No session cookie');
-          return;
-        }
-
-        // Extract session ID from cookie (this is a simplified approach)
-        // In production, you'd properly parse the session cookie
-        const sessionCookie = cookieHeader.split(';').find(c => c.trim().startsWith('connect.sid='));
-        if (!sessionCookie) {
-          ws.close(1008, 'Invalid session');
-          return;
-        }
-
-        // For now, we'll use a simpler approach: authenticate via initial message
+        // Auth happens via JWT in the initial 'auth' message — no cookie required
         let userId: number | null = null;
 
         ws.on('message', async (data) => {

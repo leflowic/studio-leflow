@@ -195,6 +195,8 @@ export default function ChatInterface({ selectedUserId, onBack }: ChatInterfaceP
       if (message.type === "new_message") {
         const newMsg = message.message;
         if (newMsg && (newMsg.senderId === selectedUserId || newMsg.receiverId === selectedUserId)) {
+          // Track ID before setQueryData so the polling effect doesn't double-play sound
+          knownMessageIdsRef.current.add(newMsg.id);
           queryClient.setQueryData(
             ["/api/messages/conversation", selectedUserId],
             (old: Message[] | undefined) => {
@@ -282,7 +284,7 @@ export default function ChatInterface({ selectedUserId, onBack }: ChatInterfaceP
       const formData = new FormData();
       formData.append("file", file);
       const token = localStorage.getItem("auth_token");
-      const res = await fetch("/api/upload/avatar", {
+      const res = await fetch("/api/upload/message-image", {
         method: "POST",
         headers: token ? { Authorization: `Bearer ${token}` } : {},
         body: formData,

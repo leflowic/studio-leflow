@@ -48,6 +48,7 @@ export function WebSocketProvider({ children }: { children: ReactNode }) {
   const ws = useRef<WebSocket | null>(null);
   const [isConnected, setIsConnected] = useState(false);
   const reconnectTimeout = useRef<NodeJS.Timeout>();
+  const reconnectDelay = useRef(3000);
   const messageListeners = useRef<Set<(message: WebSocketMessage) => void>>(new Set());
   const userRef = useRef(user); // Track current user to prevent stale reconnects
   const audioCtxRef = useRef<AudioContext | null>(null);
@@ -97,6 +98,7 @@ export function WebSocketProvider({ children }: { children: ReactNode }) {
 
     ws.current.onopen = () => {
       console.log('[WebSocket] Connected');
+      reconnectDelay.current = 3000; // reset backoff on successful connect
       setIsConnected(true);
       requestNotificationPermission();
 
@@ -157,10 +159,12 @@ export function WebSocketProvider({ children }: { children: ReactNode }) {
         // CRITICAL: Check current user from ref, not closure
         // This prevents reconnecting with stale auth after logout
         if (userRef.current) {
-          console.log('[WebSocket] Reconnecting...');
+          console.log(`[WebSocket] Reconnecting (delay ${reconnectDelay.current}ms)...`);
           connect();
         }
-      }, 3000);
+      }, reconnectDelay.current);
+      // Exponential backoff: 3s → 6s → 12s → ... capped at 30s
+      reconnectDelay.current = Math.min(reconnectDelay.current * 2, 30000);
     };
 
     ws.current.onerror = (error) => {

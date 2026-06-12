@@ -363,6 +363,23 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Message image upload (chat attachments — separate from avatar to avoid overwriting it)
+  app.post("/api/upload/message-image", uploadRateLimiter, requireNotBanned, upload.single("file"), async (req, res) => {
+    try {
+      if (!req.file) return res.status(400).json({ error: "Fajl nije pronađen" });
+      const detectedType = await fileTypeFromBuffer(req.file.buffer);
+      const allowed = ["image/jpeg", "image/png", "image/webp"];
+      if (!detectedType || !allowed.includes(detectedType.mime))
+        return res.status(400).json({ error: "Dozvoljeni su samo JPG, PNG i WebP fajlovi" });
+      const uid = `msg_${req.jwtUser!.id}_${Date.now()}`;
+      const url = await uploadImageToCloudinary(req.file.buffer, "studioleflow/messages", uid);
+      res.json({ url });
+    } catch (e: any) {
+      console.error("[UPLOAD] Message image error:", e.message);
+      res.status(500).json({ error: "Greška pri otpremanju slike" });
+    }
+  });
+
   // Audio upload (giveaway MP3)
   app.post("/api/upload/audio", uploadRateLimiter, requireVerifiedEmail, upload.single("file"), async (req, res) => {
     try {
@@ -3145,10 +3162,10 @@ Sitemap: ${siteUrl}/sitemap.xml
       const next = await storage.getNextUpcomingChallenge();
       if (!next) return res.json(null);
       // Compute whether it's already open
-      const nowUTC = new Date();
-      const belgHour = (nowUTC.getUTCHours() + 2) % 24;
-      const belgMin = nowUTC.getUTCMinutes();
-      const todayStr = new Date(nowUTC.getTime() + 2 * 60 * 60 * 1000).toISOString().split('T')[0]!;
+      const belgNow = new Date(new Date().toLocaleString('en-US', { timeZone: 'Europe/Belgrade' }));
+      const belgHour = belgNow.getHours();
+      const belgMin = belgNow.getMinutes();
+      const todayStr = new Intl.DateTimeFormat('sv', { timeZone: 'Europe/Belgrade' }).format(new Date());
       const isToday = next.challengeDate === todayStr;
       const nowMins = belgHour * 60 + belgMin;
       const openMins = next.openHour * 60 + next.openMinute;
@@ -3163,13 +3180,13 @@ Sitemap: ${siteUrl}/sitemap.xml
   // GET /api/game/today — challenge info for current user (no correct answers)
   app.get("/api/game/today", requireNotBanned, async (req, res) => {
     try {
-      const today = new Date(Date.now() + 2 * 60 * 60 * 1000).toISOString().split('T')[0]!;
+      const today = new Intl.DateTimeFormat('sv', { timeZone: 'Europe/Belgrade' }).format(new Date());
       const challenge = await storage.getTodayChallenge();
       if (!challenge) return res.json({ available: false, reason: "no_challenge" });
 
-      const nowUTC = new Date();
-      const belgHour = (nowUTC.getUTCHours() + 2) % 24;
-      const belgMin = nowUTC.getUTCMinutes();
+      const belgNow = new Date(new Date().toLocaleString('en-US', { timeZone: 'Europe/Belgrade' }));
+      const belgHour = belgNow.getHours();
+      const belgMin = belgNow.getMinutes();
       const nowTotalMins = belgHour * 60 + belgMin;
       const openTotalMins = challenge.openHour * 60 + challenge.openMinute;
       if (nowTotalMins < openTotalMins) {
@@ -3198,13 +3215,11 @@ Sitemap: ${siteUrl}/sitemap.xml
       if (!answer || typeof answer !== 'string' || !answer.trim()) {
         return res.status(400).json({ error: "Odgovor je obavezan" });
       }
-      const today = new Date(Date.now() + 2 * 60 * 60 * 1000).toISOString().split('T')[0]!;
+      const today = new Intl.DateTimeFormat('sv', { timeZone: 'Europe/Belgrade' }).format(new Date());
       const challenge2 = await storage.getTodayChallenge();
       if (!challenge2) return res.status(404).json({ error: "Nema izazova za danas" });
-      const nowUTC2 = new Date();
-      const belgHour2 = (nowUTC2.getUTCHours() + 2) % 24;
-      const belgMin2 = nowUTC2.getUTCMinutes();
-      if (belgHour2 * 60 + belgMin2 < challenge2.openHour * 60 + challenge2.openMinute) {
+      const belgNow2 = new Date(new Date().toLocaleString('en-US', { timeZone: 'Europe/Belgrade' }));
+      if (belgNow2.getHours() * 60 + belgNow2.getMinutes() < challenge2.openHour * 60 + challenge2.openMinute) {
         return res.status(403).json({ error: "Igra još nije otvorena" });
       }
 

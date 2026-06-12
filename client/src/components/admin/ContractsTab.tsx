@@ -444,6 +444,10 @@ function AssignUserDialog({
   const [open, setOpen] = useState(false);
   const [selectedUserId, setSelectedUserId] = useState<string>(currentUserId?.toString() || "null");
 
+  useEffect(() => {
+    setSelectedUserId(currentUserId?.toString() || "null");
+  }, [currentUserId]);
+
   const handleAssign = () => {
     const userId = selectedUserId === "null" ? null : parseInt(selectedUserId);
     onAssign(userId);
@@ -570,7 +574,7 @@ function SendEmailDialog({ contractId, contractNumber }: { contractId: number; c
           </Button>
           <Button
             onClick={() => sendEmailMutation.mutate()}
-            disabled={!email || sendEmailMutation.isPending}
+            disabled={!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email) || sendEmailMutation.isPending}
             data-testid="button-send-contract-email"
           >
             {sendEmailMutation.isPending ? "Šalje se..." : "Pošalji"}

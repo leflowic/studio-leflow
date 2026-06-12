@@ -19,9 +19,8 @@ function useCountdown(targetHour: number, targetMinute = 0) {
   useEffect(() => {
     const update = () => {
       const now = new Date();
-      const belgHour = (now.getUTCHours() + 2) % 24;
-      const belgMin = now.getUTCMinutes();
-      const nowTotalMins = belgHour * 60 + belgMin;
+      const belgrade = new Date(now.toLocaleString('en-US', { timeZone: 'Europe/Belgrade' }));
+      const nowTotalMins = belgrade.getHours() * 60 + belgrade.getMinutes();
       const openTotalMins = targetHour * 60 + targetMinute;
       if (nowTotalMins >= openTotalMins) {
         setIsOpen(true);
@@ -92,6 +91,7 @@ export default function IgraPage() {
     setAudioReady(false);
     setAudioError(false);
 
+    let cancelled = false;
     const ctx = new AudioContext();
     audioCtxRef.current = ctx;
 
@@ -102,14 +102,16 @@ export default function IgraPage() {
       })
       .then(buf => ctx.decodeAudioData(buf))
       .then(decoded => {
+        if (cancelled) return;
         audioBufferRef.current = decoded;
         setAudioReady(true);
       })
       .catch(() => {
-        setAudioError(true);
+        if (!cancelled) setAudioError(true);
       });
 
     return () => {
+      cancelled = true;
       audioBufferRef.current = null;
       setAudioReady(false);
       ctx.close().catch(() => {});
