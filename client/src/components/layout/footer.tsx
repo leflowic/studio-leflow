@@ -148,7 +148,7 @@ export function Footer() {
               Politika Privatnosti
             </Link>
             <Link
-              href="/pravila"
+              href="/uslovi-koriscenja"
               className="hover:text-primary transition-colors"
               data-testid="link-footer-terms"
             >

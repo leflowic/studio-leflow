@@ -349,11 +349,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Avatar upload
-  app.post("/api/upload/avatar", requireVerifiedEmail, upload.single("file"), async (req, res) => {
+  app.post("/api/upload/avatar", uploadRateLimiter, requireVerifiedEmail, upload.single("file"), async (req, res) => {
     try {
       if (!req.file) return res.status(400).json({ error: "Fajl nije pronađen" });
+      const detectedType = await fileTypeFromBuffer(req.file.buffer);
       const allowed = ["image/jpeg", "image/png", "image/webp"];
-      if (!allowed.includes(req.file.mimetype)) return res.status(400).json({ error: "Dozvoljeni su samo JPG, PNG i WebP fajlovi" });
+      if (!detectedType || !allowed.includes(detectedType.mime)) return res.status(400).json({ error: "Dozvoljeni su samo JPG, PNG i WebP fajlovi" });
       const url = await uploadImageToCloudinary(req.file.buffer, "studioleflow/avatars", `user_${req.jwtUser!.id}`);
       res.json({ url });
     } catch (e: any) {
@@ -363,7 +364,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Audio upload (giveaway MP3)
-  app.post("/api/upload/audio", requireVerifiedEmail, upload.single("file"), async (req, res) => {
+  app.post("/api/upload/audio", uploadRateLimiter, requireVerifiedEmail, upload.single("file"), async (req, res) => {
     try {
       if (!req.file) return res.status(400).json({ error: "Fajl nije pronađen" });
       if (req.file.size > 16 * 1024 * 1024) return res.status(400).json({ error: "Fajl ne sme biti veći od 16MB" });
@@ -381,7 +382,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Game clip upload (admin only, MP3 for daily challenge)
-  app.post("/api/upload/game-clip", requireAdmin, upload.single("file"), async (req, res) => {
+  app.post("/api/upload/game-clip", uploadRateLimiter, requireAdmin, upload.single("file"), async (req, res) => {
     try {
       if (!req.file) return res.status(400).json({ error: "Fajl nije pronađen" });
       if (req.file.size > 5 * 1024 * 1024) return res.status(400).json({ error: "Clip ne sme biti veći od 5MB" });
@@ -1254,8 +1255,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Get all users
   app.get("/api/admin/users", requireAdmin, async (_req, res) => {
     try {
-      const users = await storage.getAllUsers();
-      res.json(users);
+      const allUsers = await storage.getAllUsers();
+      res.json(allUsers.map(({ passwordHash, adminLoginToken, adminLoginExpiry, ...safe }) => safe));
     } catch (error) {
       res.status(500).json({ error: "Greška na serveru" });
     }
@@ -3261,8 +3262,12 @@ Sitemap: ${siteUrl}/sitemap.xml
 
   // Admin: DELETE /api/admin/game/challenges/:id
   app.delete("/api/admin/game/challenges/:id", requireAdmin, async (req, res) => {
-    await storage.adminDeleteChallenge(Number(req.params.id));
-    res.json({ success: true });
+    try {
+      await storage.adminDeleteChallenge(Number(req.params.id));
+      res.json({ success: true });
+    } catch (e) {
+      res.status(500).json({ error: "Greška pri brisanju izazova" });
+    }
   });
 
   // Admin: GET /api/admin/game/prizes

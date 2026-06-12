@@ -72,6 +72,13 @@ export default function IgraPage() {
     }
   }, [isOpen, data?.available]);
 
+  // Reset plays when challenge changes (e.g. page open across midnight)
+  useEffect(() => {
+    if (data?.challenge?.challengeDate) {
+      setPlaysLeft(4);
+    }
+  }, [data?.challenge?.challengeDate]);
+
   const { data: leaderboardData } = useQuery<any>({
     queryKey: ["/api/game/leaderboard"],
     enabled: !!user,

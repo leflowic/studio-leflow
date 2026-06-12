@@ -106,6 +106,7 @@ export default function GameTab() {
   const deleteChallenge = useMutation({
     mutationFn: (id: number) => apiRequest("DELETE", `/api/admin/game/challenges/${id}`),
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ["/api/admin/game/challenges"] }),
+    onError: () => toast({ title: "Greška", description: "Brisanje nije uspelo", variant: "destructive" }),
   });
 
   const savePrize = useMutation({

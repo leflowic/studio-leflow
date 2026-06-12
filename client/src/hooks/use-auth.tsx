@@ -93,7 +93,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     },
     onSuccess: () => {
       clearAuthToken();
-      queryClient.setQueryData(["/api/user"], null);
+      queryClient.clear();
       toast({
         title: "Uspešno odjavljivanje",
         description: "Doviđenja!",
