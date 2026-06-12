@@ -87,6 +87,11 @@ async function runMigrations() {
       ALTER TABLE daily_challenges
         ADD COLUMN IF NOT EXISTS clip_url TEXT;
     `);
+    // Drop legacy youtube_url column (removed from schema — was NOT NULL, causes insert failures)
+    await client.query(`
+      ALTER TABLE daily_challenges
+        DROP COLUMN IF EXISTS youtube_url;
+    `);
     // Add reply-to column on messages
     await client.query(`
       ALTER TABLE messages

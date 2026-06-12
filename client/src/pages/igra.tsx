@@ -17,6 +17,7 @@ function useCountdown(targetHour: number, targetMinute = 0) {
   const [isOpen, setIsOpen] = useState(false);
 
   useEffect(() => {
+    let id: ReturnType<typeof setInterval>;
     const update = () => {
       const now = new Date();
       const belgrade = new Date(now.toLocaleString('en-US', { timeZone: 'Europe/Belgrade' }));
@@ -25,13 +26,14 @@ function useCountdown(targetHour: number, targetMinute = 0) {
       if (nowTotalMins >= openTotalMins) {
         setIsOpen(true);
         setMinutesLeft(0);
+        clearInterval(id);
       } else {
         setIsOpen(false);
         setMinutesLeft(openTotalMins - nowTotalMins);
       }
     };
     update();
-    const id = setInterval(update, 15000);
+    id = setInterval(update, 15000);
     return () => clearInterval(id);
   }, [targetHour, targetMinute]);
 
@@ -276,8 +278,8 @@ export default function IgraPage() {
                     placeholder="npr. Mufasa"
                     value={answer}
                     onChange={e => setAnswer(e.target.value)}
-                    onKeyDown={e => { if (e.key === 'Enter' && answer.trim()) guessMutation.mutate(answer); }}
-                    disabled={guessMutation.isPending}
+                    onKeyDown={e => { if (e.key === 'Enter' && answer.trim() && !submitted && !guessMutation.isPending) guessMutation.mutate(answer); }}
+                    disabled={guessMutation.isPending || submitted}
                     className="text-base"
                   />
                   <Button

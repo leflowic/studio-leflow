@@ -34,6 +34,7 @@ export default function GameTab() {
   const [cClip, setCClip] = useState("30");
   const [cTime, setCTime] = useState("17:00");
   const [uploadingClip, setUploadingClip] = useState(false);
+  const [clipFileName, setClipFileName] = useState("");
   const clipFileRef = useRef<HTMLInputElement>(null);
 
   const startEdit = (c: any) => {
@@ -49,7 +50,7 @@ export default function GameTab() {
   const cancelEdit = () => {
     setEditingId(null);
     setCDate(new Date().toISOString().split('T')[0]!);
-    setCClipUrl(""); setCAnswer(""); setCClip("30"); setCTime("17:00");
+    setCClipUrl(""); setCAnswer(""); setCClip("30"); setCTime("17:00"); setClipFileName("");
   };
 
   // Prize form
@@ -61,6 +62,7 @@ export default function GameTab() {
   const handleClipUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
+    setClipFileName(file.name);
     setUploadingClip(true);
     try {
       const formData = new FormData();
@@ -80,6 +82,7 @@ export default function GameTab() {
     } finally {
       setUploadingClip(false);
       if (clipFileRef.current) clipFileRef.current.value = "";
+      if (!cClipUrl) setClipFileName("");
     }
   };
 
@@ -88,7 +91,7 @@ export default function GameTab() {
       challengeDate: cDate,
       clipUrl: cClipUrl || null,
       correctAnswers: cAnswer,
-      clipStartSeconds: Number(cClip) || 30,
+      clipStartSeconds: cClip !== "" ? Number(cClip) : 30,
       openHour: parseInt(cTime.split(':')[0] ?? '17', 10),
       openMinute: parseInt(cTime.split(':')[1] ?? '0', 10),
     }),
@@ -185,7 +188,7 @@ export default function GameTab() {
               {cClipUrl && !uploadingClip && (
                 <span className="flex items-center gap-1 text-sm text-green-600">
                   <CheckCircle2 className="w-4 h-4" />
-                  Clip uploadovan
+                  {clipFileName || "Clip uploadovan"}
                 </span>
               )}
             </div>

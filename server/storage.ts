@@ -2398,11 +2398,12 @@ export class DatabaseStorage implements IStorage {
   }
 
   private getWeekStart(date?: string): string {
-    const d = date ? new Date(date) : new Date();
-    const day = d.getUTCDay();
-    const diff = (day === 0 ? -6 : 1 - day);
-    d.setUTCDate(d.getUTCDate() + diff);
-    return d.toISOString().split('T')[0]!;
+    const base = date ? new Date(date) : new Date();
+    const belgrade = new Date(base.toLocaleString('en-US', { timeZone: 'Europe/Belgrade' }));
+    const day = belgrade.getDay();
+    const diff = day === 0 ? -6 : 1 - day;
+    belgrade.setDate(belgrade.getDate() + diff);
+    return new Intl.DateTimeFormat('sv', { timeZone: 'Europe/Belgrade' }).format(belgrade);
   }
 
   async getTodayChallenge(): Promise<{ id: number; challengeDate: string; clipStartSeconds: number; clipUrl: string | null; openHour: number; openMinute: number; correctAnswers: string } | null> {
@@ -2473,7 +2474,7 @@ export class DatabaseStorage implements IStorage {
         sql`${dailyGuesses.challengeDate} <= ${weekEnd}`,
       ))
       .groupBy(dailyGuesses.userId, users.username, users.avatarUrl)
-      .orderBy(desc(count(dailyGuesses.id)));
+      .orderBy(desc(count(dailyGuesses.id)), sql`min(${dailyGuesses.guessedAt}) asc`);
 
     return rows.map(r => ({ ...r, correctCount: Number(r.correctCount), points: Number(r.correctCount) * 10 }));
   }
@@ -2528,12 +2529,13 @@ export class DatabaseStorage implements IStorage {
   }
 
   async adminSetPrizeWinner(weekStart: string): Promise<{ winnerUsername: string | null; promoCode: string | null }> {
+    const [prize] = await db.select().from(weeklyPrizes).where(eq(weeklyPrizes.weekStart, weekStart));
+    if (!prize) throw new Error('Prize not found');
     const leaderboard = await this.getWeeklyLeaderboard(weekStart);
     const winner = leaderboard[0] ?? null;
     if (winner) {
       await db.update(weeklyPrizes).set({ winnerUserId: winner.userId }).where(eq(weeklyPrizes.weekStart, weekStart));
     }
-    const [prize] = await db.select().from(weeklyPrizes).where(eq(weeklyPrizes.weekStart, weekStart));
     return { winnerUsername: winner?.username ?? null, promoCode: prize?.promoCode ?? null };
   }
 }

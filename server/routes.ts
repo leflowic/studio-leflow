@@ -3215,6 +3215,9 @@ Sitemap: ${siteUrl}/sitemap.xml
       if (!answer || typeof answer !== 'string' || !answer.trim()) {
         return res.status(400).json({ error: "Odgovor je obavezan" });
       }
+      if (answer.trim().length > 200) {
+        return res.status(400).json({ error: "Odgovor je predugačak" });
+      }
       const today = new Intl.DateTimeFormat('sv', { timeZone: 'Europe/Belgrade' }).format(new Date());
       const challenge2 = await storage.getTodayChallenge();
       if (!challenge2) return res.status(404).json({ error: "Nema izazova za danas" });
@@ -3264,7 +3267,7 @@ Sitemap: ${siteUrl}/sitemap.xml
         challengeDate,
         clipUrl: clipUrl || null,
         correctAnswers,
-        clipStartSeconds: Number(clipStartSeconds) || 30,
+        clipStartSeconds: clipStartSeconds != null ? Number(clipStartSeconds) : 30,
         openHour: openHour != null ? parseInt(String(openHour), 10) : 17,
         openMinute: openMinute != null ? parseInt(String(openMinute), 10) : 0,
       });
@@ -3319,9 +3322,9 @@ Sitemap: ${siteUrl}/sitemap.xml
 }
 
 function getWeekStart(date?: Date): string {
-  const d = date ? new Date(date) : new Date();
-  const day = d.getUTCDay();
+  const belgrade = new Date((date ?? new Date()).toLocaleString('en-US', { timeZone: 'Europe/Belgrade' }));
+  const day = belgrade.getDay();
   const diff = day === 0 ? -6 : 1 - day;
-  d.setUTCDate(d.getUTCDate() + diff);
-  return d.toISOString().split('T')[0]!;
+  belgrade.setDate(belgrade.getDate() + diff);
+  return new Intl.DateTimeFormat('sv', { timeZone: 'Europe/Belgrade' }).format(belgrade);
 }
