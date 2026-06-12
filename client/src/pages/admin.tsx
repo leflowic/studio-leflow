@@ -272,7 +272,7 @@ export default function AdminPage() {
             <KatastarTab />
           </TabsContent>
 
-          <TabsContent value="game">
+          <TabsContent value="game" forceMount>
             <GameTab />
           </TabsContent>
 

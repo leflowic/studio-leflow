@@ -82,7 +82,6 @@ export default function GameTab() {
     } finally {
       setUploadingClip(false);
       if (clipFileRef.current) clipFileRef.current.value = "";
-      if (!cClipUrl) setClipFileName("");
     }
   };
 
