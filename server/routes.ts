@@ -3146,7 +3146,14 @@ Sitemap: ${siteUrl}/sitemap.xml
       }
 
       const guess = await storage.getUserGuessForDate(req.jwtUser!.id as number, today);
-      res.json({ available: true, challenge, alreadyPlayed: !!guess, guess });
+      const { correctAnswers, ...safeChallenge } = challenge;
+      res.json({
+        available: true,
+        challenge: safeChallenge,
+        alreadyPlayed: !!guess,
+        guess,
+        ...(guess ? { correctAnswer: (correctAnswers.split(',')[0] ?? correctAnswers).trim() } : {}),
+      });
     } catch (e) {
       res.status(500).json({ error: "Greška na serveru" });
     }

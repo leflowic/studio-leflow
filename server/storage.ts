@@ -265,7 +265,7 @@ export interface IStorage {
   getUnreadConversationsCount(): Promise<number>;
 
   // Daily Game
-  getTodayChallenge(): Promise<{ id: number; challengeDate: string; clipStartSeconds: number; youtubeVideoId: string; clipUrl: string | null; openHour: number; openMinute: number } | null>;
+  getTodayChallenge(): Promise<{ id: number; challengeDate: string; clipStartSeconds: number; youtubeVideoId: string; clipUrl: string | null; openHour: number; openMinute: number; correctAnswers: string } | null>;
   getNextUpcomingChallenge(): Promise<{ challengeDate: string; openHour: number; openMinute: number } | null>;
   getUserGuessForDate(userId: number, date: string): Promise<{ answer: string; correct: boolean } | null>;
   submitGuess(userId: number, challengeDate: string, answer: string): Promise<{ correct: boolean; points: number }>;
@@ -2413,7 +2413,7 @@ export class DatabaseStorage implements IStorage {
     return d.toISOString().split('T')[0]!;
   }
 
-  async getTodayChallenge(): Promise<{ id: number; challengeDate: string; clipStartSeconds: number; youtubeVideoId: string; clipUrl: string | null; openHour: number; openMinute: number } | null> {
+  async getTodayChallenge(): Promise<{ id: number; challengeDate: string; clipStartSeconds: number; youtubeVideoId: string; clipUrl: string | null; openHour: number; openMinute: number; correctAnswers: string } | null> {
     const today = this.getTodayDateString();
     const [row] = await db.select().from(dailyChallenges).where(eq(dailyChallenges.challengeDate, today));
     if (!row) return null;
@@ -2425,6 +2425,7 @@ export class DatabaseStorage implements IStorage {
       clipUrl: row.clipUrl ?? null,
       openHour: row.openHour,
       openMinute: row.openMinute,
+      correctAnswers: row.correctAnswers,
     };
   }
 

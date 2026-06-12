@@ -52,15 +52,23 @@ export default function IgraPage() {
   const [submitted, setSubmitted] = useState(false);
   const [result, setResult] = useState<{ correct: boolean; points: number } | null>(null);
 
-  const { data, isLoading } = useQuery<any>({
+  const { data, isLoading, refetch } = useQuery<any>({
     queryKey: ["/api/game/today"],
     enabled: !!user,
-    refetchOnWindowFocus: false,
+    refetchOnWindowFocus: true,
+    staleTime: 30000,
   });
 
   const openHour = data?.openHour ?? data?.challenge?.openHour ?? 17;
   const openMinute = data?.openMinute ?? data?.challenge?.openMinute ?? 0;
   const { isOpen, minutesLeft } = useCountdown(openHour, openMinute);
+
+  // When countdown hits zero, refetch to get the challenge data
+  useEffect(() => {
+    if (isOpen && data && !data.available) {
+      refetch();
+    }
+  }, [isOpen]);
 
   const { data: leaderboardData } = useQuery<any>({
     queryKey: ["/api/game/leaderboard"],
@@ -212,6 +220,11 @@ export default function IgraPage() {
                   <>
                     <XCircle className="w-14 h-14 mx-auto text-destructive" />
                     <p className="text-xl font-bold text-destructive">Netačno</p>
+                    {data?.correctAnswer && (
+                      <p className="text-sm">
+                        Tačan odgovor: <strong className="text-foreground">{data.correctAnswer}</strong>
+                      </p>
+                    )}
                     <p className="text-sm text-muted-foreground">Više sreće sutra!</p>
                   </>
                 )}
