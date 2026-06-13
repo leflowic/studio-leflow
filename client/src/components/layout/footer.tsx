@@ -109,7 +109,12 @@ export function Footer() {
             <ul className="space-y-2">
               {services.map((service) => (
                 <li key={service}>
-                  <span className="text-sm text-muted-foreground">{service}</span>
+                  <button
+                    onClick={scrollToServices}
+                    className="text-sm text-muted-foreground hover:text-primary transition-colors text-left"
+                  >
+                    {service}
+                  </button>
                 </li>
               ))}
             </ul>
@@ -145,7 +150,7 @@ export function Footer() {
               className="hover:text-primary transition-colors"
               data-testid="link-footer-privacy"
             >
-              Politika Privatnosti
+              Pravila i Uslovi
             </Link>
             <Link
               href="/uslovi-koriscenja"

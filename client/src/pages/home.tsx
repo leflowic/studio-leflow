@@ -446,8 +446,8 @@ export default function Home() {
                       
                       <ul className="space-y-2" style={{ transform: "translateZ(5px)" }}>
                         {service.features.map((feature, fIndex) => (
-                          <motion.li 
-                            key={fIndex} 
+                          <motion.li
+                            key={fIndex}
                             className="flex items-start gap-2 text-sm"
                             initial={{ opacity: 0, x: -10 }}
                             whileInView={{ opacity: 1, x: 0 }}
@@ -459,6 +459,14 @@ export default function Home() {
                           </motion.li>
                         ))}
                       </ul>
+                      <div className="mt-6 pt-4 border-t" style={{ transform: "translateZ(5px)" }}>
+                        <Link href="/kontakt">
+                          <Button size="sm" className="w-full">
+                            Zakažite Termin
+                            <ArrowRight className="ml-2 w-4 h-4" />
+                          </Button>
+                        </Link>
+                      </div>
                     </CardContent>
                   </Card>
                 </Parallax3DCard>
@@ -684,6 +692,17 @@ export default function Home() {
               </Card>
             </FadeInWhenVisible>
           </div>
+
+          <FadeInWhenVisible delay={0.5}>
+            <div className="text-center mt-12">
+              <Link href="/projekti">
+                <Button variant="outline" size="lg">
+                  Pogledajte naše projekte
+                  <ArrowRight className="ml-2 w-5 h-5" />
+                </Button>
+              </Link>
+            </div>
+          </FadeInWhenVisible>
         </div>
       </section>
 
@@ -724,14 +743,14 @@ export default function Home() {
                   <ArrowRight className="ml-2 w-5 h-5" />
                 </Button>
               </Link>
-              <Link href="/pravila">
-                <Button 
-                  size="lg" 
+              <Link href="/tim">
+                <Button
+                  size="lg"
                   variant="outline"
                   className="text-lg px-8 py-6 bg-white/10 text-primary-foreground border-white/30 hover:bg-white/20 backdrop-blur-md transition-transform hover:scale-105"
-                  data-testid="button-view-terms"
+                  data-testid="button-view-team"
                 >
-                  Pogledajte Pravila
+                  Upoznajte Naš Tim
                 </Button>
               </Link>
             </div>

@@ -103,17 +103,17 @@ export function Header() {
               onContextMenu={(e) => e.preventDefault()}
               className="h-8 md:h-10 w-auto dark:invert transition-all select-none"
             />
-            <span className="text-sm sm:text-base md:text-xl font-bold font-[Montserrat] uppercase">STUDIO LEFLOW</span>
+            <span className="hidden sm:inline text-sm sm:text-base md:text-xl font-bold font-[Montserrat] uppercase">STUDIO LEFLOW</span>
           </Link>
 
-          <nav className="hidden xl:flex items-center gap-0.5 ml-8">
+          <nav className="hidden lg:flex items-center gap-0.5 ml-8">
             {navigation.map((item) => (
               <motion.div key={item.name} whileHover={{ y: -2 }} transition={{ duration: 0.2 }} className="flex items-center">
                 <Link
                   href={item.href}
                   className={`px-3 py-2 rounded-lg text-sm font-medium transition-colors hover-elevate flex items-center min-h-9 ${
                     isActive(item.href)
-                      ? "text-primary"
+                      ? "text-primary bg-primary/10"
                       : "text-foreground"
                   }`}
                   data-testid={`link-nav-${item.name.toLowerCase()}`}
@@ -129,7 +129,7 @@ export function Header() {
                     href="/admin"
                     className={`px-3 py-2 rounded-lg text-sm font-medium transition-colors hover-elevate flex items-center min-h-9 ${
                       isActive("/admin")
-                        ? "text-primary"
+                        ? "text-primary bg-primary/10"
                         : "text-foreground"
                     }`}
                     data-testid="link-nav-admin"
@@ -171,7 +171,7 @@ export function Header() {
             </motion.div>
           </nav>
 
-          <div className="hidden xl:flex items-center gap-3">
+          <div className="hidden lg:flex items-center gap-3">
             <ThemeToggle />
             {user ? (
               <>
@@ -262,7 +262,7 @@ export function Header() {
           </div>
 
           <button
-            className="xl:hidden p-2 hover-elevate rounded-lg"
+            className="lg:hidden p-2 hover-elevate rounded-lg"
             onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
             data-testid="button-mobile-menu"
           >
@@ -275,7 +275,7 @@ export function Header() {
         </div>
 
         {mobileMenuOpen && (
-          <div className="xl:hidden py-4 border-t" data-testid="mobile-menu">
+          <div className="lg:hidden py-4 border-t" data-testid="mobile-menu">
             <nav className="flex flex-col gap-2">
               {navigation.map((item) => (
                 <Link

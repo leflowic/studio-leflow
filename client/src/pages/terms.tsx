@@ -7,6 +7,7 @@ import { FadeInWhenVisible } from "@/components/motion/FadeIn";
 export default function Terms() {
   const termsSection = [
     {
+      id: "politika-avansa",
       icon: CreditCard,
       title: "Politika Avansa",
       content: [
@@ -16,6 +17,7 @@ export default function Terms() {
       ]
     },
     {
+      id: "nepovrativost-avansa",
       icon: AlertCircle,
       title: "Razlozi Nepovrativosti Avansa",
       content: [
@@ -26,6 +28,7 @@ export default function Terms() {
       ]
     },
     {
+      id: "otkazivanje",
       icon: Clock,
       title: "Otkazivanje i Izmene Termina",
       content: [
@@ -37,6 +40,7 @@ export default function Terms() {
       ]
     },
     {
+      id: "uslovi-placanja",
       icon: CreditCard,
       title: "Uslovi Plaćanja",
       content: [
@@ -48,6 +52,7 @@ export default function Terms() {
       ]
     },
     {
+      id: "autorska-prava",
       icon: FileText,
       title: "Autorska Prava i Vlasništvo",
       content: [
@@ -58,6 +63,7 @@ export default function Terms() {
       ]
     },
     {
+      id: "digitalne-licence",
       icon: BadgeCheck,
       title: "Digitalne Licence",
       content: [
@@ -70,6 +76,7 @@ export default function Terms() {
       ]
     },
     {
+      id: "revizije",
       icon: Shield,
       title: "Revizije i Garancija Kvaliteta",
       content: [
@@ -108,15 +115,29 @@ export default function Terms() {
           </div>
         </FadeInWhenVisible>
 
-        <FadeInWhenVisible delay={0.2}>
-          <div className="flex justify-center mb-16 -mt-8">
-            <ChevronDown className="w-8 h-8 text-primary/60 animate-bounce" />
+        <div className="flex justify-center mb-8 -mt-4">
+          <ChevronDown className="w-8 h-8 text-primary/60 animate-bounce" />
+        </div>
+
+        <FadeInWhenVisible delay={0.15}>
+          <div className="mb-12 grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-2">
+            {termsSection.map((section) => (
+              <a
+                key={section.id}
+                href={`#${section.id}`}
+                className="flex items-center gap-2 px-3 py-2 rounded-lg border text-sm text-muted-foreground hover:text-primary hover:border-primary/40 hover:bg-primary/5 transition-all"
+              >
+                <section.icon className="w-4 h-4 flex-shrink-0 text-primary" />
+                <span className="leading-tight">{section.title}</span>
+              </a>
+            ))}
           </div>
         </FadeInWhenVisible>
 
         <div className="space-y-8">
           {termsSection.map((section, index) => (
-            <FadeInWhenVisible key={index} delay={index * 0.05}>
+            <div id={section.id} key={index}>
+            <FadeInWhenVisible delay={index * 0.05}>
                 <Card data-testid={`card-terms-${index}`} className="overflow-hidden hover:shadow-lg transition-shadow duration-300">
                   <CardHeader className="bg-gradient-to-r from-primary/5 to-transparent">
                     <CardTitle className="flex items-center gap-4 text-2xl">
@@ -141,6 +162,7 @@ export default function Terms() {
                   </CardContent>
                 </Card>
               </FadeInWhenVisible>
+            </div>
             ))}
           </div>
 
