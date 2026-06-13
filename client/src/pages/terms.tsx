@@ -1,5 +1,5 @@
 import { Link } from "wouter";
-import { AlertCircle, CheckCircle2, Clock, CreditCard, FileText, Shield, ArrowLeft, MessageSquare, BadgeCheck } from "lucide-react";
+import { AlertCircle, CheckCircle2, Clock, CreditCard, FileText, Shield, ArrowLeft, MessageSquare, BadgeCheck, ChevronDown } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { FadeInWhenVisible } from "@/components/motion/FadeIn";
@@ -105,6 +105,12 @@ export default function Terms() {
               Studio LeFlow je posvećen transparentnosti i profesionalnosti. Molimo vas da pažljivo pročitate naša pravila 
               kako bismo zajedno obezbedili uspešnu saradnju.
             </p>
+          </div>
+        </FadeInWhenVisible>
+
+        <FadeInWhenVisible delay={0.2}>
+          <div className="flex justify-center mb-16 -mt-8">
+            <ChevronDown className="w-8 h-8 text-primary/60 animate-bounce" />
           </div>
         </FadeInWhenVisible>
 
