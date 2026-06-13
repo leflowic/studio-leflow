@@ -57,7 +57,7 @@ export default function IgraPage() {
 
   const { data, isLoading, refetch } = useQuery<any>({
     queryKey: ["/api/game/today"],
-    enabled: !!user,
+    enabled: !!user && user.emailVerified === true,
     refetchOnWindowFocus: true,
     staleTime: 30000,
   });
@@ -82,7 +82,7 @@ export default function IgraPage() {
 
   const { data: leaderboardData } = useQuery<any>({
     queryKey: ["/api/game/leaderboard"],
-    enabled: !!user,
+    enabled: !!user && user.emailVerified === true,
   });
 
   // Load audio clip via AudioContext
@@ -162,6 +162,18 @@ export default function IgraPage() {
           <Lock className="w-12 h-12 mx-auto text-muted-foreground" />
           <p className="text-lg font-medium">Morate biti prijavljeni da igrate</p>
           <Button asChild><a href="/prijava">Prijavi se</a></Button>
+        </div>
+      </div>
+    );
+  }
+
+  if (!user.emailVerified) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="text-center space-y-4">
+          <Lock className="w-12 h-12 mx-auto text-muted-foreground" />
+          <p className="text-lg font-medium">Morate potvrditi email adresu da biste igrali</p>
+          <p className="text-sm text-muted-foreground">Proverite vaš inbox i kliknite na link za potvrdu.</p>
         </div>
       </div>
     );

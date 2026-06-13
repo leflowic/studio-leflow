@@ -12,11 +12,11 @@ import { Music, Trophy, Trash2, Plus, Gift, Upload, CheckCircle2, Loader2, Penci
 import { format } from "date-fns";
 
 function getMonday(offset = 0): string {
-  const d = new Date();
-  const day = d.getDay();
+  const belgrade = new Date(new Date().toLocaleString('en-US', { timeZone: 'Europe/Belgrade' }));
+  const day = belgrade.getDay();
   const diff = (day === 0 ? -6 : 1 - day) + offset * 7;
-  d.setDate(d.getDate() + diff);
-  return d.toISOString().split('T')[0]!;
+  belgrade.setDate(belgrade.getDate() + diff);
+  return new Intl.DateTimeFormat('sv', { timeZone: 'Europe/Belgrade' }).format(belgrade);
 }
 
 export default function GameTab() {
@@ -137,7 +137,7 @@ export default function GameTab() {
     },
   });
 
-  const today = new Date().toISOString().split('T')[0];
+  const today = new Intl.DateTimeFormat('sv', { timeZone: 'Europe/Belgrade' }).format(new Date());
 
   return (
     <div className="space-y-8">
@@ -158,7 +158,8 @@ export default function GameTab() {
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div className="space-y-1">
               <Label>Datum</Label>
-              <Input type="date" value={cDate} onChange={e => setCDate(e.target.value)} />
+              <Input type="date" value={cDate} onChange={e => setCDate(e.target.value)} disabled={!!editingId} />
+              {editingId && <p className="text-xs text-muted-foreground">Datum se ne može menjati — briši i dodaj novo</p>}
             </div>
             <div className="space-y-1">
               <Label>Clip pozicija (sekunde od početka)</Label>
