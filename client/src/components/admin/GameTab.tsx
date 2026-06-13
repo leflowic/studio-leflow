@@ -19,6 +19,15 @@ function getMonday(offset = 0): string {
   return new Intl.DateTimeFormat('sv', { timeZone: 'Europe/Belgrade' }).format(belgrade);
 }
 
+function getBelgradeDate(): string {
+  return new Intl.DateTimeFormat('sv', { timeZone: 'Europe/Belgrade' }).format(new Date());
+}
+
+function getBelgradeTime(): string {
+  const b = new Date(new Date().toLocaleString('en-US', { timeZone: 'Europe/Belgrade' }));
+  return `${String(b.getHours()).padStart(2, '0')}:${String(b.getMinutes()).padStart(2, '0')}`;
+}
+
 export default function GameTab() {
   const { toast } = useToast();
   const queryClient = useQueryClient();
@@ -28,11 +37,11 @@ export default function GameTab() {
 
   // Challenge form
   const [editingId, setEditingId] = useState<number | null>(null);
-  const [cDate, setCDate] = useState(new Date().toISOString().split('T')[0]);
+  const [cDate, setCDate] = useState(getBelgradeDate);
   const [cClipUrl, setCClipUrl] = useState("");
   const [cAnswer, setCAnswer] = useState("");
   const [cClip, setCClip] = useState("30");
-  const [cTime, setCTime] = useState("17:00");
+  const [cTime, setCTime] = useState(getBelgradeTime);
   const [uploadingClip, setUploadingClip] = useState(false);
   const [clipFileName, setClipFileName] = useState("");
   const clipFileRef = useRef<HTMLInputElement>(null);
@@ -49,8 +58,8 @@ export default function GameTab() {
 
   const cancelEdit = () => {
     setEditingId(null);
-    setCDate(new Date().toISOString().split('T')[0]!);
-    setCClipUrl(""); setCAnswer(""); setCClip("30"); setCTime("17:00"); setClipFileName("");
+    setCDate(getBelgradeDate());
+    setCClipUrl(""); setCAnswer(""); setCClip("30"); setCTime(getBelgradeTime()); setClipFileName("");
   };
 
   // Prize form
@@ -201,7 +210,7 @@ export default function GameTab() {
           <div className="flex gap-2">
             <Button
               onClick={() => saveChallenges.mutate()}
-              disabled={!cDate || !cAnswer || saveChallenges.isPending}
+              disabled={!cDate || !cAnswer || saveChallenges.isPending || uploadingClip}
               className="gap-2"
             >
               {editingId ? <Pencil className="w-4 h-4" /> : <Plus className="w-4 h-4" />}
