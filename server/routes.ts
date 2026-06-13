@@ -3177,6 +3177,19 @@ Sitemap: ${siteUrl}/sitemap.xml
     }
   });
 
+  // Temp debug: show server date vs DB challenges (admin only, remove after diagnosis)
+  app.get("/api/admin/game/debug-date", requireAdmin, async (_req, res) => {
+    const intlDate = new Intl.DateTimeFormat('sv', { timeZone: 'Europe/Belgrade' }).format(new Date());
+    const manualDate = (() => {
+      const b = new Date(new Date().toLocaleString('en-US', { timeZone: 'Europe/Belgrade' }));
+      return `${b.getFullYear()}-${String(b.getMonth()+1).padStart(2,'0')}-${String(b.getDate()).padStart(2,'0')}`;
+    })();
+    const utcDate = new Date().toISOString().split('T')[0];
+    const allChallenges = await storage.adminGetChallenges();
+    const found = await storage.getTodayChallenge();
+    res.json({ intlDate, manualDate, utcDate, allChallenges: allChallenges.map(c => c.challengeDate), found: !!found });
+  });
+
   // GET /api/game/today — challenge info for current user (no correct answers)
   app.get("/api/game/today", requireNotBanned, async (req, res) => {
     try {
