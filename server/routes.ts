@@ -5,7 +5,7 @@ import { wsHelpers, notifyUser, getOnlineUsersSnapshot } from "./websocket-helpe
 import { insertContactSubmissionSchema, insertCmsContentSchema, insertCmsMediaSchema, insertVideoSpotSchema, insertUserSongSchema, insertNewsletterSubscriberSchema, insertInvoiceSchema, insertCommunityMessageSchema, insertSiteAnnouncementSchema, mixMasterContractDataSchema, copyrightTransferContractDataSchema, instrumentalSaleContractDataSchema, type CmsContent, type CmsMedia, type VideoSpot, type UserSong } from "@shared/schema";
 import { sendEmail, getLastVerificationCode } from "./resend-client";
 import { resendVerificationEmail, adminLoginEmail, contactFormEmail, newsletterConfirmEmail, licenseDeliveryEmail, customEmail } from "./email-templates";
-import { sendZohoEmail } from "./zoho-client";
+import { sendEmail } from "./resend-client";
 import { setupAuth, hashPassword, comparePasswords } from "./auth";
 import multer from "multer";
 import fs from "fs";
@@ -306,7 +306,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Admin custom email via Zoho
+  // Admin custom email via Resend
   app.post("/api/admin/send-email", requireAdmin, async (req, res) => {
     try {
       const { to, subject, body } = req.body;
@@ -318,7 +318,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(400).json({ error: "Neispravna email adresa" });
       }
       const html = customEmail(body);
-      await sendZohoEmail({ to, subject, html });
+      await sendEmail({ to, subject, html, replyTo: 'podrska@studioleflow.com' });
       console.log(`[ADMIN EMAIL] ${req.jwtUser!.username} → ${to} | ${subject}`);
       res.json({ success: true });
     } catch (error: any) {
