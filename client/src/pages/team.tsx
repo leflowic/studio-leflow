@@ -1,4 +1,5 @@
-import { Users, Instagram, Mic2, Headphones, Video, Zap, Plus, Trash2 } from "lucide-react";
+import { Users, Instagram, Mic2, Headphones, Video, Zap, Plus, Trash2, ImagePlus, Loader2 } from "lucide-react";
+import { useState, useRef } from "react";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
@@ -8,7 +9,6 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { useState } from "react";
 import { motion } from "framer-motion";
 import { FadeInWhenVisible } from "@/components/motion/FadeIn";
 import { EditableText } from "@/components/cms/EditableText";
@@ -16,14 +16,14 @@ import { EditableImage } from "@/components/cms/EditableImage";
 import { useEditMode } from "@/contexts/EditModeContext";
 import { useToast } from "@/hooks/use-toast";
 import { SEO } from "@/components/SEO";
-import { apiRequest } from "@/lib/queryClient";
+import { apiRequest, getAuthToken } from "@/lib/queryClient";
 import type { CmsContent } from "@shared/schema";
 import leflowImage from "@assets/image_1762303735569.png";
 import dicviImage from "@assets/image_1762303783224.png";
 import kuleImage from "@assets/image_1762303820348.png";
 import culiImage from "@assets/image_1762303853641.png";
 
-const EMPTY_FORM = { name: "", alias: "", role: "", description: "", instagram: "https://instagram.com/" };
+const EMPTY_FORM = { name: "", alias: "", role: "", description: "", instagram: "https://instagram.com/", imageUrl: "" };
 
 export default function Team() {
   const { isEditMode } = useEditMode();
@@ -31,6 +31,8 @@ export default function Team() {
   const queryClient = useQueryClient();
   const [addDialogOpen, setAddDialogOpen] = useState(false);
   const [form, setForm] = useState(EMPTY_FORM);
+  const [imageUploading, setImageUploading] = useState(false);
+  const imageInputRef = useRef<HTMLInputElement>(null);
   
   const { data: cmsContent = [] } = useQuery<CmsContent[]>({
     queryKey: ["/api/cms/content"],
@@ -51,6 +53,38 @@ export default function Team() {
     return memberNumbers.length > 0 ? Math.max(...memberNumbers) + 1 : 5;
   };
 
+  const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    if (!file.type.startsWith("image/")) {
+      toast({ title: "Greška", description: "Izabrani fajl nije slika", variant: "destructive" });
+      return;
+    }
+    if (file.size > 4 * 1024 * 1024) {
+      toast({ title: "Greška", description: "Slika je prevelika (max 4MB)", variant: "destructive" });
+      return;
+    }
+    setImageUploading(true);
+    try {
+      const fd = new FormData();
+      fd.append("file", file);
+      const token = getAuthToken();
+      const res = await fetch("/api/upload/message-image", {
+        method: "POST",
+        headers: token ? { Authorization: `Bearer ${token}` } : {},
+        body: fd,
+      });
+      if (!res.ok) throw new Error();
+      const { url } = await res.json();
+      setForm(f => ({ ...f, imageUrl: url }));
+    } catch {
+      toast({ title: "Greška", description: "Upload slike nije uspeo", variant: "destructive" });
+    } finally {
+      setImageUploading(false);
+      if (imageInputRef.current) imageInputRef.current.value = "";
+    }
+  };
+
   const addMemberMutation = useMutation({
     mutationFn: async (data: typeof EMPTY_FORM) => {
       const nextIndex = getNextMemberIndex();
@@ -60,6 +94,7 @@ export default function Team() {
         { page: "team", section: "members", contentKey: `member_${nextIndex}_role`, contentValue: data.role.trim() || "Nova Uloga" },
         { page: "team", section: "members", contentKey: `member_${nextIndex}_description`, contentValue: data.description.trim() },
         { page: "team", section: "members", contentKey: `member_${nextIndex}_instagram`, contentValue: data.instagram.trim() || "https://instagram.com/" },
+        ...(data.imageUrl ? [{ page: "team", section: "members", contentKey: `member_${nextIndex}_image`, contentValue: data.imageUrl }] : []),
       ];
       const response = await apiRequest("POST", "/api/cms/content", entries);
       if (!response.ok) throw new Error("Greška pri dodavanju člana");
@@ -325,6 +360,31 @@ export default function Team() {
                 <DialogTitle>Dodaj novog člana tima</DialogTitle>
               </DialogHeader>
               <div className="space-y-4 py-2">
+                {/* Image upload */}
+                <div className="space-y-1.5">
+                  <Label>Fotografija</Label>
+                  <input ref={imageInputRef} type="file" accept="image/jpeg,image/png,image/webp" className="hidden" onChange={handleImageUpload} />
+                  <div
+                    className="relative w-24 h-24 rounded-full border-2 border-dashed border-primary/30 cursor-pointer hover:border-primary/60 transition-colors overflow-hidden bg-muted/40 flex items-center justify-center"
+                    onClick={() => !imageUploading && imageInputRef.current?.click()}
+                  >
+                    {form.imageUrl ? (
+                      <img src={form.imageUrl} alt="Preview" className="w-full h-full object-cover" />
+                    ) : imageUploading ? (
+                      <Loader2 className="w-6 h-6 animate-spin text-muted-foreground" />
+                    ) : (
+                      <div className="flex flex-col items-center gap-1 text-muted-foreground">
+                        <ImagePlus className="w-6 h-6" />
+                        <span className="text-xs">Dodaj</span>
+                      </div>
+                    )}
+                    {form.imageUrl && !imageUploading && (
+                      <div className="absolute inset-0 bg-black/40 opacity-0 hover:opacity-100 transition-opacity flex items-center justify-center">
+                        <ImagePlus className="w-5 h-5 text-white" />
+                      </div>
+                    )}
+                  </div>
+                </div>
                 <div className="space-y-1.5">
                   <Label>Ime i prezime</Label>
                   <Input placeholder="npr. Aleksa Čomor" value={form.name} onChange={e => setForm(f => ({ ...f, name: e.target.value }))} />
@@ -355,7 +415,7 @@ export default function Team() {
                 <Button variant="outline" onClick={() => setAddDialogOpen(false)}>Otkaži</Button>
                 <Button
                   onClick={() => addMemberMutation.mutate(form)}
-                  disabled={addMemberMutation.isPending || !form.name.trim()}
+                  disabled={addMemberMutation.isPending || imageUploading || !form.name.trim()}
                 >
                   {addMemberMutation.isPending ? "Dodavanje..." : "Dodaj člana"}
                 </Button>
