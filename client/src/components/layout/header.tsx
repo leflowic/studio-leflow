@@ -66,6 +66,7 @@ export function Header() {
     { name: "Zajednica", href: "/zajednica" },
     { name: "Projekti", href: "/projekti" },
     { name: "Tim", href: "/tim" },
+    { name: "FAQ", href: "/faq" },
     { name: "Pravila", href: "/pravila" }
   ];
 
