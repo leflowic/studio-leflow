@@ -2721,11 +2721,10 @@ Sitemap: ${siteUrl}/sitemap.xml
     }
   });
 
-  // Download contract PDF
+  // Download contract PDF — regenerated on-the-fly from DB data (Railway filesystem is ephemeral)
   app.get("/api/admin/contracts/:id/download", requireAdmin, async (req, res) => {
     try {
       const contractId = parseInt(req.params.id);
-      
       if (isNaN(contractId)) {
         return res.status(400).json({ error: "Nevažeći ID ugovora" });
       }
@@ -2735,20 +2734,25 @@ Sitemap: ${siteUrl}/sitemap.xml
         return res.status(404).json({ error: "Ugovor nije pronađen" });
       }
 
-      const pdfPath = path.join(process.cwd(), contract.pdfPath!);
-      
-      if (!fs.existsSync(pdfPath)) {
-        return res.status(404).json({ error: "PDF fajl nije pronađen" });
+      let pdfBuffer: Buffer;
+      switch (contract.contractType) {
+        case "mix_master":
+          pdfBuffer = await generateMixMasterPDF(contract.contractData as MixMasterContract, contract.contractNumber, contract.verificationHash || "");
+          break;
+        case "copyright_transfer":
+          pdfBuffer = await generateCopyrightTransferPDF(contract.contractData as CopyrightTransferContract, contract.contractNumber, contract.verificationHash || "");
+          break;
+        case "instrumental_sale":
+          pdfBuffer = await generateInstrumentalSalePDF(contract.contractData as InstrumentalSaleContract, contract.contractNumber, contract.verificationHash || "");
+          break;
+        default:
+          return res.status(400).json({ error: "Nepoznat tip ugovora" });
       }
 
-      // Extract filename from pdfPath for consistent download name
-      const downloadFilename = path.basename(contract.pdfPath || `ugovor_${contract.contractNumber.replace('/', '_')}.pdf`);
-
+      const filename = `licenca_${contract.contractNumber.replace(/[\/\\]/g, '_')}.pdf`;
       res.setHeader('Content-Type', 'application/pdf');
-      res.setHeader('Content-Disposition', `attachment; filename="${downloadFilename}"`);
-      
-      const fileStream = fs.createReadStream(pdfPath);
-      fileStream.pipe(res);
+      res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
+      res.send(pdfBuffer);
     } catch (error: any) {
       console.error("[CONTRACTS] Download error:", error);
       res.status(500).json({ error: "Greška pri preuzimanju ugovora" });
