@@ -119,7 +119,11 @@ export default function GameTab() {
 
   const resetMyGuess = useMutation({
     mutationFn: () => apiRequest("DELETE", "/api/admin/game/reset-my-guess"),
-    onSuccess: () => toast({ title: "Resetovano", description: "Možeš ponovo igrati danas" }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/game/today"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/game/leaderboard"] });
+      toast({ title: "Resetovano", description: "Idi na /igra i osvježi stranicu" });
+    },
     onError: () => toast({ title: "Greška", description: "Reset nije uspeo", variant: "destructive" }),
   });
 
