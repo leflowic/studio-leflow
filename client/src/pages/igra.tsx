@@ -81,7 +81,7 @@ export default function IgraPage() {
 
   // Reset plays when a new challenge date appears
   useEffect(() => {
-    if (challenge?.challengeDate) setPlaysLeft(4);
+    if (challenge?.challengeDate) setPlaysLeft(3);
   }, [challenge?.challengeDate]);
 
   // Load audio into AudioContext buffer — fetch via same-origin proxy to avoid Cloudinary CORS
