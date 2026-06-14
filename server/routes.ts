@@ -190,7 +190,7 @@ function canUserSendMessage(userId: number): boolean {
 // Middleware to check if user is banned
 function requireNotBanned(req: any, res: any, next: any) {
   if (!req.jwtUser) {
-    return res.sendStatus(401);
+    return res.status(401).json({ error: "Niste prijavljeni. Osvežite stranicu i prijavite se ponovo." });
   }
   
   if (req.jwtUser.banned) {
@@ -206,7 +206,7 @@ function requireNotBanned(req: any, res: any, next: any) {
 // Middleware to check if user is admin
 function requireAdmin(req: any, res: any, next: any) {
   if (!req.jwtUser) {
-    return res.sendStatus(401);
+    return res.status(401).json({ error: "Niste prijavljeni. Osvežite stranicu i prijavite se ponovo." });
   }
   
   if (req.jwtUser.banned) {
@@ -226,7 +226,7 @@ function requireAdmin(req: any, res: any, next: any) {
 // Middleware to check if email is verified
 function requireVerifiedEmail(req: any, res: any, next: any) {
   if (!req.jwtUser) {
-    return res.sendStatus(401);
+    return res.status(401).json({ error: "Niste prijavljeni. Osvežite stranicu i prijavite se ponovo." });
   }
   
   if (req.jwtUser.banned) {

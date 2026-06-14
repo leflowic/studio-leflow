@@ -22,24 +22,35 @@ function getAuthHeaders(): Record<string, string> {
   return {};
 }
 
+const STATUS_MESSAGES: Record<number, string> = {
+  400: "Proverite unete podatke i pokušajte ponovo.",
+  401: "Niste prijavljeni. Osvežite stranicu i prijavite se ponovo.",
+  403: "Nemate dozvolu za ovu akciju.",
+  404: "Traženi sadržaj nije pronađen.",
+  409: "Došlo je do konflikta. Pokušajte ponovo.",
+  413: "Fajl je prevelik.",
+  429: "Previše pokušaja. Sačekajte malo i pokušajte ponovo.",
+  500: "Greška na serveru. Pokušajte ponovo.",
+  502: "Servis trenutno nije dostupan. Pokušajte malo kasnije.",
+  503: "Servis trenutno nije dostupan. Pokušajte malo kasnije.",
+};
+
 async function throwIfResNotOk(res: Response) {
   if (!res.ok) {
     const text = (await res.text()) || res.statusText;
-    
+
     if (text.trim().startsWith('{') || text.trim().startsWith('[')) {
       try {
         const errorData = JSON.parse(text);
-        if (errorData.error) {
-          throw new Error(errorData.error);
-        }
-        if (errorData.message) {
-          throw new Error(errorData.message);
-        }
+        if (errorData.error) throw new Error(errorData.error);
+        if (errorData.message) throw new Error(errorData.message);
       } catch (parseError) {
+        if (parseError instanceof Error && parseError.message !== text) throw parseError;
       }
     }
-    
-    throw new Error(text);
+
+    // Fall back to friendly status-based message instead of raw server text
+    throw new Error(STATUS_MESSAGES[res.status] ?? "Došlo je do greške. Pokušajte ponovo.");
   }
 }
 

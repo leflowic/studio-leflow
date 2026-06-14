@@ -166,7 +166,7 @@ export function setupAuth(app: Express) {
         return res.status(400).json({ error: "Validacija nije uspela", details: error.errors });
       }
       console.error("[AUTH] Registration error:", error);
-      res.status(500).send(error.message);
+      res.status(500).json({ error: "Greška na serveru. Pokušajte ponovo." });
     }
   });
 
@@ -236,7 +236,7 @@ export function setupAuth(app: Express) {
   });
 
   app.get("/api/user", (req, res) => {
-    if (!req.jwtUser) return res.sendStatus(401);
+    if (!req.jwtUser) return res.status(401).json({ error: "Niste prijavljeni. Osvežite stranicu i prijavite se ponovo." });
     
     const { password, ...userWithoutPassword } = req.jwtUser;
     res.json(userWithoutPassword);

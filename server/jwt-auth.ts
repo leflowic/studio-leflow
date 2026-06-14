@@ -68,7 +68,7 @@ export function requireJWTAuth(
   next: NextFunction
 ) {
   if (!req.jwtUser) {
-    return res.status(401).json({ error: "Unauthorized" });
+    return res.status(401).json({ error: "Niste prijavljeni. Osvežite stranicu i prijavite se ponovo." });
   }
   next();
 }
@@ -79,10 +79,10 @@ export function requireJWTAdmin(
   next: NextFunction
 ) {
   if (!req.jwtUser) {
-    return res.status(401).json({ error: "Unauthorized" });
+    return res.status(401).json({ error: "Niste prijavljeni. Osvežite stranicu i prijavite se ponovo." });
   }
   if (req.jwtUser.role !== "admin") {
-    return res.status(403).json({ error: "Forbidden" });
+    return res.status(403).json({ error: "Nemate dozvolu za ovu akciju." });
   }
   next();
 }
