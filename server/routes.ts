@@ -323,7 +323,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.json({ success: true });
     } catch (error: any) {
       console.error("[ADMIN EMAIL] Error:", error);
-      res.status(500).json({ error: "Slanje nije uspelo. Proverite Zoho podešavanja." });
+      res.status(500).json({ error: `Slanje nije uspelo: ${error.message}` });
     }
   });
 
