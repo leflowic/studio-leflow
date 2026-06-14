@@ -6,6 +6,7 @@ import { FadeInWhenVisible } from "@/components/motion/FadeIn";
 import { useEditMode } from "@/contexts/EditModeContext";
 import { useToast } from "@/hooks/use-toast";
 import { SEO } from "@/components/SEO";
+import { apiRequest } from "@/lib/queryClient";
 import { useState } from "react";
 import {
   Dialog,
@@ -61,18 +62,11 @@ export default function VideoSpots() {
 
   const createMutation = useMutation({
     mutationFn: async (data: VideoSpotFormData) => {
-      const response = await fetch("/api/video-spots", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(data),
-        credentials: "include",
-      });
-
+      const response = await apiRequest("POST", "/api/video-spots", data);
       if (!response.ok) {
         const error = await response.json();
         throw new Error(error.error || "Greška pri dodavanju spota");
       }
-
       return response.json();
     },
     onSuccess: () => {
@@ -95,18 +89,11 @@ export default function VideoSpots() {
 
   const updateMutation = useMutation({
     mutationFn: async ({ id, data }: { id: number; data: VideoSpotFormData }) => {
-      const response = await fetch(`/api/video-spots/${id}`, {
-        method: "PUT",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(data),
-        credentials: "include",
-      });
-
+      const response = await apiRequest("PUT", `/api/video-spots/${id}`, data);
       if (!response.ok) {
         const error = await response.json();
         throw new Error(error.error || "Greška pri ažuriranju spota");
       }
-
       return response.json();
     },
     onSuccess: () => {
@@ -130,15 +117,10 @@ export default function VideoSpots() {
 
   const deleteMutation = useMutation({
     mutationFn: async (id: number) => {
-      const response = await fetch(`/api/video-spots/${id}`, {
-        method: "DELETE",
-        credentials: "include",
-      });
-
+      const response = await apiRequest("DELETE", `/api/video-spots/${id}`);
       if (!response.ok) {
         throw new Error("Greška pri brisanju spota");
       }
-
       return response.json();
     },
     onSuccess: () => {
