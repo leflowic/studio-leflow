@@ -3,7 +3,12 @@ import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
+import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { useState } from "react";
 import { motion } from "framer-motion";
 import { FadeInWhenVisible } from "@/components/motion/FadeIn";
 import { EditableText } from "@/components/cms/EditableText";
@@ -18,10 +23,14 @@ import dicviImage from "@assets/image_1762303783224.png";
 import kuleImage from "@assets/image_1762303820348.png";
 import culiImage from "@assets/image_1762303853641.png";
 
+const EMPTY_FORM = { name: "", alias: "", role: "", description: "", instagram: "https://instagram.com/" };
+
 export default function Team() {
   const { isEditMode } = useEditMode();
   const { toast } = useToast();
   const queryClient = useQueryClient();
+  const [addDialogOpen, setAddDialogOpen] = useState(false);
+  const [form, setForm] = useState(EMPTY_FORM);
   
   const { data: cmsContent = [] } = useQuery<CmsContent[]>({
     queryKey: ["/api/cms/content"],
@@ -43,32 +52,27 @@ export default function Team() {
   };
 
   const addMemberMutation = useMutation({
-    mutationFn: async () => {
+    mutationFn: async (data: typeof EMPTY_FORM) => {
       const nextIndex = getNextMemberIndex();
-      const newMemberData = [
-        { page: "team", section: "members", contentKey: `member_${nextIndex}_name`, contentValue: "Novo Ime" },
-        { page: "team", section: "members", contentKey: `member_${nextIndex}_role`, contentValue: "Nova Uloga" },
-        { page: "team", section: "members", contentKey: `member_${nextIndex}_description`, contentValue: "" },
-        { page: "team", section: "members", contentKey: `member_${nextIndex}_instagram`, contentValue: "https://instagram.com/" },
+      const entries = [
+        { page: "team", section: "members", contentKey: `member_${nextIndex}_name`, contentValue: data.name.trim() || "Novo Ime" },
+        { page: "team", section: "members", contentKey: `member_${nextIndex}_alias`, contentValue: data.alias.trim() || `Member${nextIndex}` },
+        { page: "team", section: "members", contentKey: `member_${nextIndex}_role`, contentValue: data.role.trim() || "Nova Uloga" },
+        { page: "team", section: "members", contentKey: `member_${nextIndex}_description`, contentValue: data.description.trim() },
+        { page: "team", section: "members", contentKey: `member_${nextIndex}_instagram`, contentValue: data.instagram.trim() || "https://instagram.com/" },
       ];
-
-      const response = await apiRequest("POST", "/api/cms/content", newMemberData);
+      const response = await apiRequest("POST", "/api/cms/content", entries);
       if (!response.ok) throw new Error("Greška pri dodavanju člana");
       return response.json();
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/cms/content"] });
-      toast({
-        title: "Uspešno dodato",
-        description: "Novi član tima je dodat. Kliknite na tekst da ga izmenite.",
-      });
+      toast({ title: "Uspešno dodato", description: "Novi član tima je dodat." });
+      setAddDialogOpen(false);
+      setForm(EMPTY_FORM);
     },
     onError: () => {
-      toast({
-        title: "Greška",
-        description: "Došlo je do greške pri dodavanju člana",
-        variant: "destructive",
-      });
+      toast({ title: "Greška", description: "Došlo je do greške pri dodavanju člana", variant: "destructive" });
     },
   });
 
@@ -135,7 +139,7 @@ export default function Team() {
 
     return {
       name,
-      alias: memberAliases[index] || `Member${index}`,
+      alias: getCmsValue("members", `member_${index}_alias`, memberAliases[index] || `Member${index}`),
       role,
       positions: description.split(" • ").filter(p => p.trim()),
       instagram,
@@ -301,8 +305,7 @@ export default function Team() {
             {isEditMode && (
               <FadeInWhenVisible delay={teamMembers.length * 0.15} className="md:col-span-2">
                 <Button
-                  onClick={() => addMemberMutation.mutate()}
-                  disabled={addMemberMutation.isPending}
+                  onClick={() => setAddDialogOpen(true)}
                   className="w-full h-full min-h-[120px] border-2 border-dashed border-primary/30 bg-primary/5 hover:bg-primary/10 transition-colors"
                   variant="outline"
                 >
@@ -314,6 +317,51 @@ export default function Team() {
               </FadeInWhenVisible>
             )}
           </div>
+
+          {/* Add member dialog */}
+          <Dialog open={addDialogOpen} onOpenChange={open => { setAddDialogOpen(open); if (!open) setForm(EMPTY_FORM); }}>
+            <DialogContent className="max-w-md">
+              <DialogHeader>
+                <DialogTitle>Dodaj novog člana tima</DialogTitle>
+              </DialogHeader>
+              <div className="space-y-4 py-2">
+                <div className="space-y-1.5">
+                  <Label>Ime i prezime</Label>
+                  <Input placeholder="npr. Aleksa Čomor" value={form.name} onChange={e => setForm(f => ({ ...f, name: e.target.value }))} />
+                </div>
+                <div className="space-y-1.5">
+                  <Label>Nadimak / alias</Label>
+                  <Input placeholder="npr. LeFlow" value={form.alias} onChange={e => setForm(f => ({ ...f, alias: e.target.value }))} />
+                </div>
+                <div className="space-y-1.5">
+                  <Label>Uloga</Label>
+                  <Input placeholder="npr. Producer & Sound Engineer" value={form.role} onChange={e => setForm(f => ({ ...f, role: e.target.value }))} />
+                </div>
+                <div className="space-y-1.5">
+                  <Label>Pozicije <span className="text-muted-foreground text-xs">(odvojene sa " • ")</span></Label>
+                  <Textarea
+                    placeholder="npr. Producent • Tekstopisac • Mix Engineer"
+                    value={form.description}
+                    onChange={e => setForm(f => ({ ...f, description: e.target.value }))}
+                    rows={2}
+                  />
+                </div>
+                <div className="space-y-1.5">
+                  <Label>Instagram URL</Label>
+                  <Input placeholder="https://instagram.com/username" value={form.instagram} onChange={e => setForm(f => ({ ...f, instagram: e.target.value }))} />
+                </div>
+              </div>
+              <DialogFooter>
+                <Button variant="outline" onClick={() => setAddDialogOpen(false)}>Otkaži</Button>
+                <Button
+                  onClick={() => addMemberMutation.mutate(form)}
+                  disabled={addMemberMutation.isPending || !form.name.trim()}
+                >
+                  {addMemberMutation.isPending ? "Dodavanje..." : "Dodaj člana"}
+                </Button>
+              </DialogFooter>
+            </DialogContent>
+          </Dialog>
 
           <div className="mt-20 text-center">
             <Card className="max-w-3xl mx-auto bg-primary/5 border-primary/20 hover-elevate">
