@@ -84,7 +84,7 @@ export default function IgraPage() {
     if (challenge?.challengeDate) setPlaysLeft(4);
   }, [challenge?.challengeDate]);
 
-  // Load audio into AudioContext buffer
+  // Load audio into AudioContext buffer — fetch via same-origin proxy to avoid Cloudinary CORS
   useEffect(() => {
     const clipUrl = challenge?.clipUrl;
     if (!clipUrl) return;
@@ -96,7 +96,10 @@ export default function IgraPage() {
     const ctx = new AudioContext();
     audioCtxRef.current = ctx;
 
-    fetch(clipUrl)
+    const token = localStorage.getItem('auth_token');
+    fetch('/api/game/clip', {
+      headers: token ? { Authorization: `Bearer ${token}` } : {},
+    })
       .then(r => { if (!r.ok) throw new Error("fetch"); return r.arrayBuffer(); })
       .then(buf => ctx.decodeAudioData(buf))
       .then(decoded => {

@@ -3177,6 +3177,30 @@ Sitemap: ${siteUrl}/sitemap.xml
     }
   });
 
+  // GET /api/game/clip — proxy today's audio clip through the server to avoid browser CORS on Cloudinary
+  app.get("/api/game/clip", requireNotBanned, async (req, res) => {
+    try {
+      const challenge = await storage.getTodayChallenge();
+      if (!challenge?.clipUrl) return res.status(404).send("No clip");
+
+      const belgNow = new Date(new Date().toLocaleString('en-US', { timeZone: 'Europe/Belgrade' }));
+      const nowMins = belgNow.getHours() * 60 + belgNow.getMinutes();
+      if (nowMins < challenge.openHour * 60 + challenge.openMinute) {
+        return res.status(403).send("Not open yet");
+      }
+
+      const upstream = await fetch(challenge.clipUrl);
+      if (!upstream.ok) return res.status(502).send("Upstream error");
+
+      const buffer = await upstream.arrayBuffer();
+      res.setHeader('Content-Type', 'audio/mpeg');
+      res.setHeader('Cache-Control', 'public, max-age=3600');
+      res.send(Buffer.from(buffer));
+    } catch (e) {
+      res.status(500).send("Server error");
+    }
+  });
+
   // GET /api/game/today — challenge info for current user (no correct answers)
   app.get("/api/game/today", requireNotBanned, async (req, res) => {
     try {
