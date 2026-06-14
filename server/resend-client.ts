@@ -88,10 +88,12 @@ export async function sendEmail({
   subject,
   html,
   attachments,
+  replyTo,
 }: {
   to: string;
   subject: string;
   html: string;
+  replyTo?: string;
   attachments?: Array<{
     filename: string;
     content: string;
@@ -115,6 +117,7 @@ export async function sendEmail({
       to,
       subject,
       html,
+      ...(replyTo && { reply_to: replyTo }),
       ...(attachments && {
         attachments: attachments.map(a => ({
           filename: a.filename,

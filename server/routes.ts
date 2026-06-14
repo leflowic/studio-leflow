@@ -318,7 +318,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(400).json({ error: "Neispravna email adresa" });
       }
       const html = customEmail(body);
-      await sendZohoEmail({ to, subject, html });
+      await sendEmail({ to, subject, html, replyTo: 'podrska@studioleflow.com' });
       console.log(`[ADMIN EMAIL] ${req.jwtUser!.username} → ${to} | ${subject}`);
       res.json({ success: true });
     } catch (error: any) {
