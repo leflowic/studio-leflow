@@ -9,7 +9,7 @@ import { Badge } from "@/components/ui/badge";
 import { AvatarWithInitials } from "@/components/ui/avatar-with-initials";
 import { SEO } from "@/components/SEO";
 import { useToast } from "@/hooks/use-toast";
-import { Music, Play, Trophy, Clock, CheckCircle2, XCircle, Lock } from "lucide-react";
+import { Music, Play, Trophy, Clock, CheckCircle2, XCircle, Lock, ChevronDown, Info } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 function getBelgradeMinutes(): number {
@@ -55,6 +55,7 @@ export default function IgraPage() {
   const [answer, setAnswer] = useState("");
   const [submitted, setSubmitted] = useState(false);
   const [result, setResult] = useState<{ correct: boolean; points: number } | null>(null);
+  const [instructionsOpen, setInstructionsOpen] = useState(false);
 
   const { data, isLoading, refetch } = useQuery<any>({
     queryKey: ["/api/game/today"],
@@ -359,6 +360,42 @@ export default function IgraPage() {
           </div>
           <p className="text-muted-foreground">Čuješ 1 sekundu — možeš li da pogodis?</p>
         </div>
+
+        {/* Instructions */}
+        <Card className="border-primary/20">
+          <button
+            className="w-full flex items-center justify-between px-5 py-4 text-left"
+            onClick={() => setInstructionsOpen(o => !o)}
+          >
+            <span className="flex items-center gap-2 font-semibold text-sm">
+              <Info className="w-4 h-4 text-primary" />
+              Kako igrati?
+            </span>
+            <ChevronDown className={cn("w-4 h-4 text-muted-foreground transition-transform duration-200", instructionsOpen && "rotate-180")} />
+          </button>
+          {instructionsOpen && (
+            <CardContent className="pt-0 pb-5 px-5 space-y-2">
+              <ol className="space-y-2 text-sm text-muted-foreground list-none">
+                <li className="flex gap-3">
+                  <span className="flex-shrink-0 w-6 h-6 rounded-full bg-primary/10 text-primary text-xs font-bold flex items-center justify-center">1</span>
+                  Svaki dan se pojavljuje nova pesma. Igra se otvara u određeno vreme.
+                </li>
+                <li className="flex gap-3">
+                  <span className="flex-shrink-0 w-6 h-6 rounded-full bg-primary/10 text-primary text-xs font-bold flex items-center justify-center">2</span>
+                  Pritisni <strong className="text-foreground">▶ Pusti isečak</strong> — čuješ <strong className="text-foreground">1 sekundu</strong> pesme. Imaš <strong className="text-foreground">3 puštanja</strong>.
+                </li>
+                <li className="flex gap-3">
+                  <span className="flex-shrink-0 w-6 h-6 rounded-full bg-primary/10 text-primary text-xs font-bold flex items-center justify-center">3</span>
+                  Upiši <strong className="text-foreground">naziv pesme</strong> (bez izvođača) i potvrdi odgovor. Imaš samo <strong className="text-foreground">1 pokušaj</strong>.
+                </li>
+                <li className="flex gap-3">
+                  <span className="flex-shrink-0 w-6 h-6 rounded-full bg-primary/10 text-primary text-xs font-bold flex items-center justify-center">4</span>
+                  Tačan odgovor donosi <strong className="text-foreground">+10 poena</strong>. Poeni se sabíraju nedeljno — pobednik osvaja nagradu!
+                </li>
+              </ol>
+            </CardContent>
+          )}
+        </Card>
 
         <Card className="overflow-hidden">
           <CardHeader className="bg-gradient-to-r from-primary/10 to-transparent">
