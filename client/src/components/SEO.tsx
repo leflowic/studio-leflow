@@ -22,7 +22,7 @@ const defaultStructuredData = {
   "logo": "https://studioleflow.com/favicon-512x512.png",
   "image": "https://studioleflow.com/og-image.jpg",
   "description": "Vrhunski muzički studio u Beogradu. Profesionalno snimanje, mix/mastering, instrumentalna produkcija i video spotovi.",
-  "telephone": "+381-XX-XXX-XXXX",
+  "telephone": "+381637347023",
   "email": "leflowbusiness@gmail.com",
   "address": {
     "@type": "PostalAddress",

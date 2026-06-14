@@ -5,7 +5,7 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { FadeInWhenVisible } from "@/components/motion/FadeIn";
 import { useEditMode } from "@/contexts/EditModeContext";
 import { useToast } from "@/hooks/use-toast";
-import { SEO } from "@/components/SEO";
+import { SEO, pageStructuredData } from "@/components/SEO";
 import { apiRequest } from "@/lib/queryClient";
 import { useState } from "react";
 import {
@@ -169,6 +169,7 @@ export default function VideoSpots() {
         title="Projekti - Studio LeFlow"
         description="Projekti u kojima je naš tim učestvovao - video spotovi, pesme i muzička produkcija. Profesionalni muzički studio u Beogradu."
         keywords={["studio leflow", "leflow studio", "leflow", "muzička produkcija", "beograd", "video spotovi", "produkcija pesama", "snimanje muzike", "muzički projekti", "leflow studio projekti"]}
+        structuredData={pageStructuredData.portfolio}
       />
 
       <section className="py-20">

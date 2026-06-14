@@ -706,6 +706,51 @@ export default function Home() {
         </div>
       </section>
 
+      <section className="py-20 lg:py-32 bg-muted/10 relative z-10">
+        <div className="max-w-7xl mx-auto px-4 md:px-6">
+          <FadeInWhenVisible>
+            <div className="text-center mb-16">
+              <h2 className="heading-md mb-4">Šta Kažu Naši Klijenti</h2>
+              <p className="text-muted-foreground max-w-2xl mx-auto">
+                Više stotina pesama snimljeno, zadovoljni klijenti govore sami za sebe
+              </p>
+            </div>
+          </FadeInWhenVisible>
+
+          <div className="grid md:grid-cols-3 gap-6">
+            {[
+              {
+                name: "Marko M.",
+                text: "Profesionalan pristup od prvog kontakta. Zvuk je tačno onakav kakav sam zamišljao, a ekipa je super strpljiva i kreativna. Preporučujem svima!",
+                stars: 5,
+              },
+              {
+                name: "Ana S.",
+                text: "Snimala sam dve pesme i oba puta odlično iskustvo. Oprema je vrhunska, ambijent opušten, i što je najvažnije — rezultat je bio profesionalan na prvu loptu.",
+                stars: 5,
+              },
+              {
+                name: "Stefan P.",
+                text: "Odradio sam mix i mastering ovde posle više studija u gradu — razlika se odmah čuje. Zvuk je dubok, jasan i radio-ready. Definitivno se vraćam.",
+                stars: 5,
+              },
+            ].map((testimonial, i) => (
+              <FadeInWhenVisible key={i} delay={i * 0.12}>
+                <div className="bg-card border border-border rounded-xl p-6 h-full flex flex-col gap-4">
+                  <div className="flex gap-0.5">
+                    {Array.from({ length: testimonial.stars }).map((_, s) => (
+                      <span key={s} className="text-yellow-400 text-lg">★</span>
+                    ))}
+                  </div>
+                  <p className="text-muted-foreground flex-1 text-sm leading-relaxed">"{testimonial.text}"</p>
+                  <p className="font-semibold text-sm">{testimonial.name}</p>
+                </div>
+              </FadeInWhenVisible>
+            ))}
+          </div>
+        </div>
+      </section>
+
       <section className="py-20 lg:py-32 bg-primary text-primary-foreground">
         <div className="max-w-4xl mx-auto px-4 md:px-6 text-center">
           <FadeInWhenVisible>

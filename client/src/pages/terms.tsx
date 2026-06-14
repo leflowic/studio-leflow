@@ -3,6 +3,7 @@ import { AlertCircle, CheckCircle2, Clock, CreditCard, FileText, Shield, ArrowLe
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { FadeInWhenVisible } from "@/components/motion/FadeIn";
+import { SEO } from "@/components/SEO";
 
 export default function Terms() {
   const termsSection = [
@@ -91,6 +92,11 @@ export default function Terms() {
 
   return (
     <div className="min-h-screen py-12 lg:py-20">
+      <SEO
+        title="Pravila i Uslovi - Studio LeFlow | Politika Avansa i Saradnje"
+        description="Uslovi saradnje Studio LeFlow: politika avansa, otkazivanje termina, prava i obaveze. Transparentna pravila za sve klijente muzičkog studija u Beogradu."
+        keywords={["pravila studio leflow", "uslovi saradnje studio", "politika avansa studio", "studio leflow pravila", "uslovi muzički studio beograd"]}
+      />
       <div className="max-w-5xl mx-auto px-4 md:px-6">
         <FadeInWhenVisible delay={0.1}>
           <div className="mb-8">

@@ -2,7 +2,7 @@
   "name": "Studio LeFlow",
   "short_name": "LeFlow",
   "description": "Profesionalna muzička produkcija - Snimanje, Mix/Mastering, Instrumentali",
-  "start_url": "/auth",
+  "start_url": "/",
   "display": "standalone",
   "background_color": "#0a0a0f",
   "theme_color": "#4542f5",

@@ -72,8 +72,21 @@ There are no automated tests in this project.
 - Chat image uploads go to `POST /api/upload/message-image` (NOT `/api/upload/avatar`). Avatar uses a fixed `user_${id}` public_id with overwrite — sending chat images there would wipe the user's profile picture.
 - `GET /api/users/:id` returns only public fields — **no email**. Never expose email through user-lookup endpoints.
 
+**Authenticated requests:**
+- Always use `apiRequest()` from `client/src/lib/queryClient.ts` for mutating routes that need auth. Raw `fetch()` with `credentials: "include"` does **not** send the JWT — it only sends cookies, which are not used for auth in this project. This is the most common source of 401 bugs on the frontend.
+- For React Query `useQuery`, the default `queryFn` (via `getQueryFn`) already adds the JWT header — no extra work needed for GET requests.
+
 **Admin file downloads:**
 - Never use `window.open(url)` for admin-only endpoints — it doesn't send `Authorization` headers. Use `fetch()` with `Authorization: Bearer <token>` header, then create a blob URL and trigger download via a temporary `<a>` element.
+
+**Error messages:**
+- All user-facing error messages must be in Serbian and friendly — never expose raw JS errors, stack traces, or English strings like "Unauthorized" / "Forbidden".
+- Server: return `res.status(N).json({ error: "Serbian message" })`. Middleware in `server/jwt-auth.ts` already does this for auth errors.
+- Client: `throwIfResNotOk` in `queryClient.ts` has a `STATUS_MESSAGES` fallback map for common HTTP codes. When the server sends `{ error: "..." }`, that message is used directly.
+
+**Contract PDFs:**
+- PDFs are **never** read from the local filesystem — Railway's filesystem is ephemeral and files are lost on redeploy.
+- All contract download/email endpoints regenerate the PDF on-the-fly from `contract.contractData` (JSON stored in PostgreSQL) using `generateMixMasterPDF`, `generateCopyrightTransferPDF`, or `generateInstrumentalSalePDF` from `server/pdf-generator.ts`. Match on `contract.contractType`.
 
 **CMS:**
 - `EditableText` and `EditableImage` components let admins edit content in-place when edit mode is on.
@@ -88,6 +101,7 @@ There are no automated tests in this project.
 - Game clip upload: `POST /api/upload/game-clip` (requireAdmin) → `server/cloudinary.ts` `uploadAudioToCloudinary()`. Each upload gets a unique public_id (`basename_timestamp`) to avoid Cloudinary duplicate-key errors.
 - User-facing game routes use `requireNotBanned` (not `requireAuth`, which doesn't exist).
 - `submitGuess()` returns `{ correct, points }` where points = correct ? 10 : 0. The correct answer is **not** exposed in the response.
+- Anti-cheat: `GET /api/game/today` strips `clipUrl` from the response — only `hasClip: boolean` is sent to the client. The actual Cloudinary URL is only used server-side via the `/api/game/clip` proxy. `clipFetchCounts` (in-memory Map) limits each user to 6 clip fetches per day; returns 429 on exceeded. Client persists `playsLeft` in localStorage under key `igra_plays_${userId}_${challengeDate}`.
 - `getWeekStart()` in both `routes.ts` and `storage.ts` must use Belgrade time (same as `getTodayDateString()`). Using UTC causes the wrong week bucket near Sunday/Monday midnight Belgrade time.
 
 **File uploads:**
@@ -95,7 +109,7 @@ There are no automated tests in this project.
 - Message images: `POST /api/upload/message-image` → Cloudinary `studioleflow/messages` folder, unique `msg_${userId}_${timestamp}` public_id (no overwrite, no crop).
 - Audio uploads: `POST /api/upload/audio` → Cloudinary, with `fileTypeFromBuffer` magic-bytes validation.
 - Game clip: `POST /api/upload/game-clip` (admin) → Cloudinary `studioleflow/game-clips` folder.
-- CMS media: multer to `attached_assets/temp/`, then moved to `attached_assets/`.
+- CMS media: multer to `attached_assets/temp/`, then moved to `attached_assets/`. **Note:** this path is ephemeral on Railway — CMS media uploads are lost on redeploy. Only `attached_assets/` files bundled at build time persist (they're baked into `dist/public/`). If persistent CMS media is needed, route through Cloudinary instead.
 - All upload routes have `uploadRateLimiter` applied (30/hr). Avatar and message-image routes also validate magic bytes via `fileTypeFromBuffer`.
 
 **Email:**
@@ -109,6 +123,12 @@ There are no automated tests in this project.
 - `railway.toml`: build = `npm run build`, deploy = `npx drizzle-kit push --force`, start = `npm run start`.
 - `nixpacks.toml` must use `npm ci --include=dev` so devDependencies (esbuild, tsc, etc.) are available at build time.
 - `APP_URL`, `DATABASE_URL`, `SESSION_SECRET`, `RESEND_API_KEY`, `CLOUDINARY_*` env vars must be set in Railway.
+
+**SEO:**
+- `client/src/components/SEO.tsx` — sets `<title>`, meta tags, og/twitter tags, canonical URL, and JSON-LD structured data via `useEffect`. Add `<SEO>` to every public page.
+- `defaultStructuredData` in `SEO.tsx` is a `RecordingStudio` schema used on pages that don't pass `structuredData`. Pre-built schemas for specific pages are exported as `pageStructuredData` (`services`, `contact`, `portfolio`).
+- `client/public/sitemap.xml` and `robots.txt` — only list real routes that exist in `App.tsx`. Disallow protected routes (`/admin`, `/dashboard`, `/igra`, `/zajednica`, `/moje-pesme`).
+- Private/giveaway-only pages (`/uslovi-koriscenja`) should use `<SEO noIndex={true}>`.
 
 **Security notes:**
 - Admin 2FA: one-time token emailed on admin login (`adminLoginToken` / `adminLoginExpiry` fields on user).

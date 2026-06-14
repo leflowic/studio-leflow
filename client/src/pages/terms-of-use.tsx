@@ -2,10 +2,16 @@ import { Link } from "wouter";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { ArrowLeft, Shield, AlertTriangle, FileText, Scale, Megaphone } from "lucide-react";
+import { SEO } from "@/components/SEO";
 
 export default function TermsOfUsePage() {
   return (
     <div className="min-h-screen bg-background py-12">
+      <SEO
+        title="Uslovi Korišćenja - Studio LeFlow"
+        description="Uslovi korišćenja Studio LeFlow platforme i giveaway takmičenja. Pravila učešća, prava i obaveze korisnika."
+        noIndex={true}
+      />
       <div className="max-w-4xl mx-auto px-4 md:px-6">
         <Link href="/giveaway" data-testid="link-back-giveaway">
           <Button variant="ghost" className="mb-8" data-testid="button-back">

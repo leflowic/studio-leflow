@@ -17,6 +17,8 @@ import { HelmetProvider } from "react-helmet-async";
 import { useAuth } from "@/hooks/use-auth";
 import { useQuery } from "@tanstack/react-query";
 import { InstallPrompt } from "@/components/pwa/InstallPrompt";
+import { WhatsAppButton } from "@/components/WhatsAppButton";
+import { CookieConsent } from "@/components/CookieConsent";
 
 class ChunkErrorBoundary extends Component<{ children: ReactNode }, { failed: boolean }> {
   state = { failed: false };
@@ -74,6 +76,7 @@ const IgraPage = lazy(() => import("@/pages/igra"));
 const VerifyLicensePage = lazy(() => import("@/pages/verify-license"));
 const MaintenancePage = lazy(() => import("@/pages/maintenance"));
 const NewsletterConfirmationPage = lazy(() => import("@/pages/newsletter-confirmation"));
+const UslugePage = lazy(() => import("@/pages/usluge"));
 function Router() {
   const [location] = useLocation();
   const { user } = useAuth();
@@ -129,6 +132,7 @@ function Router() {
                 <Route path="/proveri"><VerifyLicensePage /></Route>
                 <Route path="/newsletter/potvrda/:token"><NewsletterConfirmationPage /></Route>
                 <Route path="/uslovi-koriscenja"><TermsOfUsePage /></Route>
+                <Route path="/usluge"><UslugePage /></Route>
                 <ProtectedRoute path="/igra" component={() => <IgraPage />} />
                 <ProtectedRoute path="/zajednica" component={() => <ZajednicaPage />} />
                 <ProtectedRoute path="/giveaway" component={() => <GiveawayPage />} />
@@ -159,6 +163,8 @@ function App() {
                 <TooltipProvider>
                   <Toaster />
                   <InstallPrompt />
+                  <WhatsAppButton />
+                  <CookieConsent />
                   <Router />
                 </TooltipProvider>
               </EditModeProvider>

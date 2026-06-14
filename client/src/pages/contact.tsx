@@ -16,7 +16,7 @@ import { useMutation } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
-import { SEO } from "@/components/SEO";
+import { SEO, pageStructuredData } from "@/components/SEO";
 
 export default function Contact() {
   const { toast } = useToast();
@@ -112,6 +112,7 @@ export default function Contact() {
           "leflow cena",
           "studio rezervacija online"
         ]}
+        structuredData={pageStructuredData.contact}
       />
       <div className="max-w-7xl mx-auto px-4 md:px-6">
         <div className="mb-8">
