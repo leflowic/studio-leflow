@@ -169,6 +169,7 @@ export default function GameTab() {
       });
       queryClient.invalidateQueries({ queryKey: ["/api/admin/game/prizes"] });
     },
+    onError: () => toast({ title: "Greška", variant: "destructive", description: "Nije moguće odrediti pobednika" }),
   });
 
   const today = new Intl.DateTimeFormat('sv', { timeZone: 'Europe/Belgrade' }).format(new Date());

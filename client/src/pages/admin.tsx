@@ -975,11 +975,14 @@ function MessagesTab() {
                     const url = `/api/admin/messages/export/${selectedConversation.user1Id}/${selectedConversation.user2Id}`;
                     const token = localStorage.getItem('auth_token');
                     const res = await fetch(url, { headers: { Authorization: `Bearer ${token}` } });
-                    if (!res.ok) return;
+                    if (!res.ok) {
+                      toast({ title: "Greška", description: "Izvoz konverzacije nije uspeo", variant: "destructive" });
+                      return;
+                    }
                     const blob = await res.blob();
                     const disposition = res.headers.get('Content-Disposition') || '';
                     const match = disposition.match(/filename="([^"]+)"/);
-                    const filename = match ? match[1] : 'konverzacija.txt';
+                    const filename = match?.[1] ?? 'konverzacija.txt';
                     const a = document.createElement('a');
                     a.href = URL.createObjectURL(blob);
                     a.download = filename;

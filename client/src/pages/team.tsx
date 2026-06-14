@@ -11,6 +11,7 @@ import { EditableImage } from "@/components/cms/EditableImage";
 import { useEditMode } from "@/contexts/EditModeContext";
 import { useToast } from "@/hooks/use-toast";
 import { SEO } from "@/components/SEO";
+import { apiRequest } from "@/lib/queryClient";
 import type { CmsContent } from "@shared/schema";
 import leflowImage from "@assets/image_1762303735569.png";
 import dicviImage from "@assets/image_1762303783224.png";
@@ -51,17 +52,8 @@ export default function Team() {
         { page: "team", section: "members", contentKey: `member_${nextIndex}_instagram`, contentValue: "https://instagram.com/" },
       ];
 
-      const response = await fetch("/api/cms/content", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(newMemberData),
-        credentials: "include",
-      });
-
-      if (!response.ok) {
-        throw new Error("Greška pri dodavanju člana");
-      }
-
+      const response = await apiRequest("POST", "/api/cms/content", newMemberData);
+      if (!response.ok) throw new Error("Greška pri dodavanju člana");
       return response.json();
     },
     onSuccess: () => {
@@ -82,15 +74,8 @@ export default function Team() {
 
   const deleteMemberMutation = useMutation({
     mutationFn: async (memberIndex: number) => {
-      const response = await fetch(`/api/cms/team-member/${memberIndex}`, {
-        method: "DELETE",
-        credentials: "include",
-      });
-
-      if (!response.ok) {
-        throw new Error("Greška pri brisanju člana");
-      }
-
+      const response = await apiRequest("DELETE", `/api/cms/team-member/${memberIndex}`);
+      if (!response.ok) throw new Error("Greška pri brisanju člana");
       return response.json();
     },
     onSuccess: () => {
