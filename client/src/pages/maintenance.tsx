@@ -6,7 +6,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { useAuth } from "@/hooks/use-auth";
 import { useToast } from "@/hooks/use-toast";
-import { queryClient } from "@/lib/queryClient";
+import { queryClient, setAuthToken } from "@/lib/queryClient";
 import { InputOTP, InputOTPGroup, InputOTPSlot } from "@/components/ui/input-otp";
 import {
   Dialog,
@@ -118,6 +118,7 @@ export default function MaintenancePage() {
         throw new Error(result.error || "Neispravan kod");
       }
 
+      setAuthToken(result.token);
       queryClient.setQueryData(["/api/user"], result.user);
       setShowLoginDialog(false);
       resetDialog();
