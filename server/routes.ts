@@ -4,7 +4,8 @@ import { storage } from "./storage";
 import { wsHelpers, notifyUser, getOnlineUsersSnapshot } from "./websocket-helpers";
 import { insertContactSubmissionSchema, insertCmsContentSchema, insertCmsMediaSchema, insertVideoSpotSchema, insertUserSongSchema, insertNewsletterSubscriberSchema, insertInvoiceSchema, insertCommunityMessageSchema, insertSiteAnnouncementSchema, mixMasterContractDataSchema, copyrightTransferContractDataSchema, instrumentalSaleContractDataSchema, type CmsContent, type CmsMedia, type VideoSpot, type UserSong } from "@shared/schema";
 import { sendEmail, getLastVerificationCode } from "./resend-client";
-import { resendVerificationEmail, adminLoginEmail, contactFormEmail, newsletterConfirmEmail, licenseDeliveryEmail } from "./email-templates";
+import { resendVerificationEmail, adminLoginEmail, contactFormEmail, newsletterConfirmEmail, licenseDeliveryEmail, customEmail } from "./email-templates";
+import { sendZohoEmail } from "./zoho-client";
 import { setupAuth, hashPassword, comparePasswords } from "./auth";
 import multer from "multer";
 import fs from "fs";
@@ -302,6 +303,27 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error("Error getting maintenance mode:", error);
       res.status(500).json({ error: "Greška na serveru" });
+    }
+  });
+
+  // Admin custom email via Zoho
+  app.post("/api/admin/send-email", requireAdmin, async (req, res) => {
+    try {
+      const { to, subject, body } = req.body;
+      if (!to || !subject || !body) {
+        return res.status(400).json({ error: "Sva polja su obavezna (to, subject, body)" });
+      }
+      const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+      if (!emailRegex.test(to)) {
+        return res.status(400).json({ error: "Neispravna email adresa" });
+      }
+      const html = customEmail(body);
+      await sendZohoEmail({ to, subject, html });
+      console.log(`[ADMIN EMAIL] ${req.jwtUser!.username} → ${to} | ${subject}`);
+      res.json({ success: true });
+    } catch (error: any) {
+      console.error("[ADMIN EMAIL] Error:", error);
+      res.status(500).json({ error: "Slanje nije uspelo. Proverite Zoho podešavanja." });
     }
   });
 

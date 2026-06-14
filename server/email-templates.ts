@@ -212,7 +212,20 @@ export function contactFormEmail(data: {
   `);
 }
 
-// ─── 7. License delivery email ───────────────────────────────────────────────
+// ─── 7. Custom admin email ───────────────────────────────────────────────────
+export function customEmail(body: string): string {
+  const htmlBody = body
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/\n/g, '<br>');
+
+  return wrap(`
+    <div style="color:#cccccc;font-size:15px;line-height:1.8;">${htmlBody}</div>
+  `);
+}
+
+// ─── 8. License delivery email ───────────────────────────────────────────────
 export function licenseDeliveryEmail(data: {
   contractNumber: string;
   contractType: string;

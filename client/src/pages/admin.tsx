@@ -41,6 +41,7 @@ import { ContractsTab } from "@/components/admin/ContractsTab";
 import { CalendarTab } from "@/components/admin/CalendarTab";
 import { KatastarTab } from "@/components/admin/KatastarTab";
 import GameTab from "@/components/admin/GameTab";
+import { EmailTab } from "@/components/admin/EmailTab";
 import {
   Select,
   SelectContent,
@@ -224,6 +225,7 @@ export default function AdminPage() {
               <TabsTrigger value="calendar" data-testid="tab-calendar" className="flex-1 min-w-[100px]">Kalendar</TabsTrigger>
               <TabsTrigger value="katastar" data-testid="tab-katastar" className="flex-1 min-w-[100px]">Katastar</TabsTrigger>
               <TabsTrigger value="game" data-testid="tab-game" className="flex-1 min-w-[100px]">Igra</TabsTrigger>
+              <TabsTrigger value="email" data-testid="tab-email" className="flex-1 min-w-[100px]">Email</TabsTrigger>
               <TabsTrigger value="settings" data-testid="tab-settings" className="flex-1 min-w-[100px]">Podešavanja</TabsTrigger>
             </TabsList>
           </div>
@@ -274,6 +276,10 @@ export default function AdminPage() {
 
           <TabsContent value="game" forceMount>
             <GameTab />
+          </TabsContent>
+
+          <TabsContent value="email">
+            <EmailTab />
           </TabsContent>
 
           <TabsContent value="settings">
