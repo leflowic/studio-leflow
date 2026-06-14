@@ -51,7 +51,7 @@ export default function IgraPage() {
   const [audioReady, setAudioReady] = useState(false);
   const [audioError, setAudioError] = useState(false);
   const [playing, setPlaying] = useState(false);
-  const [playsLeft, setPlaysLeft] = useState(4);
+  const [playsLeft, setPlaysLeft] = useState(3);
   const [answer, setAnswer] = useState("");
   const [submitted, setSubmitted] = useState(false);
   const [result, setResult] = useState<{ correct: boolean; points: number } | null>(null);
@@ -131,9 +131,9 @@ export default function IgraPage() {
     const source = ctx.createBufferSource();
     source.buffer = buffer;
     source.connect(ctx.destination);
-    source.start(0, clipStart, 2);
+    source.start(0, clipStart, 1);
 
-    setTimeout(() => setPlaying(false), 2100);
+    setTimeout(() => setPlaying(false), 1100);
   }, [challenge?.clipStartSeconds, playsLeft, playing]);
 
   const guessMutation = useMutation({
@@ -272,7 +272,7 @@ export default function IgraPage() {
             </Button>
             <p className="text-xs text-center text-muted-foreground">
               {playsLeft > 0
-                ? `Preostalo puštanja: ${playsLeft}/4`
+                ? `Preostalo puštanja: ${playsLeft}/3`
                 : "Iskoristio si sva puštanja"}
             </p>
           </div>
