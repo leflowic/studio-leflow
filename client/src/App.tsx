@@ -77,6 +77,7 @@ const VerifyLicensePage = lazy(() => import("@/pages/verify-license"));
 const MaintenancePage = lazy(() => import("@/pages/maintenance"));
 const NewsletterConfirmationPage = lazy(() => import("@/pages/newsletter-confirmation"));
 const UslugePage = lazy(() => import("@/pages/usluge"));
+const FAQPage = lazy(() => import("@/pages/faq"));
 function Router() {
   const [location] = useLocation();
   const { user } = useAuth();
@@ -133,6 +134,7 @@ function Router() {
                 <Route path="/newsletter/potvrda/:token"><NewsletterConfirmationPage /></Route>
                 <Route path="/uslovi-koriscenja"><TermsOfUsePage /></Route>
                 <Route path="/usluge"><UslugePage /></Route>
+                <Route path="/faq"><FAQPage /></Route>
                 <ProtectedRoute path="/igra" component={() => <IgraPage />} />
                 <ProtectedRoute path="/zajednica" component={() => <ZajednicaPage />} />
                 <ProtectedRoute path="/giveaway" component={() => <GiveawayPage />} />

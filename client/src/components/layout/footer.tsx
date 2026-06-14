@@ -9,6 +9,7 @@ export function Footer() {
 
   const quickLinks = [
     { name: "Početna", href: "/" },
+    { name: "Česta Pitanja", href: "/faq" },
     { name: "Pravila i Uslovi", href: "/pravila" },
     { name: "Kontakt", href: "/kontakt" }
   ];
