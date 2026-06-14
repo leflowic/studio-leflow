@@ -3177,9 +3177,22 @@ Sitemap: ${siteUrl}/sitemap.xml
     }
   });
 
+  // In-memory clip fetch counter (resets on deploy, which is acceptable)
+  // Limits how many times a user can download today's clip — prevents refresh-to-replay abuse
+  const clipFetchCounts = new Map<string, number>();
+
   // GET /api/game/clip — proxy today's audio clip through the server to avoid browser CORS on Cloudinary
   app.get("/api/game/clip", requireNotBanned, async (req, res) => {
     try {
+      const userId = req.jwtUser!.id;
+      const today = new Intl.DateTimeFormat('sv', { timeZone: 'Europe/Belgrade' }).format(new Date());
+      const trackKey = `${userId}_${today}`;
+      const fetchCount = clipFetchCounts.get(trackKey) ?? 0;
+      if (fetchCount >= 6) {
+        return res.status(429).send("Limit reached");
+      }
+      clipFetchCounts.set(trackKey, fetchCount + 1);
+
       const challenge = await storage.getTodayChallenge();
       if (!challenge?.clipUrl) return res.status(404).send("No clip");
 
@@ -3194,7 +3207,7 @@ Sitemap: ${siteUrl}/sitemap.xml
 
       const buffer = await upstream.arrayBuffer();
       res.setHeader('Content-Type', 'audio/mpeg');
-      res.setHeader('Cache-Control', 'public, max-age=3600');
+      res.setHeader('Cache-Control', 'no-store');
       res.send(Buffer.from(buffer));
     } catch (e) {
       res.status(500).send("Server error");
@@ -3219,10 +3232,10 @@ Sitemap: ${siteUrl}/sitemap.xml
       }
 
       const guess = await storage.getUserGuessForDate(req.jwtUser!.id as number, today);
-      const { correctAnswers, ...safeChallenge } = challenge;
+      const { correctAnswers, clipUrl, ...safeChallenge } = challenge;
       res.json({
         available: true,
-        challenge: safeChallenge,
+        challenge: { ...safeChallenge, hasClip: !!clipUrl },
         alreadyPlayed: !!guess,
         guess,
         // Only reveal correct answer when the user got it wrong (not on correct guess)

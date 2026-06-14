@@ -52,6 +52,7 @@ export default function IgraPage() {
   const audioBufferRef = useRef<AudioBuffer | null>(null);
   const [audioReady, setAudioReady] = useState(false);
   const [audioError, setAudioError] = useState(false);
+  const [noClip, setNoClip] = useState(false);
   const [playing, setPlaying] = useState(false);
   const [playsLeft, setPlaysLeft] = useState(3);
   const [answer, setAnswer] = useState("");
@@ -80,16 +81,21 @@ export default function IgraPage() {
     if (isOpen && data && !data.available) refetch();
   }, [isOpen, data?.available]);
 
+  // Restore plays left from localStorage when challenge date changes (survives page refresh)
   useEffect(() => {
-    if (challenge?.challengeDate) setPlaysLeft(3);
-  }, [challenge?.challengeDate]);
+    const date = challenge?.challengeDate;
+    if (!date || !user?.id) return;
+    const stored = localStorage.getItem(`igra_plays_${user.id}_${date}`);
+    setPlaysLeft(stored !== null ? Math.max(0, parseInt(stored, 10)) : 3);
+  }, [challenge?.challengeDate, user?.id]);
 
+  // Load audio via server proxy once the game is open (trigger on challengeDate, not clipUrl)
   useEffect(() => {
-    const clipUrl = challenge?.clipUrl;
-    if (!clipUrl) return;
+    if (!data?.available || !challenge?.challengeDate) return;
 
     setAudioReady(false);
     setAudioError(false);
+    setNoClip(false);
 
     let cancelled = false;
     const ctx = new AudioContext();
@@ -99,13 +105,20 @@ export default function IgraPage() {
     fetch('/api/game/clip', {
       headers: token ? { Authorization: `Bearer ${token}` } : {},
     })
-      .then(r => { if (!r.ok) throw new Error("fetch"); return r.arrayBuffer(); })
-      .then(buf => ctx.decodeAudioData(buf))
+      .then(r => {
+        if (r.status === 404) { if (!cancelled) setNoClip(true); return null; }
+        if (r.status === 429) { if (!cancelled) setAudioError(true); return null; }
+        if (!r.ok) throw new Error("fetch");
+        return r.arrayBuffer();
+      })
+      .then(buf => {
+        if (!buf || cancelled) return;
+        return ctx.decodeAudioData(buf);
+      })
       .then(decoded => {
-        if (!cancelled) {
-          audioBufferRef.current = decoded;
-          setAudioReady(true);
-        }
+        if (!decoded || cancelled) return;
+        audioBufferRef.current = decoded;
+        setAudioReady(true);
       })
       .catch(() => { if (!cancelled) setAudioError(true); });
 
@@ -115,17 +128,22 @@ export default function IgraPage() {
       setAudioReady(false);
       ctx.close().catch(() => {});
     };
-  }, [challenge?.clipUrl]);
+  }, [data?.available, challenge?.challengeDate]);
 
   const playClip = useCallback(() => {
     const ctx = audioCtxRef.current;
     const buffer = audioBufferRef.current;
     const clipStart = challenge?.clipStartSeconds ?? 0;
+    const date = challenge?.challengeDate;
     if (!ctx || !buffer || playsLeft <= 0 || playing) return;
     if (ctx.state === "suspended") ctx.resume();
 
+    const newPlaysLeft = playsLeft - 1;
     setPlaying(true);
-    setPlaysLeft(p => p - 1);
+    setPlaysLeft(newPlaysLeft);
+    if (user?.id && date) {
+      localStorage.setItem(`igra_plays_${user.id}_${date}`, String(newPlaysLeft));
+    }
 
     const source = ctx.createBufferSource();
     source.buffer = buffer;
@@ -133,7 +151,7 @@ export default function IgraPage() {
     source.start(0, clipStart, 1);
 
     setTimeout(() => setPlaying(false), 1100);
-  }, [challenge?.clipStartSeconds, playsLeft, playing]);
+  }, [challenge?.clipStartSeconds, challenge?.challengeDate, playsLeft, playing, user?.id]);
 
   const guessMutation = useMutation({
     mutationFn: async (ans: string) => {
@@ -191,7 +209,8 @@ export default function IgraPage() {
   const prevGuess = data?.guess;
   const finalResult = result ?? (prevGuess ? { correct: prevGuess.correct, points: prevGuess.correct ? 10 : 0 } : null);
   const displayedAnswer = result ? answer : (prevGuess?.answer ?? "");
-  const noClip = data?.available && !challenge?.clipUrl;
+  // noClip is set to true when /api/game/clip returns 404 (or hasClip is explicitly false)
+  const noClipDerived = data?.available && challenge?.hasClip === false;
 
   // ── Game body renderer ───────────────────────────────────────────────────────
 
@@ -257,7 +276,8 @@ export default function IgraPage() {
       }
 
       // Active game
-      const canPlay = audioReady && !audioError && !noClip && playsLeft > 0 && !playing;
+      const noClipFinal = noClip || noClipDerived;
+      const canPlay = audioReady && !audioError && !noClipFinal && playsLeft > 0 && !playing;
       const playBtnDisabled = !canPlay;
 
       return (
@@ -306,7 +326,7 @@ export default function IgraPage() {
                   "disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:scale-100 disabled:shadow-md",
                 )}
               >
-                {audioError || noClip ? (
+                {audioError || noClipFinal ? (
                   <XCircle className="w-9 h-9" />
                 ) : !audioReady ? (
                   <div className="w-7 h-7 border-[3px] border-primary-foreground/30 border-t-primary-foreground rounded-full animate-spin" />
@@ -322,7 +342,7 @@ export default function IgraPage() {
                 ? "🎵 Svira..."
                 : audioError
                 ? "Greška pri učitavanju audio klipa"
-                : noClip
+                : noClipFinal
                 ? "Nema audio klipa za danas"
                 : !audioReady
                 ? "Učitavanje..."
