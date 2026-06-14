@@ -117,6 +117,8 @@ There are no automated tests in this project.
 - Templates in `server/email-templates.ts` — all use white logo at `${BASE_URL}/leflow-logo-white.png`.
 - Business inbox: Zoho Mail at `podrska@studioleflow.com`.
 - License auto-email: when admin assigns a user to a contract (`PATCH /api/admin/contracts/:id/assign-user`), the PDF is fetched and emailed automatically to the user's registered email. Email failure does not fail the request.
+- **Railway blocks all outbound SMTP ports (25, 465, 587)** — Nodemailer/Zoho SMTP will always `ETIMEDOUT`. Never attempt direct SMTP from Railway; always use the Resend SDK. `server/zoho-client.ts` exists but is unused for this reason.
+- Admin email composer: `POST /api/admin/send-email` (requireAdmin) uses `sendEmail()` from `resend-client.ts` with `replyTo: podrska@studioleflow.com`. Frontend: `client/src/components/admin/EmailTab.tsx`. The `customEmail()` template in `email-templates.ts` wraps plain text in the branded HTML layout.
 
 **Deployment:**
 - Railway auto-deploys from GitHub `main` branch.
