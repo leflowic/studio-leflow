@@ -30,10 +30,13 @@ class ChunkErrorBoundary extends Component<{ children: ReactNode }, { failed: bo
       error?.message?.includes("Loading chunk") ||
       error?.name === "ChunkLoadError";
 
-    if (isChunkError && !sessionStorage.getItem("chunk-reload")) {
-      sessionStorage.setItem("chunk-reload", "1");
-      window.location.reload();
-      return { failed: false };
+    if (isChunkError) {
+      const key = `chunk-reload-${window.location.pathname}`;
+      if (!sessionStorage.getItem(key)) {
+        sessionStorage.setItem(key, "1");
+        window.location.reload();
+        return { failed: false };
+      }
     }
     return { failed: true };
   }
@@ -45,7 +48,7 @@ class ChunkErrorBoundary extends Component<{ children: ReactNode }, { failed: bo
           <p className="text-muted-foreground">Došlo je do greške pri učitavanju stranice.</p>
           <button
             className="text-primary underline text-sm"
-            onClick={() => { sessionStorage.removeItem("chunk-reload"); window.location.reload(); }}
+            onClick={() => { sessionStorage.removeItem(`chunk-reload-${window.location.pathname}`); window.location.reload(); }}
           >
             Pokušaj ponovo
           </button>
