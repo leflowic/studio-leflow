@@ -44,22 +44,29 @@ export default function GameTab() {
   const [cTime, setCTime] = useState(getBelgradeTime);
   const [uploadingClip, setUploadingClip] = useState(false);
   const [clipFileName, setClipFileName] = useState("");
+  const [uploadError, setUploadError] = useState("");
   const clipFileRef = useRef<HTMLInputElement>(null);
+  // Ref so mutationFn always reads the latest clipUrl even if React hasn't re-rendered yet
+  const cClipUrlRef = useRef(cClipUrl);
+  cClipUrlRef.current = cClipUrl;
 
   const startEdit = (c: any) => {
     setEditingId(c.id);
     setCDate(c.challengeDate);
     setCClipUrl(c.clipUrl ?? "");
+    cClipUrlRef.current = c.clipUrl ?? "";
     setCAnswer(c.correctAnswers);
     setCClip(String(c.clipStartSeconds));
     setCTime(`${String(c.openHour ?? 17).padStart(2, '0')}:${String(c.openMinute ?? 0).padStart(2, '0')}`);
+    setClipFileName("");
+    setUploadError("");
     window.scrollTo({ top: 0, behavior: "smooth" });
   };
 
   const cancelEdit = () => {
     setEditingId(null);
     setCDate(getBelgradeDate());
-    setCClipUrl(""); setCAnswer(""); setCClip("30"); setCTime(getBelgradeTime()); setClipFileName("");
+    setCClipUrl(""); setCAnswer(""); setCClip("30"); setCTime(getBelgradeTime()); setClipFileName(""); setUploadError("");
   };
 
   // Prize form
@@ -72,6 +79,8 @@ export default function GameTab() {
     const file = e.target.files?.[0];
     if (!file) return;
     setClipFileName(file.name);
+    setUploadError("");
+    setCClipUrl("");
     setUploadingClip(true);
     try {
       const formData = new FormData();
@@ -82,12 +91,18 @@ export default function GameTab() {
         headers: token ? { Authorization: `Bearer ${token}` } : {},
         body: formData,
       });
-      if (!res.ok) throw new Error("Upload failed");
+      if (!res.ok) {
+        const body = await res.json().catch(() => ({}));
+        throw new Error(body.error || `HTTP ${res.status}`);
+      }
       const { url } = await res.json();
       setCClipUrl(url);
-      toast({ title: "Clip uploadovan", description: "Audio clip je spreman" });
-    } catch {
-      toast({ title: "Greška", description: "Upload nije uspeo", variant: "destructive" });
+      cClipUrlRef.current = url;
+    } catch (err: any) {
+      const msg = err?.message || "Upload nije uspeo";
+      setUploadError(msg);
+      setClipFileName("");
+      toast({ title: "Greška pri uploadu", description: msg, variant: "destructive" });
     } finally {
       setUploadingClip(false);
       if (clipFileRef.current) clipFileRef.current.value = "";
@@ -97,7 +112,7 @@ export default function GameTab() {
   const saveChallenges = useMutation({
     mutationFn: async () => apiRequest("POST", "/api/admin/game/challenges", {
       challengeDate: cDate,
-      clipUrl: cClipUrl || null,
+      clipUrl: cClipUrlRef.current || null,
       correctAnswers: cAnswer,
       clipStartSeconds: cClip !== "" ? Number(cClip) : 30,
       openHour: parseInt(cTime.split(':')[0] ?? '17', 10),
@@ -189,9 +204,9 @@ export default function GameTab() {
             <Label>Vreme otvaranja</Label>
             <Input type="time" value={cTime} onChange={e => setCTime(e.target.value)} className="w-40" />
           </div>
-          <div className="space-y-1">
+          <div className="space-y-2">
             <Label>Audio clip (MP3, max 5MB)</Label>
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-2 flex-wrap">
               <input ref={clipFileRef} type="file" accept=".mp3,audio/mpeg" className="hidden" onChange={handleClipUpload} />
               <Button
                 type="button"
@@ -199,18 +214,35 @@ export default function GameTab() {
                 size="sm"
                 className="gap-2"
                 disabled={uploadingClip}
-                onClick={() => clipFileRef.current?.click()}
+                onClick={() => { setUploadError(""); clipFileRef.current?.click(); }}
               >
                 {uploadingClip ? <Loader2 className="w-4 h-4 animate-spin" /> : <Upload className="w-4 h-4" />}
-                {uploadingClip ? "Uploadovanje..." : "Izaberi MP3"}
+                {uploadingClip ? "Uploadovanje..." : cClipUrl ? "Zameni MP3" : "Izaberi MP3"}
               </Button>
-              {cClipUrl && !uploadingClip && (
-                <span className="flex items-center gap-1 text-sm text-green-600">
-                  <CheckCircle2 className="w-4 h-4" />
-                  {clipFileName || "Clip uploadovan"}
-                </span>
-              )}
             </div>
+            {uploadingClip && (
+              <div className="flex items-center gap-2 px-3 py-2 rounded-md bg-muted text-sm text-muted-foreground">
+                <Loader2 className="w-4 h-4 animate-spin flex-shrink-0" />
+                Uploaduje se: <span className="font-medium truncate">{clipFileName}</span>
+              </div>
+            )}
+            {cClipUrl && !uploadingClip && (
+              <div className="flex items-center gap-2 px-3 py-2 rounded-md bg-green-50 border border-green-200 dark:bg-green-950/30 dark:border-green-800">
+                <CheckCircle2 className="w-4 h-4 text-green-600 flex-shrink-0" />
+                <div className="min-w-0">
+                  <p className="text-sm font-medium text-green-700 dark:text-green-400 truncate">
+                    {clipFileName || "Clip učitan"}
+                  </p>
+                  <p className="text-xs text-green-600/70 truncate">{cClipUrl}</p>
+                </div>
+              </div>
+            )}
+            {uploadError && !uploadingClip && (
+              <div className="flex items-center gap-2 px-3 py-2 rounded-md bg-destructive/10 border border-destructive/30 text-sm text-destructive">
+                <X className="w-4 h-4 flex-shrink-0" />
+                Greška: {uploadError}
+              </div>
+            )}
           </div>
           <div className="space-y-1">
             <Label>Tačan odgovor (više odgovora odvojiti zarezom)</Label>
