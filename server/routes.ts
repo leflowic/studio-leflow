@@ -3225,7 +3225,8 @@ Sitemap: ${siteUrl}/sitemap.xml
         challenge: safeChallenge,
         alreadyPlayed: !!guess,
         guess,
-        ...(guess ? { correctAnswer: (correctAnswers.split(',')[0] ?? correctAnswers).trim() } : {}),
+        // Only reveal correct answer when the user got it wrong (not on correct guess)
+        ...(guess && !guess.correct ? { correctAnswer: (correctAnswers.split(',')[0] ?? correctAnswers).trim() } : {}),
       });
     } catch (e) {
       res.status(500).json({ error: "Greška na serveru" });

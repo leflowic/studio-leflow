@@ -139,10 +139,6 @@ export default function IgraPage() {
   const guessMutation = useMutation({
     mutationFn: async (ans: string) => {
       const res = await apiRequest("POST", "/api/game/guess", { answer: ans });
-      if (!res.ok) {
-        const body = await res.json().catch(() => ({}));
-        throw new Error(body.error || "Greška");
-      }
       return res.json();
     },
     onSuccess: (responseData) => {
@@ -194,7 +190,7 @@ export default function IgraPage() {
   const displayedAnswer = result ? answer : (prevGuess?.answer ?? "");
   const noClip = data?.available && !challenge?.clipUrl;
 
-  let playBtnLabel = "▶ Pusti isečak (2s)";
+  let playBtnLabel = "▶ Pusti isečak (1s)";
   if (playing) playBtnLabel = "Svira...";
   else if (audioError) playBtnLabel = "Greška pri učitavanju";
   else if (noClip) playBtnLabel = "Nema audio klipa";
@@ -238,6 +234,7 @@ export default function IgraPage() {
               <>
                 <XCircle className="w-14 h-14 mx-auto text-destructive" />
                 <p className="text-xl font-bold text-destructive">Netačno</p>
+                <p className="text-lg font-semibold text-muted-foreground">+0 poena</p>
                 {data.correctAnswer && (
                   <p className="text-sm">
                     Tačan odgovor:{" "}
@@ -350,7 +347,7 @@ export default function IgraPage() {
     <div className="min-h-screen py-12">
       <SEO
         title="Pogodi Pesmu — Studio LeFlow"
-        description="Dnevna igra: pogodi pesmu iz 2 sekunde!"
+        description="Dnevna igra: pogodi pesmu iz 1 sekunde!"
         noIndex={false}
       />
 
@@ -360,7 +357,7 @@ export default function IgraPage() {
             <Music className="w-8 h-8 text-primary" />
             <h1 className="text-3xl font-bold">Pogodi Pesmu</h1>
           </div>
-          <p className="text-muted-foreground">Čuješ 2 sekunde — možeš li da pogodis?</p>
+          <p className="text-muted-foreground">Čuješ 1 sekundu — možeš li da pogodis?</p>
         </div>
 
         <Card className="overflow-hidden">
