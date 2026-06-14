@@ -557,10 +557,13 @@ export const insertVideoSpotSchema = createInsertSchema(videoSpots).omit({
   createdAt: true,
   order: true,
 }).extend({
-  title: z.string().min(3, "Naslov mora imati najmanje 3 karaktera"),
-  description: z.string().min(10, "Opis mora imati najmanje 10 karaktera"),
-  artist: z.string().min(2, "Ime izvođača mora imati najmanje 2 karaktera"),
-  youtubeUrl: z.string().url("Unesite validan YouTube URL").regex(/^https?:\/\/(www\.)?youtube\.com\/watch\?v=[a-zA-Z0-9_-]{11}|^https?:\/\/youtu\.be\/[a-zA-Z0-9_-]{11}/, "URL mora biti validan YouTube link sa video ID-jem"),
+  title: z.string().min(1, "Naslov je obavezan"),
+  description: z.string().min(1, "Opis je obavezan"),
+  artist: z.string().min(1, "Ime izvođača je obavezno"),
+  youtubeUrl: z.string().url("Unesite validan URL").regex(
+    /^https?:\/\/(www\.)?(youtube\.com\/watch\?.*v=[a-zA-Z0-9_-]{11}|youtu\.be\/[a-zA-Z0-9_-]{11}|youtube\.com\/shorts\/[a-zA-Z0-9_-]{11})/,
+    "URL mora biti validan YouTube link"
+  ),
 });
 
 export type InsertVideoSpot = z.infer<typeof insertVideoSpotSchema>;

@@ -2778,16 +2778,23 @@ Sitemap: ${siteUrl}/sitemap.xml
         return res.status(404).json({ error: "Ugovor nije pronađen" });
       }
 
-      const pdfPath = path.join(process.cwd(), contract.pdfPath!);
-      
-      if (!fs.existsSync(pdfPath)) {
-        return res.status(404).json({ error: "PDF fajl nije pronađen" });
+      // Regenerate PDF from DB data (filesystem is ephemeral on Railway)
+      let pdfBuffer: Buffer;
+      switch (contract.contractType) {
+        case "mix_master":
+          pdfBuffer = await generateMixMasterPDF(contract.contractData as MixMasterContract, contract.contractNumber, contract.verificationHash || "");
+          break;
+        case "copyright_transfer":
+          pdfBuffer = await generateCopyrightTransferPDF(contract.contractData as CopyrightTransferContract, contract.contractNumber, contract.verificationHash || "");
+          break;
+        case "instrumental_sale":
+          pdfBuffer = await generateInstrumentalSalePDF(contract.contractData as InstrumentalSaleContract, contract.contractNumber, contract.verificationHash || "");
+          break;
+        default:
+          return res.status(400).json({ error: "Nepoznat tip ugovora" });
       }
 
-      // Read PDF as base64
-      const pdfBuffer = fs.readFileSync(pdfPath);
-      const pdfBase64 = pdfBuffer.toString('base64');
-
+      const emailFilename = `licenca_${contract.contractNumber.replace(/[\/\\]/g, '_')}.pdf`;
       const emailHtml = licenseDeliveryEmail({
         contractNumber: contract.contractNumber,
         contractType: contract.contractType,
@@ -2795,20 +2802,11 @@ Sitemap: ${siteUrl}/sitemap.xml
         verificationHash: contract.verificationHash,
       });
 
-      // Send email with PDF attachment
-      // Extract filename from pdfPath for consistent email attachment name
-      const emailFilename = path.basename(contract.pdfPath || `licenca_${contract.contractNumber.replace(/-/g, '_')}.pdf`);
-
       await sendEmail({
         to: email,
         subject: `Studio LeFlow - Licenca ${contract.contractNumber}`,
         html: emailHtml,
-        attachments: [{
-          filename: emailFilename,
-          content: pdfBase64,
-          encoding: 'base64',
-          contentType: 'application/pdf',
-        }],
+        attachments: [{ filename: emailFilename, content: pdfBuffer.toString('base64'), encoding: 'base64', contentType: 'application/pdf' }],
       });
 
       res.json({ success: true, message: "Email uspešno poslat" });
@@ -2852,25 +2850,36 @@ Sitemap: ${siteUrl}/sitemap.xml
         try {
           const user = await storage.getUser(parsedUserId);
           const contract = await storage.getContractById(contractId);
-          if (user?.email && contract?.pdfPath) {
-            const pdfPath = path.join(process.cwd(), contract.pdfPath);
-            if (fs.existsSync(pdfPath)) {
-              const pdfBase64 = fs.readFileSync(pdfPath).toString('base64');
-              const emailFilename = path.basename(contract.pdfPath);
-              const emailHtml = licenseDeliveryEmail({
-                contractNumber: contract.contractNumber,
-                contractType: contract.contractType,
-                createdAt: new Date(contract.createdAt),
-                verificationHash: contract.verificationHash,
-              });
-              await sendEmail({
-                to: user.email,
-                subject: `Studio LeFlow — Licenca ${contract.contractNumber}`,
-                html: emailHtml,
-                attachments: [{ filename: emailFilename, content: pdfBase64, encoding: 'base64', contentType: 'application/pdf' }],
-              });
-              console.log(`[CONTRACTS] License auto-sent to user ${user.email} on assignment`);
+          if (user?.email && contract) {
+            // Regenerate PDF from DB data (filesystem is ephemeral on Railway)
+            let autoPdfBuffer: Buffer;
+            switch (contract.contractType) {
+              case "mix_master":
+                autoPdfBuffer = await generateMixMasterPDF(contract.contractData as MixMasterContract, contract.contractNumber, contract.verificationHash || "");
+                break;
+              case "copyright_transfer":
+                autoPdfBuffer = await generateCopyrightTransferPDF(contract.contractData as CopyrightTransferContract, contract.contractNumber, contract.verificationHash || "");
+                break;
+              case "instrumental_sale":
+                autoPdfBuffer = await generateInstrumentalSalePDF(contract.contractData as InstrumentalSaleContract, contract.contractNumber, contract.verificationHash || "");
+                break;
+              default:
+                throw new Error("Unknown contract type");
             }
+            const autoFilename = `licenca_${contract.contractNumber.replace(/[\/\\]/g, '_')}.pdf`;
+            const emailHtml = licenseDeliveryEmail({
+              contractNumber: contract.contractNumber,
+              contractType: contract.contractType,
+              createdAt: new Date(contract.createdAt),
+              verificationHash: contract.verificationHash,
+            });
+            await sendEmail({
+              to: user.email,
+              subject: `Studio LeFlow — Licenca ${contract.contractNumber}`,
+              html: emailHtml,
+              attachments: [{ filename: autoFilename, content: autoPdfBuffer.toString('base64'), encoding: 'base64', contentType: 'application/pdf' }],
+            });
+            console.log(`[CONTRACTS] License auto-sent to user ${user.email} on assignment`);
           }
         } catch (emailError: any) {
           console.error("[CONTRACTS] Auto email on assign failed:", emailError.message);
