@@ -302,7 +302,7 @@ export default function MaintenancePage() {
                         <FormLabel>Verifikacioni kod</FormLabel>
                         <FormControl>
                           <div className="flex justify-center">
-                            <InputOTP maxLength={6} {...field} disabled={isLoading}>
+                            <InputOTP maxLength={6} {...field} disabled={isLoading} autoComplete="one-time-code">
                               <InputOTPGroup>
                                 <InputOTPSlot index={0} />
                                 <InputOTPSlot index={1} />
