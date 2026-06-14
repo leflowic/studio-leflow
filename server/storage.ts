@@ -274,6 +274,7 @@ export interface IStorage {
   adminGetChallenges(): Promise<Array<{ id: number; challengeDate: string; clipUrl: string | null; correctAnswers: string; clipStartSeconds: number; openHour: number; openMinute: number }>>;
   adminUpsertChallenge(data: { challengeDate: string; clipUrl?: string | null; correctAnswers: string; clipStartSeconds: number; openHour: number; openMinute: number }): Promise<void>;
   adminDeleteChallenge(id: number): Promise<void>;
+  adminResetMyGuess(userId: number): Promise<void>;
   adminGetWeeklyPrizes(): Promise<Array<{ id: number; weekStart: string; discountPct: number; prizeDescription: string; promoCode: string | null; winnerUserId: number | null; winnerUsername: string | null }>>;
   adminUpsertWeeklyPrize(data: { weekStart: string; discountPct: number; prizeDescription: string; promoCode?: string }): Promise<void>;
   adminSetPrizeWinner(weekStart: string): Promise<{ winnerUsername: string | null; promoCode: string | null }>;
@@ -2504,6 +2505,13 @@ export class DatabaseStorage implements IStorage {
 
   async adminDeleteChallenge(id: number): Promise<void> {
     await db.delete(dailyChallenges).where(eq(dailyChallenges.id, id));
+  }
+
+  async adminResetMyGuess(userId: number): Promise<void> {
+    const today = this.getTodayDateString();
+    await db.delete(dailyGuesses).where(
+      and(eq(dailyGuesses.userId, userId), eq(dailyGuesses.challengeDate, today))
+    );
   }
 
   async adminGetWeeklyPrizes(): Promise<Array<{ id: number; weekStart: string; discountPct: number; prizeDescription: string; promoCode: string | null; winnerUserId: number | null; winnerUsername: string | null }>> {

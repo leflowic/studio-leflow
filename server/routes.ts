@@ -3287,6 +3287,16 @@ Sitemap: ${siteUrl}/sitemap.xml
     }
   });
 
+  // Admin: DELETE /api/admin/game/reset-my-guess — reset admin's own guess for today (for testing)
+  app.delete("/api/admin/game/reset-my-guess", requireAdmin, async (req, res) => {
+    try {
+      await storage.adminResetMyGuess(req.jwtUser!.id as number);
+      res.json({ success: true });
+    } catch (e) {
+      res.status(500).json({ error: "Greška pri resetovanju" });
+    }
+  });
+
   // Admin: GET /api/admin/game/prizes
   app.get("/api/admin/game/prizes", requireAdmin, async (_req, res) => {
     res.json(await storage.adminGetWeeklyPrizes());

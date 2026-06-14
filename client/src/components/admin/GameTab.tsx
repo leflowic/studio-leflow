@@ -8,7 +8,7 @@ import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
-import { Music, Trophy, Trash2, Plus, Gift, Upload, CheckCircle2, Loader2, Pencil, X } from "lucide-react";
+import { Music, Trophy, Trash2, Plus, Gift, Upload, CheckCircle2, Loader2, Pencil, X, RotateCcw } from "lucide-react";
 import { format } from "date-fns";
 
 function getMonday(offset = 0): string {
@@ -115,6 +115,12 @@ export default function GameTab() {
     mutationFn: (id: number) => apiRequest("DELETE", `/api/admin/game/challenges/${id}`),
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ["/api/admin/game/challenges"] }),
     onError: () => toast({ title: "Greška", description: "Brisanje nije uspelo", variant: "destructive" }),
+  });
+
+  const resetMyGuess = useMutation({
+    mutationFn: () => apiRequest("DELETE", "/api/admin/game/reset-my-guess"),
+    onSuccess: () => toast({ title: "Resetovano", description: "Možeš ponovo igrati danas" }),
+    onError: () => toast({ title: "Greška", description: "Reset nije uspeo", variant: "destructive" }),
   });
 
   const savePrize = useMutation({
@@ -269,6 +275,21 @@ export default function GameTab() {
           )}
         </CardContent>
       </Card>
+
+      {/* Test reset */}
+      <div className="flex items-center justify-between px-1">
+        <p className="text-sm text-muted-foreground">Resetuj sopstveni odgovor za danas (za testiranje)</p>
+        <Button
+          variant="outline"
+          size="sm"
+          className="gap-2"
+          onClick={() => resetMyGuess.mutate()}
+          disabled={resetMyGuess.isPending}
+        >
+          <RotateCcw className="w-4 h-4" />
+          {resetMyGuess.isPending ? "Resetovanje..." : "Reset mog odgovora"}
+        </Button>
+      </div>
 
       <Separator />
 
