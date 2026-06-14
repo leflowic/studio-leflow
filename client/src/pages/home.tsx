@@ -324,10 +324,10 @@ export default function Home() {
               animate={{ opacity: 1, y: 0, scale: 1 }}
               transition={{ duration: 0.8, delay: 0.8, type: "spring" }}
             >
-              <Link href="/kontakt">
-                <Button 
-                  size="lg" 
-                  className="text-lg px-8 py-6 bg-primary hover:bg-primary border border-primary-border backdrop-blur-md transition-all hover:scale-105 hover:shadow-2xl hover:shadow-primary/30 font-semibold"
+              <Link href="/kontakt" className="w-full sm:w-auto">
+                <Button
+                  size="lg"
+                  className="w-full sm:w-auto text-lg px-8 py-6 bg-primary hover:bg-primary border border-primary-border backdrop-blur-md transition-all hover:scale-105 hover:shadow-2xl hover:shadow-primary/30 font-semibold"
                   data-testid="button-book-session"
                 >
                   <Phone className="mr-2 w-5 h-5" />
@@ -335,11 +335,11 @@ export default function Home() {
                   <ArrowRight className="ml-2 w-5 h-5" />
                 </Button>
               </Link>
-              <Link href="/projekti">
+              <Link href="/projekti" className="w-full sm:w-auto">
                 <Button
                   size="lg"
                   variant="outline"
-                  className="text-lg px-8 py-6 backdrop-blur-md bg-white/10 text-white border-white/30 hover:bg-white/20 transition-all hover:scale-105 hover:shadow-xl font-semibold"
+                  className="w-full sm:w-auto text-lg px-8 py-6 backdrop-blur-md bg-white/10 text-white border-white/30 hover:bg-white/20 transition-all hover:scale-105 hover:shadow-xl font-semibold"
                   data-testid="button-view-projects"
                 >
                   <Play className="mr-2 w-5 h-5" />
@@ -347,11 +347,11 @@ export default function Home() {
                 </Button>
               </Link>
               {user?.emailVerified && (
-                <Link href="/igra">
+                <Link href="/igra" className="w-full sm:w-auto">
                   <Button
                     size="lg"
                     variant="outline"
-                    className="text-lg px-8 py-6 backdrop-blur-md bg-white/10 text-white border-white/30 hover:bg-white/20 transition-all hover:scale-105 hover:shadow-xl font-semibold relative"
+                    className="w-full sm:w-auto text-lg px-8 py-6 backdrop-blur-md bg-white/10 text-white border-white/30 hover:bg-white/20 transition-all hover:scale-105 hover:shadow-xl font-semibold relative"
                   >
                     <Gamepad2 className="mr-2 w-5 h-5" />
                     Pogodi Pesmu

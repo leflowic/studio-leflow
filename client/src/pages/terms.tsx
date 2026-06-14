@@ -126,7 +126,7 @@ export default function Terms() {
         </div>
 
         <FadeInWhenVisible delay={0.15}>
-          <div className="mb-12 grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-2">
+          <div className="mb-12 grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-2">
             {termsSection.map((section) => (
               <a
                 key={section.id}
@@ -146,9 +146,9 @@ export default function Terms() {
             <FadeInWhenVisible delay={index * 0.05}>
                 <Card data-testid={`card-terms-${index}`} className="overflow-hidden hover:shadow-lg transition-shadow duration-300">
                   <CardHeader className="bg-gradient-to-r from-primary/5 to-transparent">
-                    <CardTitle className="flex items-center gap-4 text-2xl">
-                      <div className="flex items-center justify-center w-12 h-12 rounded-xl bg-primary/10 ring-2 ring-primary/20">
-                        <section.icon className="w-6 h-6 text-primary" />
+                    <CardTitle className="flex items-center gap-3 text-lg md:text-2xl">
+                      <div className="flex items-center justify-center w-10 h-10 md:w-12 md:h-12 rounded-xl bg-primary/10 ring-2 ring-primary/20 flex-shrink-0">
+                        <section.icon className="w-5 h-5 md:w-6 md:h-6 text-primary" />
                       </div>
                       <span data-testid={`text-section-title-${index}`}>{section.title}</span>
                     </CardTitle>

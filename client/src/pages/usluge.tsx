@@ -112,7 +112,7 @@ export default function UslugePage() {
                 <Card className="overflow-hidden">
                   <CardContent className="p-0">
                     <div className="grid md:grid-cols-2 gap-0">
-                      <div className="p-8 lg:p-10">
+                      <div className="p-5 md:p-8 lg:p-10">
                         <div className="inline-flex items-center justify-center w-14 h-14 rounded-xl bg-primary/10 mb-6">
                           <service.icon className="w-7 h-7 text-primary" />
                         </div>
@@ -125,7 +125,7 @@ export default function UslugePage() {
                           </Button>
                         </Link>
                       </div>
-                      <div className="bg-muted/30 p-8 lg:p-10 flex items-center">
+                      <div className="bg-muted/30 p-5 md:p-8 lg:p-10 flex items-center">
                         <ul className="space-y-3 w-full">
                           {service.features.map((f) => (
                             <li key={f} className="flex items-start gap-3">
