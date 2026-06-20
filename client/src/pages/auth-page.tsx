@@ -29,7 +29,7 @@ import { apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 
 const loginSchema = z.object({
-  username: z.string().min(3, "Korisničko ime mora imati najmanje 3 karaktera"),
+  username: z.string().min(1, "Unesite korisničko ime ili email adresu"),
   password: z.string().min(8, "Lozinka mora imati najmanje 8 karaktera"),
   rememberMe: z.boolean().optional().default(false),
 });
@@ -542,10 +542,10 @@ export default function AuthPage() {
                     name="username"
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel>Korisničko ime</FormLabel>
+                        <FormLabel>Korisničko ime ili email</FormLabel>
                         <FormControl>
                           <Input
-                            placeholder="Unesite korisničko ime"
+                            placeholder="Korisničko ime ili email adresa"
                             autoComplete="username"
                             data-testid="input-username"
                             {...field}
@@ -646,10 +646,10 @@ export default function AuthPage() {
                     name="username"
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel>Korisničko ime</FormLabel>
+                        <FormLabel>Korisničko ime ili email</FormLabel>
                         <FormControl>
                           <Input
-                            placeholder="Unesite korisničko ime"
+                            placeholder="Korisničko ime ili email adresa"
                             autoComplete="username"
                             data-testid="input-username"
                             {...field}
