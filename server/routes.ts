@@ -262,6 +262,7 @@ async function checkMaintenanceMode(req: any, res: any, next: any) {
     '/admin',
     '/admin-login-request',
     '/admin-login-verify',
+    '/portal',  // Public client portal links must work even in maintenance
   ];
   
   // Check if the request is for an allowed path
