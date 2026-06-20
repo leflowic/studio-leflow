@@ -3398,6 +3398,186 @@ Sitemap: ${siteUrl}/sitemap.xml
     }
   });
 
+  // ===== CLIENT PORTAL ROUTES =====
+
+  // Multer instance for portal audio (50MB limit)
+  const portalUpload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 50 * 1024 * 1024 } });
+
+  // --- Admin Portal Routes ---
+
+  app.get("/api/admin/portals", requireAdmin, async (_req, res) => {
+    try {
+      const portals = await storage.getAllPortals();
+      res.json(portals);
+    } catch {
+      res.status(500).json({ error: "Greška na serveru" });
+    }
+  });
+
+  app.post("/api/admin/portals", requireAdmin, async (req, res) => {
+    try {
+      const { name, clientName } = req.body;
+      if (!name?.trim() || !clientName?.trim()) return res.status(400).json({ error: "Naziv projekta i ime klijenta su obavezni" });
+      const { randomBytes } = await import("crypto");
+      const shareToken = randomBytes(16).toString("hex");
+      const portal = await storage.createPortal({ name: name.trim(), clientName: clientName.trim(), shareToken, createdBy: req.jwtUser!.id });
+      res.json(portal);
+    } catch {
+      res.status(500).json({ error: "Greška na serveru" });
+    }
+  });
+
+  app.delete("/api/admin/portals/:id", requireAdmin, async (req, res) => {
+    try {
+      const id = parseInt(req.params.id);
+      if (isNaN(id)) return res.status(400).json({ error: "Nevažeći ID" });
+      await storage.deletePortal(id);
+      res.json({ ok: true });
+    } catch {
+      res.status(500).json({ error: "Greška na serveru" });
+    }
+  });
+
+  app.get("/api/admin/portals/:id/versions", requireAdmin, async (req, res) => {
+    try {
+      const id = parseInt(req.params.id);
+      if (isNaN(id)) return res.status(400).json({ error: "Nevažeći ID" });
+      const versions = await storage.getPortalVersions(id);
+      res.json(versions);
+    } catch {
+      res.status(500).json({ error: "Greška na serveru" });
+    }
+  });
+
+  app.post("/api/admin/portals/:id/versions", requireAdmin, portalUpload.single("audio"), async (req, res) => {
+    try {
+      const portalId = parseInt(req.params.id ?? "");
+      if (isNaN(portalId)) return res.status(400).json({ error: "Nevažeći ID" });
+      if (!req.file) return res.status(400).json({ error: "Fajl nije priložen" });
+      const { versionName } = req.body;
+      if (!versionName?.trim()) return res.status(400).json({ error: "Naziv verzije je obavezan" });
+      const portal = await storage.getPortalById(portalId);
+      if (!portal) return res.status(404).json({ error: "Portal nije pronađen" });
+      const audioUrl = await uploadAudioToCloudinary(req.file.buffer, "studioleflow/portal-versions", req.file.originalname);
+      const version = await storage.createPortalVersion({ portalId, versionName: versionName.trim(), audioUrl });
+      res.json(version);
+    } catch (e: any) {
+      res.status(500).json({ error: e.message || "Greška pri uploadu" });
+    }
+  });
+
+  app.delete("/api/admin/portals/versions/:versionId", requireAdmin, async (req, res) => {
+    try {
+      const id = parseInt(req.params.versionId);
+      if (isNaN(id)) return res.status(400).json({ error: "Nevažeći ID" });
+      await storage.deletePortalVersion(id);
+      res.json({ ok: true });
+    } catch {
+      res.status(500).json({ error: "Greška na serveru" });
+    }
+  });
+
+  app.patch("/api/admin/portals/comments/:commentId/resolve", requireAdmin, async (req, res) => {
+    try {
+      const id = parseInt(req.params.commentId);
+      if (isNaN(id)) return res.status(400).json({ error: "Nevažeći ID" });
+      await storage.resolvePortalComment(id);
+      res.json({ ok: true });
+    } catch {
+      res.status(500).json({ error: "Greška na serveru" });
+    }
+  });
+
+  app.post("/api/admin/portals/versions/:versionId/comment", requireAdmin, async (req, res) => {
+    try {
+      const versionId = parseInt(req.params.versionId);
+      if (isNaN(versionId)) return res.status(400).json({ error: "Nevažeći ID" });
+      const { text, timestampSeconds } = req.body;
+      if (!text?.trim()) return res.status(400).json({ error: "Tekst komentara je obavezan" });
+      const comment = await storage.addPortalComment({
+        versionId,
+        authorName: "Studio LeFlow",
+        authorType: "producer",
+        timestampSeconds: parseInt(timestampSeconds) || 0,
+        text: text.trim(),
+      });
+      res.json(comment);
+    } catch {
+      res.status(500).json({ error: "Greška na serveru" });
+    }
+  });
+
+  app.get("/api/admin/portals/versions/:versionId/comments", requireAdmin, async (req, res) => {
+    try {
+      const id = parseInt(req.params.versionId);
+      if (isNaN(id)) return res.status(400).json({ error: "Nevažeći ID" });
+      const comments = await storage.getPortalComments(id);
+      res.json(comments);
+    } catch {
+      res.status(500).json({ error: "Greška na serveru" });
+    }
+  });
+
+  // --- Public Portal Routes (no auth, token-based) ---
+
+  app.get("/api/portal/:token", async (req, res) => {
+    try {
+      const portal = await storage.getPortalByToken(req.params.token);
+      if (!portal) return res.status(404).json({ error: "Portal nije pronađen" });
+      const versions = await storage.getPortalVersions(portal.id);
+      res.json({ portal, versions });
+    } catch {
+      res.status(500).json({ error: "Greška na serveru" });
+    }
+  });
+
+  app.get("/api/portal/:token/versions/:versionId/comments", async (req, res) => {
+    try {
+      const portal = await storage.getPortalByToken(req.params.token);
+      if (!portal) return res.status(404).json({ error: "Portal nije pronađen" });
+      const versionId = parseInt(req.params.versionId);
+      if (isNaN(versionId)) return res.status(400).json({ error: "Nevažeći ID" });
+      const comments = await storage.getPortalComments(versionId);
+      res.json(comments);
+    } catch {
+      res.status(500).json({ error: "Greška na serveru" });
+    }
+  });
+
+  app.post("/api/portal/:token/versions/:versionId/comments", async (req, res) => {
+    try {
+      const portal = await storage.getPortalByToken(req.params.token);
+      if (!portal) return res.status(404).json({ error: "Portal nije pronađen" });
+      const versionId = parseInt(req.params.versionId);
+      if (isNaN(versionId)) return res.status(400).json({ error: "Nevažeći ID" });
+      const { text, timestampSeconds } = req.body;
+      if (!text?.trim()) return res.status(400).json({ error: "Komentar ne može biti prazan" });
+      const comment = await storage.addPortalComment({
+        versionId,
+        authorName: portal.clientName,
+        authorType: "client",
+        timestampSeconds: parseInt(timestampSeconds) || 0,
+        text: text.trim(),
+      });
+      res.json(comment);
+    } catch {
+      res.status(500).json({ error: "Greška na serveru" });
+    }
+  });
+
+  app.post("/api/portal/:token/versions/:versionId/approve", async (req, res) => {
+    try {
+      const portal = await storage.getPortalByToken(req.params.token);
+      if (!portal) return res.status(404).json({ error: "Portal nije pronađen" });
+      const versionId = parseInt(req.params.versionId);
+      if (isNaN(versionId)) return res.status(400).json({ error: "Nevažeći ID" });
+      await storage.approvePortalVersion(versionId, portal.clientName);
+      res.json({ ok: true });
+    } catch {
+      res.status(500).json({ error: "Greška na serveru" });
+    }
+  });
+
   const httpServer = createServer(app);
 
   return httpServer;

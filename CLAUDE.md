@@ -132,6 +132,12 @@ There are no automated tests in this project.
 - `client/public/sitemap.xml` and `robots.txt` — only list real routes that exist in `App.tsx`. Disallow protected routes (`/admin`, `/dashboard`, `/igra`, `/zajednica`, `/moje-pesme`).
 - Private/giveaway-only pages (`/uslovi-koriscenja`) should use `<SEO noIndex={true}>`.
 
+**Chunk loading / error boundary:**
+- `ChunkErrorBoundary` in `App.tsx` wraps all lazy-loaded routes. On a chunk load error it auto-reloads once per pathname using a `sessionStorage` key `chunk-reload-${pathname}` — each route gets its own reload attempt so navigating between pages after a deploy doesn't get stuck showing the error UI.
+
+**FAQ page:**
+- Route `/faq` — accordion component at `client/src/pages/faq.tsx`. Linked from the footer only (was removed from the main nav). Listed in `sitemap.xml`.
+
 **Security notes:**
 - Admin 2FA: one-time token emailed on admin login (`adminLoginToken` / `adminLoginExpiry` fields on user).
 - Rate limiters on login (5/15 min), registration (3/hr), uploads (30/hr), contact (10/hr). All upload routes have `uploadRateLimiter` applied.

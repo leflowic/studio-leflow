@@ -817,3 +817,40 @@ export const calendarDays = pgTable("calendar_days", {
 
 export type CalendarDay = typeof calendarDays.$inferSelect;
 export type CommunityMessage = typeof communityMessages.$inferSelect;
+
+// ─── Client Portal tables ─────────────────────────────────────────────────────
+
+export const clientPortals = pgTable("client_portals", {
+  id: serial("id").primaryKey(),
+  name: text("name").notNull(),
+  clientName: text("client_name").notNull(),
+  shareToken: text("share_token").notNull().unique(),
+  createdBy: integer("created_by").notNull().references(() => users.id),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+
+export const portalVersions = pgTable("portal_versions", {
+  id: serial("id").primaryKey(),
+  portalId: integer("portal_id").notNull().references(() => clientPortals.id, { onDelete: "cascade" }),
+  versionName: text("version_name").notNull(),
+  audioUrl: text("audio_url").notNull(),
+  approved: boolean("approved").notNull().default(false),
+  approvedAt: timestamp("approved_at"),
+  approvedByName: text("approved_by_name"),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+
+export const portalComments = pgTable("portal_comments", {
+  id: serial("id").primaryKey(),
+  versionId: integer("version_id").notNull().references(() => portalVersions.id, { onDelete: "cascade" }),
+  authorName: text("author_name").notNull(),
+  authorType: text("author_type").notNull().default("client"),
+  timestampSeconds: integer("timestamp_seconds").notNull(),
+  text: text("text").notNull(),
+  resolved: boolean("resolved").notNull().default(false),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+
+export type ClientPortal = typeof clientPortals.$inferSelect;
+export type PortalVersion = typeof portalVersions.$inferSelect;
+export type PortalComment = typeof portalComments.$inferSelect;

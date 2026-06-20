@@ -97,6 +97,41 @@ async function runMigrations() {
       ALTER TABLE messages
         ADD COLUMN IF NOT EXISTS reply_to_id INTEGER REFERENCES messages(id) ON DELETE SET NULL;
     `);
+    // Client Portal tables
+    await client.query(`
+      CREATE TABLE IF NOT EXISTS client_portals (
+        id SERIAL PRIMARY KEY,
+        name TEXT NOT NULL,
+        client_name TEXT NOT NULL,
+        share_token TEXT NOT NULL UNIQUE,
+        created_by INTEGER NOT NULL REFERENCES users(id),
+        created_at TIMESTAMP NOT NULL DEFAULT NOW()
+      );
+    `);
+    await client.query(`
+      CREATE TABLE IF NOT EXISTS portal_versions (
+        id SERIAL PRIMARY KEY,
+        portal_id INTEGER NOT NULL REFERENCES client_portals(id) ON DELETE CASCADE,
+        version_name TEXT NOT NULL,
+        audio_url TEXT NOT NULL,
+        approved BOOLEAN NOT NULL DEFAULT FALSE,
+        approved_at TIMESTAMP,
+        approved_by_name TEXT,
+        created_at TIMESTAMP NOT NULL DEFAULT NOW()
+      );
+    `);
+    await client.query(`
+      CREATE TABLE IF NOT EXISTS portal_comments (
+        id SERIAL PRIMARY KEY,
+        version_id INTEGER NOT NULL REFERENCES portal_versions(id) ON DELETE CASCADE,
+        author_name TEXT NOT NULL,
+        author_type TEXT NOT NULL DEFAULT 'client',
+        timestamp_seconds INTEGER NOT NULL,
+        text TEXT NOT NULL,
+        resolved BOOLEAN NOT NULL DEFAULT FALSE,
+        created_at TIMESTAMP NOT NULL DEFAULT NOW()
+      );
+    `);
     log('[Migrations] Schema migrations applied successfully', 'express');
   } catch (err: any) {
     log(`[Migrations] Warning: ${err.message}`, 'express');

@@ -34,7 +34,13 @@ import {
   type InsertCommunityMessage,
   type SiteAnnouncement,
   type InsertSiteAnnouncement,
+  type ClientPortal,
+  type PortalVersion,
+  type PortalComment,
   contactSubmissions,
+  clientPortals,
+  portalVersions,
+  portalComments,
   users,
   projects,
   comments,
@@ -278,6 +284,20 @@ export interface IStorage {
   adminGetWeeklyPrizes(): Promise<Array<{ id: number; weekStart: string; discountPct: number; prizeDescription: string; promoCode: string | null; winnerUserId: number | null; winnerUsername: string | null }>>;
   adminUpsertWeeklyPrize(data: { weekStart: string; discountPct: number; prizeDescription: string; promoCode?: string }): Promise<void>;
   adminSetPrizeWinner(weekStart: string): Promise<{ winnerUsername: string | null; promoCode: string | null }>;
+
+  // Client Portal
+  getAllPortals(): Promise<Array<ClientPortal & { versionsCount: number; unresolvedComments: number }>>;
+  getPortalById(id: number): Promise<ClientPortal | undefined>;
+  getPortalByToken(token: string): Promise<ClientPortal | undefined>;
+  createPortal(data: { name: string; clientName: string; shareToken: string; createdBy: number }): Promise<ClientPortal>;
+  deletePortal(id: number): Promise<void>;
+  getPortalVersions(portalId: number): Promise<Array<PortalVersion & { commentCount: number }>>;
+  createPortalVersion(data: { portalId: number; versionName: string; audioUrl: string }): Promise<PortalVersion>;
+  deletePortalVersion(id: number): Promise<void>;
+  approvePortalVersion(id: number, approvedByName: string): Promise<void>;
+  getPortalComments(versionId: number): Promise<PortalComment[]>;
+  addPortalComment(data: { versionId: number; authorName: string; authorType: string; timestampSeconds: number; text: string }): Promise<PortalComment>;
+  resolvePortalComment(id: number): Promise<void>;
 
   // Session store
   sessionStore: Store;
@@ -2544,6 +2564,79 @@ export class DatabaseStorage implements IStorage {
       await db.update(weeklyPrizes).set({ winnerUserId: winner.userId }).where(eq(weeklyPrizes.weekStart, weekStart));
     }
     return { winnerUsername: winner?.username ?? null, promoCode: prize?.promoCode ?? null };
+  }
+
+  // ─── Client Portal ─────────────────────────────────────────────────────────
+
+  async getAllPortals(): Promise<Array<ClientPortal & { versionsCount: number; unresolvedComments: number }>> {
+    const portals = await db.select().from(clientPortals).orderBy(desc(clientPortals.createdAt));
+    const result = await Promise.all(portals.map(async (p) => {
+      const versions = await db.select({ id: portalVersions.id }).from(portalVersions).where(eq(portalVersions.portalId, p.id));
+      const versionIds = versions.map(v => v.id);
+      let unresolvedComments = 0;
+      if (versionIds.length > 0) {
+        const [r] = await db.select({ count: sql<number>`count(*)` }).from(portalComments)
+          .where(and(sql`${portalComments.versionId} = ANY(${sql.raw(`ARRAY[${versionIds.join(',')}]`)})`, eq(portalComments.resolved, false)));
+        unresolvedComments = Number(r?.count ?? 0);
+      }
+      return { ...p, versionsCount: versions.length, unresolvedComments };
+    }));
+    return result;
+  }
+
+  async getPortalById(id: number): Promise<ClientPortal | undefined> {
+    const [portal] = await db.select().from(clientPortals).where(eq(clientPortals.id, id));
+    return portal;
+  }
+
+  async getPortalByToken(token: string): Promise<ClientPortal | undefined> {
+    const [portal] = await db.select().from(clientPortals).where(eq(clientPortals.shareToken, token));
+    return portal;
+  }
+
+  async createPortal(data: { name: string; clientName: string; shareToken: string; createdBy: number }): Promise<ClientPortal> {
+    const [portal] = await db.insert(clientPortals).values(data).returning();
+    return portal!;
+  }
+
+  async deletePortal(id: number): Promise<void> {
+    await db.delete(clientPortals).where(eq(clientPortals.id, id));
+  }
+
+  async getPortalVersions(portalId: number): Promise<Array<PortalVersion & { commentCount: number }>> {
+    const versions = await db.select().from(portalVersions)
+      .where(eq(portalVersions.portalId, portalId))
+      .orderBy(portalVersions.createdAt);
+    return Promise.all(versions.map(async (v) => {
+      const [r] = await db.select({ count: sql<number>`count(*)` }).from(portalComments).where(eq(portalComments.versionId, v.id));
+      return { ...v, commentCount: Number(r?.count ?? 0) };
+    }));
+  }
+
+  async createPortalVersion(data: { portalId: number; versionName: string; audioUrl: string }): Promise<PortalVersion> {
+    const [version] = await db.insert(portalVersions).values(data).returning();
+    return version!;
+  }
+
+  async deletePortalVersion(id: number): Promise<void> {
+    await db.delete(portalVersions).where(eq(portalVersions.id, id));
+  }
+
+  async approvePortalVersion(id: number, approvedByName: string): Promise<void> {
+    await db.update(portalVersions).set({ approved: true, approvedAt: new Date(), approvedByName }).where(eq(portalVersions.id, id));
+  }
+
+  async getPortalComments(versionId: number): Promise<PortalComment[]> {
+    return db.select().from(portalComments).where(eq(portalComments.versionId, versionId)).orderBy(portalComments.timestampSeconds);
+  }
+
+  async addPortalComment(data: { versionId: number; authorName: string; authorType: string; timestampSeconds: number; text: string }): Promise<PortalComment> {
+    const [comment] = await db.insert(portalComments).values(data).returning();
+    return comment!;
+  }
+
+  async resolvePortalComment(id: number): Promise<void> {
+    await db.update(portalComments).set({ resolved: true }).where(eq(portalComments.id, id));
   }
 }
 

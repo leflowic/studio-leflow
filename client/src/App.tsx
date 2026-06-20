@@ -93,12 +93,27 @@ const MaintenancePage = lazy(() => import("@/pages/maintenance"));
 const NewsletterConfirmationPage = lazy(() => import("@/pages/newsletter-confirmation"));
 const UslugePage = lazy(() => import("@/pages/usluge"));
 const FAQPage = lazy(() => import("@/pages/faq"));
+const PortalPage = lazy(() => import("@/pages/portal"));
 function Router() {
   const [location] = useLocation();
   const { user } = useAuth();
-  
+
   useScrollToTop();
   usePWARedirect(); // Auto-redirect in PWA standalone mode
+
+  // Portal pages get their own standalone layout (no main nav/footer)
+  if (location.startsWith("/portal/")) {
+    return (
+      <ChunkErrorBoundary>
+        <Suspense fallback={<div className="min-h-screen bg-[#0a0a0a] flex items-center justify-center"><div className="w-8 h-8 rounded-full border-2 border-amber-500/30 border-t-amber-500 animate-spin" /></div>}>
+          <Switch location={location}>
+            <Route path="/portal/:token"><PortalPage /></Route>
+            <Route><PortalPage /></Route>
+          </Switch>
+        </Suspense>
+      </ChunkErrorBoundary>
+    );
+  }
 
   // Check if maintenance mode is active
   const { data: maintenanceData } = useQuery<{ maintenanceMode: boolean }>({
