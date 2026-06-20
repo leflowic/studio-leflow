@@ -289,11 +289,15 @@ export default function PortalPage() {
 
   type PortalData = { portal: ClientPortal; versions: Array<PortalVersion & { commentCount: number }> };
 
+  const [portalErrorStatus, setPortalErrorStatus] = useState<number | null>(null);
   const { data, isLoading, isError } = useQuery<PortalData>({
     queryKey: [`/api/portal/${token}`],
     queryFn: async () => {
       const res = await fetch(`/api/portal/${token}`);
-      if (!res.ok) throw new Error("Portal nije pronađen");
+      if (!res.ok) {
+        setPortalErrorStatus(res.status);
+        throw new Error(String(res.status));
+      }
       return res.json();
     },
     retry: false,
@@ -360,14 +364,21 @@ export default function PortalPage() {
   }
 
   if (isError || !portal) {
+    const isServerError = portalErrorStatus !== null && portalErrorStatus >= 500;
     return (
       <div className="min-h-screen bg-[#0a0a0a] flex items-center justify-center px-4">
         <div className="text-center space-y-4 max-w-sm">
           <div className="w-14 h-14 rounded-2xl bg-zinc-900 border border-zinc-800 flex items-center justify-center mx-auto">
             <Music2 className="w-7 h-7 text-zinc-600" />
           </div>
-          <h1 className="text-xl font-bold">Portal nije pronađen</h1>
-          <p className="text-zinc-500 text-sm">Link je možda istekao ili je nevažeći. Kontaktiraj studio za novi link.</p>
+          <h1 className="text-xl font-bold">
+            {isServerError ? "Greška na serveru" : "Portal nije pronađen"}
+          </h1>
+          <p className="text-zinc-500 text-sm">
+            {isServerError
+              ? "Došlo je do tehničke greške. Pokušaj ponovo za nekoliko trenutaka."
+              : "Link je možda istekao ili je nevažeći. Kontaktiraj studio za novi link."}
+          </p>
           <a href="https://studioleflow.com" className="text-amber-500 text-sm hover:text-amber-400 transition-colors">
             studioleflow.com
           </a>

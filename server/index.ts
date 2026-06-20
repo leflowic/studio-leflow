@@ -97,7 +97,13 @@ async function runMigrations() {
       ALTER TABLE messages
         ADD COLUMN IF NOT EXISTS reply_to_id INTEGER REFERENCES messages(id) ON DELETE SET NULL;
     `);
-    // Client Portal tables
+    log('[Migrations] Core schema migrations applied successfully', 'express');
+  } catch (err: any) {
+    log(`[Migrations] Warning on core migrations: ${err.message}`, 'express');
+  }
+
+  // Client Portal tables — separate try so they always run even if earlier migrations fail
+  try {
     await client.query(`
       CREATE TABLE IF NOT EXISTS client_portals (
         id SERIAL PRIMARY KEY,
@@ -132,9 +138,9 @@ async function runMigrations() {
         created_at TIMESTAMP NOT NULL DEFAULT NOW()
       );
     `);
-    log('[Migrations] Schema migrations applied successfully', 'express');
+    log('[Migrations] Client Portal tables ready', 'express');
   } catch (err: any) {
-    log(`[Migrations] Warning: ${err.message}`, 'express');
+    log(`[Migrations] Warning on portal tables: ${err.message}`, 'express');
   } finally {
     client.release();
   }

@@ -3409,7 +3409,8 @@ Sitemap: ${siteUrl}/sitemap.xml
     try {
       const portals = await storage.getAllPortals();
       res.json(portals);
-    } catch {
+    } catch (e) {
+      console.error("[Portal] GET /api/admin/portals error:", e);
       res.status(500).json({ error: "Greška na serveru" });
     }
   });
@@ -3422,7 +3423,8 @@ Sitemap: ${siteUrl}/sitemap.xml
       const shareToken = randomBytes(16).toString("hex");
       const portal = await storage.createPortal({ name: name.trim(), clientName: clientName.trim(), shareToken, createdBy: req.jwtUser!.id });
       res.json(portal);
-    } catch {
+    } catch (e) {
+      console.error("[Portal] POST /api/admin/portals error:", e);
       res.status(500).json({ error: "Greška na serveru" });
     }
   });
@@ -3526,7 +3528,8 @@ Sitemap: ${siteUrl}/sitemap.xml
       if (!portal) return res.status(404).json({ error: "Portal nije pronađen" });
       const versions = await storage.getPortalVersions(portal.id);
       res.json({ portal, versions });
-    } catch {
+    } catch (e) {
+      console.error("[Portal] GET /api/portal/:token error:", e);
       res.status(500).json({ error: "Greška na serveru" });
     }
   });
@@ -3539,7 +3542,8 @@ Sitemap: ${siteUrl}/sitemap.xml
       if (isNaN(versionId)) return res.status(400).json({ error: "Nevažeći ID" });
       const comments = await storage.getPortalComments(versionId);
       res.json(comments);
-    } catch {
+    } catch (e) {
+      console.error("[Portal] GET comments error:", e);
       res.status(500).json({ error: "Greška na serveru" });
     }
   });
@@ -3560,7 +3564,8 @@ Sitemap: ${siteUrl}/sitemap.xml
         text: text.trim(),
       });
       res.json(comment);
-    } catch {
+    } catch (e) {
+      console.error("[Portal] POST comment error:", e);
       res.status(500).json({ error: "Greška na serveru" });
     }
   });
@@ -3573,7 +3578,8 @@ Sitemap: ${siteUrl}/sitemap.xml
       if (isNaN(versionId)) return res.status(400).json({ error: "Nevažeći ID" });
       await storage.approvePortalVersion(versionId, portal.clientName);
       res.json({ ok: true });
-    } catch {
+    } catch (e) {
+      console.error("[Portal] POST approve error:", e);
       res.status(500).json({ error: "Greška na serveru" });
     }
   });
