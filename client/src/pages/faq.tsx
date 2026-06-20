@@ -49,8 +49,8 @@ export default function FAQPage() {
       <SEO
         title="Česta Pitanja — Studio LeFlow"
         description="Odgovori na najčešća pitanja o snimanju, mix/masteru, instrumentalima i rezervaciji termina u Studio LeFlow Beograd."
-        keywords="studio leflow faq, pitanja snimanje, kako zakazati studio, revizije mix, početnik studio beograd"
-        url="/faq"
+        keywords={["studio leflow faq", "pitanja snimanje", "kako zakazati studio", "revizije mix", "početnik studio beograd"]}
+        canonicalUrl="/faq"
       />
 
       <main className="min-h-screen bg-background">

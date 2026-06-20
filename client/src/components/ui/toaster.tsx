@@ -68,15 +68,15 @@ export function Toaster() {
     <ToastProvider duration={DURATION}>
       {toasts.map(function ({ id, title, description, action, variant, ...props }) {
         return (
-          <Toast key={id} variant={variant} {...props}>
-            <ToastIcon variant={variant} />
+          <Toast key={id} variant={variant ?? undefined} {...props}>
+            <ToastIcon variant={variant ?? undefined} />
             <div className="flex-1 grid gap-0 min-w-0">
               {title && <ToastTitle>{title}</ToastTitle>}
               {description && <ToastDescription>{description}</ToastDescription>}
             </div>
             {action}
             <ToastClose />
-            <ProgressBar variant={variant} />
+            <ProgressBar variant={variant ?? undefined} />
           </Toast>
         )
       })}

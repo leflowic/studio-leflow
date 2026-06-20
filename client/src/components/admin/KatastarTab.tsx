@@ -66,7 +66,7 @@ function rankBadge(rank: string) {
     vip:     { label: "VIP",     className: "bg-purple-500/20 text-purple-400 border-purple-500/30", icon: <Star className="w-3 h-3" /> },
     user:    { label: "User",    className: "bg-zinc-500/20 text-zinc-400 border-zinc-500/30",  icon: <User className="w-3 h-3" /> },
   };
-  const r = map[rank] ?? map.user;
+  const r = map[rank] ?? map["user"]!;
   return (
     <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium border ${r.className}`}>
       {r.icon}{r.label}
@@ -143,7 +143,7 @@ function ClientDetail({ userId, onBack }: { userId: number; onBack: () => void }
           <div className="flex items-start gap-4">
             <AvatarWithInitials
               src={user.avatarUrl}
-              username={user.username}
+              name={user.username}
               className="w-16 h-16 text-xl"
             />
             <div className="flex-1 min-w-0">
@@ -372,7 +372,7 @@ export function KatastarTab() {
                 <div className="flex items-center gap-3">
                   <AvatarWithInitials
                     src={u.avatarUrl}
-                    username={u.username}
+                    name={u.username}
                     className="w-10 h-10"
                   />
                   <div className="min-w-0 flex-1">

@@ -5,7 +5,6 @@ import { wsHelpers, notifyUser, getOnlineUsersSnapshot } from "./websocket-helpe
 import { insertContactSubmissionSchema, insertCmsContentSchema, insertCmsMediaSchema, insertVideoSpotSchema, insertUserSongSchema, insertNewsletterSubscriberSchema, insertInvoiceSchema, insertCommunityMessageSchema, insertSiteAnnouncementSchema, mixMasterContractDataSchema, copyrightTransferContractDataSchema, instrumentalSaleContractDataSchema, type CmsContent, type CmsMedia, type VideoSpot, type UserSong } from "@shared/schema";
 import { sendEmail, getLastVerificationCode } from "./resend-client";
 import { resendVerificationEmail, adminLoginEmail, contactFormEmail, newsletterConfirmEmail, licenseDeliveryEmail, customEmail } from "./email-templates";
-import { sendEmail } from "./resend-client";
 import { setupAuth, hashPassword, comparePasswords } from "./auth";
 import multer from "multer";
 import fs from "fs";
@@ -1295,7 +1294,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.get("/api/admin/users", requireAdmin, async (_req, res) => {
     try {
       const allUsers = await storage.getAllUsers();
-      res.json(allUsers.map(({ passwordHash, adminLoginToken, adminLoginExpiry, ...safe }) => safe));
+      res.json(allUsers.map(({ password, adminLoginToken, adminLoginExpiry, ...safe }) => safe));
     } catch (error) {
       res.status(500).json({ error: "Greška na serveru" });
     }

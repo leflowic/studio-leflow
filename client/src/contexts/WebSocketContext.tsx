@@ -12,12 +12,13 @@ function requestNotificationPermission() {
 function showBrowserNotification(title: string, body: string, senderUsername?: string) {
   if (!("Notification" in window) || Notification.permission !== "granted") return;
   if (!document.hidden) return; // Only show when tab is in background
-  const n = new Notification(title, {
+  const notifOptions: NotificationOptions & { renotify?: boolean } = {
     body,
     icon: "/leflow-logo-white.png",
     tag: senderUsername || "message",
     renotify: true,
-  });
+  };
+  const n = new Notification(title, notifOptions);
   n.onclick = () => { window.focus(); n.close(); };
 }
 
