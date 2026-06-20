@@ -1,28 +1,26 @@
 import { useQuery } from "@tanstack/react-query";
-import { apiRequest } from "@/lib/queryClient";
 import { useAuth } from "@/hooks/use-auth";
 import { SEO } from "@/components/SEO";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Input } from "@/components/ui/input";
 import { Link } from "wouter";
 import { format } from "date-fns";
-import { useState } from "react";
-import { 
-  FolderOpen, 
-  FileText, 
-  Receipt, 
-  MessageCircle, 
-  Clock, 
-  CheckCircle2, 
+import {
+  FolderOpen,
+  FileText,
+  Receipt,
+  MessageCircle,
+  Clock,
+  CheckCircle2,
   XCircle,
-  LayoutDashboard,
   Download,
   AlertCircle,
   Loader2,
-  ExternalLink
+  ExternalLink,
+  TrendingUp,
+  Sparkles,
+  Music2,
 } from "lucide-react";
 import { FadeInWhenVisible } from "@/components/motion/FadeIn";
 
@@ -73,415 +71,319 @@ type DashboardOverview = {
 };
 
 const statusConfig = {
-  waiting: { label: "Čekanje", icon: Clock, color: "bg-yellow-500/10 text-yellow-600 dark:text-yellow-500" },
-  in_progress: { label: "U toku", icon: Loader2, color: "bg-blue-500/10 text-blue-600 dark:text-blue-500" },
-  completed: { label: "Završeno", icon: CheckCircle2, color: "bg-green-500/10 text-green-600 dark:text-green-500" },
-  cancelled: { label: "Otkazano", icon: XCircle, color: "bg-red-500/10 text-red-600 dark:text-red-500" },
+  waiting:     { label: "Čekanje",  Icon: Clock,        bg: "bg-yellow-500/10", text: "text-yellow-500", dot: "bg-yellow-500" },
+  in_progress: { label: "U toku",   Icon: Loader2,      bg: "bg-blue-500/10",   text: "text-blue-500",   dot: "bg-blue-500" },
+  completed:   { label: "Završeno", Icon: CheckCircle2, bg: "bg-green-500/10",  text: "text-green-500",  dot: "bg-green-500" },
+  cancelled:   { label: "Otkazano", Icon: XCircle,      bg: "bg-red-500/10",    text: "text-red-500",    dot: "bg-red-500" },
 };
 
 const invoiceStatusConfig = {
-  pending: { label: "Na čekanju", color: "bg-yellow-500/10 text-yellow-600 dark:text-yellow-500" },
-  paid: { label: "Plaćeno", color: "bg-green-500/10 text-green-600 dark:text-green-500" },
-  overdue: { label: "Prekoračeno", color: "bg-red-500/10 text-red-600 dark:text-red-500" },
-  cancelled: { label: "Otkazano", color: "bg-gray-500/10 text-gray-600 dark:text-gray-500" },
+  pending:   { label: "Na čekanju",  bg: "bg-yellow-500/10", text: "text-yellow-500" },
+  paid:      { label: "Plaćeno",     bg: "bg-green-500/10",  text: "text-green-500" },
+  overdue:   { label: "Prekoračeno", bg: "bg-red-500/10",    text: "text-red-500" },
+  cancelled: { label: "Otkazano",    bg: "bg-zinc-500/10",   text: "text-zinc-400" },
 };
+
+const contractTypeLabel: Record<string, string> = {
+  mix_master: "Mix & Master",
+  copyright_transfer: "Prenos autorskih prava",
+  instrumental_sale: "Prodaja instrumentala",
+};
+
+function StatCard({ icon: Icon, iconBg, iconColor, label, value, sub, loading }: {
+  icon: React.ElementType; iconBg: string; iconColor: string;
+  label: string; value: string | number; sub: string; loading?: boolean;
+}) {
+  return (
+    <div className="relative overflow-hidden rounded-2xl border border-border/60 bg-card p-5 hover:shadow-md transition-shadow">
+      <div className="flex items-start justify-between mb-3">
+        <div className={`w-10 h-10 rounded-xl flex items-center justify-center ${iconBg}`}>
+          <Icon className={`w-5 h-5 ${iconColor}`} />
+        </div>
+        <TrendingUp className="w-4 h-4 text-muted-foreground/40" />
+      </div>
+      {loading ? (
+        <>
+          <Skeleton className="h-8 w-12 mb-1" />
+          <Skeleton className="h-3 w-24" />
+        </>
+      ) : (
+        <>
+          <div className="text-3xl font-bold tracking-tight">{value}</div>
+          <p className="text-xs text-muted-foreground mt-1">{sub}</p>
+        </>
+      )}
+      <p className="text-xs font-medium text-muted-foreground/70 mt-3 uppercase tracking-wider">{label}</p>
+    </div>
+  );
+}
+
+function SectionHeader({ icon: Icon, iconBg, iconColor, title, desc }: {
+  icon: React.ElementType; iconBg: string; iconColor: string; title: string; desc?: string;
+}) {
+  return (
+    <div className="flex items-center gap-3 mb-5">
+      <div className={`w-9 h-9 rounded-xl flex items-center justify-center flex-shrink-0 ${iconBg}`}>
+        <Icon className={`w-4 h-4 ${iconColor}`} />
+      </div>
+      <div>
+        <h2 className="text-base font-semibold">{title}</h2>
+        {desc && <p className="text-xs text-muted-foreground">{desc}</p>}
+      </div>
+    </div>
+  );
+}
+
+function EmptyState({ icon: Icon, text, action }: { icon: React.ElementType; text: string; action?: React.ReactNode }) {
+  return (
+    <div className="flex flex-col items-center justify-center py-10 text-center">
+      <div className="w-14 h-14 rounded-2xl bg-muted flex items-center justify-center mb-3">
+        <Icon className="w-7 h-7 text-muted-foreground/50" />
+      </div>
+      <p className="text-sm text-muted-foreground">{text}</p>
+      {action && <div className="mt-4">{action}</div>}
+    </div>
+  );
+}
 
 export default function Dashboard() {
   const { user } = useAuth();
 
-  const { data: overview, isLoading: overviewLoading } = useQuery<DashboardOverview>({
-    queryKey: ["/api/dashboard/overview"],
-  });
-
-  const { data: projects, isLoading: projectsLoading } = useQuery<Project[]>({
-    queryKey: ["/api/user/projects"],
-  });
-
-  const { data: contracts, isLoading: contractsLoading } = useQuery<Contract[]>({
-    queryKey: ["/api/user/contracts"],
-  });
-
-  const { data: invoices, isLoading: invoicesLoading } = useQuery<Invoice[]>({
-    queryKey: ["/api/user/invoices"],
-  });
+  const { data: overview, isLoading: overviewLoading } = useQuery<DashboardOverview>({ queryKey: ["/api/dashboard/overview"] });
+  const { data: projects, isLoading: projectsLoading } = useQuery<Project[]>({ queryKey: ["/api/user/projects"] });
+  const { data: contracts, isLoading: contractsLoading } = useQuery<Contract[]>({ queryKey: ["/api/user/contracts"] });
+  const { data: invoices, isLoading: invoicesLoading } = useQuery<Invoice[]>({ queryKey: ["/api/user/invoices"] });
 
   if (!user) {
     return (
       <div className="container mx-auto px-4 py-16 text-center">
         <SEO title="Dashboard - Studio LeFlow" description="Klijent dashboard" />
-        <LayoutDashboard className="w-16 h-16 mx-auto mb-4 text-muted-foreground" />
+        <div className="w-16 h-16 rounded-2xl bg-muted flex items-center justify-center mx-auto mb-4">
+          <Music2 className="w-8 h-8 text-muted-foreground" />
+        </div>
         <h2 className="text-2xl font-bold mb-2">Pristup Odbijen</h2>
-        <p className="text-muted-foreground">Morate biti ulogovani da pristupite dashboard-u.</p>
-        <Link href="/auth">
-          <Button className="mt-4" data-testid="button-go-to-login">Prijavi se</Button>
-        </Link>
+        <p className="text-muted-foreground mb-4">Morate biti ulogovani da pristupite dashboard-u.</p>
+        <Link href="/auth"><Button>Prijavi se</Button></Link>
       </div>
     );
   }
 
+  const initials = user.username.slice(0, 2).toUpperCase();
+
   return (
-    <div className="container mx-auto px-4 py-8 max-w-7xl">
-      <SEO title="Dashboard - Studio LeFlow" description="Klijent dashboard sa preglednom projekata, ugovora i faktura" />
-      
-      {/* Hero Section */}
-      <FadeInWhenVisible>
-        <div className="mb-8">
-          <h1 className="text-3xl font-bold mb-2" data-testid="text-dashboard-title">
-            Dobrodošli, {user.username}!
-          </h1>
-          <p className="text-muted-foreground" data-testid="text-dashboard-subtitle">
-            Ovde možete pratiti sve svoje projekte, ugovore i fakture sa Studio LeFlow
-          </p>
-        </div>
-      </FadeInWhenVisible>
+    <div className="min-h-screen bg-background">
+      <SEO title="Dashboard - Studio LeFlow" description="Klijent dashboard" />
 
-      {/* Quick Stats */}
-      {overviewLoading ? (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
-          {[1, 2, 3, 4].map((i) => (
-            <Card key={i}>
-              <CardHeader className="pb-2">
-                <Skeleton className="h-4 w-24" />
-              </CardHeader>
-              <CardContent>
-                <Skeleton className="h-8 w-12 mb-2" />
-                <Skeleton className="h-3 w-32" />
-              </CardContent>
-            </Card>
-          ))}
-        </div>
-      ) : overview && (
+      <div className="container mx-auto px-4 py-8 max-w-6xl space-y-6">
+
+        {/* Hero banner */}
         <FadeInWhenVisible>
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
-            <Card data-testid="card-stat-projects">
-              <CardHeader className="flex flex-row items-center justify-between gap-2 space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium">Projekti</CardTitle>
-                <FolderOpen className="h-4 w-4 text-muted-foreground" />
-              </CardHeader>
-              <CardContent>
-                <div className="text-2xl font-bold" data-testid="text-total-projects">{overview.totalProjects}</div>
-                <p className="text-xs text-muted-foreground">
-                  {overview.projectsByStatus.in_progress || 0} u toku
-                </p>
-              </CardContent>
-            </Card>
-
-            <Card data-testid="card-stat-contracts">
-              <CardHeader className="flex flex-row items-center justify-between gap-2 space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium">Licence</CardTitle>
-                <FileText className="h-4 w-4 text-muted-foreground" />
-              </CardHeader>
-              <CardContent>
-                <div className="text-2xl font-bold" data-testid="text-total-contracts">{overview.totalContracts}</div>
-                <p className="text-xs text-muted-foreground">
-                  Ukupno licenci
-                </p>
-              </CardContent>
-            </Card>
-
-            <Card data-testid="card-stat-invoices">
-              <CardHeader className="flex flex-row items-center justify-between gap-2 space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium">Fakture</CardTitle>
-                <Receipt className="h-4 w-4 text-muted-foreground" />
-              </CardHeader>
-              <CardContent>
-                <div className="text-2xl font-bold" data-testid="text-total-invoices">{overview.totalInvoices}</div>
-                <p className="text-xs text-muted-foreground">
-                  {overview.pendingInvoices} na čekanju
-                  {overview.overdueInvoices > 0 && (
-                    <span className="text-red-500"> • {overview.overdueInvoices} prekoračeno</span>
-                  )}
-                </p>
-              </CardContent>
-            </Card>
-
-            <Card data-testid="card-stat-messages">
-              <CardHeader className="flex flex-row items-center justify-between gap-2 space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium">Poruke</CardTitle>
-                <MessageCircle className="h-4 w-4 text-muted-foreground" />
-              </CardHeader>
-              <CardContent>
-                <div className="text-2xl font-bold" data-testid="text-unread-messages">{overview.unreadMessages}</div>
-                <p className="text-xs text-muted-foreground">
-                  Nepročitane poruke
-                </p>
-              </CardContent>
-            </Card>
+          <div className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-primary/20 via-primary/10 to-transparent border border-primary/20 p-6 md:p-8">
+            <div className="absolute inset-0 bg-grid-white/5 [mask-image:radial-gradient(ellipse_at_top_left,white,transparent_70%)]" />
+            <div className="relative flex flex-col sm:flex-row items-start sm:items-center gap-4">
+              <div className="w-14 h-14 rounded-2xl bg-primary flex items-center justify-center text-primary-foreground text-xl font-bold flex-shrink-0 shadow-lg">
+                {initials}
+              </div>
+              <div className="flex-1 min-w-0">
+                <div className="flex items-center gap-2 mb-1">
+                  <Sparkles className="w-4 h-4 text-primary" />
+                  <span className="text-xs font-medium text-primary uppercase tracking-wider">Dobrodošli</span>
+                </div>
+                <h1 className="text-2xl md:text-3xl font-bold truncate">{user.username}</h1>
+                <p className="text-sm text-muted-foreground mt-1">Pratite projekte, ugovore i fakture sa Studio LeFlow</p>
+              </div>
+              <div className="flex gap-2 flex-shrink-0">
+                <Link href="/inbox">
+                  <Button variant="outline" size="sm" className="gap-2">
+                    <MessageCircle className="w-4 h-4" />
+                    {(overview?.unreadMessages ?? 0) > 0 && (
+                      <span className="bg-primary text-primary-foreground text-xs rounded-full w-4 h-4 flex items-center justify-center">
+                        {overview!.unreadMessages}
+                      </span>
+                    )}
+                    Inbox
+                  </Button>
+                </Link>
+              </div>
+            </div>
           </div>
         </FadeInWhenVisible>
-      )}
 
-      {/* Projects Section */}
-      <FadeInWhenVisible>
-        <Card className="mb-8" data-testid="card-projects">
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <FolderOpen className="w-5 h-5" />
-              Moji Projekti
-            </CardTitle>
-            <CardDescription>
-              Pregled svih vaših projekata i njihovih statusa
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
+        {/* Stats grid */}
+        <FadeInWhenVisible>
+          <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+            <StatCard
+              icon={FolderOpen} iconBg="bg-blue-500/10" iconColor="text-blue-500"
+              label="Projekti" value={overview?.totalProjects ?? 0}
+              sub={`${overview?.projectsByStatus?.in_progress ?? 0} u toku`}
+              loading={overviewLoading}
+            />
+            <StatCard
+              icon={FileText} iconBg="bg-purple-500/10" iconColor="text-purple-500"
+              label="Licence" value={overview?.totalContracts ?? 0}
+              sub="Ukupno licenci" loading={overviewLoading}
+            />
+            <StatCard
+              icon={Receipt} iconBg="bg-amber-500/10" iconColor="text-amber-500"
+              label="Fakture" value={overview?.totalInvoices ?? 0}
+              sub={`${overview?.pendingInvoices ?? 0} na čekanju`}
+              loading={overviewLoading}
+            />
+            <StatCard
+              icon={MessageCircle} iconBg="bg-green-500/10" iconColor="text-green-500"
+              label="Poruke" value={overview?.unreadMessages ?? 0}
+              sub="Nepročitane" loading={overviewLoading}
+            />
+          </div>
+        </FadeInWhenVisible>
+
+        {/* Projects */}
+        <FadeInWhenVisible>
+          <div className="rounded-2xl border border-border/60 bg-card p-5 md:p-6">
+            <SectionHeader icon={FolderOpen} iconBg="bg-blue-500/10" iconColor="text-blue-500" title="Moji Projekti" desc="Status svih vaših projekata" />
             {projectsLoading ? (
               <div className="space-y-3">
-                {[1, 2, 3].map((i) => (
-                  <div key={i} className="flex items-center justify-between p-4 border rounded-md">
-                    <div className="flex-1">
-                      <Skeleton className="h-5 w-48 mb-2" />
-                      <Skeleton className="h-4 w-32" />
-                    </div>
-                    <Skeleton className="h-6 w-24" />
+                {[1, 2, 3].map(i => (
+                  <div key={i} className="flex items-center gap-4 p-4 rounded-xl border border-border/40">
+                    <Skeleton className="w-10 h-10 rounded-xl flex-shrink-0" />
+                    <div className="flex-1"><Skeleton className="h-4 w-40 mb-2" /><Skeleton className="h-3 w-28" /></div>
+                    <Skeleton className="h-6 w-20 rounded-full" />
                   </div>
                 ))}
               </div>
             ) : projects && projects.length > 0 ? (
-              <div className="space-y-3">
-                {projects.map((project) => {
-                  const status = statusConfig[project.status];
-                  const StatusIcon = status.icon;
-                  
+              <div className="space-y-2">
+                {projects.map(project => {
+                  const s = statusConfig[project.status];
                   return (
-                    <div
-                      key={project.id}
-                      className="flex items-center justify-between p-4 border rounded-md hover-elevate"
-                      data-testid={`project-item-${project.id}`}
-                    >
-                      <div className="flex-1">
-                        <h4 className="font-medium" data-testid={`text-project-title-${project.id}`}>
-                          {project.title}
-                        </h4>
-                        <p className="text-sm text-muted-foreground">
-                          {project.genre} • Uploadovano {format(new Date(project.uploadDate), "dd.MM.yyyy.")}
-                        </p>
+                    <div key={project.id} className="flex items-center gap-4 p-4 rounded-xl border border-border/40 hover:border-border hover:bg-muted/30 transition-all">
+                      <div className={`w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0 ${s.bg}`}>
+                        <s.Icon className={`w-5 h-5 ${s.text}`} />
                       </div>
-                      <Badge className={`${status.color} flex items-center gap-1`} variant="outline" data-testid={`badge-status-${project.id}`}>
-                        <StatusIcon className="w-3 h-3" />
-                        {status.label}
-                      </Badge>
-                    </div>
-                  );
-                })}
-              </div>
-            ) : (
-              <div className="text-center py-8 text-muted-foreground">
-                <FolderOpen className="w-12 h-12 mx-auto mb-3 opacity-50" />
-                <p>Nemate još uvek nijedan projekat.</p>
-                <Link href="/giveaway">
-                  <Button variant="outline" className="mt-4" data-testid="button-upload-project">
-                    Uploaduj projekat
-                  </Button>
-                </Link>
-              </div>
-            )}
-          </CardContent>
-        </Card>
-      </FadeInWhenVisible>
-
-      {/* Contracts Section */}
-      <FadeInWhenVisible>
-        <Card className="mb-8" data-testid="card-contracts">
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <FileText className="w-5 h-5" />
-              Licence
-            </CardTitle>
-            <CardDescription>
-              Vaše licence od Studio LeFlow
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            {contractsLoading ? (
-              <div className="space-y-3">
-                {[1, 2].map((i) => (
-                  <div key={i} className="flex items-center justify-between p-4 border rounded-md">
-                    <div className="flex-1">
-                      <Skeleton className="h-5 w-32 mb-2" />
-                      <Skeleton className="h-4 w-48" />
-                    </div>
-                    <Skeleton className="h-9 w-28" />
-                  </div>
-                ))}
-              </div>
-            ) : contracts && contracts.length > 0 ? (
-              <div className="space-y-3">
-                {contracts.map((contract) => (
-                  <div
-                    key={contract.id}
-                    className="flex items-center justify-between p-4 border rounded-md hover-elevate"
-                    data-testid={`contract-item-${contract.id}`}
-                  >
-                    <div className="flex-1">
-                      <h4 className="font-medium" data-testid={`text-contract-number-${contract.id}`}>
-                        Licenca #{contract.contractNumber}
-                      </h4>
-                      <p className="text-sm text-muted-foreground">
-                        {contract.contractType === "mix_master" && "Mix & Master"}
-                        {contract.contractType === "copyright_transfer" && "Prenos autorskih prava"}
-                        {contract.contractType === "instrumental_sale" && "Prodaja instrumentala"}
-                        {" • "}
-                        {format(new Date(contract.createdAt), "dd.MM.yyyy.")}
-                      </p>
-                    </div>
-                    <div className="flex gap-2 flex-shrink-0">
-                      {contract.verificationHash && (
-                        <Button variant="ghost" size="sm" asChild title="Proveri autentičnost">
-                          <a href={`/proveri/${contract.verificationHash}`} target="_blank" rel="noopener noreferrer">
-                            <ExternalLink className="w-4 h-4" />
-                          </a>
-                        </Button>
-                      )}
-                      {contract.pdfPath && (
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          asChild
-                          data-testid={`button-download-contract-${contract.id}`}
-                        >
-                          <a href={contract.pdfPath} download>
-                            <Download className="w-4 h-4 mr-2" />
-                            Preuzmi PDF
-                          </a>
-                        </Button>
-                      )}
-                    </div>
-                  </div>
-                ))}
-              </div>
-            ) : (
-              <div className="text-center py-8 text-muted-foreground">
-                <FileText className="w-12 h-12 mx-auto mb-3 opacity-50" />
-                <p>Nemate nijednu licencu.</p>
-              </div>
-            )}
-          </CardContent>
-        </Card>
-      </FadeInWhenVisible>
-
-      {/* Invoices Section */}
-      <FadeInWhenVisible>
-        <Card className="mb-8" data-testid="card-invoices">
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <Receipt className="w-5 h-5" />
-              Fakture
-            </CardTitle>
-            <CardDescription>
-              Pregled svih faktura i njihovih statusa
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            {invoicesLoading ? (
-              <div className="space-y-3">
-                {[1, 2].map((i) => (
-                  <div key={i} className="flex items-center justify-between p-4 border rounded-md">
-                    <div className="flex-1">
-                      <Skeleton className="h-5 w-32 mb-2" />
-                      <Skeleton className="h-4 w-48" />
-                    </div>
-                    <div className="text-right">
-                      <Skeleton className="h-6 w-24 mb-1" />
-                      <Skeleton className="h-4 w-20" />
-                    </div>
-                  </div>
-                ))}
-              </div>
-            ) : invoices && invoices.length > 0 ? (
-              <div className="space-y-3">
-                {invoices.map((invoice) => {
-                  const status = invoiceStatusConfig[invoice.status];
-                  const dueDate = new Date(invoice.dueDate);
-                  const isOverdue = invoice.status === "pending" && dueDate < new Date();
-                  const displayStatus = isOverdue ? "overdue" : invoice.status;
-                  const displayStatusConfig = invoiceStatusConfig[displayStatus];
-
-                  return (
-                    <div
-                      key={invoice.id}
-                      className="flex items-center justify-between p-4 border rounded-md hover-elevate"
-                      data-testid={`invoice-item-${invoice.id}`}
-                    >
-                      <div className="flex-1">
-                        <div className="flex items-center gap-2 mb-1">
-                          <h4 className="font-medium" data-testid={`text-invoice-number-${invoice.id}`}>
-                            Faktura #{invoice.invoiceNumber}
-                          </h4>
-                          {isOverdue && (
-                            <AlertCircle className="w-4 h-4 text-red-500" />
-                          )}
-                        </div>
-                        <p className="text-sm text-muted-foreground">
-                          {invoice.description}
-                        </p>
-                        <p className="text-xs text-muted-foreground mt-1">
-                          Rok: {format(dueDate, "dd.MM.yyyy.")}
-                          {invoice.paidDate && (
-                            <span className="ml-2">
-                              • Plaćeno: {format(new Date(invoice.paidDate), "dd.MM.yyyy.")}
-                            </span>
-                          )}
-                        </p>
+                      <div className="flex-1 min-w-0">
+                        <p className="font-medium truncate">{project.title}</p>
+                        <p className="text-xs text-muted-foreground">{project.genre} · {format(new Date(project.uploadDate), "dd.MM.yyyy.")}</p>
                       </div>
-                      <div className="text-right">
-                        <div className="font-bold text-lg mb-1" data-testid={`text-invoice-amount-${invoice.id}`}>
-                          {parseFloat(invoice.amount).toLocaleString('sr-RS', { minimumFractionDigits: 2 })} {invoice.currency}
-                        </div>
-                        <Badge className={displayStatusConfig.color} variant="outline" data-testid={`badge-invoice-status-${invoice.id}`}>
-                          {displayStatusConfig.label}
-                        </Badge>
+                      <div className={`flex items-center gap-1.5 text-xs font-medium px-2.5 py-1 rounded-full ${s.bg} ${s.text}`}>
+                        <span className={`w-1.5 h-1.5 rounded-full ${s.dot}`} />
+                        {s.label}
                       </div>
                     </div>
                   );
                 })}
               </div>
             ) : (
-              <div className="text-center py-8 text-muted-foreground">
-                <Receipt className="w-12 h-12 mx-auto mb-3 opacity-50" />
-                <p>Nemate nijednu fakturu.</p>
-              </div>
+              <EmptyState icon={FolderOpen} text="Nemate još uvek nijedan projekat." action={
+                <Link href="/giveaway"><Button variant="outline" size="sm">Uploaduj projekat</Button></Link>
+              } />
             )}
-          </CardContent>
-        </Card>
-      </FadeInWhenVisible>
+          </div>
+        </FadeInWhenVisible>
 
-      {/* Messages Quick Access */}
-      <FadeInWhenVisible>
-        <Card data-testid="card-messages">
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <MessageCircle className="w-5 h-5" />
-              Poruke
-            </CardTitle>
-            <CardDescription>
-              Brz pristup vašim porukama
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            <div className="flex items-center justify-between">
+        {/* Contracts + Invoices side by side on large screens */}
+        <div className="grid md:grid-cols-2 gap-6">
+          {/* Contracts */}
+          <FadeInWhenVisible>
+            <div className="rounded-2xl border border-border/60 bg-card p-5 md:p-6 h-full">
+              <SectionHeader icon={FileText} iconBg="bg-purple-500/10" iconColor="text-purple-500" title="Licence" desc="Vaše licence od Studio LeFlow" />
+              {contractsLoading ? (
+                <div className="space-y-3">
+                  {[1, 2].map(i => <div key={i} className="flex items-center gap-3 p-4 rounded-xl border border-border/40"><Skeleton className="w-9 h-9 rounded-xl" /><div className="flex-1"><Skeleton className="h-4 w-32 mb-1.5" /><Skeleton className="h-3 w-24" /></div></div>)}
+                </div>
+              ) : contracts && contracts.length > 0 ? (
+                <div className="space-y-2">
+                  {contracts.map(c => (
+                    <div key={c.id} className="flex items-center gap-3 p-4 rounded-xl border border-border/40 hover:border-border hover:bg-muted/30 transition-all">
+                      <div className="w-9 h-9 rounded-xl bg-purple-500/10 flex items-center justify-center flex-shrink-0">
+                        <FileText className="w-4 h-4 text-purple-500" />
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <p className="text-sm font-medium truncate">Licenca #{c.contractNumber}</p>
+                        <p className="text-xs text-muted-foreground">{contractTypeLabel[c.contractType] ?? c.contractType} · {format(new Date(c.createdAt), "dd.MM.yyyy.")}</p>
+                      </div>
+                      <div className="flex gap-1 flex-shrink-0">
+                        {c.verificationHash && (
+                          <Button variant="ghost" size="icon" className="w-8 h-8" asChild>
+                            <a href={`/proveri/${c.verificationHash}`} target="_blank" rel="noopener noreferrer" title="Proveri autentičnost">
+                              <ExternalLink className="w-3.5 h-3.5" />
+                            </a>
+                          </Button>
+                        )}
+                        {c.pdfPath && (
+                          <Button variant="ghost" size="icon" className="w-8 h-8" asChild title="Preuzmi PDF">
+                            <a href={c.pdfPath} download><Download className="w-3.5 h-3.5" /></a>
+                          </Button>
+                        )}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              ) : <EmptyState icon={FileText} text="Nemate nijednu licencu." />}
+            </div>
+          </FadeInWhenVisible>
+
+          {/* Invoices */}
+          <FadeInWhenVisible>
+            <div className="rounded-2xl border border-border/60 bg-card p-5 md:p-6 h-full">
+              <SectionHeader icon={Receipt} iconBg="bg-amber-500/10" iconColor="text-amber-500" title="Fakture" desc="Pregled svih faktura" />
+              {invoicesLoading ? (
+                <div className="space-y-3">
+                  {[1, 2].map(i => <div key={i} className="flex items-center gap-3 p-4 rounded-xl border border-border/40"><Skeleton className="w-9 h-9 rounded-xl" /><div className="flex-1"><Skeleton className="h-4 w-32 mb-1.5" /><Skeleton className="h-3 w-24" /></div><Skeleton className="h-6 w-16" /></div>)}
+                </div>
+              ) : invoices && invoices.length > 0 ? (
+                <div className="space-y-2">
+                  {invoices.map(inv => {
+                    const isOverdue = inv.status === "pending" && new Date(inv.dueDate) < new Date();
+                    const key = isOverdue ? "overdue" : inv.status;
+                    const s = invoiceStatusConfig[key];
+                    return (
+                      <div key={inv.id} className="flex items-center gap-3 p-4 rounded-xl border border-border/40 hover:border-border hover:bg-muted/30 transition-all">
+                        <div className={`w-9 h-9 rounded-xl flex items-center justify-center flex-shrink-0 ${s.bg}`}>
+                          {isOverdue ? <AlertCircle className={`w-4 h-4 ${s.text}`} /> : <Receipt className={`w-4 h-4 ${s.text}`} />}
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <p className="text-sm font-medium truncate">Faktura #{inv.invoiceNumber}</p>
+                          <p className="text-xs text-muted-foreground">Rok: {format(new Date(inv.dueDate), "dd.MM.yyyy.")}</p>
+                        </div>
+                        <div className="text-right flex-shrink-0">
+                          <p className="text-sm font-bold">{parseFloat(inv.amount).toLocaleString("sr-RS", { minimumFractionDigits: 2 })} {inv.currency}</p>
+                          <span className={`text-xs font-medium px-2 py-0.5 rounded-full ${s.bg} ${s.text}`}>{s.label}</span>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              ) : <EmptyState icon={Receipt} text="Nemate nijednu fakturu." />}
+            </div>
+          </FadeInWhenVisible>
+        </div>
+
+        {/* Messages quick access */}
+        <FadeInWhenVisible>
+          <div className="rounded-2xl border border-border/60 bg-gradient-to-r from-green-500/5 to-transparent p-5 md:p-6 flex items-center justify-between gap-4">
+            <div className="flex items-center gap-4">
+              <div className="w-10 h-10 rounded-xl bg-green-500/10 flex items-center justify-center flex-shrink-0">
+                <MessageCircle className="w-5 h-5 text-green-500" />
+              </div>
               <div>
+                <p className="font-medium">Poruke</p>
                 <p className="text-sm text-muted-foreground">
-                  {overview ? (
-                    overview.unreadMessages > 0 ? (
-                      <>Imate <span className="font-semibold text-foreground">{overview.unreadMessages}</span> {overview.unreadMessages === 1 ? "nepročitanu poruku" : overview.unreadMessages < 5 ? "nepročitane poruke" : "nepročitanih poruka"}</>
-                    ) : (
-                      "Nemate nepročitanih poruka"
-                    )
-                  ) : (
-                    "Učitavanje..."
-                  )}
+                  {overviewLoading ? "Učitavanje..." : overview?.unreadMessages ?? 0 > 0
+                    ? <>Imate <span className="font-semibold text-foreground">{overview!.unreadMessages}</span> nepročitanih poruka</>
+                    : "Nemate nepročitanih poruka"}
                 </p>
               </div>
-              <Link href="/inbox">
-                <Button variant="outline" data-testid="button-go-to-inbox">
-                  Otvori Inbox
-                </Button>
-              </Link>
             </div>
-          </CardContent>
-        </Card>
-      </FadeInWhenVisible>
+            <Link href="/inbox">
+              <Button size="sm" className="gap-2 flex-shrink-0">
+                <MessageCircle className="w-4 h-4" />
+                Otvori Inbox
+              </Button>
+            </Link>
+          </div>
+        </FadeInWhenVisible>
 
+      </div>
     </div>
   );
 }
