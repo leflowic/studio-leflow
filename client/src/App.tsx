@@ -23,7 +23,11 @@ import { CookieConsent } from "@/components/CookieConsent";
 class ChunkErrorBoundary extends Component<{ children: ReactNode }, { failed: boolean }> {
   state = { failed: false };
 
-  static getDerivedStateFromError(error: Error) {
+  static getDerivedStateFromError() {
+    return { failed: true };
+  }
+
+  componentDidCatch(error: Error) {
     const isChunkError =
       error?.message?.includes("Failed to fetch dynamically imported module") ||
       error?.message?.includes("Importing a module script failed") ||
@@ -32,26 +36,34 @@ class ChunkErrorBoundary extends Component<{ children: ReactNode }, { failed: bo
 
     if (isChunkError) {
       const key = `chunk-reload-${window.location.pathname}`;
-      if (!sessionStorage.getItem(key)) {
-        sessionStorage.setItem(key, "1");
+      const attempts = parseInt(sessionStorage.getItem(key) ?? "0", 10);
+      if (attempts < 2) {
+        sessionStorage.setItem(key, String(attempts + 1));
         window.location.reload();
-        return { failed: false };
       }
     }
-    return { failed: true };
   }
 
   render() {
     if (this.state.failed) {
       return (
-        <div className="flex flex-col items-center justify-center min-h-screen gap-4 text-center px-4">
+        <div className="flex flex-col items-center justify-center min-h-screen gap-6 text-center px-4">
           <p className="text-muted-foreground">Došlo je do greške pri učitavanju stranice.</p>
-          <button
-            className="text-primary underline text-sm"
-            onClick={() => { sessionStorage.removeItem(`chunk-reload-${window.location.pathname}`); window.location.reload(); }}
-          >
-            Pokušaj ponovo
-          </button>
+          <div className="flex flex-col sm:flex-row gap-3 items-center">
+            <button
+              className="text-primary underline text-sm"
+              onClick={() => {
+                sessionStorage.removeItem(`chunk-reload-${window.location.pathname}`);
+                window.location.reload();
+              }}
+            >
+              Pokušaj ponovo
+            </button>
+            <span className="text-muted-foreground text-sm hidden sm:inline">·</span>
+            <a href="/" className="text-primary underline text-sm">
+              Nazad na početnu
+            </a>
+          </div>
         </div>
       );
     }
