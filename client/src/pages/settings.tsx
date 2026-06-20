@@ -3,14 +3,66 @@ import { useAuth } from "@/hooks/use-auth";
 import { useMutation } from "@tanstack/react-query";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
+import { SEO } from "@/components/SEO";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Separator } from "@/components/ui/separator";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
-import { User, Mail, Lock, AlertCircle, Upload, Loader2, ImageIcon, Trash2 } from "lucide-react";
+import { Badge } from "@/components/ui/badge";
+import {
+  User, Mail, Lock, AlertCircle, Camera, Loader2, Trash2,
+  ShieldCheck, ShieldX, Calendar, Crown, CheckCircle2, Eye, EyeOff,
+} from "lucide-react";
 import { Alert, AlertDescription } from "@/components/ui/alert";
+import { motion } from "framer-motion";
+import { format } from "date-fns";
+import { FadeInWhenVisible } from "@/components/motion/FadeIn";
+
+function SectionCard({ title, icon: Icon, iconBg, iconColor, children }: {
+  title: string; icon: React.ElementType; iconBg: string; iconColor: string; children: React.ReactNode;
+}) {
+  return (
+    <div className="rounded-2xl border border-border/60 bg-card overflow-hidden">
+      <div className="flex items-center gap-3 px-6 py-4 border-b border-border/40 bg-muted/20">
+        <div className={`w-8 h-8 rounded-lg flex items-center justify-center ${iconBg}`}>
+          <Icon className={`w-4 h-4 ${iconColor}`} />
+        </div>
+        <h2 className="font-semibold text-sm">{title}</h2>
+      </div>
+      <div className="p-6">{children}</div>
+    </div>
+  );
+}
+
+function PasswordInput({ id, value, onChange, placeholder, autoComplete, disabled }: {
+  id: string; value: string; onChange: (v: string) => void;
+  placeholder: string; autoComplete?: string; disabled?: boolean;
+}) {
+  const [show, setShow] = useState(false);
+  return (
+    <div className="relative">
+      <Input
+        id={id}
+        type={show ? "text" : "password"}
+        value={value}
+        onChange={e => onChange(e.target.value)}
+        placeholder={placeholder}
+        autoComplete={autoComplete}
+        disabled={disabled}
+        className="pr-10"
+      />
+      <button
+        type="button"
+        className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors"
+        onClick={() => setShow(v => !v)}
+        tabIndex={-1}
+      >
+        {show ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+      </button>
+    </div>
+  );
+}
 
 export default function Settings() {
   const { user } = useAuth();
@@ -18,8 +70,8 @@ export default function Settings() {
   const [isUploadingAvatar, setIsUploadingAvatar] = useState(false);
 
   const [profileForm, setProfileForm] = useState({
-    username: user?.username || "",
-    email: user?.email || "",
+    username: user?.username ?? "",
+    email: user?.email ?? "",
   });
 
   const [passwordForm, setPasswordForm] = useState({
@@ -44,390 +96,311 @@ export default function Settings() {
       const { url } = await res.json();
       await apiRequest("PUT", "/api/user/avatar", { avatarUrl: url });
       queryClient.invalidateQueries({ queryKey: ["/api/user"] });
-      toast({ title: "Avatar ažuriran", description: "Vaša profilna slika je uspešno promenjena" });
+      toast({ title: "Avatar ažuriran", description: "Profilna slika je uspešno promenjena" });
     } catch (error: any) {
-      toast({ title: "Greška", description: error.message || "Greška pri upload-u slike", variant: "destructive" });
+      toast({ title: "Greška", description: error.message || "Greška pri upload-u", variant: "destructive" });
     } finally {
       setIsUploadingAvatar(false);
     }
   };
 
+  const triggerAvatarPicker = () => {
+    const input = document.createElement("input");
+    input.type = "file";
+    input.accept = "image/png,image/jpeg,image/webp";
+    input.onchange = (e: any) => { const f = e.target?.files?.[0]; if (f) handleAvatarUpload(f); };
+    input.click();
+  };
+
   const removeAvatarMutation = useMutation({
-    mutationFn: async () => {
-      return await apiRequest("DELETE", "/api/user/avatar");
-    },
+    mutationFn: () => apiRequest("DELETE", "/api/user/avatar"),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/user"] });
-      toast({
-        title: "Avatar uklonjen",
-        description: "Vaša profilna slika je uspešno uklonjena",
-      });
+      toast({ title: "Avatar uklonjen", description: "Profilna slika je uspešno uklonjena" });
     },
-    onError: (error: Error) => {
-      toast({
-        title: "Greška",
-        description: error.message || "Greška pri uklanjanju avatara",
-        variant: "destructive",
-      });
-    },
+    onError: (e: Error) => toast({ title: "Greška", description: e.message, variant: "destructive" }),
   });
 
   const updateProfileMutation = useMutation({
-    mutationFn: async (data: { username?: string; email?: string }) => {
-      return await apiRequest("PUT", "/api/user/update-profile", data);
-    },
+    mutationFn: (data: { username?: string; email?: string }) => apiRequest("PUT", "/api/user/update-profile", data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/user"] });
-      toast({
-        title: "Profil ažuriran",
-        description: "Vaši podaci su uspešno izmenjeni",
-      });
+      toast({ title: "Profil ažuriran", description: "Vaši podaci su uspešno izmenjeni" });
     },
-    onError: (error: Error) => {
-      toast({
-        title: "Greška",
-        description: error.message,
-        variant: "destructive",
-      });
-    },
+    onError: (e: Error) => toast({ title: "Greška", description: e.message, variant: "destructive" }),
   });
 
   const changePasswordMutation = useMutation({
-    mutationFn: async (data: { currentPassword: string; newPassword: string }) => {
-      return await apiRequest("PUT", "/api/user/change-password", data);
-    },
+    mutationFn: (data: { currentPassword: string; newPassword: string }) => apiRequest("PUT", "/api/user/change-password", data),
     onSuccess: () => {
-      setPasswordForm({
-        currentPassword: "",
-        newPassword: "",
-        confirmPassword: "",
-      });
-      toast({
-        title: "Lozinka promenjena",
-        description: "Vaša lozinka je uspešno promenjena",
-      });
+      setPasswordForm({ currentPassword: "", newPassword: "", confirmPassword: "" });
+      toast({ title: "Lozinka promenjena", description: "Vaša lozinka je uspešno promenjena" });
     },
-    onError: (error: Error) => {
-      toast({
-        title: "Greška",
-        description: error.message,
-        variant: "destructive",
-      });
-    },
+    onError: (e: Error) => toast({ title: "Greška", description: e.message, variant: "destructive" }),
   });
 
   const handleProfileUpdate = () => {
     const updates: { username?: string; email?: string } = {};
-    
-    if (profileForm.username !== user?.username && profileForm.username.trim()) {
-      updates.username = profileForm.username.trim();
-    }
-    
-    if (profileForm.email !== user?.email && profileForm.email.trim()) {
-      updates.email = profileForm.email.trim();
-    }
-
-    if (Object.keys(updates).length === 0) {
-      toast({
-        title: "Nema promena",
-        description: "Niste promenili nijedan podatak",
-        variant: "default",
-      });
+    if (profileForm.username !== user?.username && profileForm.username.trim()) updates.username = profileForm.username.trim();
+    if (profileForm.email !== user?.email && profileForm.email.trim()) updates.email = profileForm.email.trim();
+    if (!Object.keys(updates).length) {
+      toast({ title: "Nema promena", description: "Niste promenili nijedan podatak" });
       return;
     }
-
     updateProfileMutation.mutate(updates);
   };
 
   const handlePasswordChange = () => {
     if (!passwordForm.currentPassword || !passwordForm.newPassword || !passwordForm.confirmPassword) {
-      toast({
-        title: "Popunite sva polja",
-        description: "Sva polja za promenu lozinke su obavezna",
-        variant: "destructive",
-      });
-      return;
+      toast({ title: "Popunite sva polja", description: "Sva polja su obavezna", variant: "destructive" }); return;
     }
-
     if (passwordForm.newPassword !== passwordForm.confirmPassword) {
-      toast({
-        title: "Lozinke se ne poklapaju",
-        description: "Nova lozinka i potvrda lozinke moraju biti iste",
-        variant: "destructive",
-      });
-      return;
+      toast({ title: "Lozinke se ne poklapaju", variant: "destructive" }); return;
     }
-
     if (passwordForm.newPassword.length < 8) {
-      toast({
-        title: "Lozinka je prekratka",
-        description: "Nova lozinka mora imati najmanje 8 karaktera",
-        variant: "destructive",
-      });
-      return;
+      toast({ title: "Lozinka je prekratka", description: "Minimum 8 karaktera", variant: "destructive" }); return;
     }
-
-    changePasswordMutation.mutate({
-      currentPassword: passwordForm.currentPassword,
-      newPassword: passwordForm.newPassword,
-    });
+    changePasswordMutation.mutate({ currentPassword: passwordForm.currentPassword, newPassword: passwordForm.newPassword });
   };
 
-  const daysSinceUsernameChange = user?.usernameLastChanged 
-    ? Math.floor((Date.now() - new Date(user.usernameLastChanged).getTime()) / (1000 * 60 * 60 * 24))
+  const daysSinceUsernameChange = user?.usernameLastChanged
+    ? Math.floor((Date.now() - new Date(user.usernameLastChanged).getTime()) / 86400000)
     : null;
-
   const canChangeUsername = !daysSinceUsernameChange || daysSinceUsernameChange >= 30;
+
+  const initials = user?.username?.slice(0, 2).toUpperCase() ?? "U";
+  const isAdmin = user?.role === "admin";
+  const isBusy = isUploadingAvatar || removeAvatarMutation.isPending;
 
   return (
     <div className="min-h-screen bg-background">
-      <div className="max-w-4xl mx-auto px-4 md:px-6 py-20">
-        <div className="mb-8">
-          <h1 className="text-4xl font-bold mb-2">Podešavanja</h1>
-          <p className="text-muted-foreground">
-            Upravljajte vašim nalogom i podacima
-          </p>
-        </div>
+      <SEO title="Podešavanja - Studio LeFlow" description="Upravljajte vašim nalogom" noIndex />
 
-        <div className="space-y-6">
-          {/* Avatar Upload */}
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <ImageIcon className="w-5 h-5" />
-                Profilna slika
-              </CardTitle>
-              <CardDescription>
-                Postavite ili promenite vašu profilnu sliku
-              </CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="flex items-center gap-6">
-                <Avatar className="w-24 h-24">
-                  {user?.avatarUrl ? (
-                    <AvatarImage src={user.avatarUrl} alt={user.username} />
-                  ) : (
-                    <AvatarFallback className="text-2xl bg-primary/10">
-                      <User className="w-12 h-12 text-primary" />
-                    </AvatarFallback>
-                  )}
+      <div className="max-w-3xl mx-auto px-4 md:px-6 py-20 space-y-6">
+
+        {/* Profile hero */}
+        <FadeInWhenVisible>
+          <div className="relative overflow-hidden rounded-2xl border border-border/60 bg-card">
+            {/* Gradient top strip */}
+            <div className="h-24 bg-gradient-to-br from-primary/30 via-primary/10 to-transparent" />
+
+            <div className="px-6 pb-6 -mt-10 flex flex-col sm:flex-row sm:items-end gap-4">
+              {/* Avatar with upload overlay */}
+              <div className="relative group w-20 h-20 flex-shrink-0">
+                <Avatar className="w-20 h-20 ring-4 ring-background shadow-lg">
+                  {user?.avatarUrl
+                    ? <AvatarImage src={user.avatarUrl} alt={user?.username} />
+                    : <AvatarFallback className="bg-primary/20 text-primary text-2xl font-bold">{initials}</AvatarFallback>
+                  }
                 </Avatar>
-                
-                <div className="flex-1 space-y-2">
-                  <p className="text-sm text-muted-foreground">
-                    Preporučena veličina: 400x400px. Max: 4MB
+                <button
+                  onClick={triggerAvatarPicker}
+                  disabled={isBusy}
+                  className="absolute inset-0 rounded-full bg-black/50 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer disabled:cursor-not-allowed"
+                  data-testid="button-upload-avatar"
+                  title="Promeni sliku"
+                >
+                  {isUploadingAvatar
+                    ? <Loader2 className="w-5 h-5 text-white animate-spin" />
+                    : <Camera className="w-5 h-5 text-white" />
+                  }
+                </button>
+              </div>
+
+              <div className="flex-1 min-w-0 space-y-1">
+                <div className="flex flex-wrap items-center gap-2">
+                  <h1 className="text-xl font-bold truncate">{user?.username}</h1>
+                  {isAdmin && (
+                    <Badge variant="default" className="gap-1 text-xs">
+                      <Crown className="w-3 h-3" /> Admin
+                    </Badge>
+                  )}
+                  {user?.emailVerified
+                    ? <Badge variant="outline" className="gap-1 text-xs text-green-600 border-green-500/30 bg-green-500/10"><ShieldCheck className="w-3 h-3" /> Verifikovano</Badge>
+                    : <Badge variant="outline" className="gap-1 text-xs text-red-500 border-red-500/30 bg-red-500/10"><ShieldX className="w-3 h-3" /> Nije verifikovano</Badge>
+                  }
+                </div>
+                <p className="text-sm text-muted-foreground">{user?.email}</p>
+                {user?.createdAt && (
+                  <p className="text-xs text-muted-foreground flex items-center gap-1">
+                    <Calendar className="w-3 h-3" />
+                    Član od {format(new Date(user.createdAt), "dd.MM.yyyy.")}
                   </p>
-                  <div className="flex gap-2 flex-wrap">
-                    <Button
-                      variant="outline"
-                      disabled={isUploadingAvatar || removeAvatarMutation.isPending}
-                      onClick={() => {
-                        const input = document.createElement('input');
-                        input.type = 'file';
-                        input.accept = 'image/png,image/jpeg,image/webp';
-                        input.onchange = (e: any) => {
-                          const file = e.target?.files?.[0];
-                          if (file) handleAvatarUpload(file);
-                        };
-                        input.click();
-                      }}
-                      data-testid="button-upload-avatar"
-                    >
-                      {isUploadingAvatar ? (
-                        <>
-                          <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                          Upload u toku...
-                        </>
-                      ) : (
-                        <>
-                          <Upload className="w-4 h-4 mr-2" />
-                          Upload slike
-                        </>
-                      )}
-                    </Button>
-                    {user?.avatarUrl && (
-                      <Button
-                        variant="outline"
-                        disabled={isUploadingAvatar || removeAvatarMutation.isPending}
-                        onClick={() => removeAvatarMutation.mutate()}
-                        data-testid="button-remove-avatar"
-                      >
-                        {removeAvatarMutation.isPending ? (
-                          <>
-                            <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                            Uklanjanje...
-                          </>
-                        ) : (
-                          <>
-                            <Trash2 className="w-4 h-4 mr-2" />
-                            Ukloni sliku
-                          </>
-                        )}
-                      </Button>
-                    )}
+                )}
+              </div>
+
+              {user?.avatarUrl && (
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="text-destructive hover:text-destructive hover:bg-destructive/10 flex-shrink-0 self-start sm:self-auto"
+                  disabled={isBusy}
+                  onClick={() => removeAvatarMutation.mutate()}
+                  data-testid="button-remove-avatar"
+                >
+                  {removeAvatarMutation.isPending ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Trash2 className="w-3.5 h-3.5" />}
+                  <span className="ml-1.5 text-xs">Ukloni sliku</span>
+                </Button>
+              )}
+            </div>
+          </div>
+        </FadeInWhenVisible>
+
+        {/* Profile + Password — side by side on md+ */}
+        <div className="grid md:grid-cols-2 gap-6">
+
+          {/* Profile form */}
+          <FadeInWhenVisible>
+            <SectionCard title="Podaci o nalogu" icon={User} iconBg="bg-blue-500/10" iconColor="text-blue-500">
+              <div className="space-y-4">
+                {!canChangeUsername && daysSinceUsernameChange !== null && (
+                  <Alert className="border-amber-500/30 bg-amber-500/5">
+                    <AlertCircle className="h-4 w-4 text-amber-500" />
+                    <AlertDescription className="text-sm">
+                      Korisničko ime možete promeniti za još <strong>{30 - daysSinceUsernameChange} dana</strong>
+                    </AlertDescription>
+                  </Alert>
+                )}
+
+                <div className="space-y-1.5">
+                  <Label htmlFor="username" className="text-xs font-medium uppercase tracking-wide text-muted-foreground">Korisničko ime</Label>
+                  <Input
+                    id="username"
+                    value={profileForm.username}
+                    onChange={e => setProfileForm({ ...profileForm, username: e.target.value })}
+                    placeholder="Korisničko ime"
+                    disabled={!canChangeUsername || updateProfileMutation.isPending}
+                  />
+                  <p className="text-xs text-muted-foreground">Može se menjati jednom mesečno</p>
+                </div>
+
+                <div className="space-y-1.5">
+                  <Label htmlFor="email" className="text-xs font-medium uppercase tracking-wide text-muted-foreground">Email adresa</Label>
+                  <div className="relative">
+                    <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+                    <Input
+                      id="email"
+                      type="email"
+                      value={profileForm.email}
+                      onChange={e => setProfileForm({ ...profileForm, email: e.target.value })}
+                      placeholder="email@primer.com"
+                      disabled={updateProfileMutation.isPending}
+                      className="pl-9"
+                    />
                   </div>
                 </div>
-              </div>
-            </CardContent>
-          </Card>
 
-          {/* Profile Settings */}
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <User className="w-5 h-5" />
-                Podaci o nalogu
-              </CardTitle>
-              <CardDescription>
-                Promenite svoje korisničko ime ili email adresu
-              </CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              {!canChangeUsername && daysSinceUsernameChange !== null && (
-                <Alert>
-                  <AlertCircle className="h-4 w-4" />
-                  <AlertDescription>
-                    Možete promeniti korisničko ime tek za {30 - daysSinceUsernameChange} dana
-                  </AlertDescription>
-                </Alert>
-              )}
-
-              <div className="space-y-2">
-                <Label htmlFor="username">Korisničko ime</Label>
-                <Input
-                  id="username"
-                  value={profileForm.username}
-                  onChange={(e) => setProfileForm({ ...profileForm, username: e.target.value })}
-                  placeholder="Unesite korisničko ime"
-                  disabled={!canChangeUsername || updateProfileMutation.isPending}
-                />
-                <p className="text-xs text-muted-foreground">
-                  Korisničko ime možete menjati samo jednom mesečno
-                </p>
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="email">
-                  <Mail className="w-4 h-4 inline mr-1" />
-                  Email adresa
-                </Label>
-                <Input
-                  id="email"
-                  type="email"
-                  value={profileForm.email}
-                  onChange={(e) => setProfileForm({ ...profileForm, email: e.target.value })}
-                  placeholder="Unesite email adresu"
+                <Button
+                  onClick={handleProfileUpdate}
                   disabled={updateProfileMutation.isPending}
-                />
+                  className="w-full gap-2"
+                >
+                  {updateProfileMutation.isPending
+                    ? <><Loader2 className="w-4 h-4 animate-spin" /> Čuvanje...</>
+                    : <><CheckCircle2 className="w-4 h-4" /> Sačuvaj izmene</>
+                  }
+                </Button>
               </div>
+            </SectionCard>
+          </FadeInWhenVisible>
 
-              <Button 
-                onClick={handleProfileUpdate}
-                disabled={updateProfileMutation.isPending}
-                className="w-full sm:w-auto"
-              >
-                {updateProfileMutation.isPending ? "Čuvanje..." : "Sačuvaj izmene"}
-              </Button>
-            </CardContent>
-          </Card>
+          {/* Password form */}
+          <FadeInWhenVisible>
+            <SectionCard title="Promena lozinke" icon={Lock} iconBg="bg-purple-500/10" iconColor="text-purple-500">
+              <div className="space-y-4">
+                <div className="space-y-1.5">
+                  <Label htmlFor="currentPassword" className="text-xs font-medium uppercase tracking-wide text-muted-foreground">Trenutna lozinka</Label>
+                  <PasswordInput
+                    id="currentPassword"
+                    value={passwordForm.currentPassword}
+                    onChange={v => setPasswordForm({ ...passwordForm, currentPassword: v })}
+                    placeholder="••••••••"
+                    autoComplete="current-password"
+                    disabled={changePasswordMutation.isPending}
+                  />
+                </div>
 
-          {/* Password Settings */}
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <Lock className="w-5 h-5" />
-                Promena lozinke
-              </CardTitle>
-              <CardDescription>
-                Promenite lozinku vašeg naloga
-              </CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="space-y-2">
-                <Label htmlFor="currentPassword">Trenutna lozinka</Label>
-                <Input
-                  id="currentPassword"
-                  type="password"
-                  value={passwordForm.currentPassword}
-                  onChange={(e) => setPasswordForm({ ...passwordForm, currentPassword: e.target.value })}
-                  placeholder="Unesite trenutnu lozinku"
-                  autoComplete="current-password"
+                <Separator />
+
+                <div className="space-y-1.5">
+                  <Label htmlFor="newPassword" className="text-xs font-medium uppercase tracking-wide text-muted-foreground">Nova lozinka</Label>
+                  <PasswordInput
+                    id="newPassword"
+                    value={passwordForm.newPassword}
+                    onChange={v => setPasswordForm({ ...passwordForm, newPassword: v })}
+                    placeholder="Minimum 8 karaktera"
+                    autoComplete="new-password"
+                    disabled={changePasswordMutation.isPending}
+                  />
+                </div>
+
+                <div className="space-y-1.5">
+                  <Label htmlFor="confirmPassword" className="text-xs font-medium uppercase tracking-wide text-muted-foreground">Potvrda lozinke</Label>
+                  <PasswordInput
+                    id="confirmPassword"
+                    value={passwordForm.confirmPassword}
+                    onChange={v => setPasswordForm({ ...passwordForm, confirmPassword: v })}
+                    placeholder="Ponovi novu lozinku"
+                    autoComplete="new-password"
+                    disabled={changePasswordMutation.isPending}
+                  />
+                  {passwordForm.newPassword && passwordForm.confirmPassword && (
+                    <p className={`text-xs flex items-center gap-1 ${passwordForm.newPassword === passwordForm.confirmPassword ? "text-green-500" : "text-red-500"}`}>
+                      {passwordForm.newPassword === passwordForm.confirmPassword
+                        ? <><CheckCircle2 className="w-3 h-3" /> Lozinke se poklapaju</>
+                        : <><AlertCircle className="w-3 h-3" /> Lozinke se ne poklapaju</>
+                      }
+                    </p>
+                  )}
+                </div>
+
+                <Button
+                  onClick={handlePasswordChange}
                   disabled={changePasswordMutation.isPending}
-                />
+                  variant="outline"
+                  className="w-full gap-2"
+                >
+                  {changePasswordMutation.isPending
+                    ? <><Loader2 className="w-4 h-4 animate-spin" /> Promena...</>
+                    : <><Lock className="w-4 h-4" /> Promeni lozinku</>
+                  }
+                </Button>
               </div>
-
-              <Separator />
-
-              <div className="space-y-2">
-                <Label htmlFor="newPassword">Nova lozinka</Label>
-                <Input
-                  id="newPassword"
-                  type="password"
-                  value={passwordForm.newPassword}
-                  onChange={(e) => setPasswordForm({ ...passwordForm, newPassword: e.target.value })}
-                  placeholder="Unesite novu lozinku"
-                  autoComplete="new-password"
-                  disabled={changePasswordMutation.isPending}
-                />
-                <p className="text-xs text-muted-foreground">
-                  Lozinka mora imati najmanje 8 karaktera
-                </p>
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="confirmPassword">Potvrdite novu lozinku</Label>
-                <Input
-                  id="confirmPassword"
-                  type="password"
-                  value={passwordForm.confirmPassword}
-                  onChange={(e) => setPasswordForm({ ...passwordForm, confirmPassword: e.target.value })}
-                  placeholder="Potvrdite novu lozinku"
-                  autoComplete="new-password"
-                  disabled={changePasswordMutation.isPending}
-                />
-              </div>
-
-              <Button 
-                onClick={handlePasswordChange}
-                disabled={changePasswordMutation.isPending}
-                className="w-full sm:w-auto"
-                variant="default"
-              >
-                {changePasswordMutation.isPending ? "Promena..." : "Promeni lozinku"}
-              </Button>
-            </CardContent>
-          </Card>
-
-          {/* Account Info */}
-          <Card>
-            <CardHeader>
-              <CardTitle>Informacije o nalogu</CardTitle>
-              <CardDescription>
-                Osnovne informacije o vašem nalogu
-              </CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-2">
-              <div className="flex justify-between py-2">
-                <span className="text-muted-foreground">Status verifikacije:</span>
-                <span className="font-medium">
-                  {user?.emailVerified ? "✅ Verifikovano" : "❌ Nije verifikovano"}
-                </span>
-              </div>
-              <Separator />
-              <div className="flex justify-between py-2">
-                <span className="text-muted-foreground">Uloga:</span>
-                <span className="font-medium capitalize">{user?.role}</span>
-              </div>
-              <Separator />
-              <div className="flex justify-between py-2">
-                <span className="text-muted-foreground">Nalog kreiran:</span>
-                <span className="font-medium">
-                  {user?.createdAt ? new Date(user.createdAt).toLocaleDateString('sr-RS') : 'N/A'}
-                </span>
-              </div>
-            </CardContent>
-          </Card>
+            </SectionCard>
+          </FadeInWhenVisible>
         </div>
+
+        {/* Account info — info pills */}
+        <FadeInWhenVisible>
+          <div className="rounded-2xl border border-border/60 bg-card p-6">
+            <h2 className="text-sm font-semibold mb-4 text-muted-foreground uppercase tracking-wide">Informacije o nalogu</h2>
+            <div className="grid sm:grid-cols-3 gap-3">
+              <div className="flex flex-col gap-1 p-3 rounded-xl bg-muted/40 border border-border/30">
+                <span className="text-xs text-muted-foreground">Status</span>
+                <span className={`text-sm font-semibold flex items-center gap-1.5 ${user?.emailVerified ? "text-green-500" : "text-red-500"}`}>
+                  {user?.emailVerified
+                    ? <><ShieldCheck className="w-4 h-4" /> Verifikovan</>
+                    : <><ShieldX className="w-4 h-4" /> Nije verifikovan</>
+                  }
+                </span>
+              </div>
+              <div className="flex flex-col gap-1 p-3 rounded-xl bg-muted/40 border border-border/30">
+                <span className="text-xs text-muted-foreground">Uloga</span>
+                <span className="text-sm font-semibold flex items-center gap-1.5">
+                  {isAdmin ? <><Crown className="w-4 h-4 text-amber-500" /> Administrator</> : <><User className="w-4 h-4 text-blue-500" /> Korisnik</>}
+                </span>
+              </div>
+              <div className="flex flex-col gap-1 p-3 rounded-xl bg-muted/40 border border-border/30">
+                <span className="text-xs text-muted-foreground">Član od</span>
+                <span className="text-sm font-semibold flex items-center gap-1.5">
+                  <Calendar className="w-4 h-4 text-muted-foreground" />
+                  {user?.createdAt ? format(new Date(user.createdAt), "dd.MM.yyyy.") : "N/A"}
+                </span>
+              </div>
+            </div>
+          </div>
+        </FadeInWhenVisible>
+
       </div>
     </div>
   );

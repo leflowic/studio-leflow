@@ -21,7 +21,11 @@ import {
   TrendingUp,
   Sparkles,
   Music2,
+  Settings,
+  ArrowRight,
+  CalendarDays,
 } from "lucide-react";
+import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 import { FadeInWhenVisible } from "@/components/motion/FadeIn";
 
 type Project = {
@@ -181,9 +185,12 @@ export default function Dashboard() {
           <div className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-primary/20 via-primary/10 to-transparent border border-primary/20 p-6 md:p-8">
             <div className="absolute inset-0 bg-grid-white/5 [mask-image:radial-gradient(ellipse_at_top_left,white,transparent_70%)]" />
             <div className="relative flex flex-col sm:flex-row items-start sm:items-center gap-4">
-              <div className="w-14 h-14 rounded-2xl bg-primary flex items-center justify-center text-primary-foreground text-xl font-bold flex-shrink-0 shadow-lg">
-                {initials}
-              </div>
+              <Avatar className="w-14 h-14 ring-2 ring-primary/30 shadow-lg flex-shrink-0">
+                {user.avatarUrl
+                  ? <AvatarImage src={user.avatarUrl} alt={user.username} />
+                  : <AvatarFallback className="bg-primary text-primary-foreground text-xl font-bold">{initials}</AvatarFallback>
+                }
+              </Avatar>
               <div className="flex-1 min-w-0">
                 <div className="flex items-center gap-2 mb-1">
                   <Sparkles className="w-4 h-4 text-primary" />
@@ -192,9 +199,9 @@ export default function Dashboard() {
                 <h1 className="text-2xl md:text-3xl font-bold truncate">{user.username}</h1>
                 <p className="text-sm text-muted-foreground mt-1">Pratite projekte, ugovore i fakture sa Studio LeFlow</p>
               </div>
-              <div className="flex gap-2 flex-shrink-0">
+              <div className="flex gap-2 flex-shrink-0 flex-wrap">
                 <Link href="/inbox">
-                  <Button variant="outline" size="sm" className="gap-2">
+                  <Button variant="outline" size="sm" className="gap-2 h-9 rounded-xl">
                     <MessageCircle className="w-4 h-4" />
                     {(overview?.unreadMessages ?? 0) > 0 && (
                       <span className="bg-primary text-primary-foreground text-xs rounded-full w-4 h-4 flex items-center justify-center">
@@ -204,7 +211,32 @@ export default function Dashboard() {
                     Inbox
                   </Button>
                 </Link>
+                <Link href="/settings">
+                  <Button variant="ghost" size="sm" className="gap-2 h-9 rounded-xl text-muted-foreground hover:text-foreground">
+                    <Settings className="w-4 h-4" />
+                    <span className="hidden sm:inline">Podešavanja</span>
+                  </Button>
+                </Link>
               </div>
+            </div>
+
+            {/* Quick actions */}
+            <div className="relative mt-5 pt-5 border-t border-primary/10 flex flex-wrap gap-2">
+              <Link href="/kontakt">
+                <Button size="sm" className="h-8 rounded-lg gap-1.5 text-xs">
+                  <CalendarDays className="w-3.5 h-3.5" /> Zakaži termin
+                </Button>
+              </Link>
+              <Link href="/inbox">
+                <Button variant="outline" size="sm" className="h-8 rounded-lg gap-1.5 text-xs">
+                  <MessageCircle className="w-3.5 h-3.5" /> Pošalji poruku
+                </Button>
+              </Link>
+              <Link href="/giveaway">
+                <Button variant="outline" size="sm" className="h-8 rounded-lg gap-1.5 text-xs">
+                  <FolderOpen className="w-3.5 h-3.5" /> Prijavi projekat
+                </Button>
+              </Link>
             </div>
           </div>
         </FadeInWhenVisible>
@@ -358,27 +390,37 @@ export default function Dashboard() {
           </FadeInWhenVisible>
         </div>
 
-        {/* Messages quick access */}
+        {/* Bottom row: messages + settings shortcuts */}
         <FadeInWhenVisible>
-          <div className="rounded-2xl border border-border/60 bg-gradient-to-r from-green-500/5 to-transparent p-5 md:p-6 flex items-center justify-between gap-4">
-            <div className="flex items-center gap-4">
-              <div className="w-10 h-10 rounded-xl bg-green-500/10 flex items-center justify-center flex-shrink-0">
-                <MessageCircle className="w-5 h-5 text-green-500" />
-              </div>
-              <div>
-                <p className="font-medium">Poruke</p>
-                <p className="text-sm text-muted-foreground">
-                  {overviewLoading ? "Učitavanje..." : overview?.unreadMessages ?? 0 > 0
-                    ? <>Imate <span className="font-semibold text-foreground">{overview!.unreadMessages}</span> nepročitanih poruka</>
-                    : "Nemate nepročitanih poruka"}
-                </p>
-              </div>
-            </div>
+          <div className="grid sm:grid-cols-2 gap-3">
             <Link href="/inbox">
-              <Button size="sm" className="gap-2 flex-shrink-0">
-                <MessageCircle className="w-4 h-4" />
-                Otvori Inbox
-              </Button>
+              <div className="group rounded-2xl border border-border/60 bg-card hover:border-green-500/30 hover:bg-green-500/5 transition-all p-4 flex items-center gap-4 cursor-pointer">
+                <div className="w-10 h-10 rounded-xl bg-green-500/10 flex items-center justify-center flex-shrink-0">
+                  <MessageCircle className="w-5 h-5 text-green-500" />
+                </div>
+                <div className="flex-1 min-w-0">
+                  <p className="font-medium text-sm">Poruke</p>
+                  <p className="text-xs text-muted-foreground">
+                    {overviewLoading ? "Učitavanje..." : (overview?.unreadMessages ?? 0) > 0
+                      ? <><span className="font-semibold text-foreground">{overview!.unreadMessages}</span> nepročitanih</>
+                      : "Nema novih poruka"
+                    }
+                  </p>
+                </div>
+                <ArrowRight className="w-4 h-4 text-muted-foreground group-hover:text-foreground group-hover:translate-x-0.5 transition-all" />
+              </div>
+            </Link>
+            <Link href="/settings">
+              <div className="group rounded-2xl border border-border/60 bg-card hover:border-blue-500/30 hover:bg-blue-500/5 transition-all p-4 flex items-center gap-4 cursor-pointer">
+                <div className="w-10 h-10 rounded-xl bg-blue-500/10 flex items-center justify-center flex-shrink-0">
+                  <Settings className="w-5 h-5 text-blue-500" />
+                </div>
+                <div className="flex-1 min-w-0">
+                  <p className="font-medium text-sm">Podešavanja</p>
+                  <p className="text-xs text-muted-foreground">Profil, avatar, lozinka</p>
+                </div>
+                <ArrowRight className="w-4 h-4 text-muted-foreground group-hover:text-foreground group-hover:translate-x-0.5 transition-all" />
+              </div>
             </Link>
           </div>
         </FadeInWhenVisible>
