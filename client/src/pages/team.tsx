@@ -36,7 +36,6 @@ export default function Team() {
   
   const { data: cmsContent = [] } = useQuery<CmsContent[]>({
     queryKey: ["/api/cms/content"],
-    queryFn: () => fetch("/api/cms/content").then(r => r.json()),
   });
 
   const getCmsValue = (section: string, key: string, fallback: string = "") => {

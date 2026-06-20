@@ -57,7 +57,6 @@ export default function VideoSpots() {
 
   const { data: spots = [] } = useQuery<VideoSpot[]>({
     queryKey: ["/api/video-spots"],
-    queryFn: () => fetch("/api/video-spots").then(r => r.json()),
   });
 
   const createMutation = useMutation({
