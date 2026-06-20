@@ -199,28 +199,6 @@ export default function Terms() {
         </FadeInWhenVisible>
 
         <FadeInWhenVisible delay={0}>
-          <Card className="mt-8 border-muted-foreground/20">
-            <CardContent className="p-8 md:p-10">
-              <div className="flex flex-col md:flex-row items-start gap-6">
-                <div className="flex items-center justify-center w-14 h-14 rounded-xl bg-muted ring-4 ring-muted/10 flex-shrink-0">
-                  <MessageSquare className="w-7 h-7 text-muted-foreground" />
-                </div>
-                <div className="flex-1">
-                  <h3 className="text-2xl font-bold mb-4" data-testid="text-messaging-privacy">
-                    Privatnost Poruka
-                  </h3>
-                  <p className="text-base md:text-lg text-muted-foreground leading-relaxed">
-                    Administrator može da reguliše poruke na platformi radi bezbednosti, moderacije i poštovanja pravila. 
-                    Ova mera osigurava profesionalno i sigurno okruženje za sve korisnike, sprečava zloupotrebe sistema 
-                    i omogućava adekvatnu podršku u slučaju sporova ili tehničkih problema.
-                  </p>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-        </FadeInWhenVisible>
-
-        <FadeInWhenVisible delay={0}>
           <div className="mt-16 text-center">
             <Link href="/kontakt">
               <Button size="lg" className="text-lg px-8 py-6 shadow-lg hover:shadow-xl transition-all duration-300" data-testid="button-contact-terms">

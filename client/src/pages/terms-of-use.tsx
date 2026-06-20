@@ -320,35 +320,6 @@ export default function TermsOfUsePage() {
             </CardContent>
           </Card>
 
-          {/* Privatnost Poruka */}
-          <Card data-testid="card-messaging-privacy">
-            <CardHeader>
-              <CardTitle className="flex items-center gap-3">
-                <Shield className="w-5 h-5 text-primary" />
-                8. Privatnost i Bezbednost Poruka
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-3 text-muted-foreground">
-              <p>
-                Studio LeFlow platforma omogućava korisnicima razmenu privatnih poruka u svrhu komunikacije 
-                o projektima, saradnji i pitanjima vezanim za produkciju.
-              </p>
-              <p>
-                <strong className="text-foreground">Administrator platforme ima pristup privatnim porukama u svrhu:</strong>
-              </p>
-              <ul className="list-disc list-inside space-y-2 ml-4">
-                <li>Bezbednosti platforme i zaštite korisnika od zloupotrebe</li>
-                <li>Moderacije sadržaja i sprečavanja uvredljivog ili neprimerenog ponašanja</li>
-                <li>Tehničke podrške i rešavanja sporova između korisnika</li>
-                <li>Inspekcije u slučaju prijava kršenja pravila ili nezakonitog sadržaja</li>
-              </ul>
-              <p className="font-medium text-foreground mt-3">
-                Korišćenjem sistema za razmenu poruka, korisnik potvrđuje da je svestan da administrator 
-                može pristupiti sadržaju poruka u napred navedene svrhe.
-              </p>
-            </CardContent>
-          </Card>
-
           {/* Kontakt */}
           <Card data-testid="card-contact">
             <CardHeader>
