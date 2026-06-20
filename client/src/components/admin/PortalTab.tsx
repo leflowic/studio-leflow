@@ -219,7 +219,14 @@ function PortalDetail({ portal, onClose }: { portal: PortalWithStats; onClose: (
   });
 
   const uploadVersion = async () => {
-    if (!selectedFile || !versionName.trim()) return;
+    if (!selectedFile) {
+      toast({ title: "Izaberi audio fajl", variant: "destructive" });
+      return;
+    }
+    if (!versionName.trim()) {
+      toast({ title: "Unesi naziv verzije", description: 'npr. "Mix v1", "Mix v2", "Master"', variant: "destructive" });
+      return;
+    }
     setUploading(true);
     try {
       const formData = new FormData();
@@ -232,8 +239,9 @@ function PortalDetail({ portal, onClose }: { portal: PortalWithStats; onClose: (
         body: formData,
       });
       if (!res.ok) {
-        const err = await res.json();
-        throw new Error(err.error || "Greška");
+        let errMsg = "Greška pri uploadu";
+        try { const err = await res.json(); errMsg = err.error || errMsg; } catch {}
+        throw new Error(errMsg);
       }
       setVersionName("");
       setSelectedFile(null);
@@ -310,7 +318,7 @@ function PortalDetail({ portal, onClose }: { portal: PortalWithStats; onClose: (
           <Button
             className="w-full bg-amber-600 hover:bg-amber-500 text-black font-semibold"
             onClick={uploadVersion}
-            disabled={!selectedFile || !versionName.trim() || uploading}
+            disabled={uploading}
           >
             {uploading ? "Uploadujem..." : "Upload verzije"}
           </Button>
