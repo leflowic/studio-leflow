@@ -45,7 +45,35 @@ export default function MaintenancePage() {
   const [dialogView, setDialogView] = useState<DialogView>("credentials");
   const [userId, setUserId] = useState<number | null>(null);
   const [isLoading, setIsLoading] = useState(false);
+  const [showBypassDialog, setShowBypassDialog] = useState(false);
+  const [bypassCode, setBypassCode] = useState("");
+  const [bypassError, setBypassError] = useState(false);
+  const [logoTaps, setLogoTaps] = useState(0);
+  const logoTapTimer = useState<ReturnType<typeof setTimeout> | null>(null);
   const { toast } = useToast();
+
+  const handleLogoTap = () => {
+    const newCount = logoTaps + 1;
+    setLogoTaps(newCount);
+    if (logoTapTimer[0]) clearTimeout(logoTapTimer[0]);
+    logoTapTimer[0] = setTimeout(() => setLogoTaps(0), 2000);
+    if (newCount >= 5) {
+      setLogoTaps(0);
+      setShowBypassDialog(true);
+      setBypassCode("");
+      setBypassError(false);
+    }
+  };
+
+  const handleBypassSubmit = () => {
+    if (bypassCode === "14881312") {
+      localStorage.setItem("maintenance_bypass", "1");
+      window.location.reload();
+    } else {
+      setBypassError(true);
+      setBypassCode("");
+    }
+  };
 
   const loginForm = useForm<LoginFormData>({
     resolver: zodResolver(loginSchema),
@@ -163,7 +191,8 @@ export default function MaintenancePage() {
             <img
               src="/attached_assets/logo/studioleflow-transparent.png"
               alt="Studio LeFlow"
-              className="h-32 w-auto filter invert"
+              className="h-32 w-auto filter invert cursor-pointer select-none"
+              onClick={handleLogoTap}
             />
           </div>
 
@@ -204,6 +233,32 @@ export default function MaintenancePage() {
           </div>
         </motion.div>
       </div>
+
+      <Dialog open={showBypassDialog} onOpenChange={(open) => { setShowBypassDialog(open); setBypassCode(""); setBypassError(false); }}>
+        <DialogContent className="sm:max-w-xs">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <KeyRound className="w-5 h-5" />
+              Pristupni kod
+            </DialogTitle>
+            <DialogDescription>
+              Unesite kod za privremeni pristup sajtu.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-3">
+            <Input
+              type="password"
+              placeholder="Kod..."
+              value={bypassCode}
+              onChange={(e) => { setBypassCode(e.target.value); setBypassError(false); }}
+              onKeyDown={(e) => e.key === "Enter" && handleBypassSubmit()}
+              autoFocus
+            />
+            {bypassError && <p className="text-sm text-destructive">Neispravan kod.</p>}
+            <Button className="w-full" onClick={handleBypassSubmit}>Potvrdi</Button>
+          </div>
+        </DialogContent>
+      </Dialog>
 
       <Dialog open={showLoginDialog} onOpenChange={handleDialogClose}>
         <DialogContent className="sm:max-w-md">

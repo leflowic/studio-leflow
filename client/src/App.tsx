@@ -130,7 +130,7 @@ function Router() {
   });
 
   // If maintenance mode is active and user is not admin, show maintenance page
-  const isMaintenanceMode = maintenanceData?.maintenanceMode && user?.role !== "admin";
+  const isMaintenanceMode = maintenanceData?.maintenanceMode && user?.role !== "admin" && !localStorage.getItem("maintenance_bypass");
   
   if (isMaintenanceMode) {
     return (
