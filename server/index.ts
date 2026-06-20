@@ -220,7 +220,7 @@ app.use((req, res, next) => {
     "font-src 'self' https://fonts.gstatic.com; " +
     "img-src 'self' data: https:; " +
     "media-src 'self' https://res.cloudinary.com; " +
-    "connect-src 'self' https://api.cloudinary.com; " +
+    "connect-src 'self' https://api.cloudinary.com https://res.cloudinary.com; " +
     "frame-src 'self' https://www.youtube.com https://www.youtube-nocookie.com; " +
     "frame-ancestors 'none';"
   );
