@@ -20,15 +20,17 @@ import { InstallPrompt } from "@/components/pwa/InstallPrompt";
 import { WhatsAppButton } from "@/components/WhatsAppButton";
 import { CookieConsent } from "@/components/CookieConsent";
 
-class ChunkErrorBoundary extends Component<{ children: ReactNode }, { failed: boolean }> {
-  state = { failed: false };
+class ChunkErrorBoundary extends Component<{ children: ReactNode }, { failed: boolean; errorMsg: string }> {
+  state = { failed: false, errorMsg: "" };
 
   static getDerivedStateFromError() {
     return { failed: true };
   }
 
   componentDidCatch(error: Error) {
-    console.error("[ChunkErrorBoundary] caught:", error?.name, error?.message, error);
+    const msg = `${error?.name}: ${error?.message}`;
+    this.setState({ errorMsg: msg });
+
     const isChunkError =
       error?.message?.includes("Failed to fetch dynamically imported module") ||
       error?.message?.includes("Importing a module script failed") ||
@@ -50,6 +52,11 @@ class ChunkErrorBoundary extends Component<{ children: ReactNode }, { failed: bo
       return (
         <div className="flex flex-col items-center justify-center min-h-screen gap-6 text-center px-4">
           <p className="text-muted-foreground">Došlo je do greške pri učitavanju stranice.</p>
+          {this.state.errorMsg && (
+            <p className="text-xs text-red-400 font-mono max-w-md break-all bg-zinc-900 px-3 py-2 rounded">
+              {this.state.errorMsg}
+            </p>
+          )}
           <div className="flex flex-col sm:flex-row gap-3 items-center">
             <button
               className="text-primary underline text-sm"
