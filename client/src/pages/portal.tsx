@@ -1,7 +1,6 @@
 import { useEffect, useRef, useState, useCallback } from "react";
 import { useParams } from "wouter";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import WaveSurfer from "wavesurfer.js";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
@@ -42,8 +41,8 @@ interface WaveformPlayerProps {
 }
 
 function WaveformPlayer({ version, comments, onAddComment, addingComment, onSeekReady }: WaveformPlayerProps) {
-  const containerRef = useRef<HTMLDivElement>(null);
-  const wsRef = useRef<WaveSurfer | null>(null);
+  const audioRef = useRef<HTMLAudioElement | null>(null);
+  const progressRef = useRef<HTMLDivElement>(null);
   const [isPlaying, setIsPlaying] = useState(false);
   const [currentTime, setCurrentTime] = useState(0);
   const [duration, setDuration] = useState(0);
@@ -53,7 +52,6 @@ function WaveformPlayer({ version, comments, onAddComment, addingComment, onSeek
   const [commentText, setCommentText] = useState("");
 
   useEffect(() => {
-    if (!containerRef.current) return;
     setIsLoading(true);
     setIsPlaying(false);
     setCurrentTime(0);
@@ -61,53 +59,64 @@ function WaveformPlayer({ version, comments, onAddComment, addingComment, onSeek
     setPendingComment(null);
     setCommentMode(false);
 
-    const ws = WaveSurfer.create({
-      container: containerRef.current,
-      waveColor: "rgba(255,255,255,0.12)",
-      progressColor: "#f59e0b",
-      cursorColor: "#f59e0b",
-      cursorWidth: 2,
-      barWidth: 2,
-      barGap: 1,
-      barRadius: 2,
-      height: 80,
-      normalize: true,
-      url: version.audioUrl,
-    });
+    const audio = new Audio();
+    audio.crossOrigin = "anonymous";
+    audio.preload = "metadata";
+    audioRef.current = audio;
 
-    wsRef.current = ws;
+    const onMeta = () => { setDuration(audio.duration); setIsLoading(false); onSeekReady?.((ts) => { audio.currentTime = ts; }); };
+    const onTime = () => setCurrentTime(audio.currentTime);
+    const onPlay = () => setIsPlaying(true);
+    const onPause = () => setIsPlaying(false);
+    const onEnd = () => setIsPlaying(false);
+    const onErr = () => setIsLoading(false);
 
-    ws.on("ready", () => {
-      const dur = ws.getDuration();
-      setDuration(dur);
-      setIsLoading(false);
-      onSeekReady?.((ts) => { if (dur > 0) ws.seekTo(ts / dur); });
-    });
-    ws.on("timeupdate", (t) => setCurrentTime(t));
-    ws.on("play", () => setIsPlaying(true));
-    ws.on("pause", () => setIsPlaying(false));
-    ws.on("finish", () => setIsPlaying(false));
+    audio.addEventListener("loadedmetadata", onMeta);
+    audio.addEventListener("timeupdate", onTime);
+    audio.addEventListener("play", onPlay);
+    audio.addEventListener("pause", onPause);
+    audio.addEventListener("ended", onEnd);
+    audio.addEventListener("error", onErr);
 
-    ws.on("click", (relX: number) => {
-      if (commentMode) {
-        ws.pause();
-        const ts = Math.floor(relX * ws.getDuration());
-        setPendingComment({ pct: relX * 100, timestamp: ts });
-        setCommentText("");
-      }
-    });
+    audio.src = version.audioUrl;
+    audio.load();
 
     return () => {
-      ws.destroy();
-      wsRef.current = null;
+      audio.removeEventListener("loadedmetadata", onMeta);
+      audio.removeEventListener("timeupdate", onTime);
+      audio.removeEventListener("play", onPlay);
+      audio.removeEventListener("pause", onPause);
+      audio.removeEventListener("ended", onEnd);
+      audio.removeEventListener("error", onErr);
+      audio.pause();
+      audio.src = "";
+      audioRef.current = null;
     };
   }, [version.audioUrl]);
 
-  const togglePlay = () => wsRef.current?.playPause();
+  const togglePlay = () => {
+    if (!audioRef.current) return;
+    if (isPlaying) audioRef.current.pause();
+    else audioRef.current.play();
+  };
+
+  const handleProgressClick = (e: React.MouseEvent<HTMLDivElement>) => {
+    if (!progressRef.current || !audioRef.current || duration === 0) return;
+    const rect = progressRef.current.getBoundingClientRect();
+    const relX = Math.max(0, Math.min(1, (e.clientX - rect.left) / rect.width));
+    if (commentMode) {
+      audioRef.current.pause();
+      const ts = Math.floor(relX * duration);
+      setPendingComment({ pct: relX * 100, timestamp: ts });
+      setCommentText("");
+    } else {
+      audioRef.current.currentTime = relX * duration;
+    }
+  };
 
   const seekToComment = (ts: number) => {
-    if (!wsRef.current || duration === 0) return;
-    wsRef.current.seekTo(ts / duration);
+    if (!audioRef.current || duration === 0) return;
+    audioRef.current.currentTime = ts;
   };
 
   const submitComment = () => {
@@ -143,16 +152,28 @@ function WaveformPlayer({ version, comments, onAddComment, addingComment, onSeek
           <Volume2 className="w-4 h-4 text-zinc-600 flex-shrink-0" />
         </div>
 
-        {/* Waveform + comment markers overlay */}
-        <div className="relative" style={{ cursor: commentMode ? "crosshair" : "pointer" }}>
-          <div ref={containerRef} className="w-full" />
+        {/* Progress bar + comment markers */}
+        <div
+          ref={progressRef}
+          className="relative h-12 flex items-center select-none"
+          style={{ cursor: isLoading ? "default" : commentMode ? "crosshair" : "pointer" }}
+          onClick={handleProgressClick}
+        >
+          {/* Track background */}
+          <div className="w-full h-2 bg-zinc-800 rounded-full overflow-visible relative">
+            {/* Filled progress */}
+            <div
+              className="h-full bg-amber-500 rounded-full transition-none"
+              style={{ width: duration > 0 ? `${(currentTime / duration) * 100}%` : "0%" }}
+            />
+          </div>
 
-          {/* Loading skeleton */}
+          {/* Loading skeleton overlay */}
           {isLoading && (
-            <div className="absolute inset-0 flex items-center justify-center bg-zinc-900/80 rounded">
+            <div className="absolute inset-0 flex items-center justify-center">
               <div className="flex gap-1 items-end">
                 {[4, 6, 8, 5, 7, 9, 6, 4, 8, 5].map((h, i) => (
-                  <div key={i} className="w-1.5 rounded-sm bg-zinc-700 animate-pulse" style={{ height: `${h * 4}px`, animationDelay: `${i * 80}ms` }} />
+                  <div key={i} className="w-1.5 rounded-sm bg-zinc-700 animate-pulse" style={{ height: `${h * 3}px`, animationDelay: `${i * 80}ms` }} />
                 ))}
               </div>
             </div>
@@ -163,13 +184,12 @@ function WaveformPlayer({ version, comments, onAddComment, addingComment, onSeek
             <button
               key={c.id}
               title={`${formatTime(c.timestampSeconds)} — ${c.authorName}: ${c.text}`}
-              onClick={() => seekToComment(c.timestampSeconds)}
-              className="absolute top-0 -translate-x-1/2 group z-10"
+              onClick={(e) => { e.stopPropagation(); seekToComment(c.timestampSeconds); }}
+              className="absolute top-1/2 -translate-y-1/2 -translate-x-1/2 group z-10"
               style={{ left: `${(c.timestampSeconds / duration) * 100}%` }}
             >
               <div className={`w-3 h-3 rounded-full border-2 border-zinc-900 transition-transform group-hover:scale-150 ${c.authorType === "producer" ? "bg-amber-500" : c.resolved ? "bg-zinc-500" : "bg-blue-500"}`} />
-              {/* Tooltip */}
-              <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 hidden group-hover:block z-20 pointer-events-none">
+              <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-3 hidden group-hover:block z-20 pointer-events-none">
                 <div className="bg-zinc-800 border border-zinc-700 rounded-lg px-2.5 py-1.5 text-xs whitespace-nowrap max-w-[200px] text-left shadow-xl">
                   <span className="font-mono text-amber-400">{formatTime(c.timestampSeconds)}</span>
                   <span className="text-zinc-400 mx-1">·</span>
@@ -182,7 +202,7 @@ function WaveformPlayer({ version, comments, onAddComment, addingComment, onSeek
 
           {/* Pending comment marker */}
           {pendingComment && (
-            <div className="absolute top-0 -translate-x-1/2 z-20" style={{ left: `${pendingComment.pct}%` }}>
+            <div className="absolute top-1/2 -translate-y-1/2 -translate-x-1/2 z-20" style={{ left: `${pendingComment.pct}%` }}>
               <div className="w-3 h-3 rounded-full bg-green-400 border-2 border-zinc-900 animate-pulse" />
             </div>
           )}
