@@ -289,19 +289,16 @@ export default function PortalPage() {
 
   type PortalData = { portal: ClientPortal; versions: Array<PortalVersion & { commentCount: number }> };
 
-  const [portalErrorStatus, setPortalErrorStatus] = useState<number | null>(null);
-  const { data, isLoading, isError } = useQuery<PortalData>({
+  const { data, isLoading, isError, error: portalQueryError } = useQuery<PortalData, Error>({
     queryKey: [`/api/portal/${token}`],
     queryFn: async () => {
       const res = await fetch(`/api/portal/${token}`);
-      if (!res.ok) {
-        setPortalErrorStatus(res.status);
-        throw new Error(String(res.status));
-      }
+      if (!res.ok) throw new Error(String(res.status));
       return res.json();
     },
     retry: false,
   });
+  const portalErrorStatus = portalQueryError ? parseInt(portalQueryError.message) : null;
 
   const portal = data?.portal;
   const versions = data?.versions ?? [];

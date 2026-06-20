@@ -28,6 +28,7 @@ class ChunkErrorBoundary extends Component<{ children: ReactNode }, { failed: bo
   }
 
   componentDidCatch(error: Error) {
+    console.error("[ChunkErrorBoundary] caught:", error?.name, error?.message, error);
     const isChunkError =
       error?.message?.includes("Failed to fetch dynamically imported module") ||
       error?.message?.includes("Importing a module script failed") ||
@@ -108,7 +109,6 @@ function Router() {
         <Suspense fallback={<div className="min-h-screen bg-[#0a0a0a] flex items-center justify-center"><div className="w-8 h-8 rounded-full border-2 border-amber-500/30 border-t-amber-500 animate-spin" /></div>}>
           <Switch location={location}>
             <Route path="/portal/:token"><PortalPage /></Route>
-            <Route><PortalPage /></Route>
           </Switch>
         </Suspense>
       </ChunkErrorBoundary>
