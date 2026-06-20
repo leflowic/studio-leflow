@@ -9,11 +9,52 @@ import DisableDevtool from "disable-devtool";
 registerServiceWorker();
 
 // ===== DEBUG PROTECTION (Production Only) =====
-// TEMPORARILY DISABLED FOR DEBUGGING — re-enable after portal bug is fixed
-// if (import.meta.env.PROD) {
-//   disableReactDevTools();
-//   DisableDevtool({ clearLog: true, disableSelect: false, disableCopy: false, disableCut: false, disablePaste: false });
-// }
+if (import.meta.env.PROD) {
+  // Disable React DevTools extension
+  disableReactDevTools();
+
+  // Disable browser DevTools (F12, Inspect, etc.)
+  DisableDevtool({
+    clearLog: true,
+    disableSelect: false,
+    disableCopy: false,
+    disableCut: false,
+    disablePaste: false,
+  });
+}
+
+// ===== KEYBOARD SHORTCUT PROTECTION =====
+document.addEventListener('keydown', (e) => {
+  // F12
+  if (e.key === 'F12' || e.keyCode === 123) {
+    e.preventDefault();
+    return false;
+  }
+
+  // Ctrl+Shift+I (Inspect Element)
+  if ((e.ctrlKey || e.metaKey) && e.shiftKey && (e.key === 'I' || e.key === 'i' || e.keyCode === 73)) {
+    e.preventDefault();
+    return false;
+  }
+
+  // Ctrl+Shift+J (Console)
+  if ((e.ctrlKey || e.metaKey) && e.shiftKey && (e.key === 'J' || e.key === 'j' || e.keyCode === 74)) {
+    e.preventDefault();
+    return false;
+  }
+
+  // Ctrl+Shift+C (Element picker)
+  if ((e.ctrlKey || e.metaKey) && e.shiftKey && (e.key === 'C' || e.key === 'c' || e.keyCode === 67)) {
+    e.preventDefault();
+    return false;
+  }
+
+  // Ctrl+U (View Source)
+  if ((e.ctrlKey || e.metaKey) && (e.key === 'U' || e.key === 'u' || e.keyCode === 85)) {
+    e.preventDefault();
+    return false;
+  }
+}, true);
 
 // ===== IMAGE PROTECTION =====
 // Prevent right-click context menu on images
