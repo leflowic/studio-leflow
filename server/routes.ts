@@ -272,6 +272,7 @@ async function checkMaintenanceMode(req: any, res: any, next: any) {
     '/user',
     '/register',
     '/verify-email',
+    '/verify',
     '/forgot-password',
     '/reset-password',
     '/admin',
