@@ -1,167 +1,138 @@
 import { Link } from "wouter";
-import { MapPin, Phone, Mail, Instagram, BadgeCheck } from "lucide-react";
-import { FadeInWhenVisible } from "@/components/motion/FadeIn";
+import { MapPin, Phone, Mail, Instagram, BadgeCheck, ArrowRight, Music } from "lucide-react";
 import { NewsletterForm } from "@/components/newsletter-form";
+import { Button } from "@/components/ui/button";
 import leflowLogo from "@/assets/leflow-logo.png";
+
+const links = [
+  { label: "Početna", href: "/" },
+  { label: "Giveaway", href: "/giveaway" },
+  { label: "Zajednica", href: "/zajednica" },
+  { label: "Projekti", href: "/projekti" },
+  { label: "Tim", href: "/tim" },
+  { label: "Česta Pitanja", href: "/faq" },
+  { label: "Pravila i Uslovi", href: "/pravila" },
+  { label: "Kontakt", href: "/kontakt" },
+];
+
+const contact = [
+  { icon: Phone, label: "+381 63 734 7023", href: "tel:+381637347023" },
+  { icon: Mail, label: "podrska@studioleflow.com", href: "mailto:podrska@studioleflow.com" },
+  { icon: Instagram, label: "@studioleflow", href: "https://instagram.com/studioleflow", external: true },
+  { icon: MapPin, label: "Beograd, Srbija", href: null },
+];
 
 export function Footer() {
   const currentYear = new Date().getFullYear();
 
-  const quickLinks = [
-    { name: "Početna", href: "/" },
-    { name: "Česta Pitanja", href: "/faq" },
-    { name: "Pravila i Uslovi", href: "/pravila" },
-    { name: "Kontakt", href: "/kontakt" }
-  ];
-
-  const scrollToServices = () => {
-    const element = document.getElementById("usluge");
-    if (element) {
-      element.scrollIntoView({ behavior: "smooth", block: "start" });
-    } else {
-      window.location.href = "/#usluge";
-    }
-  };
-
-  const services = [
-    "Snimanje vokala",
-    "Mix i Master",
-    "Instrumentali",
-    "Video produkcija"
-  ];
-
   return (
-    <footer className="bg-gradient-to-b from-muted/20 to-muted/40 border-t border-border/50">
-      <div className="max-w-7xl mx-auto px-6 py-12 lg:py-16">
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8 lg:gap-12">
-          <FadeInWhenVisible delay={0.1}>
-            <div>
-              <div className="flex items-center gap-2 mb-4">
-                <img 
-                  src={leflowLogo} 
-                  alt="Studio LeFlow Logo" 
-                  draggable={false}
-                  onContextMenu={(e) => e.preventDefault()}
-                  className="h-8 w-auto dark:invert transition-all select-none"
-                />
-                <span className="text-xl font-bold font-[Montserrat]">Studio LeFlow</span>
-              </div>
-            <p className="text-sm text-muted-foreground mb-4">
-              Profesionalni muzički studio u Beogradu za sve vaše kreativne potrebe.
-            </p>
-            <div className="space-y-2 text-sm">
-              <div className="flex items-center gap-2 text-muted-foreground">
-                <MapPin className="w-4 h-4" />
-                <span>Beograd, Srbija</span>
-              </div>
-              <div className="flex items-center gap-2 text-muted-foreground">
-                <Phone className="w-4 h-4" />
-                <a href="tel:+381637347023" className="hover:text-primary transition-colors">
-                  +381 63 734 7023
-                </a>
-              </div>
-              <div className="flex items-center gap-2 text-muted-foreground">
-                <Mail className="w-4 h-4" />
-                <a href="mailto:podrska@studioleflow.com" className="hover:text-primary transition-colors">
-                  podrska@studioleflow.com
-                </a>
-              </div>
-              <div className="flex items-center gap-2 text-muted-foreground">
-                <Instagram className="w-4 h-4" />
-                <a href="https://instagram.com/studioleflow" target="_blank" rel="noopener noreferrer" className="hover:text-primary transition-colors">
-                  @studioleflow
-                </a>
-              </div>
-            </div>
-            </div>
-          </FadeInWhenVisible>
+    <footer className="relative overflow-hidden border-t border-border/40">
+      {/* Background */}
+      <div className="absolute inset-0 bg-gradient-to-b from-background via-muted/10 to-muted/30 pointer-events-none" />
+      <div className="absolute inset-0 bg-[radial-gradient(ellipse_80%_50%_at_50%_-20%,hsl(var(--primary)/0.06),transparent)] pointer-events-none" />
 
-          <FadeInWhenVisible delay={0.2}>
+      <div className="relative max-w-7xl mx-auto px-6 pt-16 pb-8">
+
+        {/* Top CTA strip */}
+        <div className="rounded-2xl bg-primary/5 border border-primary/15 px-6 py-5 mb-14 flex flex-col sm:flex-row items-center justify-between gap-4">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center flex-shrink-0">
+              <Music className="w-5 h-5 text-primary" />
+            </div>
             <div>
-              <h3 className="font-bold mb-4" data-testid="text-footer-links-title">Brzi Linkovi</h3>
-            <ul className="space-y-2">
-              {quickLinks.map((link) => (
-                <li key={link.name}>
-                  <Link 
-                    href={link.href}
-                    className="text-sm text-muted-foreground hover:text-primary transition-colors" 
-                    data-testid={`link-footer-${link.name.toLowerCase()}`}
+              <p className="font-semibold text-sm">Spremni za sledeću produkciju?</p>
+              <p className="text-xs text-muted-foreground">Besplatna konsultacija — odgovaramo u roku od 24h</p>
+            </div>
+          </div>
+          <Link href="/kontakt">
+            <Button size="sm" className="gap-2 rounded-xl flex-shrink-0" data-testid="button-footer-cta">
+              Zakažite Termin <ArrowRight className="w-3.5 h-3.5" />
+            </Button>
+          </Link>
+        </div>
+
+        {/* Main grid */}
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-10 lg:gap-16 mb-14">
+
+          {/* Brand col */}
+          <div className="md:col-span-1">
+            <div className="flex items-center gap-2.5 mb-4">
+              <img
+                src={leflowLogo}
+                alt="Studio LeFlow"
+                draggable={false}
+                onContextMenu={e => e.preventDefault()}
+                className="h-9 w-auto dark:invert select-none"
+              />
+              <span className="text-lg font-bold font-[Montserrat]">Studio LeFlow</span>
+            </div>
+            <p className="text-sm text-muted-foreground leading-relaxed mb-6 max-w-xs">
+              Profesionalni muzički studio u Beogradu. Snimanje, mix/mastering, instrumentali i video produkcija od 2019.
+            </p>
+            <div className="space-y-2.5">
+              {contact.map(({ icon: Icon, label, href, external }) => (
+                <div key={label} className="flex items-center gap-2.5">
+                  <Icon className="w-3.5 h-3.5 text-primary flex-shrink-0" />
+                  {href ? (
+                    <a
+                      href={href}
+                      target={external ? "_blank" : undefined}
+                      rel={external ? "noopener noreferrer" : undefined}
+                      className="text-sm text-muted-foreground hover:text-primary transition-colors"
+                    >
+                      {label}
+                    </a>
+                  ) : (
+                    <span className="text-sm text-muted-foreground">{label}</span>
+                  )}
+                </div>
+              ))}
+            </div>
+          </div>
+
+          {/* Links col */}
+          <div>
+            <p className="text-xs font-semibold text-muted-foreground uppercase tracking-widest mb-4" data-testid="text-footer-links-title">Stranice</p>
+            <ul className="space-y-2.5">
+              {links.map(({ label, href }) => (
+                <li key={label}>
+                  <Link
+                    href={href}
+                    className="text-sm text-muted-foreground hover:text-foreground transition-colors"
+                    data-testid={`link-footer-${label.toLowerCase()}`}
                   >
-                    {link.name}
+                    {label}
                   </Link>
                 </li>
               ))}
-              <li>
-                <button
-                  onClick={scrollToServices}
-                  className="text-sm text-muted-foreground hover:text-primary transition-colors text-left"
-                  data-testid="link-footer-usluge"
-                >
-                  Usluge
-                </button>
-              </li>
             </ul>
-            </div>
-          </FadeInWhenVisible>
+          </div>
 
-          <FadeInWhenVisible delay={0.3}>
-            <div>
-              <h3 className="font-bold mb-4" data-testid="text-footer-services-title">Usluge</h3>
-            <ul className="space-y-2">
-              {services.map((service) => (
-                <li key={service}>
-                  <button
-                    onClick={scrollToServices}
-                    className="text-sm text-muted-foreground hover:text-primary transition-colors text-left"
-                  >
-                    {service}
-                  </button>
-                </li>
-              ))}
-            </ul>
-            </div>
-          </FadeInWhenVisible>
+          {/* Newsletter col */}
+          <div>
+            <p className="text-xs font-semibold text-muted-foreground uppercase tracking-widest mb-4">Newsletter</p>
+            <p className="text-sm text-muted-foreground mb-4 leading-relaxed">
+              Novi projekti, ekskluzivne ponude i promocije — direktno u vaš inbox.
+            </p>
+            <NewsletterForm variant="footer" />
+          </div>
 
-          <FadeInWhenVisible delay={0.4}>
-            <div>
-              <h3 className="font-bold mb-4">Newsletter</h3>
-              <p className="text-sm text-muted-foreground mb-4">
-                Budite u toku sa najnovijim novostima i promocijama
-              </p>
-              <NewsletterForm variant="footer" />
-            </div>
-          </FadeInWhenVisible>
         </div>
 
-        <div className="border-t mt-12 pt-8 flex flex-col md:flex-row justify-between items-center gap-4">
-          <p className="text-sm text-muted-foreground text-center md:text-left">
+        {/* Bottom bar */}
+        <div className="border-t border-border/40 pt-6 flex flex-col sm:flex-row items-center justify-between gap-3">
+          <p className="text-xs text-muted-foreground">
             © {currentYear} Studio LeFlow. Sva prava zadržana.
           </p>
-          <div className="flex flex-wrap gap-4 justify-center md:justify-end text-sm text-muted-foreground">
-            <Link
-              href="/proveri"
-              className="hover:text-primary transition-colors flex items-center gap-1.5"
-              data-testid="link-footer-verify"
-            >
-              <BadgeCheck className="w-3.5 h-3.5" />
-              Proveri Licencu
+          <div className="flex items-center gap-5 text-xs text-muted-foreground">
+            <Link href="/proveri" className="hover:text-primary transition-colors flex items-center gap-1" data-testid="link-footer-verify">
+              <BadgeCheck className="w-3 h-3" /> Proveri Licencu
             </Link>
-            <Link
-              href="/pravila"
-              className="hover:text-primary transition-colors"
-              data-testid="link-footer-privacy"
-            >
-              Pravila i Uslovi
-            </Link>
-            <Link
-              href="/uslovi-koriscenja"
-              className="hover:text-primary transition-colors"
-              data-testid="link-footer-terms"
-            >
-              Uslovi Korišćenja
-            </Link>
+            <Link href="/pravila" className="hover:text-primary transition-colors" data-testid="link-footer-privacy">Pravila i Uslovi</Link>
+            <Link href="/uslovi-koriscenja" className="hover:text-primary transition-colors" data-testid="link-footer-terms">Uslovi Korišćenja</Link>
           </div>
         </div>
+
       </div>
     </footer>
   );
