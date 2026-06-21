@@ -220,30 +220,55 @@ async function generateStoryBlob(link: SmartLink): Promise<Blob> {
   ctx.fillStyle = divGrad;
   ctx.fillRect(W / 2 - 140, divY, 280, 1.5);
 
-  // ── 9. Platform dots ──────────────────────────────────────────────────────
-  const PLATS = [
-    { key: "spotifyUrl",    color: "#1DB954" },
-    { key: "youtubeUrl",    color: "#FF0033" },
-    { key: "appleMusicUrl", color: "#FC3C44" },
-    { key: "soundcloudUrl", color: "#FF5500" },
-    { key: "tidalUrl",      color: "#00CFFF" },
-    { key: "deezerUrl",     color: "#A259FF" },
+  // ── 9. Platform icons (SVG → Image → canvas) ─────────────────────────────
+  const PLAT_DEFS = [
+    { key: "spotifyUrl",    color: "#1DB954",
+      path: "M12 0C5.4 0 0 5.4 0 12s5.4 12 12 12 12-5.4 12-12S18.66 0 12 0zm5.521 17.34c-.24.359-.66.48-1.021.24-2.82-1.74-6.36-2.101-10.561-1.141-.418.122-.779-.179-.899-.539-.12-.421.18-.78.54-.9 4.56-1.021 8.52-.6 11.64 1.32.42.18.479.659.301 1.02zm1.44-3.3c-.301.42-.841.6-1.262.3-3.239-1.98-8.159-2.58-11.939-1.38-.479.12-1.02-.12-1.14-.6-.12-.48.12-1.021.6-1.141C9.6 9.9 15 10.561 18.72 12.84c.361.181.54.78.241 1.2zm.12-3.36C15.24 8.4 8.82 8.16 5.16 9.301c-.6.179-1.2-.181-1.38-.721-.18-.601.18-1.2.72-1.381 4.26-1.26 11.28-1.02 15.721 1.621.539.3.719 1.02.419 1.56-.299.421-1.02.599-1.559.3z" },
+    { key: "youtubeUrl",    color: "#FF0000",
+      path: "M23.498 6.186a3.016 3.016 0 0 0-2.122-2.136C19.505 3.545 12 3.545 12 3.545s-7.505 0-9.377.505A3.017 3.017 0 0 0 .502 6.186C0 8.07 0 12 0 12s0 3.93.502 5.814a3.016 3.016 0 0 0 2.122 2.136c1.871.505 9.376.505 9.376.505s7.505 0 9.377-.505a3.015 3.015 0 0 0 2.122-2.136C24 15.93 24 12 24 12s0-3.93-.502-5.814zM9.545 15.568V8.432L15.818 12l-6.273 3.568z" },
+    { key: "appleMusicUrl", color: "#FC3C44",
+      path: "M12.152 6.896c-.948 0-2.415-1.078-3.96-1.04-2.04.027-3.91 1.183-4.961 3.014-2.117 3.675-.546 9.103 1.519 12.09 1.013 1.454 2.208 3.09 3.792 3.039 1.52-.065 2.09-.987 3.935-.987 1.831 0 2.35.987 3.96.948 1.637-.026 2.676-1.48 3.676-2.948 1.156-1.688 1.636-3.325 1.662-3.415-.039-.013-3.182-1.221-3.22-4.857-.026-3.04 2.48-4.494 2.597-4.559-1.429-2.09-3.623-2.324-4.39-2.376-2-.156-3.675 1.09-4.61 1.09zM15.53 3.83c.843-1.012 1.4-2.427 1.245-3.83-1.207.052-2.662.805-3.532 1.818-.78.896-1.454 2.338-1.273 3.714 1.338.104 2.715-.688 3.559-1.701" },
+    { key: "soundcloudUrl", color: "#FF5500",
+      path: "M20 14c0-2.21-1.79-4-4-4-.32 0-.63.04-.93.1A6.003 6.003 0 0 0 9 6c-3.31 0-6 2.69-6 6s2.69 6 6 6h11a3 3 0 0 0 0-6z" },
+    { key: "tidalUrl",      color: "#00CFFF",
+      path: "M12.012 3.992L8.008 8l4.004 4.008L8.008 16l4.004 4.008 4.004-4.004-4.004-4.004L16.016 8zm4.004 4.008l-4.004 4.004 4.004 4.004 4.004-4.004z" },
+    { key: "deezerUrl",     color: "#A259FF",
+      path: "M18.81 11.643h3.19v1.968h-3.19zm0-3.484h3.19v1.969h-3.19zm0 6.969h3.19v1.968h-3.19zm-4.27 3.485h3.19v1.968h-3.19zm0-3.484h3.19v1.968h-3.19zm0-3.485h3.19v1.969h-3.19zm0-3.484h3.19v1.969h-3.19zm-4.27 10.452h3.19v1.968H10.27zm0-3.484h3.19v1.968H10.27zm0-3.484h3.19v1.968H10.27zM6 18.612h3.19v1.968H6zm0-3.484h3.19v1.968H6zm-4.27 3.484h3.19v1.968H1.73z" },
   ].filter(p => (link as any)[p.key]);
 
-  let afterDotsY = divY + 48;
-  if (PLATS.length) {
-    const dotR = 8, gap = 26;
-    const totalW = PLATS.length * dotR * 2 + (PLATS.length - 1) * (gap - dotR * 2);
-    let dotX = (W - totalW) / 2 + dotR;
-    const dotY = divY + 46;
-    PLATS.forEach(p => {
-      ctx.beginPath();
-      ctx.arc(dotX, dotY, dotR, 0, Math.PI * 2);
-      ctx.fillStyle = p.color;
+  const ICON_SZ = 58, ICON_GAP = 18;
+
+  const platImgs = await Promise.all(PLAT_DEFS.map(def => new Promise<HTMLImageElement | null>(res => {
+    const svg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="${ICON_SZ}" height="${ICON_SZ}"><path fill="${def.color}" d="${def.path}"/></svg>`;
+    const img = new Image();
+    img.onload = () => res(img);
+    img.onerror = () => res(null);
+    img.src = `data:image/svg+xml;charset=utf-8,${encodeURIComponent(svg)}`;
+  })));
+
+  let afterIconsY = divY + 50;
+  if (PLAT_DEFS.length > 0) {
+    const totalW = PLAT_DEFS.length * ICON_SZ + (PLAT_DEFS.length - 1) * ICON_GAP;
+    let iconX = (W - totalW) / 2;
+    const iconY = divY + 46;
+
+    PLAT_DEFS.forEach((def, i) => {
+      const img = platImgs[i];
+      // Colored glass badge behind icon
+      ctx.save();
+      roundRect(ctx, iconX, iconY, ICON_SZ, ICON_SZ, 16);
+      ctx.fillStyle = def.color + "1a";
       ctx.fill();
-      dotX += gap;
+      roundRect(ctx, iconX, iconY, ICON_SZ, ICON_SZ, 16);
+      ctx.strokeStyle = def.color + "44";
+      ctx.lineWidth = 1.5;
+      ctx.stroke();
+      ctx.restore();
+      if (img) ctx.drawImage(img, iconX, iconY, ICON_SZ, ICON_SZ);
+      iconX += ICON_SZ + ICON_GAP;
     });
-    afterDotsY = dotY + dotR + 14;
+
+    afterIconsY = iconY + ICON_SZ + 14;
   }
 
   // ── 10. Film grain (applied before QR so QR stays crisp) ─────────────────
@@ -273,7 +298,7 @@ async function generateStoryBlob(link: SmartLink): Promise<Blob> {
 
   const qrX = (W - QR_SIZE) / 2;
   // Pin QR consistently near bottom, never too high
-  const qrY = Math.max(afterDotsY + 58, H - QR_SIZE - qrPad * 2 - 44 - 28 - 48 - 88);
+  const qrY = Math.max(afterIconsY + 58, H - QR_SIZE - qrPad * 2 - 44 - 28 - 48 - 88);
 
   ctx.save();
   roundRect(ctx, qrX - qrPad, qrY - qrPad, QR_SIZE + qrPad * 2, QR_SIZE + qrPad * 2, 20);
@@ -290,18 +315,6 @@ async function generateStoryBlob(link: SmartLink): Promise<Blob> {
   ctx.shadowColor = "rgba(0,0,0,0.9)"; ctx.shadowBlur = 10;
   ctx.fillText(`studioleflow.com/l/${link.slug}`, W / 2, qrY + QR_SIZE + qrPad + 40);
   ctx.shadowBlur = 0;
-
-  // ── 12. Bottom logo ───────────────────────────────────────────────────────
-  if (logoImg) {
-    const lW = 148, lH = Math.round((logoImg.naturalHeight / logoImg.naturalWidth) * lW);
-    ctx.save(); ctx.globalAlpha = 0.20;
-    ctx.drawImage(logoImg, (W - lW) / 2, H - 50 - lH, lW, lH);
-    ctx.restore();
-  } else {
-    ctx.font = `300 22px system-ui, -apple-system, Arial, sans-serif`;
-    ctx.fillStyle = "rgba(255,255,255,0.16)";
-    ctx.fillText("STUDIO LEFLOW", W / 2, H - 56);
-  }
 
   return new Promise<Blob>((resolve, reject) => {
     canvas.toBlob(b => b ? resolve(b) : reject(new Error("toBlob failed")), "image/png");
