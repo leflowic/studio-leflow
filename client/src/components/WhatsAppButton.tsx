@@ -1,6 +1,9 @@
 import { useState, useRef } from "react";
+import { useLocation } from "wouter";
 
 export function WhatsAppButton() {
+  const [location] = useLocation();
+  if (location.startsWith("/l/")) return null;
   const [offset, setOffset] = useState({ x: 0, y: 0 });
   const [dragging, setDragging] = useState(false);
   const dragOrigin = useRef<{ mx: number; my: number; ox: number; oy: number } | null>(null);
