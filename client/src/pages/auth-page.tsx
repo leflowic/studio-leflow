@@ -3,14 +3,13 @@ import { useLocation, Link } from "wouter";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
-import { Music, ArrowLeft, Mail, Lock, CheckCircle2, AlertTriangle, Zap } from "lucide-react";
+import { Music, ArrowLeft, Mail, Lock, CheckCircle2, Zap, Eye, EyeOff } from "lucide-react";
 import { motion } from "framer-motion";
 import leflowLogo from "@/assets/leflow-logo.png";
 import { insertUserSchema } from "@shared/schema";
 import { useAuth } from "@/hooks/use-auth";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import {
   Form,
@@ -19,14 +18,38 @@ import {
   FormItem,
   FormLabel,
   FormMessage,
-  FormDescription,
 } from "@/components/ui/form";
 import { Checkbox } from "@/components/ui/checkbox";
-import { Alert, AlertDescription } from "@/components/ui/alert";
 import { VerificationModal } from "@/components/VerificationModal";
 import { useMutation } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
+import { cn } from "@/lib/utils";
+
+function PasswordInput({ placeholder, autoComplete, disabled, "data-testid": dataTestId, ...props }: React.InputHTMLAttributes<HTMLInputElement> & { "data-testid"?: string }) {
+  const [show, setShow] = useState(false);
+  return (
+    <div className="relative">
+      <Input
+        type={show ? "text" : "password"}
+        placeholder={placeholder}
+        autoComplete={autoComplete}
+        disabled={disabled}
+        className="pr-10"
+        data-testid={dataTestId}
+        {...props}
+      />
+      <button
+        type="button"
+        onClick={() => setShow(v => !v)}
+        className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors"
+        tabIndex={-1}
+      >
+        {show ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+      </button>
+    </div>
+  );
+}
 
 const loginSchema = z.object({
   username: z.string().min(1, "Unesite korisničko ime ili email adresu"),
@@ -387,8 +410,7 @@ export default function AuthPage() {
                         <FormItem>
                           <FormLabel>Nova Lozinka</FormLabel>
                           <FormControl>
-                            <Input
-                              type="password"
+                            <PasswordInput
                               placeholder="Unesite novu lozinku"
                               autoComplete="new-password"
                               data-testid="input-new-password"
@@ -407,8 +429,7 @@ export default function AuthPage() {
                         <FormItem>
                           <FormLabel>Potvrda Lozinke</FormLabel>
                           <FormControl>
-                            <Input
-                              type="password"
+                            <PasswordInput
                               placeholder="Ponovite novu lozinku"
                               autoComplete="new-password"
                               data-testid="input-confirm-password"
@@ -509,32 +530,35 @@ export default function AuthPage() {
   // Main Auth View (Login & Register)
   return (
     <div className="min-h-screen flex relative overflow-hidden">
-      {/* Shared background that spans both sides */}
       <div className="absolute inset-0 bg-gradient-to-br from-background via-background to-black/90" />
-      
+
       <div className="w-full lg:w-1/2 flex items-center justify-center p-6 lg:p-12 relative z-10">
-        <div className="w-full max-w-md space-y-8">
-          <div className="text-center">
-            <div className="inline-flex items-center gap-2 mb-4">
-              <Music className="w-8 h-8 text-primary" />
-              <h1 className="text-3xl font-bold font-[Montserrat]">Studio LeFlow</h1>
+        <div className="w-full max-w-md space-y-7">
+          {/* Logo & title */}
+          <div className="text-center space-y-1">
+            <div className="inline-flex items-center gap-2 mb-3">
+              <Music className="w-7 h-7 text-primary" />
+              <h1 className="text-2xl font-bold font-[Montserrat]">Studio LeFlow</h1>
             </div>
-            <p className="text-muted-foreground">
-              Prijavite se ili kreirajte nalog
+            <h2 className="text-2xl font-bold">
+              {activeTab === "login" ? "Dobro došli nazad" : "Kreiraj nalog"}
+            </h2>
+            <p className="text-sm text-muted-foreground">
+              {activeTab === "login"
+                ? <>Nemaš nalog? <button onClick={() => setActiveTab("register")} className="text-primary hover:underline font-medium" data-testid="tab-register">Registruj se</button></>
+                : <>Već imaš nalog? <button onClick={() => setActiveTab("login")} className="text-primary hover:underline font-medium" data-testid="tab-login">Prijavi se</button></>
+              }
             </p>
           </div>
 
-          <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-            <TabsList className="grid w-full grid-cols-2">
-              <TabsTrigger value="login" data-testid="tab-login">
-                Prijava
-              </TabsTrigger>
-              <TabsTrigger value="register" data-testid="tab-register">
-                Registracija
-              </TabsTrigger>
-            </TabsList>
-
-            <TabsContent value="login" className="space-y-4">
+          {/* Login form */}
+          {activeTab === "login" && (
+            <motion.div
+              key="login"
+              initial={{ opacity: 0, x: -10 }}
+              animate={{ opacity: 1, x: 0 }}
+              transition={{ duration: 0.2 }}
+            >
               <Form {...loginForm}>
                 <form onSubmit={loginForm.handleSubmit(onLoginSubmit)} className="space-y-4">
                   <FormField
@@ -561,10 +585,19 @@ export default function AuthPage() {
                     name="password"
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel>Lozinka</FormLabel>
+                        <div className="flex items-center justify-between">
+                          <FormLabel>Lozinka</FormLabel>
+                          <button
+                            type="button"
+                            className="text-xs text-primary hover:underline"
+                            onClick={() => setViewMode("forgot-password")}
+                            data-testid="link-forgot-password"
+                          >
+                            Zaboravili ste lozinku?
+                          </button>
+                        </div>
                         <FormControl>
-                          <Input
-                            type="password"
+                          <PasswordInput
                             placeholder="Unesite lozinku"
                             autoComplete="current-password"
                             data-testid="input-password"
@@ -576,39 +609,28 @@ export default function AuthPage() {
                     )}
                   />
 
-                  <div className="flex items-center justify-between">
-                    <FormField
-                      control={loginForm.control}
-                      name="rememberMe"
-                      render={({ field }) => (
-                        <FormItem className="flex flex-row items-center space-x-2 space-y-0">
-                          <FormControl>
-                            <Checkbox
-                              checked={field.value}
-                              onCheckedChange={field.onChange}
-                              data-testid="checkbox-remember-me"
-                            />
-                          </FormControl>
-                          <FormLabel className="text-sm font-normal cursor-pointer">
-                            Zapamti me
-                          </FormLabel>
-                        </FormItem>
-                      )}
-                    />
-                    <Button
-                      type="button"
-                      variant="ghost"
-                      className="px-0 text-sm text-primary hover:text-primary/80"
-                      onClick={() => setViewMode("forgot-password")}
-                      data-testid="link-forgot-password"
-                    >
-                      Zaboravili ste lozinku?
-                    </Button>
-                  </div>
+                  <FormField
+                    control={loginForm.control}
+                    name="rememberMe"
+                    render={({ field }) => (
+                      <FormItem className="flex flex-row items-center space-x-2 space-y-0">
+                        <FormControl>
+                          <Checkbox
+                            checked={field.value}
+                            onCheckedChange={field.onChange}
+                            data-testid="checkbox-remember-me"
+                          />
+                        </FormControl>
+                        <FormLabel className="text-sm font-normal cursor-pointer">
+                          Zapamti me
+                        </FormLabel>
+                      </FormItem>
+                    )}
+                  />
 
                   <Button
                     type="submit"
-                    className="w-full"
+                    className="w-full h-11 rounded-xl font-semibold"
                     disabled={loginMutation.isPending}
                     data-testid="button-login"
                   >
@@ -616,9 +638,17 @@ export default function AuthPage() {
                   </Button>
                 </form>
               </Form>
-            </TabsContent>
+            </motion.div>
+          )}
 
-            <TabsContent value="register" className="space-y-4">
+          {/* Register form */}
+          {activeTab === "register" && (
+            <motion.div
+              key="register"
+              initial={{ opacity: 0, x: 10 }}
+              animate={{ opacity: 1, x: 0 }}
+              transition={{ duration: 0.2 }}
+            >
               <Form {...registerForm}>
                 <form onSubmit={registerForm.handleSubmit(onRegisterSubmit)} className="space-y-4">
                   <FormField
@@ -626,11 +656,11 @@ export default function AuthPage() {
                     name="email"
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel>Email</FormLabel>
+                        <FormLabel>Email adresa</FormLabel>
                         <FormControl>
                           <Input
                             type="email"
-                            placeholder="Unesite email adresu"
+                            placeholder="vas@email.com"
                             autoComplete="email"
                             data-testid="input-email"
                             {...field}
@@ -646,10 +676,10 @@ export default function AuthPage() {
                     name="username"
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel>Korisničko ime ili email</FormLabel>
+                        <FormLabel>Korisničko ime</FormLabel>
                         <FormControl>
                           <Input
-                            placeholder="Korisničko ime ili email adresa"
+                            placeholder="Odaberite korisničko ime"
                             autoComplete="username"
                             data-testid="input-username"
                             {...field}
@@ -667,9 +697,8 @@ export default function AuthPage() {
                       <FormItem>
                         <FormLabel>Lozinka</FormLabel>
                         <FormControl>
-                          <Input
-                            type="password"
-                            placeholder="Unesite lozinku"
+                          <PasswordInput
+                            placeholder="Minimum 8 karaktera"
                             autoComplete="new-password"
                             data-testid="input-password"
                             {...field}
@@ -687,8 +716,7 @@ export default function AuthPage() {
                       <FormItem>
                         <FormLabel>Potvrda lozinke</FormLabel>
                         <FormControl>
-                          <Input
-                            type="password"
+                          <PasswordInput
                             placeholder="Ponovite lozinku"
                             autoComplete="new-password"
                             data-testid="input-password-confirm"
@@ -714,7 +742,7 @@ export default function AuthPage() {
                         </FormControl>
                         <div className="space-y-1 leading-none">
                           <FormLabel className="text-sm font-normal cursor-pointer">
-                            Potvrđujem da sam pročitao i prihvatam naše{" "}
+                            Prihvatam{" "}
                             <Link href="/terms" className="text-primary underline hover:text-primary/80" data-testid="link-terms">
                               Uslove korišćenja
                             </Link>
@@ -727,16 +755,16 @@ export default function AuthPage() {
 
                   <Button
                     type="submit"
-                    className="w-full"
+                    className="w-full h-11 rounded-xl font-semibold"
                     disabled={registerMutation.isPending}
                     data-testid="button-register"
                   >
-                    {registerMutation.isPending ? "Registracija..." : "Registrujte se"}
+                    {registerMutation.isPending ? "Registracija..." : "Kreiraj nalog"}
                   </Button>
                 </form>
               </Form>
-            </TabsContent>
-          </Tabs>
+            </motion.div>
+          )}
         </div>
       </div>
 
