@@ -17,7 +17,13 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
-import { ArrowLeft, Send, Loader2, Check, CheckCheck, Trash2, Smile, Paperclip, CornerUpLeft, X, ChevronDown } from "lucide-react";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import { ArrowLeft, Send, Loader2, Check, CheckCheck, Trash2, Smile, Paperclip, CornerUpLeft, X, ChevronDown, Pencil, Forward, ExternalLink } from "lucide-react";
 import { format, isToday, isYesterday, isSameDay } from "date-fns";
 import { cn } from "@/lib/utils";
 import { apiRequest } from "@/lib/queryClient";
@@ -54,6 +60,10 @@ const EMOJI_LIST = [
   "😘","🤩","🥳","😴","🤯","🫡","🤗","😬","🫶","❤️‍🔥",
 ];
 
+const QUICK_REACTIONS = ["❤️","👍","😂","😮","😢","🔥"];
+
+interface Reaction { emoji: string; count: number; userIds: number[] }
+
 interface Message {
   id: number;
   senderId: number;
@@ -64,6 +74,8 @@ interface Message {
   deleted: boolean;
   createdAt: string;
   isRead: boolean;
+  editedAt: string | null;
+  reactions: Reaction[];
 }
 
 interface OtherUser {
@@ -73,9 +85,63 @@ interface OtherUser {
   lastSeen: string | null;
 }
 
+interface Conversation {
+  id: number;
+  otherUser: { id: number; username: string; avatarUrl: string | null };
+  lastMessage?: Message;
+  unreadCount: number;
+}
+
 interface ChatInterfaceProps {
   selectedUserId: number;
   onBack: () => void;
+}
+
+// Link preview component
+function LinkPreview({ text }: { text: string }) {
+  const urlMatch = text.match(/(https?:\/\/[^\s]+)/);
+  const url = urlMatch?.[1];
+
+  const { data, isLoading } = useQuery({
+    queryKey: ["/api/link-preview", url],
+    queryFn: async () => {
+      if (!url) return null;
+      const res = await apiRequest("GET", `/api/link-preview?url=${encodeURIComponent(url)}`);
+      if (!res.ok) return null;
+      return res.json();
+    },
+    enabled: !!url,
+    staleTime: 1000 * 60 * 10,
+    retry: false,
+  });
+
+  if (!url || isLoading || !data || (!data.title && !data.image)) return null;
+
+  return (
+    <a
+      href={url}
+      target="_blank"
+      rel="noopener noreferrer"
+      className="mt-2 flex gap-2 rounded-xl overflow-hidden border border-border/40 bg-background/50 hover:bg-background/80 transition-colors text-left no-underline"
+      onClick={e => e.stopPropagation()}
+    >
+      {data.image && (
+        <img src={data.image} alt="" className="w-16 h-16 object-cover flex-shrink-0" />
+      )}
+      <div className="flex-1 min-w-0 p-2">
+        {data.siteName && (
+          <p className="text-[10px] text-muted-foreground uppercase tracking-wide">{data.siteName}</p>
+        )}
+        {data.title && (
+          <p className="text-xs font-semibold text-foreground leading-snug line-clamp-2">{data.title}</p>
+        )}
+        {data.description && (
+          <p className="text-[10px] text-muted-foreground mt-0.5 line-clamp-2">{data.description}</p>
+        )}
+      </div>
+      <ExternalLink className="w-3.5 h-3.5 flex-shrink-0 m-2 text-muted-foreground" />
+    </a>
+  );
 }
 
 export default function ChatInterface({ selectedUserId, onBack }: ChatInterfaceProps) {
@@ -94,6 +160,21 @@ export default function ChatInterface({ selectedUserId, onBack }: ChatInterfaceP
   const [showScrollBtn, setShowScrollBtn] = useState(false);
   const [highlightedMsgId, setHighlightedMsgId] = useState<number | null>(null);
 
+  // Edit state
+  const [editingMessageId, setEditingMessageId] = useState<number | null>(null);
+  const [editText, setEditText] = useState("");
+  const editTextareaRef = useRef<HTMLTextAreaElement>(null);
+
+  // Lightbox state
+  const [lightboxSrc, setLightboxSrc] = useState<string | null>(null);
+
+  // Forward state
+  const [forwardMessage, setForwardMessage] = useState<Message | null>(null);
+
+  // Unread divider
+  const firstUnreadIdRef = useRef<number | null>(null);
+  const hasScrolledToUnreadRef = useRef(false);
+
   const scrollAreaRef = useRef<HTMLDivElement>(null);
   const typingTimeoutRef = useRef<NodeJS.Timeout>();
   const knownMessageIdsRef = useRef<Set<number>>(new Set());
@@ -110,6 +191,10 @@ export default function ChatInterface({ selectedUserId, onBack }: ChatInterfaceP
     },
     refetchInterval: 3000,
     staleTime: 0,
+  });
+
+  const { data: conversations } = useQuery<Conversation[]>({
+    queryKey: ["/api/conversations"],
   });
 
   // Sound for polling-delivered messages
@@ -194,6 +279,25 @@ export default function ChatInterface({ selectedUserId, onBack }: ChatInterfaceP
     if (sc) sc.scrollTop = sc.scrollHeight;
   }, [getScrollViewport]);
 
+  // Unread divider scroll
+  useEffect(() => {
+    if (!messages || !user || hasScrolledToUnreadRef.current) return;
+    const firstUnread = messages.find(m => m.senderId !== user.id && !m.isRead && !m.deleted);
+    if (firstUnread) {
+      firstUnreadIdRef.current = firstUnread.id;
+      setTimeout(() => {
+        const el = document.getElementById("unread-divider");
+        if (el) {
+          const sc = getScrollViewport();
+          if (sc) sc.scrollTop = el.offsetTop - 60;
+        }
+      }, 100);
+    } else {
+      scrollToBottom();
+    }
+    hasScrolledToUnreadRef.current = true;
+  }, [messages, user, getScrollViewport, scrollToBottom]);
+
   // Scroll-to-bottom button visibility
   useEffect(() => {
     const sc = getScrollViewport();
@@ -235,7 +339,6 @@ export default function ChatInterface({ selectedUserId, onBack }: ChatInterfaceP
       if (message.type === "new_message") {
         const newMsg = message.message;
         if (newMsg && (newMsg.senderId === selectedUserId || newMsg.receiverId === selectedUserId)) {
-          // Track ID before setQueryData so the polling effect doesn't double-play sound
           knownMessageIdsRef.current.add(newMsg.id);
           queryClient.setQueryData(
             ["/api/messages/conversation", selectedUserId],
@@ -247,6 +350,17 @@ export default function ChatInterface({ selectedUserId, onBack }: ChatInterfaceP
           );
           scrollToBottom();
         }
+        queryClient.invalidateQueries({ queryKey: ["/api/messages/conversation", selectedUserId] });
+      }
+      if (message.type === "message_edited") {
+        queryClient.setQueryData(
+          ["/api/messages/conversation", selectedUserId],
+          (old: Message[] | undefined) => old
+            ? old.map(m => m.id === message.message.id ? { ...m, ...message.message } : m)
+            : old
+        );
+      }
+      if (message.type === "message_reaction") {
         queryClient.invalidateQueries({ queryKey: ["/api/messages/conversation", selectedUserId] });
       }
       if (message.type === "message_deleted") {
@@ -268,6 +382,19 @@ export default function ChatInterface({ selectedUserId, onBack }: ChatInterfaceP
     if (showEmojiPicker) document.addEventListener("mousedown", handler);
     return () => document.removeEventListener("mousedown", handler);
   }, [showEmojiPicker]);
+
+  // Keyboard shortcuts
+  useEffect(() => {
+    const handler = (e: KeyboardEvent) => {
+      if (e.key === "Escape") {
+        if (editingMessageId) cancelEdit();
+        else if (replyTo) setReplyTo(null);
+        else if (lightboxSrc) setLightboxSrc(null);
+      }
+    };
+    window.addEventListener("keydown", handler);
+    return () => window.removeEventListener("keydown", handler);
+  }, [editingMessageId, replyTo, lightboxSrc]);
 
   const handleTyping = useCallback(() => {
     if (!isTyping) {
@@ -331,7 +458,6 @@ export default function ChatInterface({ selectedUserId, onBack }: ChatInterfaceP
       });
       if (!res.ok) throw new Error("Upload failed");
       const { url } = await res.json();
-      // Send as a message with imageUrl
       const msgRes = await apiRequest("POST", "/api/messages/send", {
         receiverId: selectedUserId,
         content: "📎",
@@ -356,6 +482,38 @@ export default function ChatInterface({ selectedUserId, onBack }: ChatInterfaceP
       setUploadingImage(false);
       if (fileInputRef.current) fileInputRef.current.value = "";
     }
+  };
+
+  // Edit handlers
+  const startEdit = (msg: Message) => {
+    setEditingMessageId(msg.id);
+    setEditText(msg.content);
+    setTimeout(() => editTextareaRef.current?.focus(), 50);
+  };
+  const cancelEdit = () => { setEditingMessageId(null); setEditText(""); };
+  const saveEdit = async () => {
+    if (!editText.trim() || !editingMessageId) return;
+    try {
+      await apiRequest("PATCH", `/api/messages/${editingMessageId}`, { content: editText.trim() });
+      queryClient.invalidateQueries({ queryKey: ["/api/messages/conversation", selectedUserId] });
+      cancelEdit();
+    } catch { /* silent */ }
+  };
+
+  // Reaction handler
+  const toggleReaction = async (messageId: number, emoji: string) => {
+    try {
+      await apiRequest("POST", `/api/messages/${messageId}/react`, { emoji });
+      queryClient.invalidateQueries({ queryKey: ["/api/messages/conversation", selectedUserId] });
+    } catch { /* silent */ }
+  };
+
+  // Forward handler
+  const handleForward = async (toUserId: number) => {
+    if (!forwardMessage) return;
+    await apiRequest("POST", "/api/messages/send", { receiverId: toUserId, content: forwardMessage.content });
+    setForwardMessage(null);
+    toast({ title: "Poruka prosleđena" });
   };
 
   if (messagesLoading) {
@@ -481,6 +639,17 @@ export default function ChatInterface({ selectedUserId, onBack }: ChatInterfaceP
                     </div>
                   )}
 
+                  {/* Unread divider */}
+                  {firstUnreadIdRef.current === message.id && (
+                    <div id="unread-divider" className="flex items-center gap-3 my-3">
+                      <div className="flex-1 h-px bg-primary/30" />
+                      <span className="text-xs text-primary font-medium px-2 py-0.5 rounded-full bg-primary/10">
+                        Nepročitano
+                      </span>
+                      <div className="flex-1 h-px bg-primary/30" />
+                    </div>
+                  )}
+
                   <div className={cn(
                     "flex gap-2 items-end",
                     isOwn ? "justify-end" : "justify-start",
@@ -501,12 +670,20 @@ export default function ChatInterface({ selectedUserId, onBack }: ChatInterfaceP
 
                     <div className="flex items-end gap-1 group max-w-[80vw] md:max-w-[65%]">
 
-                      {/* Reply + delete buttons (own, left of bubble) */}
+                      {/* Action buttons (own, left of bubble) */}
                       {isOwn && !message.deleted && (
                         <div className="flex gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity order-first">
                           <Button variant="ghost" size="icon" className="h-6 w-6 text-muted-foreground rounded-lg"
                             onClick={() => { setReplyTo(message); textareaRef.current?.focus(); }} title="Odgovori">
                             <CornerUpLeft className="h-3.5 w-3.5" />
+                          </Button>
+                          <Button variant="ghost" size="icon" className="h-6 w-6 text-muted-foreground rounded-lg"
+                            onClick={() => startEdit(message)} title="Izmeni">
+                            <Pencil className="h-3 w-3" />
+                          </Button>
+                          <Button variant="ghost" size="icon" className="h-6 w-6 text-muted-foreground rounded-lg"
+                            onClick={() => setForwardMessage(message)} title="Prosledi">
+                            <Forward className="h-3.5 w-3.5" />
                           </Button>
                           <AlertDialog>
                             <AlertDialogTrigger asChild>
@@ -529,67 +706,136 @@ export default function ChatInterface({ selectedUserId, onBack }: ChatInterfaceP
                       )}
 
                       {/* Bubble */}
-                      <div className={cn(
-                        "rounded-2xl px-3.5 py-2.5 shadow-sm",
-                        isOwn
-                          ? "bg-primary text-primary-foreground rounded-br-md"
-                          : "bg-card border border-border/60 text-foreground rounded-bl-md",
-                        message.deleted && "opacity-50"
-                      )}>
-                        {/* Reply quote — clickable, jumps to original */}
-                        {!message.deleted && message.replyToId && (
-                          <button
-                            type="button"
-                            onClick={() => jumpToMessage(message.replyToId!)}
-                            className={cn(
-                              "mb-2 px-2.5 py-1.5 rounded-xl text-xs border-l-[3px] w-full text-left transition-opacity hover:opacity-80 active:opacity-60",
-                              isOwn ? "border-primary-foreground/50 bg-primary-foreground/10" : "border-primary bg-primary/10"
-                            )}
-                          >
-                            <p className="font-semibold mb-0.5 opacity-80">{getReplyUsername(message.replyToId)}</p>
-                            <p className="truncate opacity-70">{getReplyPreview(message.replyToId)}</p>
-                          </button>
+                      <div className="relative group/bubble">
+                        {/* Quick reaction bar on hover */}
+                        {!message.deleted && (
+                          <div className={cn(
+                            "absolute -top-8 z-20 flex gap-0.5 bg-popover border border-border/60 rounded-full px-1.5 py-1 shadow-lg opacity-0 group-hover/bubble:opacity-100 transition-opacity pointer-events-none group-hover/bubble:pointer-events-auto",
+                            isOwn ? "right-0" : "left-0"
+                          )}>
+                            {QUICK_REACTIONS.map(emoji => (
+                              <button
+                                key={emoji}
+                                onClick={() => toggleReaction(message.id, emoji)}
+                                className="text-sm hover:scale-125 transition-transform leading-none px-0.5"
+                                title={emoji}
+                              >
+                                {emoji}
+                              </button>
+                            ))}
+                          </div>
                         )}
 
-                        {message.deleted ? (
-                          <p className="text-sm italic opacity-60">Poruka obrisana</p>
-                        ) : (
-                          <>
-                            {!(message.imageUrl && message.content === "📎") && (
-                              <p className="text-sm whitespace-pre-wrap break-words leading-relaxed [word-break:break-word] [overflow-wrap:anywhere]">
-                                {message.content}
-                              </p>
-                            )}
-                            {message.imageUrl && (
-                              <img
-                                src={message.imageUrl}
-                                alt="attachment"
-                                className="mt-1 rounded-xl max-w-full h-auto cursor-pointer max-h-72 object-cover"
-                                onClick={() => window.open(message.imageUrl!, "_blank")}
-                              />
-                            )}
-                          </>
-                        )}
-
-                        <div className={cn("flex items-center gap-1 mt-1", isOwn ? "justify-end" : "justify-start")}>
-                          <span className={cn("text-[10px] leading-none tabular-nums", isOwn ? "text-primary-foreground/55" : "text-muted-foreground/60")}>
-                            {format(new Date(message.createdAt), "HH:mm")}
-                          </span>
-                          {isOwn && (
-                            message.isRead
-                              ? <CheckCheck className="w-3 h-3 text-primary-foreground/55" />
-                              : <Check className="w-3 h-3 text-primary-foreground/55" />
+                        <div className={cn(
+                          "rounded-2xl px-3.5 py-2.5 shadow-sm",
+                          isOwn
+                            ? "bg-primary text-primary-foreground rounded-br-md"
+                            : "bg-card border border-border/60 text-foreground rounded-bl-md",
+                          message.deleted && "opacity-50"
+                        )}>
+                          {/* Reply quote — clickable, jumps to original */}
+                          {!message.deleted && message.replyToId && (
+                            <button
+                              type="button"
+                              onClick={() => jumpToMessage(message.replyToId!)}
+                              className={cn(
+                                "mb-2 px-2.5 py-1.5 rounded-xl text-xs border-l-[3px] w-full text-left transition-opacity hover:opacity-80 active:opacity-60",
+                                isOwn ? "border-primary-foreground/50 bg-primary-foreground/10" : "border-primary bg-primary/10"
+                              )}
+                            >
+                              <p className="font-semibold mb-0.5 opacity-80">{getReplyUsername(message.replyToId)}</p>
+                              <p className="truncate opacity-70">{getReplyPreview(message.replyToId)}</p>
+                            </button>
                           )}
+
+                          {message.deleted ? (
+                            <p className="text-sm italic opacity-60">Poruka obrisana</p>
+                          ) : editingMessageId === message.id ? (
+                            <div className="space-y-1.5">
+                              <textarea
+                                ref={editTextareaRef}
+                                value={editText}
+                                onChange={e => setEditText(e.target.value)}
+                                onKeyDown={e => {
+                                  if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); saveEdit(); }
+                                  if (e.key === "Escape") cancelEdit();
+                                }}
+                                className="w-full bg-transparent border border-primary-foreground/30 rounded-lg px-2 py-1 text-sm resize-none focus:outline-none min-h-[60px]"
+                                rows={2}
+                              />
+                              <div className="flex gap-1 justify-end">
+                                <button onClick={cancelEdit} className="text-[10px] px-2 py-0.5 rounded-md bg-primary-foreground/10 hover:bg-primary-foreground/20">Otkaži</button>
+                                <button onClick={saveEdit} className="text-[10px] px-2 py-0.5 rounded-md bg-primary-foreground/20 hover:bg-primary-foreground/30 font-semibold">Sačuvaj</button>
+                              </div>
+                            </div>
+                          ) : (
+                            <>
+                              {!(message.imageUrl && message.content === "📎") && (
+                                <p className="text-sm whitespace-pre-wrap break-words leading-relaxed [word-break:break-word] [overflow-wrap:anywhere]">
+                                  {message.content}
+                                </p>
+                              )}
+                              {!(message.imageUrl && message.content === "📎") && (
+                                <LinkPreview text={message.content} />
+                              )}
+                              {message.imageUrl && (
+                                <img
+                                  src={message.imageUrl}
+                                  alt="attachment"
+                                  className="mt-1 rounded-xl max-w-full h-auto cursor-pointer max-h-72 object-cover"
+                                  onClick={() => setLightboxSrc(message.imageUrl!)}
+                                />
+                              )}
+                            </>
+                          )}
+
+                          {/* Reactions */}
+                          {message.reactions && message.reactions.length > 0 && (
+                            <div className="flex flex-wrap gap-1 mt-1.5">
+                              {message.reactions.map(r => (
+                                <button key={r.emoji} onClick={() => toggleReaction(message.id, r.emoji)}
+                                  className={cn(
+                                    "flex items-center gap-1 px-1.5 py-0.5 rounded-full text-xs border transition-all",
+                                    r.userIds.includes(user?.id ?? -1)
+                                      ? "bg-primary/20 border-primary/40 text-primary"
+                                      : isOwn ? "bg-primary-foreground/10 border-primary-foreground/20 text-primary-foreground" : "bg-muted border-border text-foreground"
+                                  )}>
+                                  {r.emoji} <span className="font-medium">{r.count}</span>
+                                </button>
+                              ))}
+                            </div>
+                          )}
+
+                          <div className={cn("flex items-center gap-1 mt-1", isOwn ? "justify-end" : "justify-start")}>
+                            <span className={cn("text-[10px] leading-none tabular-nums", isOwn ? "text-primary-foreground/55" : "text-muted-foreground/60")}>
+                              {format(new Date(message.createdAt), "HH:mm")}
+                            </span>
+                            {message.editedAt && !message.deleted && (
+                              <span className={cn("text-[9px]", isOwn ? "text-primary-foreground/40" : "text-muted-foreground/50")}>(izmenjeno)</span>
+                            )}
+                            {isOwn && (
+                              message.isRead
+                                ? <CheckCheck className="w-3 h-3 text-primary-foreground/55" />
+                                : <Check className="w-3 h-3 text-primary-foreground/55" />
+                            )}
+                          </div>
                         </div>
                       </div>
 
-                      {/* Reply button (other user's messages, right side) */}
+                      {/* Action buttons (other user's messages, right side) */}
                       {!isOwn && !message.deleted && (
-                        <Button variant="ghost" size="icon"
-                          className="h-6 w-6 text-muted-foreground rounded-lg opacity-0 group-hover:opacity-100 transition-opacity flex-shrink-0"
-                          onClick={() => { setReplyTo(message); textareaRef.current?.focus(); }} title="Odgovori">
-                          <CornerUpLeft className="h-3.5 w-3.5" />
-                        </Button>
+                        <div className="flex gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity">
+                          <Button variant="ghost" size="icon"
+                            className="h-6 w-6 text-muted-foreground rounded-lg flex-shrink-0"
+                            onClick={() => { setReplyTo(message); textareaRef.current?.focus(); }} title="Odgovori">
+                            <CornerUpLeft className="h-3.5 w-3.5" />
+                          </Button>
+                          <Button variant="ghost" size="icon"
+                            className="h-6 w-6 text-muted-foreground rounded-lg flex-shrink-0"
+                            onClick={() => setForwardMessage(message)} title="Prosledi">
+                            <Forward className="h-3.5 w-3.5" />
+                          </Button>
+                        </div>
                       )}
                     </div>
                   </div>
@@ -684,6 +930,65 @@ export default function ChatInterface({ selectedUserId, onBack }: ChatInterfaceP
           </Button>
         </div>
       </div>
+
+      {/* Image lightbox */}
+      {lightboxSrc && (
+        <div
+          className="fixed inset-0 z-[100] bg-black/90 flex items-center justify-center"
+          onClick={() => setLightboxSrc(null)}
+        >
+          <button
+            className="absolute top-4 right-4 text-white/80 hover:text-white"
+            onClick={() => setLightboxSrc(null)}
+          >
+            <X className="w-6 h-6" />
+          </button>
+          <img
+            src={lightboxSrc}
+            className="max-w-[90vw] max-h-[90vh] object-contain rounded-lg shadow-2xl"
+            onClick={e => e.stopPropagation()}
+            alt="Prikaz slike"
+          />
+        </div>
+      )}
+
+      {/* Forward modal */}
+      <Dialog open={!!forwardMessage} onOpenChange={open => { if (!open) setForwardMessage(null); }}>
+        <DialogContent className="max-w-sm">
+          <DialogHeader>
+            <DialogTitle>Prosledi poruku</DialogTitle>
+          </DialogHeader>
+          <div className="mt-2 space-y-1 max-h-80 overflow-y-auto">
+            {forwardMessage && (
+              <div className="mb-3 p-2 bg-muted rounded-lg text-sm text-muted-foreground line-clamp-3">
+                {forwardMessage.content}
+              </div>
+            )}
+            {conversations && conversations.length > 0 ? (
+              conversations
+                .filter(c => c.otherUser.id !== selectedUserId)
+                .map(conv => (
+                  <button
+                    key={conv.id}
+                    onClick={() => handleForward(conv.otherUser.id)}
+                    className="w-full flex items-center gap-3 px-3 py-2 rounded-lg hover:bg-muted transition-colors text-left"
+                  >
+                    <AvatarWithInitials
+                      src={conv.otherUser.avatarUrl}
+                      alt={conv.otherUser.username}
+                      name={conv.otherUser.username}
+                      userId={conv.otherUser.id}
+                      className="w-8 h-8 flex-shrink-0"
+                    />
+                    <span className="text-sm font-medium">{conv.otherUser.username}</span>
+                  </button>
+                ))
+            ) : (
+              <p className="text-sm text-muted-foreground text-center py-4">Nema dostupnih konverzacija</p>
+            )}
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

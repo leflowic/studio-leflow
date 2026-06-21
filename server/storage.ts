@@ -24,6 +24,7 @@ import {
   type Message,
   type MessageRead,
   type AdminMessageAudit,
+  type MessageReaction,
   type Contract,
   type InsertContract,
   type Invoice,
@@ -55,6 +56,7 @@ import {
   conversations,
   messages,
   messageReads,
+  messageReactions,
   adminMessageAudit,
   contracts,
   invoices,
@@ -69,12 +71,20 @@ import {
   weeklyPrizes,
 } from "@shared/schema";
 import { db, pool } from "./db";
-import { eq, and, or, desc, sql, notInArray, gte, lte, count } from "drizzle-orm";
+import { eq, and, or, desc, sql, notInArray, inArray, gte, lte, count } from "drizzle-orm";
 import session from "express-session";
 import connectPg from "connect-pg-simple";
 import type { Store } from "express-session";
 
 const PostgresSessionStore = connectPg(session);
+
+export type ReactionGroup = { emoji: string; count: number; userIds: number[] };
+export type EnrichedMessage = {
+  id: number; conversationId: number; senderId: number; receiverId: number;
+  content: string; imageUrl: string | null; replyToId: number | null;
+  deleted: boolean; createdAt: Date; editedAt: Date | null;
+  isRead: boolean; reactions: ReactionGroup[];
+};
 
 export interface IStorage {
   // Contact submissions
@@ -202,7 +212,9 @@ export interface IStorage {
   sendMessage(senderId: number, receiverId: number, content: string, imageUrl?: string, replyToId?: number): Promise<Message>;
   deleteConversation(userId: number, otherUserId: number): Promise<void>;
   getMessageById(messageId: number): Promise<Message | undefined>;
-  getConversationMessages(conversationId: number, userId: number): Promise<Message[]>;
+  getConversationMessages(conversationId: number, userId: number): Promise<EnrichedMessage[]>;
+  editMessage(messageId: number, userId: number, content: string): Promise<Message | null>;
+  toggleReaction(messageId: number, userId: number, emoji: string): Promise<{ added: boolean }>;
   markMessagesAsRead(conversationId: number, userId: number): Promise<void>;
   getUnreadMessageCount(userId: number): Promise<number>;
   deleteMessage(messageId: number, userId: number): Promise<boolean>;
@@ -1424,14 +1436,69 @@ export class DatabaseStorage implements IStorage {
     return message || undefined;
   }
 
-  async getConversationMessages(conversationId: number, userId: number): Promise<Message[]> {
+  async getConversationMessages(conversationId: number, userId: number): Promise<EnrichedMessage[]> {
     const msgs = await db
       .select()
       .from(messages)
       .where(eq(messages.conversationId, conversationId))
       .orderBy(messages.createdAt);
 
-    return msgs;
+    if (msgs.length === 0) return [];
+    const msgIds = msgs.map(m => m.id);
+
+    // Which messages have been read (any read row exists)
+    const reads = await db.select({ messageId: messageReads.messageId })
+      .from(messageReads).where(inArray(messageReads.messageId, msgIds));
+    const readSet = new Set(reads.map(r => r.messageId));
+
+    // Reactions grouped by message
+    const rxRows = await db.select().from(messageReactions)
+      .where(inArray(messageReactions.messageId, msgIds));
+    const rxMap = new Map<number, ReactionGroup[]>();
+    for (const row of rxRows) {
+      const arr = rxMap.get(row.messageId) ?? [];
+      const g = arr.find(r => r.emoji === row.emoji);
+      if (g) { g.count++; g.userIds.push(row.userId); }
+      else arr.push({ emoji: row.emoji, count: 1, userIds: [row.userId] });
+      rxMap.set(row.messageId, arr);
+    }
+
+    return msgs.map(m => ({
+      ...m,
+      editedAt: (m as any).editedAt ?? null,
+      isRead: readSet.has(m.id),
+      reactions: rxMap.get(m.id) ?? [],
+    }));
+  }
+
+  async editMessage(messageId: number, userId: number, content: string): Promise<Message | null> {
+    const [msg] = await db.select().from(messages).where(eq(messages.id, messageId));
+    if (!msg || msg.senderId !== userId || msg.deleted) return null;
+    const [updated] = await db.update(messages)
+      .set({ content, editedAt: new Date() } as any)
+      .where(eq(messages.id, messageId))
+      .returning();
+    return updated ?? null;
+  }
+
+  async toggleReaction(messageId: number, userId: number, emoji: string): Promise<{ added: boolean }> {
+    const existing = await db.select().from(messageReactions)
+      .where(and(
+        eq(messageReactions.messageId, messageId),
+        eq(messageReactions.userId, userId),
+        eq(messageReactions.emoji, emoji)
+      ));
+    if (existing.length > 0) {
+      await db.delete(messageReactions).where(and(
+        eq(messageReactions.messageId, messageId),
+        eq(messageReactions.userId, userId),
+        eq(messageReactions.emoji, emoji)
+      ));
+      return { added: false };
+    } else {
+      await db.insert(messageReactions).values({ messageId, userId, emoji });
+      return { added: true };
+    }
   }
 
   async markMessagesAsRead(conversationId: number, userId: number): Promise<void> {

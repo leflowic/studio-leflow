@@ -290,6 +290,7 @@ export const messages = pgTable("messages", {
   imageUrl: text("image_url"),
   replyToId: integer("reply_to_id").references((): AnyPgColumn => messages.id, { onDelete: "set null" }),
   deleted: boolean("deleted").notNull().default(false),
+  editedAt: timestamp("edited_at"),
   createdAt: timestamp("created_at").defaultNow().notNull(),
 }, (table) => ({
   // Performance indexes for fetching messages
@@ -297,6 +298,18 @@ export const messages = pgTable("messages", {
   createdAtIdx: index("messages_created_at_idx").on(table.createdAt),
   // Composite index for conversation + timestamp (most common query)
   conversationCreatedIdx: index("messages_conversation_created_idx").on(table.conversationId, table.createdAt),
+}));
+
+// Message Reactions table - emoji reactions on messages
+export const messageReactions = pgTable("message_reactions", {
+  id: serial("id").primaryKey(),
+  messageId: integer("message_id").notNull().references(() => messages.id, { onDelete: "cascade" }),
+  userId: integer("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  emoji: text("emoji").notNull(),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+}, (table) => ({
+  uniqueUserMessageEmoji: unique().on(table.messageId, table.userId, table.emoji),
+  messageIdx: index("message_reactions_message_idx").on(table.messageId),
 }));
 
 // Message Reads table - tracks when messages are read (for seen checkmarks)
@@ -604,6 +617,7 @@ export type Conversation = typeof conversations.$inferSelect;
 export type Message = typeof messages.$inferSelect;
 export type MessageRead = typeof messageReads.$inferSelect;
 export type AdminMessageAudit = typeof adminMessageAudit.$inferSelect;
+export type MessageReaction = typeof messageReactions.$inferSelect;
 
 // Messaging insert schemas
 export const insertMessageSchema = createInsertSchema(messages).omit({

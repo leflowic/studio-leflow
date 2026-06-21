@@ -2389,8 +2389,90 @@ Sitemap: ${siteUrl}/sitemap.xml
     }
   });
 
+  // Edit a message (own messages only)
+  app.patch("/api/messages/:id", requireVerifiedEmail, async (req, res) => {
+    try {
+      const messageId = parseInt(req.params.id);
+      if (isNaN(messageId)) return res.status(400).json({ error: "Nevažeći ID" });
+      const { content } = req.body;
+      if (!content || typeof content !== "string" || !content.trim())
+        return res.status(400).json({ error: "Poruka ne može biti prazna" });
+      if (content.length > 5000) return res.status(400).json({ error: "Poruka predugačka" });
+      const updated = await storage.editMessage(messageId, req.jwtUser!.id, content.trim());
+      if (!updated) return res.status(403).json({ error: "Nije moguće izmeniti ovu poruku" });
+      if (wsHelpers.broadcastToUser) {
+        const otherUserId = updated.receiverId === req.jwtUser!.id ? updated.senderId : updated.receiverId;
+        wsHelpers.broadcastToUser(otherUserId, { type: "message_edited", message: updated });
+        wsHelpers.broadcastToUser(req.jwtUser!.id, { type: "message_edited", message: updated });
+      }
+      res.json(updated);
+    } catch (e: any) {
+      res.status(500).json({ error: "Greška pri izmeni poruke" });
+    }
+  });
+
+  // Toggle emoji reaction on a message
+  app.post("/api/messages/:id/react", requireVerifiedEmail, async (req, res) => {
+    try {
+      const messageId = parseInt(req.params.id);
+      if (isNaN(messageId)) return res.status(400).json({ error: "Nevažeći ID" });
+      const { emoji } = req.body;
+      if (!emoji || typeof emoji !== "string") return res.status(400).json({ error: "Emoji je obavezan" });
+      const ALLOWED = ["❤️","👍","😂","😮","😢","🔥","👎","🎉"];
+      if (!ALLOWED.includes(emoji)) return res.status(400).json({ error: "Emoji nije dozvoljen" });
+      const result = await storage.toggleReaction(messageId, req.jwtUser!.id, emoji);
+      const msg = await storage.getMessageById(messageId);
+      if (msg && wsHelpers.broadcastToUser) {
+        const otherUserId = msg.receiverId === req.jwtUser!.id ? msg.senderId : msg.receiverId;
+        const event = { type: "message_reaction", messageId, userId: req.jwtUser!.id, emoji, added: result.added };
+        wsHelpers.broadcastToUser(otherUserId, event);
+        wsHelpers.broadcastToUser(req.jwtUser!.id, event);
+      }
+      res.json(result);
+    } catch (e: any) {
+      res.status(500).json({ error: "Greška pri reakciji" });
+    }
+  });
+
+  // Link preview proxy
+  app.get("/api/link-preview", requireVerifiedEmail, async (req, res) => {
+    try {
+      const url = req.query.url as string;
+      if (!url || !url.startsWith("http")) return res.status(400).json({ error: "Nevažeći URL" });
+      const controller = new AbortController();
+      const timeout = setTimeout(() => controller.abort(), 4000);
+      const response = await fetch(url, {
+        signal: controller.signal,
+        headers: { "User-Agent": "Mozilla/5.0 (compatible; LinkPreview/1.0)" },
+        redirect: "follow",
+      });
+      clearTimeout(timeout);
+      if (!response.ok) return res.status(400).json({ error: "Nije moguće učitati URL" });
+      const html = await response.text();
+      const getMeta = (prop: string, name?: string) => {
+        const ogMatch = html.match(new RegExp(`<meta[^>]+property=["']${prop}["'][^>]+content=["']([^"']+)["']`, "i"))
+          ?? html.match(new RegExp(`<meta[^>]+content=["']([^"']+)["'][^>]+property=["']${prop}["']`, "i"));
+        if (ogMatch) return ogMatch[1];
+        if (name) {
+          const nm = html.match(new RegExp(`<meta[^>]+name=["']${name}["'][^>]+content=["']([^"']+)["']`, "i"))
+            ?? html.match(new RegExp(`<meta[^>]+content=["']([^"']+)["'][^>]+name=["']${name}["']`, "i"));
+          if (nm) return nm[1];
+        }
+        return null;
+      };
+      const titleMatch = html.match(/<title[^>]*>([^<]+)<\/title>/i);
+      const title = getMeta("og:title") ?? titleMatch?.[1]?.trim() ?? null;
+      const description = getMeta("og:description", "description");
+      const image = getMeta("og:image") ?? getMeta("twitter:image");
+      const siteName = getMeta("og:site_name");
+      res.json({ url, title, description, image, siteName });
+    } catch (e: any) {
+      res.status(400).json({ error: "Nije moguće učitati preview" });
+    }
+  });
+
   // ===== DASHBOARD ENDPOINTS =====
-  
+
   // Get dashboard overview for logged-in user
   app.get("/api/dashboard/overview", requireVerifiedEmail, async (req, res) => {
     try {

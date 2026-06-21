@@ -22,13 +22,15 @@ function showBrowserNotification(title: string, body: string, senderUsername?: s
   n.onclick = () => { window.focus(); n.close(); };
 }
 
-export type WebSocketMessage = 
+export type WebSocketMessage =
   | { type: 'online_status'; userId: number; online: boolean }
   | { type: 'typing_start'; userId: number }
   | { type: 'typing_stop'; userId: number }
   | { type: 'new_message'; message: any }
   | { type: 'message_read'; conversationId: number; readBy: number }
   | { type: 'message_deleted'; messageId: number }
+  | { type: 'message_edited'; message: any }
+  | { type: 'message_reaction'; messageId: number; userId: number; emoji: string; added: boolean }
   | { type: 'notification'; title: string; description?: string; variant?: 'default' | 'destructive' }
   | { type: 'community-chat:new'; message: any }
   | { type: 'community-chat:delete'; messageId: number }

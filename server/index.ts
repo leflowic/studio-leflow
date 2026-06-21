@@ -141,6 +141,26 @@ async function runMigrations() {
     log('[Migrations] Client Portal tables ready', 'express');
   } catch (err: any) {
     log(`[Migrations] Warning on portal tables: ${err.message}`, 'express');
+  }
+
+  // Messaging feature extensions — separate try so they always run
+  try {
+    await client.query(`
+      ALTER TABLE messages ADD COLUMN IF NOT EXISTS edited_at TIMESTAMP;
+    `);
+    await client.query(`
+      CREATE TABLE IF NOT EXISTS message_reactions (
+        id SERIAL PRIMARY KEY,
+        message_id INTEGER NOT NULL REFERENCES messages(id) ON DELETE CASCADE,
+        user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+        emoji TEXT NOT NULL,
+        created_at TIMESTAMP NOT NULL DEFAULT NOW(),
+        UNIQUE(message_id, user_id, emoji)
+      );
+    `);
+    log('[Migrations] Messaging extensions (edited_at, reactions) ready', 'express');
+  } catch (err: any) {
+    log(`[Migrations] Warning on messaging extensions: ${err.message}`, 'express');
   } finally {
     client.release();
   }
