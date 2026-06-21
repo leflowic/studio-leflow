@@ -94,7 +94,7 @@ async function generateStoryBlob(link: SmartLink): Promise<Blob> {
 
   // ── 2. Background — two blend passes for vivid saturated color ────────────
   if (coverImg) {
-    const bgB = blurredCanvas(coverImg, W, H, 40);
+    const bgB = blurredCanvas(coverImg, W, H, 90);
     // Primary vivid fill
     ctx.save();
     ctx.imageSmoothingEnabled = true; ctx.imageSmoothingQuality = "high";
