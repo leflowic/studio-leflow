@@ -195,14 +195,25 @@ async function generateStoryBlob(link: SmartLink): Promise<Blob> {
   ctx.fillStyle = "rgba(99,82,255,0.70)";
   ctx.fillText(`studioleflow.com/l/${link.slug}`, W / 2, urlY);
 
-  // Branding at bottom
-  ctx.font = `600 32px system-ui, -apple-system, Arial, sans-serif`;
-  ctx.fillStyle = "rgba(255,255,255,0.20)";
-  ctx.fillText("Studio LeFlow", W / 2, H - 72);
-
-  ctx.font = `400 24px system-ui, -apple-system, Arial, sans-serif`;
-  ctx.fillStyle = "rgba(255,255,255,0.10)";
-  ctx.fillText("studioleflow.com", W / 2, H - 38);
+  // Branding at bottom — white logo
+  try {
+    const logo = await new Promise<HTMLImageElement>((res, rej) => {
+      const i = new Image();
+      i.crossOrigin = "anonymous";
+      i.onload = () => res(i);
+      i.onerror = rej;
+      i.src = `${window.location.origin}/leflow-logo-white.png`;
+    });
+    const logoW = 210;
+    const logoH = Math.round((logo.naturalHeight / logo.naturalWidth) * logoW);
+    ctx.globalAlpha = 0.32;
+    ctx.drawImage(logo, (W - logoW) / 2, H - 56 - logoH, logoW, logoH);
+    ctx.globalAlpha = 1;
+  } catch {
+    ctx.font = `600 32px system-ui, -apple-system, Arial, sans-serif`;
+    ctx.fillStyle = "rgba(255,255,255,0.20)";
+    ctx.fillText("Studio LeFlow", W / 2, H - 72);
+  }
 
   return new Promise<Blob>((resolve, reject) => {
     canvas.toBlob((blob) => {
