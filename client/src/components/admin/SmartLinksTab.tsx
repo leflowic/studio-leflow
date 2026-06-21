@@ -1,26 +1,19 @@
 import { useState, useRef, useEffect } from "react";
+import { createPortal } from "react-dom";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { queryClient, apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import { Skeleton } from "@/components/ui/skeleton";
 import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-  AlertDialogTrigger,
+  AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
+  AlertDialogDescription, AlertDialogFooter, AlertDialogHeader,
+  AlertDialogTitle, AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
 import {
-  Link2, Plus, Trash2, Edit2, Copy, ExternalLink,
-  Music2, Upload, X, Sparkles, Loader2, MousePointerClick,
-  TrendingUp, ChevronLeft,
+  Link2, Plus, Trash2, Edit2, Copy, ExternalLink, Music2,
+  Upload, X, Sparkles, Loader2, MousePointerClick, TrendingUp,
 } from "lucide-react";
 import { SiSpotify, SiYoutube, SiApplemusic, SiSoundcloud, SiTidal } from "react-icons/si";
 import type { SmartLink } from "@shared/schema";
@@ -45,67 +38,86 @@ const emptyForm = {
   soundcloudUrl: "", tidalUrl: "", deezerUrl: "",
 };
 
-function slugify(text: string) {
-  return text
-    .toLowerCase()
-    .normalize("NFD")
-    .replace(/[̀-ͯ]/g, "")
-    .replace(/[^a-z0-9\s-]/g, "")
-    .trim()
-    .replace(/\s+/g, "-");
+function slugify(t: string) {
+  return t.toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g, "").replace(/[^a-z0-9\s-]/g, "").trim().replace(/\s+/g, "-");
 }
 
+// ── sessionStorage helpers ────────────────────────────────────────────────────
+function ssGet<T>(key: string, fallback: T): T {
+  try { const v = sessionStorage.getItem(key); return v !== null ? JSON.parse(v) : fallback; } catch { return fallback; }
+}
+function ssSet(key: string, val: unknown) { try { sessionStorage.setItem(key, JSON.stringify(val)); } catch {} }
+
+// ── Custom portal modal ───────────────────────────────────────────────────────
+function Modal({ open, onClose, children }: { open: boolean; onClose: () => void; children: React.ReactNode }) {
+  useEffect(() => {
+    if (!open) return;
+    const handler = (e: KeyboardEvent) => { if (e.key === "Escape") onClose(); };
+    document.addEventListener("keydown", handler);
+    document.body.style.overflow = "hidden";
+    return () => { document.removeEventListener("keydown", handler); document.body.style.overflow = ""; };
+  }, [open, onClose]);
+
+  if (!open) return null;
+
+  return createPortal(
+    <div className="fixed inset-0 z-[200] flex items-center justify-center p-4" style={{ animation: "fadeIn 0.15s ease" }}>
+      {/* Backdrop */}
+      <div
+        className="absolute inset-0"
+        style={{ background: "rgba(0,0,0,0.75)", backdropFilter: "blur(8px)" }}
+        onClick={onClose}
+      />
+      {/* Card */}
+      <div
+        className="relative w-full max-w-lg max-h-[90vh] overflow-y-auto rounded-3xl flex flex-col"
+        style={{
+          background: "linear-gradient(135deg, rgba(18,18,22,0.99) 0%, rgba(12,12,16,0.99) 100%)",
+          border: "1px solid rgba(255,255,255,0.07)",
+          boxShadow: "0 0 0 1px rgba(255,255,255,0.04), 0 32px 80px rgba(0,0,0,0.85), 0 8px 32px rgba(0,0,0,0.6)",
+          animation: "slideUp 0.2s cubic-bezier(0.16,1,0.3,1)",
+        }}
+        onClick={e => e.stopPropagation()}
+      >
+        {children}
+      </div>
+      <style>{`
+        @keyframes fadeIn { from { opacity:0 } to { opacity:1 } }
+        @keyframes slideUp { from { opacity:0; transform:translateY(16px) scale(0.98) } to { opacity:1; transform:translateY(0) scale(1) } }
+      `}</style>
+    </div>,
+    document.body
+  );
+}
+
+// ── Main component ────────────────────────────────────────────────────────────
 export function SmartLinksTab() {
   const { toast } = useToast();
-  const [form, setForm] = useState<typeof emptyForm>(() => {
-    try {
-      const s = sessionStorage.getItem("sl_form");
-      return s ? JSON.parse(s) : emptyForm;
-    } catch { return emptyForm; }
-  });
-  const [editingId, setEditingId] = useState<number | null>(() => {
-    const v = sessionStorage.getItem("sl_editing_id");
-    return v !== null ? (v === "null" ? null : parseInt(v)) : null;
-  });
-  const [showForm, setShowFormRaw] = useState(() =>
-    sessionStorage.getItem("sl_show_form") === "true"
-  );
+  const [form, setFormRaw] = useState<typeof emptyForm>(() => ssGet("sl_form", emptyForm));
+  const [editingId, setEditingIdRaw] = useState<number | null>(() => ssGet("sl_editing_id", null));
+  const [open, setOpenRaw] = useState(() => ssGet("sl_open", false));
   const [uploading, setUploading] = useState(false);
   const [autoUrl, setAutoUrl] = useState("");
   const [autoFillPending, setAutoFillPending] = useState(false);
   const fileRef = useRef<HTMLInputElement>(null);
 
-  function setShowForm(val: boolean) {
-    console.log(`[SmartLinks] setShowForm(${val}) — stack:`, new Error().stack?.split("\n")[2]?.trim());
-    sessionStorage.setItem("sl_show_form", String(val));
-    setShowFormRaw(val);
-  }
-  function persistForm(f: typeof emptyForm) {
-    sessionStorage.setItem("sl_form", JSON.stringify(f));
-    setForm(f);
-  }
-  function persistEditingId(id: number | null) {
-    sessionStorage.setItem("sl_editing_id", String(id));
-    setEditingId(id);
-  }
+  const setForm = (f: typeof emptyForm) => { ssSet("sl_form", f); setFormRaw(f); };
+  const setEditingId = (id: number | null) => { ssSet("sl_editing_id", id); setEditingIdRaw(id); };
+  const setOpen = (v: boolean) => { ssSet("sl_open", v); setOpenRaw(v); };
 
   useEffect(() => {
-    console.log("[SmartLinks] MOUNTED — showForm:", sessionStorage.getItem("sl_show_form"));
+    console.log("[SmartLinks] MOUNTED — open:", ssGet("sl_open", false));
     return () => console.log("[SmartLinks] UNMOUNTED");
   }, []);
 
-  const { data: links, isLoading } = useQuery<SmartLinkWithStats[]>({
-    queryKey: ["/api/admin/smart-links"],
-  });
-
+  const { data: links, isLoading } = useQuery<SmartLinkWithStats[]>({ queryKey: ["/api/admin/smart-links"] });
   const totalClicks = links?.reduce((s, l) => s + l.totalClicks, 0) ?? 0;
 
   const saveMutation = useMutation({
     mutationFn: async (data: typeof emptyForm) => {
       const clean: Record<string, string | null> = { ...data };
-      for (const key of ["spotifyUrl", "youtubeUrl", "appleMusicUrl", "soundcloudUrl", "tidalUrl", "deezerUrl"]) {
-        if (!clean[key]) clean[key] = null;
-      }
+      for (const k of ["spotifyUrl", "youtubeUrl", "appleMusicUrl", "soundcloudUrl", "tidalUrl", "deezerUrl"])
+        if (!clean[k]) clean[k] = null;
       return editingId !== null
         ? apiRequest("PATCH", `/api/admin/smart-links/${editingId}`, clean)
         : apiRequest("POST", "/api/admin/smart-links", clean);
@@ -113,8 +125,8 @@ export function SmartLinksTab() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/admin/smart-links"] });
       const wasEditing = editingId !== null;
-      hideForm();
-      setTimeout(() => toast({ title: wasEditing ? "Link ažuriran" : "Link kreiran" }), 50);
+      closeDialog();
+      setTimeout(() => toast({ title: wasEditing ? "Link ažuriran ✓" : "Link kreiran ✓" }), 50);
     },
     onError: async (e: any) => {
       const msg = await e?.response?.json?.().catch(() => null);
@@ -124,11 +136,8 @@ export function SmartLinksTab() {
 
   const deleteMutation = useMutation({
     mutationFn: (id: number) => apiRequest("DELETE", `/api/admin/smart-links/${id}`),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/admin/smart-links"] });
-      toast({ title: "Link obrisan" });
-    },
-    onError: () => toast({ title: "Greška", description: "Brisanje nije uspelo", variant: "destructive" }),
+    onSuccess: () => { queryClient.invalidateQueries({ queryKey: ["/api/admin/smart-links"] }); toast({ title: "Obrisano" }); },
+    onError: () => toast({ title: "Greška pri brisanju", variant: "destructive" }),
   });
 
   async function handleAutoFill() {
@@ -143,7 +152,8 @@ export function SmartLinksTab() {
       });
       const data = await r.json();
       if (!r.ok) throw new Error(data.error ?? "Greška");
-      persistForm({
+      setForm({
+        ...form,
         title: data.title || form.title,
         artist: data.artist || form.artist,
         coverUrl: data.coverUrl || form.coverUrl,
@@ -156,7 +166,7 @@ export function SmartLinksTab() {
         deezerUrl: data.deezerUrl || form.deezerUrl,
       });
       setAutoUrl("");
-      toast({ title: "Pronađeno!", description: "Proveri podatke i sačuvaj link." });
+      toast({ title: "Pronađeno!", description: "Proveri podatke i sačuvaj." });
     } catch (e: any) {
       toast({ title: "Greška", description: e.message ?? "Nije moguće pronaći pesmu", variant: "destructive" });
     } finally {
@@ -164,57 +174,25 @@ export function SmartLinksTab() {
     }
   }
 
-  function showCreate() {
-    persistForm(emptyForm);
-    persistEditingId(null);
-    setAutoUrl("");
-    setShowForm(true);
+  function openCreate() { setForm(emptyForm); setEditingId(null); setAutoUrl(""); setOpen(true); }
+  function openEdit(l: SmartLinkWithStats) {
+    setForm({ slug: l.slug, title: l.title, artist: l.artist, coverUrl: l.coverUrl ?? "", spotifyUrl: l.spotifyUrl ?? "", youtubeUrl: l.youtubeUrl ?? "", appleMusicUrl: l.appleMusicUrl ?? "", soundcloudUrl: l.soundcloudUrl ?? "", tidalUrl: l.tidalUrl ?? "", deezerUrl: l.deezerUrl ?? "" });
+    setEditingId(l.id); setAutoUrl(""); setOpen(true);
   }
-
-  function showEdit(link: SmartLinkWithStats) {
-    persistForm({
-      slug: link.slug,
-      title: link.title,
-      artist: link.artist,
-      coverUrl: link.coverUrl ?? "",
-      spotifyUrl: link.spotifyUrl ?? "",
-      youtubeUrl: link.youtubeUrl ?? "",
-      appleMusicUrl: link.appleMusicUrl ?? "",
-      soundcloudUrl: link.soundcloudUrl ?? "",
-      tidalUrl: link.tidalUrl ?? "",
-      deezerUrl: link.deezerUrl ?? "",
-    });
-    persistEditingId(link.id);
-    setAutoUrl("");
-    setShowForm(true);
-  }
-
-  function hideForm() {
-    setShowForm(false);
-    persistForm(emptyForm);
-    persistEditingId(null);
-    setAutoUrl("");
-  }
+  function closeDialog() { setOpen(false); setForm(emptyForm); setEditingId(null); setAutoUrl(""); }
 
   async function uploadCover(file: File) {
     setUploading(true);
     try {
-      const fd = new FormData();
-      fd.append("file", file);
+      const fd = new FormData(); fd.append("file", file);
       const token = localStorage.getItem("auth_token");
-      const r = await fetch("/api/upload/smart-link-cover", {
-        method: "POST",
-        headers: { Authorization: `Bearer ${token}` },
-        body: fd,
-      });
+      const r = await fetch("/api/upload/smart-link-cover", { method: "POST", headers: { Authorization: `Bearer ${token}` }, body: fd });
       const data = await r.json();
       if (!r.ok) throw new Error(data.error);
-      persistForm({ ...form, coverUrl: data.url });
+      setForm({ ...form, coverUrl: data.url });
     } catch (e: any) {
       toast({ title: "Greška", description: e.message ?? "Upload nije uspeo", variant: "destructive" });
-    } finally {
-      setUploading(false);
-    }
+    } finally { setUploading(false); }
   }
 
   function copyLink(slug: string) {
@@ -222,317 +200,357 @@ export function SmartLinksTab() {
     toast({ title: "Link kopiran!" });
   }
 
-  // ── FORM VIEW ─────────────────────────────────────────────────────────────
-  if (showForm) {
-    return (
-      <div className="space-y-5">
-        {/* Back header */}
-        <div className="flex items-center gap-3">
+  return (
+    <>
+      {/* ── Modal ─────────────────────────────────────────────────────────── */}
+      <Modal open={open} onClose={closeDialog}>
+        {/* Header */}
+        <div className="flex items-center justify-between px-6 pt-6 pb-5 border-b shrink-0" style={{ borderColor: "rgba(255,255,255,0.06)" }}>
+          <div>
+            <h2 className="text-[15px] font-bold text-white">
+              {editingId !== null ? "Uredi smart link" : "Novi smart link"}
+            </h2>
+            <p className="text-[11px] mt-0.5" style={{ color: "rgba(255,255,255,0.35)" }}>
+              {editingId !== null ? "Izmeni podatke i sačuvaj" : "Dodaj pesmu na sve platforme odjednom"}
+            </p>
+          </div>
           <button
             type="button"
-            onClick={hideForm}
-            className="flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground transition-colors"
+            onClick={closeDialog}
+            className="w-8 h-8 rounded-xl flex items-center justify-center transition-colors"
+            style={{ background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.07)" }}
+            onMouseEnter={e => (e.currentTarget.style.background = "rgba(255,255,255,0.10)")}
+            onMouseLeave={e => (e.currentTarget.style.background = "rgba(255,255,255,0.05)")}
           >
-            <ChevronLeft className="w-4 h-4" />
-            Nazad
+            <X className="w-3.5 h-3.5 text-white/50" />
           </button>
-          <span className="text-muted-foreground/30">/</span>
-          <h2 className="text-sm font-semibold">
-            {editingId !== null ? "Uredi smart link" : "Novi smart link"}
-          </h2>
         </div>
 
-        {/* Auto-fill box */}
-        <div className="rounded-2xl overflow-hidden border border-primary/15 bg-gradient-to-br from-primary/[0.08] to-primary/[0.03]">
-          <div className="px-4 py-3 border-b border-primary/10 flex items-center gap-2">
-            <Sparkles className="w-3.5 h-3.5 text-primary" />
-            <span className="text-xs font-semibold text-primary">Auto-popuni</span>
-          </div>
-          <div className="px-4 py-3 space-y-2.5">
-            <p className="text-[11.5px] text-muted-foreground leading-relaxed">
-              Ubaci link pesme sa <span className="text-foreground/70">bilo koje platforme</span> — Spotify, YouTube, Apple Music... i mi ćemo naći sve ostalo automatski.
-            </p>
-            <div className="flex gap-2">
-              <Input
-                type="text"
-                placeholder="https://open.spotify.com/track/..."
-                value={autoUrl}
-                onChange={e => setAutoUrl(e.target.value)}
-                onKeyDown={e => { if (e.key === "Enter") { e.preventDefault(); handleAutoFill(); } }}
-                className="text-xs h-9 bg-background/50 border-border/30 focus:border-primary/40"
-              />
-              <Button
-                type="button"
-                size="sm"
-                onClick={handleAutoFill}
-                disabled={!autoUrl || autoFillPending}
-                className="h-9 px-4 shrink-0 gap-1.5"
-              >
-                {autoFillPending
-                  ? <Loader2 className="w-3.5 h-3.5 animate-spin" />
-                  : <Sparkles className="w-3.5 h-3.5" />}
-                {autoFillPending ? "Tražim..." : "Nađi"}
-              </Button>
+        <div className="px-6 py-5 space-y-5">
+          {/* Auto-fill */}
+          <div className="rounded-2xl overflow-hidden" style={{ background: "linear-gradient(135deg, rgba(99,82,255,0.10) 0%, rgba(99,82,255,0.04) 100%)", border: "1px solid rgba(99,82,255,0.18)" }}>
+            <div className="flex items-center gap-2 px-4 py-2.5 border-b" style={{ borderColor: "rgba(99,82,255,0.12)" }}>
+              <Sparkles className="w-3.5 h-3.5" style={{ color: "rgba(160,148,255,0.9)" }} />
+              <span className="text-[11px] font-semibold tracking-wide" style={{ color: "rgba(160,148,255,0.9)" }}>AUTO-POPUNI</span>
             </div>
-          </div>
-        </div>
-
-        {/* Cover + title + artist */}
-        <div className="flex gap-4 items-start">
-          <div
-            className="relative w-24 h-24 rounded-2xl border border-border/30 bg-muted/20 flex-shrink-0 flex items-center justify-center cursor-pointer overflow-hidden group hover:border-primary/30 transition-all"
-            onClick={() => fileRef.current?.click()}
-          >
-            {form.coverUrl ? (
-              <>
-                <img src={form.coverUrl} alt="cover" className="absolute inset-0 w-full h-full object-cover" />
-                <div className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
-                  <Upload className="w-5 h-5 text-white" />
-                </div>
+            <div className="px-4 py-3.5 space-y-2.5">
+              <p className="text-[11.5px] leading-relaxed" style={{ color: "rgba(255,255,255,0.40)" }}>
+                Upiši link sa <span style={{ color: "rgba(255,255,255,0.65)" }}>bilo koje platforme</span> i mi ćemo naći sve ostalo.
+              </p>
+              <div className="flex gap-2">
+                <input
+                  type="text"
+                  placeholder="https://open.spotify.com/track/..."
+                  value={autoUrl}
+                  onChange={e => setAutoUrl(e.target.value)}
+                  onKeyDown={e => { if (e.key === "Enter") { e.preventDefault(); handleAutoFill(); } }}
+                  className="flex-1 h-9 px-3 rounded-xl text-[12px] outline-none text-white placeholder:text-white/20 transition-colors"
+                  style={{ background: "rgba(255,255,255,0.06)", border: "1px solid rgba(255,255,255,0.08)" }}
+                  onFocus={e => (e.currentTarget.style.border = "1px solid rgba(99,82,255,0.5)")}
+                  onBlur={e => (e.currentTarget.style.border = "1px solid rgba(255,255,255,0.08)")}
+                />
                 <button
                   type="button"
-                  className="absolute top-1.5 right-1.5 bg-black/80 rounded-full p-0.5 z-10 opacity-0 group-hover:opacity-100 transition-opacity"
-                  onClick={e => { e.stopPropagation(); persistForm({ ...form, coverUrl: "" }); }}
+                  onClick={handleAutoFill}
+                  disabled={!autoUrl || autoFillPending}
+                  className="h-9 px-4 rounded-xl text-[12px] font-semibold text-white flex items-center gap-1.5 shrink-0 transition-opacity disabled:opacity-40"
+                  style={{ background: "linear-gradient(135deg, #6352ff, #8b73ff)", boxShadow: "0 4px 16px rgba(99,82,255,0.35)" }}
                 >
-                  <X className="w-2.5 h-2.5 text-white" />
+                  {autoFillPending ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Sparkles className="w-3.5 h-3.5" />}
+                  {autoFillPending ? "Tražim..." : "Nađi"}
                 </button>
-              </>
-            ) : (
-              <div className="flex flex-col items-center gap-1.5 text-muted-foreground/50">
-                {uploading
-                  ? <Loader2 className="w-5 h-5 animate-spin text-primary" />
-                  : <><Music2 className="w-6 h-6" /><span className="text-[9px] text-center leading-tight">Cover<br />slika</span></>
-                }
               </div>
-            )}
-          </div>
-          <input ref={fileRef} type="file" accept="image/*" className="hidden"
-            onChange={e => { const f = e.target.files?.[0]; if (f) uploadCover(f); e.target.value = ""; }} />
-
-          <div className="flex-1 space-y-2.5">
-            <div className="space-y-1">
-              <Label className="text-[11px] text-muted-foreground">Naslov pesme</Label>
-              <Input
-                type="text"
-                placeholder="Naslov pesme"
-                value={form.title}
-                onChange={e => {
-                  const title = e.target.value;
-                  persistForm({ ...form, title, slug: form.slug || slugify(title) });
-                }}
-                className="h-9 text-sm"
-              />
-            </div>
-            <div className="space-y-1">
-              <Label className="text-[11px] text-muted-foreground">Izvođač</Label>
-              <Input
-                type="text"
-                placeholder="Ime izvođača"
-                value={form.artist}
-                onChange={e => persistForm({ ...form, artist: e.target.value })}
-                className="h-9 text-sm"
-              />
             </div>
           </div>
-        </div>
 
-        {/* Cover URL */}
-        <div className="space-y-1">
-          <Label className="text-[11px] text-muted-foreground">URL cover slike</Label>
-          <Input
-            type="url"
-            placeholder="https://..."
-            value={form.coverUrl}
-            onChange={e => persistForm({ ...form, coverUrl: e.target.value })}
-            className="h-9 text-xs"
-          />
-        </div>
+          {/* Cover + title + artist */}
+          <div className="flex gap-4">
+            <div
+              className="relative w-[88px] h-[88px] rounded-2xl overflow-hidden flex-shrink-0 cursor-pointer group"
+              style={{ background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.07)" }}
+              onClick={() => fileRef.current?.click()}
+            >
+              {form.coverUrl ? (
+                <>
+                  <img src={form.coverUrl} alt="" className="absolute inset-0 w-full h-full object-cover" />
+                  <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity" style={{ background: "rgba(0,0,0,0.6)" }}>
+                    <Upload className="w-5 h-5 text-white" />
+                  </div>
+                  <button
+                    type="button"
+                    onClick={e => { e.stopPropagation(); setForm({ ...form, coverUrl: "" }); }}
+                    className="absolute top-1 right-1 w-5 h-5 rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"
+                    style={{ background: "rgba(0,0,0,0.8)" }}
+                  >
+                    <X className="w-2.5 h-2.5 text-white" />
+                  </button>
+                </>
+              ) : (
+                <div className="w-full h-full flex flex-col items-center justify-center gap-1.5">
+                  {uploading
+                    ? <Loader2 className="w-5 h-5 animate-spin" style={{ color: "rgba(160,148,255,0.8)" }} />
+                    : <><Music2 className="w-5 h-5" style={{ color: "rgba(255,255,255,0.2)" }} /><span className="text-[9px] text-center leading-tight" style={{ color: "rgba(255,255,255,0.2)" }}>Cover</span></>
+                  }
+                </div>
+              )}
+            </div>
+            <input ref={fileRef} type="file" accept="image/*" className="hidden"
+              onChange={e => { const f = e.target.files?.[0]; if (f) uploadCover(f); e.target.value = ""; }} />
 
-        {/* Slug */}
-        <div className="space-y-1">
-          <Label className="text-[11px] text-muted-foreground">URL slug</Label>
-          <div className="flex items-center h-9 rounded-lg border border-border/40 bg-muted/20 overflow-hidden focus-within:border-primary/40 transition-colors">
-            <span className="px-3 text-xs text-muted-foreground border-r border-border/30 h-full flex items-center bg-muted/20 shrink-0">/l/</span>
-            <input
-              type="text"
-              className="flex-1 px-3 text-sm bg-transparent outline-none text-foreground placeholder:text-muted-foreground/50"
-              placeholder="naziv-pesme"
-              value={form.slug}
-              onChange={e => persistForm({ ...form, slug: e.target.value.toLowerCase().replace(/[^a-z0-9-]/g, "") })}
-            />
-          </div>
-        </div>
-
-        {/* Platforms */}
-        <div className="space-y-1.5">
-          <Label className="text-[11px] text-muted-foreground uppercase tracking-wider">Platforme</Label>
-          <div className="rounded-xl border border-border/30 overflow-hidden divide-y divide-border/20">
-            {PLATFORMS.map(p => (
-              <div key={p.key} className="flex items-center gap-3 px-3 py-2.5 bg-muted/5 hover:bg-muted/10 transition-colors">
-                <p.Icon size={13} style={{ color: p.color }} className="flex-shrink-0" />
-                <span className="text-xs font-medium w-24 shrink-0 text-foreground/70">{p.label}</span>
-                <input
-                  type="url"
-                  className="flex-1 bg-transparent outline-none text-xs text-foreground placeholder:text-muted-foreground/40 py-0.5"
-                  placeholder={`URL za ${p.label}...`}
-                  value={form[p.key as keyof typeof emptyForm]}
-                  onChange={e => persistForm({ ...form, [p.key]: e.target.value })}
+            <div className="flex-1 space-y-2">
+              <Field label="Naslov pesme">
+                <StyledInput
+                  placeholder="Naslov pesme"
+                  value={form.title}
+                  onChange={e => {
+                    const title = e.target.value;
+                    setForm({ ...form, title, slug: form.slug || slugify(title) });
+                  }}
                 />
-              </div>
-            ))}
+              </Field>
+              <Field label="Izvođač">
+                <StyledInput
+                  placeholder="Ime izvođača"
+                  value={form.artist}
+                  onChange={e => setForm({ ...form, artist: e.target.value })}
+                />
+              </Field>
+            </div>
+          </div>
+
+          {/* Cover URL */}
+          <Field label="Cover URL (opcionalno)">
+            <StyledInput
+              type="url"
+              placeholder="https://..."
+              value={form.coverUrl}
+              onChange={e => setForm({ ...form, coverUrl: e.target.value })}
+            />
+          </Field>
+
+          {/* Slug */}
+          <Field label="URL slug">
+            <div className="flex items-center h-9 rounded-xl overflow-hidden transition-colors"
+              style={{ background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.08)" }}>
+              <span className="px-3 text-[11px] border-r h-full flex items-center shrink-0 font-mono"
+                style={{ color: "rgba(160,148,255,0.7)", borderColor: "rgba(255,255,255,0.07)", background: "rgba(99,82,255,0.08)" }}>
+                /l/
+              </span>
+              <input
+                type="text"
+                placeholder="naziv-pesme"
+                value={form.slug}
+                onChange={e => setForm({ ...form, slug: e.target.value.toLowerCase().replace(/[^a-z0-9-]/g, "") })}
+                className="flex-1 px-3 text-[12px] bg-transparent outline-none text-white placeholder:text-white/20 font-mono"
+              />
+            </div>
+          </Field>
+
+          {/* Platforms */}
+          <div>
+            <p className="text-[10px] font-semibold tracking-[0.12em] uppercase mb-2" style={{ color: "rgba(255,255,255,0.30)" }}>Platforme</p>
+            <div className="rounded-2xl overflow-hidden" style={{ border: "1px solid rgba(255,255,255,0.06)" }}>
+              {PLATFORMS.map((p, i) => (
+                <div
+                  key={p.key}
+                  className="flex items-center gap-3 px-4 py-2.5 transition-colors"
+                  style={{ background: i % 2 === 0 ? "rgba(255,255,255,0.02)" : "transparent", borderBottom: i < PLATFORMS.length - 1 ? "1px solid rgba(255,255,255,0.04)" : "none" }}
+                >
+                  <span className="w-6 h-6 rounded-lg flex items-center justify-center shrink-0" style={{ background: `${p.color}16` }}>
+                    <p.Icon size={12} style={{ color: p.color }} />
+                  </span>
+                  <span className="text-[11px] font-medium w-24 shrink-0" style={{ color: "rgba(255,255,255,0.50)" }}>{p.label}</span>
+                  <input
+                    type="url"
+                    placeholder={`${p.label} URL...`}
+                    value={form[p.key as keyof typeof emptyForm]}
+                    onChange={e => setForm({ ...form, [p.key]: e.target.value })}
+                    className="flex-1 bg-transparent text-[11.5px] text-white outline-none placeholder:text-white/15 py-0.5"
+                  />
+                </div>
+              ))}
+            </div>
           </div>
         </div>
 
         {/* Footer */}
-        <div className="flex justify-end gap-2 pt-1">
-          <Button type="button" variant="outline" onClick={hideForm} className="h-9">
+        <div className="flex items-center justify-between gap-3 px-6 py-4 shrink-0 border-t" style={{ borderColor: "rgba(255,255,255,0.06)", background: "rgba(255,255,255,0.015)" }}>
+          <button
+            type="button"
+            onClick={closeDialog}
+            className="h-9 px-5 rounded-xl text-[12px] font-medium transition-colors"
+            style={{ color: "rgba(255,255,255,0.45)", border: "1px solid rgba(255,255,255,0.08)" }}
+            onMouseEnter={e => (e.currentTarget.style.color = "rgba(255,255,255,0.7)")}
+            onMouseLeave={e => (e.currentTarget.style.color = "rgba(255,255,255,0.45)")}
+          >
             Otkaži
-          </Button>
-          <Button
+          </button>
+          <button
             type="button"
             onClick={() => saveMutation.mutate(form)}
             disabled={saveMutation.isPending || !form.title || !form.artist || !form.slug}
-            className="h-9 px-5 shadow-lg shadow-primary/20"
+            className="h-9 px-6 rounded-xl text-[12px] font-semibold text-white flex items-center gap-2 transition-opacity disabled:opacity-40"
+            style={{ background: "linear-gradient(135deg, #6352ff 0%, #8b73ff 100%)", boxShadow: "0 4px 20px rgba(99,82,255,0.4)" }}
           >
-            {saveMutation.isPending
-              ? <><Loader2 className="w-3.5 h-3.5 animate-spin mr-1.5" />Čuvam...</>
-              : editingId !== null ? "Sačuvaj izmene" : "Kreiraj link"}
-          </Button>
+            {saveMutation.isPending && <Loader2 className="w-3.5 h-3.5 animate-spin" />}
+            {saveMutation.isPending ? "Čuvam..." : editingId !== null ? "Sačuvaj izmene" : "Kreiraj link"}
+          </button>
         </div>
-      </div>
-    );
-  }
+      </Modal>
 
-  // ── LIST VIEW ─────────────────────────────────────────────────────────────
-  return (
-    <div className="space-y-6">
-      {/* Header */}
-      <div className="flex items-center justify-between">
-        <div>
-          <div className="flex items-center gap-2.5 mb-0.5">
-            <div className="w-8 h-8 rounded-xl bg-primary/10 flex items-center justify-center">
-              <Link2 className="w-4 h-4 text-primary" />
-            </div>
-            <h2 className="text-xl font-bold">Smart Links</h2>
-          </div>
-          <p className="text-xs text-muted-foreground ml-[42px]">Tvoji li.sten.to linkovi — jedna pesma, sve platforme</p>
-        </div>
-        <Button type="button" onClick={showCreate} className="gap-2 shadow-lg shadow-primary/20">
-          <Plus className="w-4 h-4" />
-          Novi link
-        </Button>
-      </div>
+      {/* ── List view ────────────────────────────────────────────────────────── */}
+      <div className="space-y-6">
 
-      {/* Stats */}
-      {!!links?.length && (
-        <div className="grid grid-cols-2 gap-3">
-          <div className="rounded-2xl border border-border/30 bg-card px-5 py-4 flex items-center gap-3">
-            <div className="w-9 h-9 rounded-xl bg-primary/10 flex items-center justify-center flex-shrink-0">
-              <Link2 className="w-4 h-4 text-primary" />
+        {/* Header */}
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            <div className="w-9 h-9 rounded-2xl flex items-center justify-center shrink-0" style={{ background: "rgba(99,82,255,0.12)", border: "1px solid rgba(99,82,255,0.15)" }}>
+              <Link2 className="w-4 h-4" style={{ color: "rgba(160,148,255,0.9)" }} />
             </div>
             <div>
-              <p className="text-2xl font-black leading-none">{links.length}</p>
-              <p className="text-xs text-muted-foreground mt-0.5">Smart linkova</p>
+              <h2 className="text-lg font-bold leading-tight">Smart Links</h2>
+              <p className="text-[11px] text-muted-foreground leading-none mt-0.5">Jedna pesma — sve platforme</p>
             </div>
           </div>
-          <div className="rounded-2xl border border-border/30 bg-card px-5 py-4 flex items-center gap-3">
-            <div className="w-9 h-9 rounded-xl bg-green-500/10 flex items-center justify-center flex-shrink-0">
-              <MousePointerClick className="w-4 h-4 text-green-500" />
+          <button
+            type="button"
+            onClick={openCreate}
+            className="flex items-center gap-2 h-9 px-4 rounded-xl text-[12px] font-semibold text-white transition-all"
+            style={{ background: "linear-gradient(135deg, #6352ff 0%, #8b73ff 100%)", boxShadow: "0 4px 16px rgba(99,82,255,0.35)" }}
+            onMouseEnter={e => { e.currentTarget.style.boxShadow = "0 6px 24px rgba(99,82,255,0.5)"; e.currentTarget.style.transform = "translateY(-1px)"; }}
+            onMouseLeave={e => { e.currentTarget.style.boxShadow = "0 4px 16px rgba(99,82,255,0.35)"; e.currentTarget.style.transform = ""; }}
+          >
+            <Plus className="w-3.5 h-3.5" />
+            Novi link
+          </button>
+        </div>
+
+        {/* Stats */}
+        {!!links?.length && (
+          <div className="grid grid-cols-2 gap-3">
+            {[
+              { icon: Link2, value: links.length, label: "Smart linkova", color: "rgba(99,82,255,0.12)", iconColor: "rgba(160,148,255,0.9)", borderColor: "rgba(99,82,255,0.15)" },
+              { icon: MousePointerClick, value: totalClicks, label: "Ukupno klikova", color: "rgba(34,197,94,0.08)", iconColor: "rgba(74,222,128,0.85)", borderColor: "rgba(34,197,94,0.15)" },
+            ].map(({ icon: Icon, value, label, color, iconColor, borderColor }) => (
+              <div key={label} className="rounded-2xl px-5 py-4 flex items-center gap-3" style={{ background: color, border: `1px solid ${borderColor}` }}>
+                <div className="w-9 h-9 rounded-xl flex items-center justify-center shrink-0" style={{ background: "rgba(0,0,0,0.2)" }}>
+                  <Icon className="w-4 h-4" style={{ color: iconColor }} />
+                </div>
+                <div>
+                  <p className="text-2xl font-black leading-none">{value}</p>
+                  <p className="text-[10px] mt-0.5" style={{ color: "rgba(255,255,255,0.45)" }}>{label}</p>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+
+        {/* List */}
+        {isLoading ? (
+          <div className="space-y-3">{[1, 2, 3].map(i => <Skeleton key={i} className="h-[88px] rounded-2xl" />)}</div>
+        ) : !links?.length ? (
+          <div className="rounded-3xl py-16 flex flex-col items-center gap-4 text-center" style={{ border: "1px dashed rgba(255,255,255,0.08)", background: "rgba(255,255,255,0.01)" }}>
+            <div className="w-16 h-16 rounded-3xl flex items-center justify-center" style={{ background: "rgba(99,82,255,0.08)", border: "1px solid rgba(99,82,255,0.12)" }}>
+              <Link2 className="w-7 h-7" style={{ color: "rgba(160,148,255,0.4)" }} />
             </div>
             <div>
-              <p className="text-2xl font-black leading-none">{totalClicks}</p>
-              <p className="text-xs text-muted-foreground mt-0.5">Ukupno klikova</p>
+              <p className="text-sm font-semibold">Nema smart linkova</p>
+              <p className="text-[11px] mt-1" style={{ color: "rgba(255,255,255,0.30)" }}>Kreiraj prvi link i podeli muziku na svim platformama</p>
             </div>
-          </div>
-        </div>
-      )}
-
-      {/* List */}
-      {isLoading ? (
-        <div className="space-y-3">
-          {[1, 2, 3].map(i => <Skeleton key={i} className="h-[88px] w-full rounded-2xl" />)}
-        </div>
-      ) : !links?.length ? (
-        <div className="rounded-2xl border border-dashed border-border/30 py-16 flex flex-col items-center gap-3 text-muted-foreground">
-          <div className="w-14 h-14 rounded-2xl bg-muted/30 flex items-center justify-center">
-            <Link2 className="w-6 h-6 opacity-40" />
-          </div>
-          <div className="text-center">
-            <p className="text-sm font-medium">Nema smart linkova</p>
-            <p className="text-xs text-muted-foreground/60 mt-0.5">Kreiraj prvi link i podeli muziku na svim platformama</p>
-          </div>
-          <Button type="button" variant="outline" size="sm" onClick={showCreate} className="gap-2 mt-1">
-            <Plus className="w-3.5 h-3.5" /> Kreiraj prvi
-          </Button>
-        </div>
-      ) : (
-        <div className="space-y-2.5">
-          {links.map(link => (
-            <div
-              key={link.id}
-              className="group rounded-2xl border border-border/30 bg-card overflow-hidden hover:border-primary/20 hover:bg-card/80 transition-all duration-200"
+            <button
+              type="button"
+              onClick={openCreate}
+              className="flex items-center gap-2 h-8 px-4 rounded-xl text-[11px] font-semibold mt-1 transition-colors"
+              style={{ border: "1px solid rgba(99,82,255,0.25)", color: "rgba(160,148,255,0.8)", background: "rgba(99,82,255,0.08)" }}
             >
-              <div className="flex items-stretch">
-                <div className="w-[88px] h-[88px] flex-shrink-0 relative overflow-hidden bg-muted/30">
+              <Plus className="w-3 h-3" /> Kreiraj prvi
+            </button>
+          </div>
+        ) : (
+          <div className="space-y-2.5">
+            {links.map(link => (
+              <div
+                key={link.id}
+                className="group rounded-2xl overflow-hidden flex items-stretch transition-all duration-200"
+                style={{ background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.06)" }}
+                onMouseEnter={e => { (e.currentTarget as HTMLElement).style.background = "rgba(255,255,255,0.05)"; (e.currentTarget as HTMLElement).style.border = "1px solid rgba(99,82,255,0.15)"; }}
+                onMouseLeave={e => { (e.currentTarget as HTMLElement).style.background = "rgba(255,255,255,0.03)"; (e.currentTarget as HTMLElement).style.border = "1px solid rgba(255,255,255,0.06)"; }}
+              >
+                {/* Cover */}
+                <div className="w-[88px] h-[88px] flex-shrink-0 relative overflow-hidden" style={{ background: "rgba(255,255,255,0.04)" }}>
                   {link.coverUrl
                     ? <img src={link.coverUrl} alt={link.title} className="w-full h-full object-cover" />
-                    : <div className="w-full h-full flex items-center justify-center"><Music2 className="w-7 h-7 text-muted-foreground/25" /></div>
+                    : <div className="w-full h-full flex items-center justify-center"><Music2 className="w-7 h-7" style={{ color: "rgba(255,255,255,0.12)" }} /></div>
                   }
+                  <div className="absolute inset-0" style={{ background: "linear-gradient(to right, transparent 60%, rgba(0,0,0,0.3))" }} />
                 </div>
 
-                <div className="flex-1 px-4 py-3.5 min-w-0 flex flex-col justify-between">
+                {/* Info */}
+                <div className="flex-1 px-4 py-3 min-w-0 flex flex-col justify-between">
                   <div>
-                    <p className="font-bold text-sm leading-tight truncate">{link.title}</p>
-                    <p className="text-xs text-muted-foreground truncate mt-0.5">{link.artist}</p>
+                    <p className="font-bold text-[13px] leading-tight truncate text-white/90">{link.title}</p>
+                    <p className="text-[11px] truncate mt-0.5" style={{ color: "rgba(255,255,255,0.40)" }}>{link.artist}</p>
                   </div>
-                  <div className="flex items-center gap-2 mt-1.5">
-                    <span className="text-[10px] font-mono text-primary/50 bg-primary/5 px-2 py-0.5 rounded-md border border-primary/10">
+                  <div className="flex items-center gap-2.5 mt-1.5 flex-wrap">
+                    <span className="text-[10px] font-mono px-2 py-0.5 rounded-lg" style={{ color: "rgba(160,148,255,0.7)", background: "rgba(99,82,255,0.10)", border: "1px solid rgba(99,82,255,0.12)" }}>
                       /l/{link.slug}
                     </span>
-                    <div className="flex items-center gap-1 text-[10px] text-muted-foreground">
-                      <TrendingUp className="w-3 h-3" />
-                      {link.totalClicks} klikova
+                    <span className="flex items-center gap-1 text-[10px]" style={{ color: "rgba(255,255,255,0.30)" }}>
+                      <TrendingUp className="w-3 h-3" /> {link.totalClicks}
+                    </span>
+                    <div className="flex items-center gap-1">
+                      {PLATFORMS.filter(p => link[p.key as keyof SmartLink]).map(p => (
+                        <div key={p.key} className="w-1.5 h-1.5 rounded-full" style={{ background: p.color }} title={p.label} />
+                      ))}
                     </div>
-                  </div>
-                  <div className="flex items-center gap-1.5 mt-1.5">
-                    {PLATFORMS.filter(p => link[p.key as keyof SmartLink]).map(p => (
-                      <div
-                        key={p.key}
-                        className="w-1.5 h-1.5 rounded-full"
-                        style={{ background: p.color }}
-                        title={`${p.label}: ${link.clicksByPlatform[p.clickKey] ?? 0} klikova`}
-                      />
-                    ))}
-                    {PLATFORMS.every(p => !link[p.key as keyof SmartLink]) && (
-                      <span className="text-[10px] text-muted-foreground/50">Nema platformi</span>
-                    )}
                   </div>
                 </div>
 
-                <div className="flex flex-col items-center justify-center gap-0.5 px-3 border-l border-border/20 opacity-0 group-hover:opacity-100 transition-opacity">
-                  <Button type="button" variant="ghost" size="icon" className="w-7 h-7 hover:bg-primary/10 hover:text-primary" onClick={() => copyLink(link.slug)} title="Kopiraj link">
-                    <Copy className="w-3.5 h-3.5" />
-                  </Button>
-                  <Button type="button" variant="ghost" size="icon" className="w-7 h-7" asChild title="Otvori stranicu">
-                    <a href={`/l/${link.slug}`} target="_blank" rel="noopener noreferrer">
-                      <ExternalLink className="w-3.5 h-3.5" />
-                    </a>
-                  </Button>
-                  <Button type="button" variant="ghost" size="icon" className="w-7 h-7 hover:bg-primary/10 hover:text-primary" onClick={() => showEdit(link)} title="Uredi">
-                    <Edit2 className="w-3.5 h-3.5" />
-                  </Button>
+                {/* Actions */}
+                <div className="flex flex-col items-center justify-center gap-0.5 px-2.5 opacity-0 group-hover:opacity-100 transition-opacity border-l" style={{ borderColor: "rgba(255,255,255,0.05)" }}>
+                  {[
+                    { icon: Copy, action: () => copyLink(link.slug), title: "Kopiraj" },
+                    { icon: ExternalLink, action: null, href: `/l/${link.slug}`, title: "Otvori" },
+                    { icon: Edit2, action: () => openEdit(link), title: "Uredi" },
+                  ].map(({ icon: Icon, action, href, title }) => (
+                    href ? (
+                      <a key={title} href={href} target="_blank" rel="noopener noreferrer"
+                        className="w-7 h-7 rounded-lg flex items-center justify-center transition-colors"
+                        style={{ color: "rgba(255,255,255,0.35)" }}
+                        onMouseEnter={e => (e.currentTarget.style.background = "rgba(255,255,255,0.08)")}
+                        onMouseLeave={e => (e.currentTarget.style.background = "")}
+                        title={title}
+                      >
+                        <Icon className="w-3.5 h-3.5" />
+                      </a>
+                    ) : (
+                      <button key={title} type="button" onClick={action!}
+                        className="w-7 h-7 rounded-lg flex items-center justify-center transition-colors"
+                        style={{ color: "rgba(255,255,255,0.35)" }}
+                        onMouseEnter={e => (e.currentTarget.style.background = "rgba(255,255,255,0.08)")}
+                        onMouseLeave={e => (e.currentTarget.style.background = "")}
+                        title={title}
+                      >
+                        <Icon className="w-3.5 h-3.5" />
+                      </button>
+                    )
+                  ))}
                   <AlertDialog>
                     <AlertDialogTrigger asChild>
-                      <Button type="button" variant="ghost" size="icon" className="w-7 h-7 hover:bg-destructive/10 hover:text-destructive" title="Obriši">
+                      <button type="button"
+                        className="w-7 h-7 rounded-lg flex items-center justify-center transition-colors"
+                        style={{ color: "rgba(255,255,255,0.35)" }}
+                        onMouseEnter={e => { e.currentTarget.style.background = "rgba(239,68,68,0.12)"; e.currentTarget.style.color = "rgba(248,113,113,0.9)"; }}
+                        onMouseLeave={e => { e.currentTarget.style.background = ""; e.currentTarget.style.color = "rgba(255,255,255,0.35)"; }}
+                        title="Obriši"
+                      >
                         <Trash2 className="w-3.5 h-3.5" />
-                      </Button>
+                      </button>
                     </AlertDialogTrigger>
                     <AlertDialogContent>
                       <AlertDialogHeader>
                         <AlertDialogTitle>Obriši link?</AlertDialogTitle>
-                        <AlertDialogDescription>
-                          &ldquo;{link.title}&rdquo; i svi podaci o klikovima biće trajno obrisani.
-                        </AlertDialogDescription>
+                        <AlertDialogDescription>"{link.title}" i svi podaci o klikovima biće trajno obrisani.</AlertDialogDescription>
                       </AlertDialogHeader>
                       <AlertDialogFooter>
                         <AlertDialogCancel>Otkaži</AlertDialogCancel>
@@ -544,10 +562,37 @@ export function SmartLinksTab() {
                   </AlertDialog>
                 </div>
               </div>
-            </div>
-          ))}
-        </div>
-      )}
+            ))}
+          </div>
+        )}
+      </div>
+    </>
+  );
+}
+
+// ── Tiny helpers ──────────────────────────────────────────────────────────────
+function Field({ label, children }: { label: string; children: React.ReactNode }) {
+  return (
+    <div className="space-y-1.5">
+      <p className="text-[10px] font-semibold tracking-[0.1em] uppercase" style={{ color: "rgba(255,255,255,0.30)" }}>{label}</p>
+      {children}
     </div>
+  );
+}
+
+function StyledInput({ type = "text", placeholder, value, onChange }: {
+  type?: string; placeholder?: string; value: string; onChange: (e: React.ChangeEvent<HTMLInputElement>) => void;
+}) {
+  return (
+    <input
+      type={type}
+      placeholder={placeholder}
+      value={value}
+      onChange={onChange}
+      className="w-full h-9 px-3 rounded-xl text-[12px] text-white outline-none placeholder:text-white/20 transition-colors"
+      style={{ background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.08)" }}
+      onFocus={e => (e.currentTarget.style.border = "1px solid rgba(99,82,255,0.5)")}
+      onBlur={e => (e.currentTarget.style.border = "1px solid rgba(255,255,255,0.08)")}
+    />
   );
 }
