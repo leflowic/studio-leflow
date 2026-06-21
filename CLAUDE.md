@@ -167,9 +167,17 @@ There are no automated tests in this project.
 
 **SEO:**
 - `client/src/components/SEO.tsx` — sets `<title>`, meta tags, og/twitter tags, canonical URL, and JSON-LD structured data via `useEffect`. Add `<SEO>` to every public page.
-- `defaultStructuredData` in `SEO.tsx` is a `RecordingStudio` schema used on pages that don't pass `structuredData`. Pre-built schemas for specific pages are exported as `pageStructuredData` (`services`, `contact`, `portfolio`).
-- `client/public/sitemap.xml` and `robots.txt` — only list real routes that exist in `App.tsx`. Disallow protected routes (`/admin`, `/dashboard`, `/igra`, `/zajednica`, `/moje-pesme`).
-- Private/giveaway-only pages (`/uslovi-koriscenja`) should use `<SEO noIndex={true}>`.
+- `defaultStructuredData` uses `@type: "MusicRecordingStudio"` (not `RecordingStudio`). Pre-built schemas exported as `pageStructuredData`: `services`, `contact`, `portfolio`, `faq` (FAQPage schema — enables Google rich snippets). Pass via `structuredData={pageStructuredData.faq}` etc.
+- Business email in structured data is `podrska@studioleflow.com` — never `leflowbusiness@gmail.com`.
+- `canonicalUrl` prop accepts relative paths (e.g. `"/faq"`) — the component converts to absolute automatically. Defaults to `window.location.href` (minus query/hash) if omitted.
+- Pages that must use `<SEO noIndex={true}>`: `/uslovi-koriscenja`, `/prijava`, `/registracija`. Protected/private pages (`/admin`, `/settings`, `/dashboard`, `/inbox`, `/igra`, `/zajednica`, `/moje-pesme`) don't need `noIndex` — they are already Disallowed in `robots.txt` and behind auth.
+- `client/public/sitemap.xml` — only public, indexable pages: `/`, `/usluge`, `/projekti`, `/faq`, `/kontakt`, `/tim`, `/pravila`. Do not add noIndex pages or auth pages.
+- `client/public/robots.txt` — Disallow list includes: `/admin`, `/dashboard`, `/inbox`, `/moje-pesme`, `/igra`, `/zajednica`, `/settings`, `/u/`, `/api/`. Keep Allow list minimal (only `/` needed — everything not disallowed is allowed by default).
+
+**Default avatar and favicons:**
+- `AvatarFallback` in `client/src/components/ui/avatar.tsx` renders `avatar_200.png` (from `@assets`) as the default avatar image — global override, affects all `<AvatarFallback>` instances.
+- Favicon source is also `avatar_200.png`. Sizes in `client/public/`: `favicon.ico` (16/32/48px embedded), `favicon-16x16.png`, `favicon-32x32.png`, `favicon.png` (48px), `apple-touch-icon.png` (180px), `favicon-192x192.png`, `favicon-512x512.png`.
+- OG image: `client/public/og-image.png` — 1200×630px PNG. Referenced as `https://studioleflow.com/og-image.png` in `index.html` and `SEO.tsx`.
 
 **Chunk loading / error boundary:**
 - `ChunkErrorBoundary` in `App.tsx` wraps all lazy-loaded routes. On a chunk load error it auto-reloads once per pathname using a `sessionStorage` key `chunk-reload-${pathname}` — each route gets its own reload attempt so navigating between pages after a deploy doesn't get stuck showing the error UI.
