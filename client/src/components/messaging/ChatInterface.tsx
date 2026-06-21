@@ -344,11 +344,11 @@ export default function ChatInterface({ selectedUserId, onBack }: ChatInterfaceP
   return (
     <div className="flex-1 flex flex-col h-full">
       {/* Header */}
-      <Card className="border-0 md:border-b rounded-none">
-        <div className="p-4 flex items-center gap-3">
-          <Button variant="ghost" size="icon" onClick={onBack} className="md:hidden">
-            <ArrowLeft className="w-5 h-5" />
-          </Button>
+      <div className="flex items-center gap-3 px-4 py-3 border-b border-border/60 bg-card/80 backdrop-blur-sm flex-shrink-0">
+        <Button variant="ghost" size="icon" onClick={onBack} className="md:hidden -ml-1 rounded-xl">
+          <ArrowLeft className="w-5 h-5" />
+        </Button>
+        <div className="relative">
           <AvatarWithInitials
             src={otherUser?.avatarUrl}
             alt={otherUser?.username || "User"}
@@ -356,45 +356,55 @@ export default function ChatInterface({ selectedUserId, onBack }: ChatInterfaceP
             userId={selectedUserId}
             className="w-10 h-10 flex-shrink-0"
           />
-          <div className="flex-1 min-w-0">
-            <h3 className="font-semibold truncate">{otherUser?.username || "Učitavanje..."}</h3>
-            {otherUserTyping ? (
-              <p className="text-xs text-primary italic">kuca...</p>
-            ) : otherUser?.lastSeen ? (
-              <p className="text-xs text-muted-foreground">{formatLastSeen(otherUser.lastSeen)}</p>
-            ) : null}
-          </div>
-          {/* Delete conversation button */}
-          <AlertDialog>
-            <AlertDialogTrigger asChild>
-              <Button variant="ghost" size="icon" className="text-muted-foreground hover:text-destructive flex-shrink-0" title="Obriši moje poruke">
-                <Trash2 className="w-4 h-4" />
-              </Button>
-            </AlertDialogTrigger>
-            <AlertDialogContent>
-              <AlertDialogHeader>
-                <AlertDialogTitle>Obriši moje poruke</AlertDialogTitle>
-                <AlertDialogDescription>
-                  Ovo će obrisati sve vaše poslate poruke u ovoj konverzaciji. Poruke druge strane ostaju vidljive njima.
-                </AlertDialogDescription>
-              </AlertDialogHeader>
-              <AlertDialogFooter>
-                <AlertDialogCancel>Otkaži</AlertDialogCancel>
-                <AlertDialogAction
-                  onClick={() => deleteConversationMutation.mutate()}
-                  className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
-                >
-                  Obriši
-                </AlertDialogAction>
-              </AlertDialogFooter>
-            </AlertDialogContent>
-          </AlertDialog>
+          {otherUser?.lastSeen && new Date().getTime() - new Date(otherUser.lastSeen).getTime() < 3 * 60 * 1000 && (
+            <span className="absolute bottom-0 right-0 w-2.5 h-2.5 bg-green-500 rounded-full border-2 border-card" />
+          )}
         </div>
-      </Card>
+        <div className="flex-1 min-w-0">
+          <h3 className="font-semibold text-sm truncate leading-tight">{otherUser?.username || "Učitavanje..."}</h3>
+          {otherUserTyping ? (
+            <div className="flex items-center gap-1">
+              <span className="text-xs text-primary">kuca</span>
+              <span className="flex gap-0.5 items-end pb-0.5">
+                {[0, 1, 2].map(i => (
+                  <span key={i} className="w-1 h-1 bg-primary rounded-full animate-bounce" style={{ animationDelay: `${i * 0.15}s` }} />
+                ))}
+              </span>
+            </div>
+          ) : otherUser?.lastSeen ? (
+            <p className="text-xs text-muted-foreground leading-tight">{formatLastSeen(otherUser.lastSeen)}</p>
+          ) : null}
+        </div>
+        {/* Delete conversation */}
+        <AlertDialog>
+          <AlertDialogTrigger asChild>
+            <Button variant="ghost" size="icon" className="text-muted-foreground hover:text-destructive flex-shrink-0 rounded-xl" title="Obriši moje poruke">
+              <Trash2 className="w-4 h-4" />
+            </Button>
+          </AlertDialogTrigger>
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle>Obriši moje poruke</AlertDialogTitle>
+              <AlertDialogDescription>
+                Ovo će obrisati sve vaše poslate poruke u ovoj konverzaciji. Poruke druge strane ostaju vidljive njima.
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel>Otkaži</AlertDialogCancel>
+              <AlertDialogAction
+                onClick={() => deleteConversationMutation.mutate()}
+                className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              >
+                Obriši
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
+      </div>
 
       {/* Messages */}
-      <ScrollArea className="flex-1 p-4" ref={scrollAreaRef}>
-        <div className="flex flex-col gap-1 pb-4">
+      <ScrollArea className="flex-1 px-3 md:px-4" ref={scrollAreaRef}>
+        <div className="flex flex-col gap-0.5 py-4">
           {messages && messages.length > 0 ? (
             messages.map((message, index) => {
               const isOwn = message.senderId === user?.id;
@@ -402,67 +412,83 @@ export default function ChatInterface({ selectedUserId, onBack }: ChatInterfaceP
               const previousMessage = index > 0 ? messages[index - 1] : null;
               const previousDate = previousMessage ? new Date(previousMessage.createdAt) : null;
               const showDateHeader = !previousDate || !isSameDay(currentDate, previousDate);
-              const isGrouped = previousMessage &&
+              const isGrouped = !showDateHeader && !!previousMessage &&
                 previousMessage.senderId === message.senderId &&
-                !showDateHeader &&
-                (new Date(message.createdAt).getTime() - new Date(previousMessage.createdAt).getTime()) < 60000;
+                (currentDate.getTime() - new Date(previousMessage.createdAt).getTime()) < 60000;
 
               return (
                 <div key={message.id}>
                   {showDateHeader && (
-                    <div className="flex items-center justify-center my-4">
-                      <div className="bg-secondary/70 px-3 py-1 rounded-full">
-                        <span className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
-                          {formatDateHeader(currentDate)}
-                        </span>
+                    <div className="flex items-center justify-center my-5">
+                      <div className="bg-muted px-3 py-1 rounded-full">
+                        <span className="text-xs font-medium text-muted-foreground">{formatDateHeader(currentDate)}</span>
                       </div>
                     </div>
                   )}
+
                   <div className={cn(
                     "flex gap-2 items-end",
                     isOwn ? "justify-end" : "justify-start",
-                    isGrouped ? "mt-1" : "mt-4"
+                    isGrouped ? "mt-0.5" : "mt-3"
                   )}>
-                    {!isGrouped && (
-                      <AvatarWithInitials
-                        src={isOwn ? user?.avatarUrl : otherUser?.avatarUrl}
-                        alt={isOwn ? user?.username : otherUser?.username}
-                        name={isOwn ? user?.username || "User" : otherUser?.username || "User"}
-                        userId={isOwn ? user?.id : selectedUserId}
-                        className={cn("w-8 h-8 flex-shrink-0", isOwn && "order-2")}
-                      />
+                    {/* Avatar */}
+                    {!isOwn && (
+                      isGrouped
+                        ? <div className="w-7 flex-shrink-0" />
+                        : <AvatarWithInitials
+                            src={otherUser?.avatarUrl}
+                            alt={otherUser?.username || "User"}
+                            name={otherUser?.username || "User"}
+                            userId={selectedUserId}
+                            className="w-7 h-7 flex-shrink-0 mb-0.5"
+                          />
                     )}
-                    {isGrouped && <div className="w-8 flex-shrink-0" />}
 
-                    <div className="flex items-end gap-1 group">
-                      {/* Reply button (shown on hover, left side for own messages) */}
-                      {!message.deleted && isOwn && (
-                        <Button
-                          variant="ghost" size="icon"
-                          className="opacity-0 group-hover:opacity-100 transition-opacity h-6 w-6 text-muted-foreground order-first"
-                          onClick={() => { setReplyTo(message); textareaRef.current?.focus(); }}
-                          title="Odgovori"
-                        >
-                          <CornerUpLeft className="h-3.5 w-3.5" />
-                        </Button>
+                    <div className="flex items-end gap-1 group max-w-[80vw] md:max-w-[65%]">
+
+                      {/* Reply + delete buttons (own, left of bubble) */}
+                      {isOwn && !message.deleted && (
+                        <div className="flex gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity order-first">
+                          <Button variant="ghost" size="icon" className="h-6 w-6 text-muted-foreground rounded-lg"
+                            onClick={() => { setReplyTo(message); textareaRef.current?.focus(); }} title="Odgovori">
+                            <CornerUpLeft className="h-3.5 w-3.5" />
+                          </Button>
+                          <AlertDialog>
+                            <AlertDialogTrigger asChild>
+                              <Button variant="ghost" size="icon" className="h-6 w-6 text-muted-foreground hover:text-destructive rounded-lg">
+                                <Trash2 className="h-3 w-3" />
+                              </Button>
+                            </AlertDialogTrigger>
+                            <AlertDialogContent>
+                              <AlertDialogHeader>
+                                <AlertDialogTitle>Obriši poruku</AlertDialogTitle>
+                                <AlertDialogDescription>Poruka će biti označena kao obrisana za obe strane.</AlertDialogDescription>
+                              </AlertDialogHeader>
+                              <AlertDialogFooter>
+                                <AlertDialogCancel>Otkaži</AlertDialogCancel>
+                                <AlertDialogAction onClick={() => deleteMessageMutation.mutate(message.id)} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">Obriši</AlertDialogAction>
+                              </AlertDialogFooter>
+                            </AlertDialogContent>
+                          </AlertDialog>
+                        </div>
                       )}
 
+                      {/* Bubble */}
                       <div className={cn(
-                        "rounded-lg px-3 py-2 shadow-sm",
-                        "max-w-[min(42rem,80vw)]",
+                        "rounded-2xl px-3.5 py-2.5 shadow-sm",
                         isOwn
-                          ? "bg-primary text-primary-foreground rounded-br-sm"
-                          : "bg-muted text-foreground rounded-bl-sm",
-                        message.deleted && "opacity-60"
+                          ? "bg-primary text-primary-foreground rounded-br-md"
+                          : "bg-card border border-border/60 text-foreground rounded-bl-md",
+                        message.deleted && "opacity-50"
                       )}>
                         {/* Reply quote */}
                         {!message.deleted && message.replyToId && (
                           <div className={cn(
-                            "mb-2 px-2 py-1 rounded text-xs border-l-2 opacity-80",
-                            isOwn ? "border-primary-foreground/50 bg-primary-foreground/10" : "border-primary bg-primary/10"
+                            "mb-2 px-2.5 py-1.5 rounded-xl text-xs border-l-[3px]",
+                            isOwn ? "border-primary-foreground/50 bg-primary-foreground/10" : "border-primary bg-primary/8"
                           )}>
-                            <p className="font-semibold mb-0.5">{getReplyUsername(message.replyToId)}</p>
-                            <p className="truncate">{getReplyPreview(message.replyToId)}</p>
+                            <p className="font-semibold mb-0.5 opacity-80">{getReplyUsername(message.replyToId)}</p>
+                            <p className="truncate opacity-70">{getReplyPreview(message.replyToId)}</p>
                           </div>
                         )}
 
@@ -479,72 +505,32 @@ export default function ChatInterface({ selectedUserId, onBack }: ChatInterfaceP
                               <img
                                 src={message.imageUrl}
                                 alt="attachment"
-                                className="mt-1 rounded max-w-full h-auto cursor-pointer"
+                                className="mt-1 rounded-xl max-w-full h-auto cursor-pointer max-h-72 object-cover"
                                 onClick={() => window.open(message.imageUrl!, "_blank")}
                               />
                             )}
                           </>
                         )}
 
-                        <div className={cn(
-                          "flex items-center gap-1.5 mt-1",
-                          isOwn ? "justify-end" : "justify-start"
-                        )}>
-                          <span className={cn(
-                            "text-[11px] leading-none",
-                            isOwn ? "text-primary-foreground/60" : "text-muted-foreground/70"
-                          )}>
+                        <div className={cn("flex items-center gap-1 mt-1", isOwn ? "justify-end" : "justify-start")}>
+                          <span className={cn("text-[10px] leading-none tabular-nums", isOwn ? "text-primary-foreground/55" : "text-muted-foreground/60")}>
                             {format(new Date(message.createdAt), "HH:mm")}
                           </span>
                           {isOwn && (
-                            <span className={cn(isOwn ? "text-primary-foreground/60" : "text-muted-foreground/70")}>
-                              {message.isRead ? <CheckCheck className="w-3.5 h-3.5" /> : <Check className="w-3.5 h-3.5" />}
-                            </span>
+                            message.isRead
+                              ? <CheckCheck className="w-3 h-3 text-primary-foreground/55" />
+                              : <Check className="w-3 h-3 text-primary-foreground/55" />
                           )}
                         </div>
                       </div>
 
-                      {/* Reply button for other user's messages (right side) */}
-                      {!message.deleted && !isOwn && (
-                        <Button
-                          variant="ghost" size="icon"
-                          className="opacity-0 group-hover:opacity-100 transition-opacity h-6 w-6 text-muted-foreground"
-                          onClick={() => { setReplyTo(message); textareaRef.current?.focus(); }}
-                          title="Odgovori"
-                        >
+                      {/* Reply button (other user's messages, right side) */}
+                      {!isOwn && !message.deleted && (
+                        <Button variant="ghost" size="icon"
+                          className="h-6 w-6 text-muted-foreground rounded-lg opacity-0 group-hover:opacity-100 transition-opacity flex-shrink-0"
+                          onClick={() => { setReplyTo(message); textareaRef.current?.focus(); }} title="Odgovori">
                           <CornerUpLeft className="h-3.5 w-3.5" />
                         </Button>
-                      )}
-
-                      {/* Delete own message */}
-                      {isOwn && !message.deleted && (
-                        <AlertDialog>
-                          <AlertDialogTrigger asChild>
-                            <Button
-                              variant="ghost" size="icon"
-                              className="opacity-0 group-hover:opacity-100 transition-opacity h-6 w-6 text-muted-foreground hover:text-destructive"
-                            >
-                              <Trash2 className="h-3 w-3" />
-                            </Button>
-                          </AlertDialogTrigger>
-                          <AlertDialogContent>
-                            <AlertDialogHeader>
-                              <AlertDialogTitle>Obriši poruku</AlertDialogTitle>
-                              <AlertDialogDescription>
-                                Da li ste sigurni? Poruka će biti označena kao obrisana za obe strane.
-                              </AlertDialogDescription>
-                            </AlertDialogHeader>
-                            <AlertDialogFooter>
-                              <AlertDialogCancel>Otkaži</AlertDialogCancel>
-                              <AlertDialogAction
-                                onClick={() => deleteMessageMutation.mutate(message.id)}
-                                className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
-                              >
-                                Obriši
-                              </AlertDialogAction>
-                            </AlertDialogFooter>
-                          </AlertDialogContent>
-                        </AlertDialog>
                       )}
                     </div>
                   </div>
@@ -552,112 +538,92 @@ export default function ChatInterface({ selectedUserId, onBack }: ChatInterfaceP
               );
             })
           ) : (
-            <div className="text-center text-muted-foreground py-8">
-              <p>Nema poruka</p>
-              <p className="text-sm mt-1">Pošaljite prvu poruku da započnete konverzaciju</p>
+            <div className="flex flex-col items-center justify-center py-16 text-center">
+              <div className="w-14 h-14 rounded-2xl bg-muted flex items-center justify-center mb-3">
+                <Send className="w-6 h-6 text-muted-foreground/40" />
+              </div>
+              <p className="text-sm font-medium mb-1">Nema poruka</p>
+              <p className="text-xs text-muted-foreground">Pošaljite prvu poruku ispod</p>
             </div>
           )}
         </div>
       </ScrollArea>
 
       {/* Input area */}
-      <Card className="border-0 md:border-t rounded-none">
-        <div className="px-4 pt-3 pb-3 space-y-2">
-          {/* Reply bar */}
-          {replyTo && (
-            <div className="flex items-center gap-2 px-3 py-2 bg-muted rounded-lg text-sm">
-              <CornerUpLeft className="w-4 h-4 text-primary flex-shrink-0" />
-              <div className="flex-1 min-w-0">
-                <span className="font-medium text-primary text-xs">
-                  {replyTo.senderId === user?.id ? "Ti" : otherUser?.username}
-                </span>
-                <p className="text-muted-foreground truncate text-xs mt-0.5">
-                  {replyTo.imageUrl && replyTo.content === "📎" ? "📷 Slika" : replyTo.content}
-                </p>
-              </div>
-              <Button
-                variant="ghost" size="icon"
-                className="h-6 w-6 flex-shrink-0"
-                onClick={() => setReplyTo(null)}
-              >
-                <X className="h-3.5 w-3.5" />
-              </Button>
+      <div className="border-t border-border/60 bg-card/80 backdrop-blur-sm px-3 md:px-4 pt-2.5 pb-3 space-y-2 flex-shrink-0">
+
+        {/* Reply bar */}
+        {replyTo && (
+          <div className="flex items-center gap-2 px-3 py-2 bg-primary/8 border border-primary/20 rounded-xl text-sm">
+            <CornerUpLeft className="w-3.5 h-3.5 text-primary flex-shrink-0" />
+            <div className="flex-1 min-w-0">
+              <span className="font-semibold text-primary text-xs">
+                {replyTo.senderId === user?.id ? "Ti" : otherUser?.username}
+              </span>
+              <p className="text-muted-foreground truncate text-xs mt-0.5">
+                {replyTo.imageUrl && replyTo.content === "📎" ? "📷 Slika" : replyTo.content}
+              </p>
             </div>
-          )}
-
-          {/* Emoji picker */}
-          {showEmojiPicker && (
-            <div
-              ref={emojiPickerRef}
-              className="grid grid-cols-10 gap-1 p-3 bg-popover border rounded-xl shadow-lg"
-            >
-              {EMOJI_LIST.map((emoji) => (
-                <button
-                  key={emoji}
-                  type="button"
-                  onClick={() => insertEmoji(emoji)}
-                  className="text-xl hover:bg-muted rounded p-0.5 transition-colors leading-none"
-                >
-                  {emoji}
-                </button>
-              ))}
-            </div>
-          )}
-
-          {/* Toolbar + textarea */}
-          <div className="flex gap-2 items-end">
-            <div className="flex gap-1 flex-shrink-0 pb-1">
-              <Button
-                variant="ghost" size="icon"
-                className="h-9 w-9 text-muted-foreground hover:text-foreground"
-                onClick={() => setShowEmojiPicker(p => !p)}
-                title="Emoji"
-              >
-                <Smile className="w-5 h-5" />
-              </Button>
-              <Button
-                variant="ghost" size="icon"
-                className="h-9 w-9 text-muted-foreground hover:text-foreground"
-                onClick={() => fileInputRef.current?.click()}
-                disabled={uploadingImage}
-                title="Pošalji sliku"
-              >
-                {uploadingImage ? <Loader2 className="w-5 h-5 animate-spin" /> : <Paperclip className="w-5 h-5" />}
-              </Button>
-              <input
-                ref={fileInputRef}
-                type="file"
-                accept="image/jpeg,image/png,image/webp"
-                className="hidden"
-                onChange={handleImageAttach}
-              />
-            </div>
-
-            <Textarea
-              ref={textareaRef}
-              value={messageText}
-              onChange={(e) => { setMessageText(e.target.value); handleTyping(); }}
-              onKeyDown={handleKeyDown}
-              placeholder="Napišite poruku..."
-              className="min-h-[44px] max-h-[120px] resize-none flex-1"
-              disabled={sendMessageMutation.isPending}
-            />
-
-            <Button
-              onClick={handleSendMessage}
-              disabled={!messageText.trim() || sendMessageMutation.isPending}
-              size="icon"
-              className="h-[44px] w-[44px] flex-shrink-0"
-            >
-              {sendMessageMutation.isPending ? (
-                <Loader2 className="w-5 h-5 animate-spin" />
-              ) : (
-                <Send className="w-5 h-5" />
-              )}
+            <Button variant="ghost" size="icon" className="h-5 w-5 flex-shrink-0 rounded-md" onClick={() => setReplyTo(null)}>
+              <X className="h-3 w-3" />
             </Button>
           </div>
+        )}
+
+        {/* Emoji picker */}
+        {showEmojiPicker && (
+          <div ref={emojiPickerRef} className="grid grid-cols-10 gap-1 p-3 bg-popover border border-border/60 rounded-2xl shadow-xl">
+            {EMOJI_LIST.map(emoji => (
+              <button key={emoji} type="button" onClick={() => insertEmoji(emoji)}
+                className="text-xl hover:bg-muted rounded-lg p-1 transition-colors leading-none aspect-square flex items-center justify-center">
+                {emoji}
+              </button>
+            ))}
+          </div>
+        )}
+
+        {/* Input row */}
+        <div className="flex gap-2 items-end">
+          <div className="flex gap-0.5 flex-shrink-0">
+            <Button variant="ghost" size="icon"
+              className="h-10 w-10 text-muted-foreground hover:text-foreground rounded-xl"
+              onClick={() => setShowEmojiPicker(p => !p)} title="Emoji">
+              <Smile className="w-5 h-5" />
+            </Button>
+            <Button variant="ghost" size="icon"
+              className="h-10 w-10 text-muted-foreground hover:text-foreground rounded-xl"
+              onClick={() => fileInputRef.current?.click()} disabled={uploadingImage} title="Priloži sliku">
+              {uploadingImage ? <Loader2 className="w-5 h-5 animate-spin" /> : <Paperclip className="w-5 h-5" />}
+            </Button>
+            <input ref={fileInputRef} type="file" accept="image/jpeg,image/png,image/webp" className="hidden" onChange={handleImageAttach} />
+          </div>
+
+          <Textarea
+            ref={textareaRef}
+            value={messageText}
+            onChange={e => { setMessageText(e.target.value); handleTyping(); }}
+            onKeyDown={handleKeyDown}
+            placeholder="Poruka..."
+            className="min-h-[42px] max-h-[120px] resize-none flex-1 rounded-2xl bg-muted/60 border-0 focus-visible:ring-1 focus-visible:bg-background text-sm py-2.5 px-4"
+            disabled={sendMessageMutation.isPending}
+          />
+
+          <Button
+            onClick={handleSendMessage}
+            disabled={!messageText.trim() || sendMessageMutation.isPending}
+            size="icon"
+            className={cn(
+              "h-10 w-10 flex-shrink-0 rounded-xl transition-all",
+              messageText.trim() ? "bg-primary hover:bg-primary/90 scale-100" : "opacity-50 scale-95"
+            )}
+          >
+            {sendMessageMutation.isPending
+              ? <Loader2 className="w-4 h-4 animate-spin" />
+              : <Send className="w-4 h-4" />
+            }
+          </Button>
         </div>
-      </Card>
+      </div>
     </div>
   );
 }
