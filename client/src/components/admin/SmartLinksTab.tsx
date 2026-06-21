@@ -1,4 +1,4 @@
-import { useState, useRef } from "react";
+import { useState, useRef, useEffect } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { queryClient, apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
@@ -57,13 +57,42 @@ function slugify(text: string) {
 
 export function SmartLinksTab() {
   const { toast } = useToast();
-  const [form, setForm] = useState(emptyForm);
-  const [editingId, setEditingId] = useState<number | null>(null);
-  const [showForm, setShowForm] = useState(false);
+  const [form, setForm] = useState<typeof emptyForm>(() => {
+    try {
+      const s = sessionStorage.getItem("sl_form");
+      return s ? JSON.parse(s) : emptyForm;
+    } catch { return emptyForm; }
+  });
+  const [editingId, setEditingId] = useState<number | null>(() => {
+    const v = sessionStorage.getItem("sl_editing_id");
+    return v !== null ? (v === "null" ? null : parseInt(v)) : null;
+  });
+  const [showForm, setShowFormRaw] = useState(() =>
+    sessionStorage.getItem("sl_show_form") === "true"
+  );
   const [uploading, setUploading] = useState(false);
   const [autoUrl, setAutoUrl] = useState("");
   const [autoFillPending, setAutoFillPending] = useState(false);
   const fileRef = useRef<HTMLInputElement>(null);
+
+  function setShowForm(val: boolean) {
+    console.log(`[SmartLinks] setShowForm(${val}) — stack:`, new Error().stack?.split("\n")[2]?.trim());
+    sessionStorage.setItem("sl_show_form", String(val));
+    setShowFormRaw(val);
+  }
+  function persistForm(f: typeof emptyForm) {
+    sessionStorage.setItem("sl_form", JSON.stringify(f));
+    setForm(f);
+  }
+  function persistEditingId(id: number | null) {
+    sessionStorage.setItem("sl_editing_id", String(id));
+    setEditingId(id);
+  }
+
+  useEffect(() => {
+    console.log("[SmartLinks] MOUNTED — showForm:", sessionStorage.getItem("sl_show_form"));
+    return () => console.log("[SmartLinks] UNMOUNTED");
+  }, []);
 
   const { data: links, isLoading } = useQuery<SmartLinkWithStats[]>({
     queryKey: ["/api/admin/smart-links"],
@@ -85,7 +114,7 @@ export function SmartLinksTab() {
       queryClient.invalidateQueries({ queryKey: ["/api/admin/smart-links"] });
       const wasEditing = editingId !== null;
       hideForm();
-      toast({ title: wasEditing ? "Link ažuriran" : "Link kreiran" });
+      setTimeout(() => toast({ title: wasEditing ? "Link ažuriran" : "Link kreiran" }), 50);
     },
     onError: async (e: any) => {
       const msg = await e?.response?.json?.().catch(() => null);
@@ -114,19 +143,18 @@ export function SmartLinksTab() {
       });
       const data = await r.json();
       if (!r.ok) throw new Error(data.error ?? "Greška");
-      setForm(f => ({
-        ...f,
-        title: data.title || f.title,
-        artist: data.artist || f.artist,
-        coverUrl: data.coverUrl || f.coverUrl,
-        slug: f.slug || slugify(data.title || ""),
-        spotifyUrl: data.spotifyUrl || f.spotifyUrl,
-        youtubeUrl: data.youtubeUrl || f.youtubeUrl,
-        appleMusicUrl: data.appleMusicUrl || f.appleMusicUrl,
-        soundcloudUrl: data.soundcloudUrl || f.soundcloudUrl,
-        tidalUrl: data.tidalUrl || f.tidalUrl,
-        deezerUrl: data.deezerUrl || f.deezerUrl,
-      }));
+      persistForm({
+        title: data.title || form.title,
+        artist: data.artist || form.artist,
+        coverUrl: data.coverUrl || form.coverUrl,
+        slug: form.slug || slugify(data.title || ""),
+        spotifyUrl: data.spotifyUrl || form.spotifyUrl,
+        youtubeUrl: data.youtubeUrl || form.youtubeUrl,
+        appleMusicUrl: data.appleMusicUrl || form.appleMusicUrl,
+        soundcloudUrl: data.soundcloudUrl || form.soundcloudUrl,
+        tidalUrl: data.tidalUrl || form.tidalUrl,
+        deezerUrl: data.deezerUrl || form.deezerUrl,
+      });
       setAutoUrl("");
       toast({ title: "Pronađeno!", description: "Proveri podatke i sačuvaj link." });
     } catch (e: any) {
@@ -137,15 +165,14 @@ export function SmartLinksTab() {
   }
 
   function showCreate() {
-    setForm(emptyForm);
+    persistForm(emptyForm);
+    persistEditingId(null);
     setAutoUrl("");
-    setEditingId(null);
     setShowForm(true);
   }
 
   function showEdit(link: SmartLinkWithStats) {
-    setAutoUrl("");
-    setForm({
+    persistForm({
       slug: link.slug,
       title: link.title,
       artist: link.artist,
@@ -157,15 +184,16 @@ export function SmartLinksTab() {
       tidalUrl: link.tidalUrl ?? "",
       deezerUrl: link.deezerUrl ?? "",
     });
-    setEditingId(link.id);
+    persistEditingId(link.id);
+    setAutoUrl("");
     setShowForm(true);
   }
 
   function hideForm() {
     setShowForm(false);
-    setForm(emptyForm);
+    persistForm(emptyForm);
+    persistEditingId(null);
     setAutoUrl("");
-    setEditingId(null);
   }
 
   async function uploadCover(file: File) {
@@ -181,7 +209,7 @@ export function SmartLinksTab() {
       });
       const data = await r.json();
       if (!r.ok) throw new Error(data.error);
-      setForm(f => ({ ...f, coverUrl: data.url }));
+      persistForm({ ...form, coverUrl: data.url });
     } catch (e: any) {
       toast({ title: "Greška", description: e.message ?? "Upload nije uspeo", variant: "destructive" });
     } finally {
@@ -264,7 +292,7 @@ export function SmartLinksTab() {
                 <button
                   type="button"
                   className="absolute top-1.5 right-1.5 bg-black/80 rounded-full p-0.5 z-10 opacity-0 group-hover:opacity-100 transition-opacity"
-                  onClick={e => { e.stopPropagation(); setForm(f => ({ ...f, coverUrl: "" })); }}
+                  onClick={e => { e.stopPropagation(); persistForm({ ...form, coverUrl: "" }); }}
                 >
                   <X className="w-2.5 h-2.5 text-white" />
                 </button>
@@ -290,7 +318,7 @@ export function SmartLinksTab() {
                 value={form.title}
                 onChange={e => {
                   const title = e.target.value;
-                  setForm(f => ({ ...f, title, slug: f.slug || slugify(title) }));
+                  persistForm({ ...form, title, slug: form.slug || slugify(title) });
                 }}
                 className="h-9 text-sm"
               />
@@ -301,7 +329,7 @@ export function SmartLinksTab() {
                 type="text"
                 placeholder="Ime izvođača"
                 value={form.artist}
-                onChange={e => setForm(f => ({ ...f, artist: e.target.value }))}
+                onChange={e => persistForm({ ...form, artist: e.target.value })}
                 className="h-9 text-sm"
               />
             </div>
@@ -315,7 +343,7 @@ export function SmartLinksTab() {
             type="url"
             placeholder="https://..."
             value={form.coverUrl}
-            onChange={e => setForm(f => ({ ...f, coverUrl: e.target.value }))}
+            onChange={e => persistForm({ ...form, coverUrl: e.target.value })}
             className="h-9 text-xs"
           />
         </div>
@@ -330,7 +358,7 @@ export function SmartLinksTab() {
               className="flex-1 px-3 text-sm bg-transparent outline-none text-foreground placeholder:text-muted-foreground/50"
               placeholder="naziv-pesme"
               value={form.slug}
-              onChange={e => setForm(f => ({ ...f, slug: e.target.value.toLowerCase().replace(/[^a-z0-9-]/g, "") }))}
+              onChange={e => persistForm({ ...form, slug: e.target.value.toLowerCase().replace(/[^a-z0-9-]/g, "") })}
             />
           </div>
         </div>
@@ -348,7 +376,7 @@ export function SmartLinksTab() {
                   className="flex-1 bg-transparent outline-none text-xs text-foreground placeholder:text-muted-foreground/40 py-0.5"
                   placeholder={`URL za ${p.label}...`}
                   value={form[p.key as keyof typeof emptyForm]}
-                  onChange={e => setForm(f => ({ ...f, [p.key]: e.target.value }))}
+                  onChange={e => persistForm({ ...form, [p.key]: e.target.value })}
                 />
               </div>
             ))}

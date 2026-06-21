@@ -19,6 +19,7 @@ import { useQuery } from "@tanstack/react-query";
 import { InstallPrompt } from "@/components/pwa/InstallPrompt";
 import { WhatsAppButton } from "@/components/WhatsAppButton";
 import { CookieConsent } from "@/components/CookieConsent";
+import { DebugConsole } from "@/components/admin/DebugConsole";
 
 class ChunkErrorBoundary extends Component<{ children: ReactNode }, { failed: boolean; errorMsg: string }> {
   state = { failed: false, errorMsg: "" };
@@ -218,6 +219,7 @@ function App() {
                   <InstallPrompt />
                   <WhatsAppButton />
                   <CookieConsent />
+                  <DebugConsole />
                   <Router />
                 </TooltipProvider>
               </EditModeProvider>
