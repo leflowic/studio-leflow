@@ -63,6 +63,20 @@ function drawCover(ctx: CanvasRenderingContext2D, img: HTMLImageElement, W: numb
   ctx.drawImage(img, (W - sw) / 2, (H - sh) / 2, sw, sh);
 }
 
+// Cross-browser blur via scale-down → scale-up (ctx.filter is unreliable in downloads)
+// blurFactor: higher = more blur (20 = heavy, 8 = medium glow)
+function blurredCanvas(img: HTMLImageElement, outW: number, outH: number, blurFactor: number): HTMLCanvasElement {
+  const tw = Math.max(2, Math.floor(outW / blurFactor));
+  const th = Math.max(2, Math.floor(outH / blurFactor));
+  const tmp = document.createElement("canvas");
+  tmp.width = tw; tmp.height = th;
+  const tc = tmp.getContext("2d")!;
+  const s = Math.max(tw / img.naturalWidth, th / img.naturalHeight);
+  const sw = img.naturalWidth * s, sh = img.naturalHeight * s;
+  tc.drawImage(img, (tw - sw) / 2, (th - sh) / 2, sw, sh);
+  return tmp;
+}
+
 async function generateStoryBlob(link: SmartLink): Promise<Blob> {
   const W = 1080, H = 1920;
   const canvas = document.createElement("canvas");
@@ -79,20 +93,23 @@ async function generateStoryBlob(link: SmartLink): Promise<Blob> {
   ctx.fillStyle = "#08000e";
   ctx.fillRect(0, 0, W, H);
 
-  // ── 2. Blurred background — vivid, full cover ─────────────────────────────
+  // ── 2. Blurred background — scale-down/up (works in all browsers + downloads) ──
   if (coverImg) {
+    const bgBlurred = blurredCanvas(coverImg, W, H, 22);
     ctx.save();
-    ctx.filter = "blur(80px)";
-    ctx.globalAlpha = 0.90;
-    drawCover(ctx, coverImg, W, H);
+    ctx.imageSmoothingEnabled = true;
+    ctx.imageSmoothingQuality = "high";
+    ctx.globalAlpha = 0.92;
+    ctx.drawImage(bgBlurred, 0, 0, W, H);
     ctx.restore();
 
-    // Second pass — screen blend for color richness
+    // Screen pass — extra color richness
     ctx.save();
-    ctx.filter = "blur(40px)";
-    ctx.globalAlpha = 0.15;
+    ctx.imageSmoothingEnabled = true;
+    ctx.imageSmoothingQuality = "high";
+    ctx.globalAlpha = 0.18;
     ctx.globalCompositeOperation = "screen";
-    drawCover(ctx, coverImg, W, H);
+    ctx.drawImage(bgBlurred, 0, 0, W, H);
     ctx.restore();
   }
 
@@ -119,11 +136,13 @@ async function generateStoryBlob(link: SmartLink): Promise<Blob> {
   const cy = 160;
 
   if (coverImg) {
-    // Glow underneath (colored halo)
+    // Glow underneath (colored halo) — scale-based blur
+    const glowBlurred = blurredCanvas(coverImg, COVER, COVER, 8);
     ctx.save();
-    ctx.filter = "blur(55px)";
+    ctx.imageSmoothingEnabled = true;
+    ctx.imageSmoothingQuality = "high";
     ctx.globalAlpha = 0.62;
-    ctx.drawImage(coverImg, cx + 50, cy + 70, COVER - 100, COVER - 100);
+    ctx.drawImage(glowBlurred, cx + 50, cy + 70, COVER - 100, COVER - 100);
     ctx.restore();
 
     // Drop shadow
