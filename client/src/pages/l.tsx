@@ -45,181 +45,194 @@ function roundRect(ctx: CanvasRenderingContext2D, x: number, y: number, w: numbe
   ctx.closePath();
 }
 
+async function loadImg(src: string): Promise<HTMLImageElement> {
+  return new Promise((res, rej) => {
+    const i = new Image();
+    i.crossOrigin = "anonymous";
+    i.onload = () => res(i);
+    i.onerror = rej;
+    i.src = src.includes("?") ? `${src}&_dc=1` : `${src}?_dc=1`;
+  });
+}
+
 async function generateStoryBlob(link: SmartLink): Promise<Blob> {
   const W = 1080, H = 1920;
   const canvas = document.createElement("canvas");
   canvas.width = W; canvas.height = H;
   const ctx = canvas.getContext("2d")!;
 
-  // Background
-  ctx.fillStyle = "#070008";
-  ctx.fillRect(0, 0, W, H);
-
-  // Blurred cover background
+  // ── 1. Load cover image once, reuse everywhere ───────────────────────────
+  let coverImg: HTMLImageElement | null = null;
   if (link.coverUrl) {
-    try {
-      const img = await new Promise<HTMLImageElement>((res, rej) => {
-        const i = new Image();
-        i.crossOrigin = "anonymous";
-        i.onload = () => res(i);
-        i.onerror = rej;
-        i.src = link.coverUrl! + (link.coverUrl!.includes("?") ? "&_dc=1" : "?_dc=1");
-      });
-      ctx.save();
-      ctx.filter = "blur(55px)";
-      ctx.globalAlpha = 0.38;
-      ctx.drawImage(img, -120, -120, W + 240, H + 240);
-      ctx.restore();
-    } catch {}
+    try { coverImg = await loadImg(link.coverUrl); } catch {}
   }
 
-  // Gradient overlays
-  const topGrad = ctx.createLinearGradient(0, 0, 0, H * 0.35);
-  topGrad.addColorStop(0, "rgba(0,0,0,0.72)");
-  topGrad.addColorStop(1, "rgba(0,0,0,0)");
-  ctx.fillStyle = topGrad;
-  ctx.fillRect(0, 0, W, H * 0.35);
-
-  const botGrad = ctx.createLinearGradient(0, H * 0.55, 0, H);
-  botGrad.addColorStop(0, "rgba(0,0,0,0)");
-  botGrad.addColorStop(1, "rgba(0,0,0,0.88)");
-  ctx.fillStyle = botGrad;
-  ctx.fillRect(0, H * 0.55, W, H * 0.45);
-
-  // Purple radial glow top
-  const glow = ctx.createRadialGradient(W / 2, 0, 0, W / 2, 0, W * 0.9);
-  glow.addColorStop(0, "rgba(99,52,255,0.22)");
-  glow.addColorStop(1, "rgba(0,0,0,0)");
-  ctx.fillStyle = glow;
+  // ── 2. Dark base ─────────────────────────────────────────────────────────
+  ctx.fillStyle = "#06000a";
   ctx.fillRect(0, 0, W, H);
 
-  // Cover art
-  const COVER = 680;
+  // ── 3. Vivid blurred background ──────────────────────────────────────────
+  if (coverImg) {
+    // Pass 1 — wide, heavy blur, full color punch
+    ctx.save();
+    ctx.filter = "blur(90px) saturate(180%) brightness(0.9)";
+    ctx.globalAlpha = 0.82;
+    ctx.drawImage(coverImg, -250, -250, W + 500, H + 500);
+    ctx.restore();
+
+    // Pass 2 — tighter blur for mid-range detail
+    ctx.save();
+    ctx.filter = "blur(40px) saturate(140%)";
+    ctx.globalAlpha = 0.22;
+    ctx.drawImage(coverImg, -80, H * 0.4, W + 160, H * 0.75);
+    ctx.restore();
+  }
+
+  // ── 4. Vignette — darkens edges, keeps center vivid ──────────────────────
+  // Top edge
+  const tg = ctx.createLinearGradient(0, 0, 0, H * 0.22);
+  tg.addColorStop(0, "rgba(0,0,0,0.80)");
+  tg.addColorStop(1, "rgba(0,0,0,0)");
+  ctx.fillStyle = tg; ctx.fillRect(0, 0, W, H * 0.22);
+
+  // Bottom half fade to near-black (so text + QR are legible)
+  const bg = ctx.createLinearGradient(0, H * 0.52, 0, H);
+  bg.addColorStop(0, "rgba(0,0,0,0)");
+  bg.addColorStop(0.4, "rgba(0,0,0,0.55)");
+  bg.addColorStop(1, "rgba(0,0,0,0.88)");
+  ctx.fillStyle = bg; ctx.fillRect(0, H * 0.52, W, H * 0.48);
+
+  // Radial center lift (keeps cover area bright)
+  const cg = ctx.createRadialGradient(W / 2, H * 0.38, 0, W / 2, H * 0.38, W * 0.72);
+  cg.addColorStop(0, "rgba(0,0,0,0)");
+  cg.addColorStop(1, "rgba(0,0,0,0.38)");
+  ctx.fillStyle = cg; ctx.fillRect(0, 0, W, H);
+
+  // ── 5. Cover art ─────────────────────────────────────────────────────────
+  const COVER = 700;
   const cx = (W - COVER) / 2;
-  const cy = 170;
+  const cy = 148;
 
-  if (link.coverUrl) {
-    try {
-      const img = await new Promise<HTMLImageElement>((res, rej) => {
-        const i = new Image();
-        i.crossOrigin = "anonymous";
-        i.onload = () => res(i);
-        i.onerror = rej;
-        i.src = link.coverUrl! + (link.coverUrl!.includes("?") ? "&_dc=1" : "?_dc=1");
-      });
+  if (coverImg) {
+    // Glow behind cover
+    ctx.save();
+    ctx.filter = "blur(48px)";
+    ctx.globalAlpha = 0.55;
+    ctx.drawImage(coverImg, cx + 40, cy + 60, COVER - 80, COVER - 80);
+    ctx.restore();
 
-      // Shadow
-      ctx.save();
-      ctx.shadowColor = "rgba(0,0,0,0.85)";
-      ctx.shadowBlur = 80;
-      ctx.shadowOffsetY = 30;
-      roundRect(ctx, cx, cy, COVER, COVER, 40);
-      ctx.fillStyle = "#000";
-      ctx.fill();
-      ctx.restore();
+    // Drop shadow
+    ctx.save();
+    ctx.shadowColor = "rgba(0,0,0,0.90)";
+    ctx.shadowBlur = 100;
+    ctx.shadowOffsetY = 40;
+    roundRect(ctx, cx, cy, COVER, COVER, 44);
+    ctx.fillStyle = "#000";
+    ctx.fill();
+    ctx.restore();
 
-      // Image clipped to rounded rect
-      ctx.save();
-      roundRect(ctx, cx, cy, COVER, COVER, 40);
-      ctx.clip();
-      ctx.drawImage(img, cx, cy, COVER, COVER);
-      ctx.restore();
+    // Image
+    ctx.save();
+    roundRect(ctx, cx, cy, COVER, COVER, 44);
+    ctx.clip();
+    ctx.drawImage(coverImg, cx, cy, COVER, COVER);
+    ctx.restore();
 
-      // Subtle border
-      ctx.save();
-      roundRect(ctx, cx, cy, COVER, COVER, 40);
-      ctx.strokeStyle = "rgba(255,255,255,0.10)";
-      ctx.lineWidth = 2;
-      ctx.stroke();
-      ctx.restore();
-    } catch {
-      // fallback placeholder
-      ctx.save();
-      roundRect(ctx, cx, cy, COVER, COVER, 40);
-      ctx.fillStyle = "rgba(99,52,255,0.12)";
-      ctx.fill();
-      ctx.restore();
-    }
+    // Subtle inner border
+    ctx.save();
+    roundRect(ctx, cx, cy, COVER, COVER, 44);
+    ctx.strokeStyle = "rgba(255,255,255,0.13)";
+    ctx.lineWidth = 2.5;
+    ctx.stroke();
+    ctx.restore();
+  } else {
+    ctx.save();
+    roundRect(ctx, cx, cy, COVER, COVER, 44);
+    ctx.fillStyle = "rgba(255,255,255,0.05)";
+    ctx.fill();
+    ctx.restore();
   }
 
-  // Title
-  const titleY = cy + COVER + 90;
+  // ── 6. Frosted glass info panel ──────────────────────────────────────────
+  const panelY = cy + COVER + 56;
+  const panelH = H - panelY - 110;
+  const panelPad = 54;
+
+  ctx.save();
+  roundRect(ctx, panelPad, panelY, W - panelPad * 2, panelH, 40);
+  ctx.fillStyle = "rgba(0,0,0,0.38)";
+  ctx.fill();
+  roundRect(ctx, panelPad, panelY, W - panelPad * 2, panelH, 40);
+  ctx.strokeStyle = "rgba(255,255,255,0.09)";
+  ctx.lineWidth = 1.5;
+  ctx.stroke();
+  ctx.restore();
+
+  // ── 7. Title ─────────────────────────────────────────────────────────────
   ctx.textAlign = "center";
+  const titleY = panelY + 76;
+  ctx.font = `bold 76px system-ui, -apple-system, Arial, sans-serif`;
   ctx.fillStyle = "#ffffff";
-  ctx.font = `bold 78px system-ui, -apple-system, Arial, sans-serif`;
-  const titleLines = wrapText(ctx, link.title, W - 160);
-  titleLines.slice(0, 2).forEach((line, i) => {
-    ctx.fillText(line, W / 2, titleY + i * 90);
-  });
+  const titleLines = wrapText(ctx, link.title, W - panelPad * 2 - 48);
+  titleLines.slice(0, 2).forEach((line, i) => ctx.fillText(line, W / 2, titleY + i * 88));
 
   // Artist
-  const artistY = titleY + Math.min(titleLines.length, 2) * 90 + 36;
-  ctx.font = `500 44px system-ui, -apple-system, Arial, sans-serif`;
-  ctx.fillStyle = "rgba(255,255,255,0.42)";
+  const artistY = titleY + Math.min(titleLines.length, 2) * 88 + 32;
+  ctx.font = `500 40px system-ui, -apple-system, Arial, sans-serif`;
+  ctx.fillStyle = "rgba(255,255,255,0.45)";
   ctx.fillText(link.artist.toUpperCase(), W / 2, artistY);
 
   // Divider
-  const divY = artistY + 54;
+  const divY = artistY + 48;
   ctx.fillStyle = "rgba(255,255,255,0.10)";
-  ctx.fillRect(W / 2 - 120, divY, 240, 1.5);
+  ctx.fillRect(W / 2 - 100, divY, 200, 1.5);
 
-  // QR section label
-  const labelY = divY + 54;
-  ctx.font = `400 34px system-ui, -apple-system, Arial, sans-serif`;
-  ctx.fillStyle = "rgba(255,255,255,0.28)";
-  ctx.fillText("Skeniraj za slušanje", W / 2, labelY);
-
-  // QR code
-  const QR_SIZE = 220;
+  // ── 8. QR code ───────────────────────────────────────────────────────────
+  const QR_SIZE = 210;
   const qrCanvas = document.createElement("canvas");
   await QRCode.toCanvas(qrCanvas, `${window.location.origin}/l/${link.slug}`, {
-    width: QR_SIZE,
-    margin: 1,
+    width: QR_SIZE, margin: 1,
     color: { dark: "#ffffff", light: "#00000000" },
   });
 
-  // QR background
+  const labelY = divY + 50;
+  ctx.font = `400 32px system-ui, -apple-system, Arial, sans-serif`;
+  ctx.fillStyle = "rgba(255,255,255,0.30)";
+  ctx.fillText("Skeniraj i slušaj", W / 2, labelY);
+
   const qrX = (W - QR_SIZE) / 2;
-  const qrY = labelY + 30;
+  const qrY = labelY + 28;
+
+  // QR frosted pill
   ctx.save();
-  ctx.fillStyle = "rgba(255,255,255,0.06)";
-  roundRect(ctx, qrX - 20, qrY - 16, QR_SIZE + 40, QR_SIZE + 32, 20);
+  roundRect(ctx, qrX - 22, qrY - 14, QR_SIZE + 44, QR_SIZE + 28, 24);
+  ctx.fillStyle = "rgba(255,255,255,0.07)";
   ctx.fill();
   ctx.restore();
 
   ctx.drawImage(qrCanvas, qrX, qrY, QR_SIZE, QR_SIZE);
 
-  // URL text
-  const urlY = qrY + QR_SIZE + 44;
-  ctx.font = `400 30px "Courier New", monospace`;
-  ctx.fillStyle = "rgba(99,82,255,0.70)";
-  ctx.fillText(`studioleflow.com/l/${link.slug}`, W / 2, urlY);
+  // URL
+  ctx.font = `400 28px "Courier New", monospace`;
+  ctx.fillStyle = "rgba(255,255,255,0.28)";
+  ctx.fillText(`studioleflow.com/l/${link.slug}`, W / 2, qrY + QR_SIZE + 42);
 
-  // Branding at bottom — white logo
+  // ── 9. Logo ───────────────────────────────────────────────────────────────
   try {
-    const logo = await new Promise<HTMLImageElement>((res, rej) => {
-      const i = new Image();
-      i.crossOrigin = "anonymous";
-      i.onload = () => res(i);
-      i.onerror = rej;
-      i.src = `${window.location.origin}/leflow-logo-white.png`;
-    });
-    const logoW = 210;
+    const logo = await loadImg(`${window.location.origin}/leflow-logo-white.png`);
+    const logoW = 200;
     const logoH = Math.round((logo.naturalHeight / logo.naturalWidth) * logoW);
-    ctx.globalAlpha = 0.32;
-    ctx.drawImage(logo, (W - logoW) / 2, H - 56 - logoH, logoW, logoH);
+    ctx.globalAlpha = 0.35;
+    ctx.drawImage(logo, (W - logoW) / 2, H - 52 - logoH, logoW, logoH);
     ctx.globalAlpha = 1;
   } catch {
-    ctx.font = `600 32px system-ui, -apple-system, Arial, sans-serif`;
-    ctx.fillStyle = "rgba(255,255,255,0.20)";
-    ctx.fillText("Studio LeFlow", W / 2, H - 72);
+    ctx.font = `600 30px system-ui, -apple-system, Arial, sans-serif`;
+    ctx.fillStyle = "rgba(255,255,255,0.22)";
+    ctx.fillText("Studio LeFlow", W / 2, H - 58);
   }
 
   return new Promise<Blob>((resolve, reject) => {
-    canvas.toBlob((blob) => {
-      if (!blob) reject(new Error("Canvas toBlob failed"));
-      else resolve(blob);
-    }, "image/png");
+    canvas.toBlob(b => b ? resolve(b) : reject(new Error("toBlob failed")), "image/png");
   });
 }
 
