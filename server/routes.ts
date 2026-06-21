@@ -223,6 +223,21 @@ function requireAdmin(req: any, res: any, next: any) {
   next();
 }
 
+// Middleware: VIP, Legend, or Admin rank required
+function requireVip(req: any, res: any, next: any) {
+  if (!req.jwtUser) {
+    return res.status(401).json({ error: "Niste prijavljeni. Prijavite se da biste pristupili ovom sadržaju." });
+  }
+  if (req.jwtUser.banned) {
+    return res.status(403).json({ error: "Vaš nalog je suspendovan.", banned: true });
+  }
+  const allowed = ["vip", "legend", "admin"];
+  if (!allowed.includes(req.jwtUser.rank)) {
+    return res.status(403).json({ error: "Ovaj sadržaj je dostupan samo VIP korisnicima i višim rangovima.", requiresVip: true });
+  }
+  next();
+}
+
 // Middleware to check if email is verified
 function requireVerifiedEmail(req: any, res: any, next: any) {
   if (!req.jwtUser) {
@@ -3753,8 +3768,8 @@ Sitemap: ${siteUrl}/sitemap.xml
     }
   });
 
-  // Public: get smart link by slug
-  app.get("/api/l/:slug", async (req, res) => {
+  // VIP+: get smart link by slug
+  app.get("/api/l/:slug", requireVip, async (req, res) => {
     try {
       const link = await storage.getSmartLinkBySlug(req.params.slug);
       if (!link) {
@@ -3768,8 +3783,8 @@ Sitemap: ${siteUrl}/sitemap.xml
     }
   });
 
-  // Public: record a click on a platform
-  app.post("/api/l/:slug/click", async (req, res) => {
+  // VIP+: record a click on a platform
+  app.post("/api/l/:slug/click", requireVip, async (req, res) => {
     try {
       const link = await storage.getSmartLinkBySlug(req.params.slug);
       if (!link) return res.status(404).json({ error: "Link nije pronađen" });
