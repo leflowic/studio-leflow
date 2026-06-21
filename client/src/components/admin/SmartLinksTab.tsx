@@ -7,13 +7,6 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Skeleton } from "@/components/ui/skeleton";
 import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-  DialogTrigger,
-} from "@/components/ui/dialog";
-import {
   AlertDialog,
   AlertDialogAction,
   AlertDialogCancel,
@@ -26,7 +19,8 @@ import {
 } from "@/components/ui/alert-dialog";
 import {
   Link2, Plus, Trash2, Edit2, Copy, ExternalLink,
-  Music2, Upload, X, Sparkles, Loader2, MousePointerClick, TrendingUp,
+  Music2, Upload, X, Sparkles, Loader2, MousePointerClick,
+  TrendingUp, ChevronLeft,
 } from "lucide-react";
 import { SiSpotify, SiYoutube, SiApplemusic, SiSoundcloud, SiTidal } from "react-icons/si";
 import type { SmartLink } from "@shared/schema";
@@ -65,7 +59,7 @@ export function SmartLinksTab() {
   const { toast } = useToast();
   const [form, setForm] = useState(emptyForm);
   const [editingId, setEditingId] = useState<number | null>(null);
-  const [dialogOpen, setDialogOpen] = useState(false);
+  const [showForm, setShowForm] = useState(false);
   const [uploading, setUploading] = useState(false);
   const [autoUrl, setAutoUrl] = useState("");
   const [autoFillPending, setAutoFillPending] = useState(false);
@@ -90,7 +84,7 @@ export function SmartLinksTab() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/admin/smart-links"] });
       const wasEditing = editingId !== null;
-      closeDialog();
+      hideForm();
       toast({ title: wasEditing ? "Link ažuriran" : "Link kreiran" });
     },
     onError: async (e: any) => {
@@ -108,7 +102,6 @@ export function SmartLinksTab() {
     onError: () => toast({ title: "Greška", description: "Brisanje nije uspelo", variant: "destructive" }),
   });
 
-  // Plain async function — no useMutation to avoid React Query interfering with dialog state
   async function handleAutoFill() {
     if (!autoUrl || autoFillPending) return;
     setAutoFillPending(true);
@@ -143,21 +136,14 @@ export function SmartLinksTab() {
     }
   }
 
-  function closeDialog() {
-    setDialogOpen(false);
+  function showCreate() {
     setForm(emptyForm);
     setAutoUrl("");
     setEditingId(null);
+    setShowForm(true);
   }
 
-  function openCreate() {
-    setForm(emptyForm);
-    setAutoUrl("");
-    setEditingId(null);
-    setDialogOpen(true);
-  }
-
-  function openEdit(link: SmartLinkWithStats) {
+  function showEdit(link: SmartLinkWithStats) {
     setAutoUrl("");
     setForm({
       slug: link.slug,
@@ -172,7 +158,14 @@ export function SmartLinksTab() {
       deezerUrl: link.deezerUrl ?? "",
     });
     setEditingId(link.id);
-    setDialogOpen(true);
+    setShowForm(true);
+  }
+
+  function hideForm() {
+    setShowForm(false);
+    setForm(emptyForm);
+    setAutoUrl("");
+    setEditingId(null);
   }
 
   async function uploadCover(file: File) {
@@ -201,9 +194,190 @@ export function SmartLinksTab() {
     toast({ title: "Link kopiran!" });
   }
 
+  // ── FORM VIEW ─────────────────────────────────────────────────────────────
+  if (showForm) {
+    return (
+      <div className="space-y-5">
+        {/* Back header */}
+        <div className="flex items-center gap-3">
+          <button
+            type="button"
+            onClick={hideForm}
+            className="flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground transition-colors"
+          >
+            <ChevronLeft className="w-4 h-4" />
+            Nazad
+          </button>
+          <span className="text-muted-foreground/30">/</span>
+          <h2 className="text-sm font-semibold">
+            {editingId !== null ? "Uredi smart link" : "Novi smart link"}
+          </h2>
+        </div>
+
+        {/* Auto-fill box */}
+        <div className="rounded-2xl overflow-hidden border border-primary/15 bg-gradient-to-br from-primary/[0.08] to-primary/[0.03]">
+          <div className="px-4 py-3 border-b border-primary/10 flex items-center gap-2">
+            <Sparkles className="w-3.5 h-3.5 text-primary" />
+            <span className="text-xs font-semibold text-primary">Auto-popuni</span>
+          </div>
+          <div className="px-4 py-3 space-y-2.5">
+            <p className="text-[11.5px] text-muted-foreground leading-relaxed">
+              Ubaci link pesme sa <span className="text-foreground/70">bilo koje platforme</span> — Spotify, YouTube, Apple Music... i mi ćemo naći sve ostalo automatski.
+            </p>
+            <div className="flex gap-2">
+              <Input
+                type="text"
+                placeholder="https://open.spotify.com/track/..."
+                value={autoUrl}
+                onChange={e => setAutoUrl(e.target.value)}
+                onKeyDown={e => { if (e.key === "Enter") { e.preventDefault(); handleAutoFill(); } }}
+                className="text-xs h-9 bg-background/50 border-border/30 focus:border-primary/40"
+              />
+              <Button
+                type="button"
+                size="sm"
+                onClick={handleAutoFill}
+                disabled={!autoUrl || autoFillPending}
+                className="h-9 px-4 shrink-0 gap-1.5"
+              >
+                {autoFillPending
+                  ? <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                  : <Sparkles className="w-3.5 h-3.5" />}
+                {autoFillPending ? "Tražim..." : "Nađi"}
+              </Button>
+            </div>
+          </div>
+        </div>
+
+        {/* Cover + title + artist */}
+        <div className="flex gap-4 items-start">
+          <div
+            className="relative w-24 h-24 rounded-2xl border border-border/30 bg-muted/20 flex-shrink-0 flex items-center justify-center cursor-pointer overflow-hidden group hover:border-primary/30 transition-all"
+            onClick={() => fileRef.current?.click()}
+          >
+            {form.coverUrl ? (
+              <>
+                <img src={form.coverUrl} alt="cover" className="absolute inset-0 w-full h-full object-cover" />
+                <div className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+                  <Upload className="w-5 h-5 text-white" />
+                </div>
+                <button
+                  type="button"
+                  className="absolute top-1.5 right-1.5 bg-black/80 rounded-full p-0.5 z-10 opacity-0 group-hover:opacity-100 transition-opacity"
+                  onClick={e => { e.stopPropagation(); setForm(f => ({ ...f, coverUrl: "" })); }}
+                >
+                  <X className="w-2.5 h-2.5 text-white" />
+                </button>
+              </>
+            ) : (
+              <div className="flex flex-col items-center gap-1.5 text-muted-foreground/50">
+                {uploading
+                  ? <Loader2 className="w-5 h-5 animate-spin text-primary" />
+                  : <><Music2 className="w-6 h-6" /><span className="text-[9px] text-center leading-tight">Cover<br />slika</span></>
+                }
+              </div>
+            )}
+          </div>
+          <input ref={fileRef} type="file" accept="image/*" className="hidden"
+            onChange={e => { const f = e.target.files?.[0]; if (f) uploadCover(f); e.target.value = ""; }} />
+
+          <div className="flex-1 space-y-2.5">
+            <div className="space-y-1">
+              <Label className="text-[11px] text-muted-foreground">Naslov pesme</Label>
+              <Input
+                type="text"
+                placeholder="Naslov pesme"
+                value={form.title}
+                onChange={e => {
+                  const title = e.target.value;
+                  setForm(f => ({ ...f, title, slug: f.slug || slugify(title) }));
+                }}
+                className="h-9 text-sm"
+              />
+            </div>
+            <div className="space-y-1">
+              <Label className="text-[11px] text-muted-foreground">Izvođač</Label>
+              <Input
+                type="text"
+                placeholder="Ime izvođača"
+                value={form.artist}
+                onChange={e => setForm(f => ({ ...f, artist: e.target.value }))}
+                className="h-9 text-sm"
+              />
+            </div>
+          </div>
+        </div>
+
+        {/* Cover URL */}
+        <div className="space-y-1">
+          <Label className="text-[11px] text-muted-foreground">URL cover slike</Label>
+          <Input
+            type="url"
+            placeholder="https://..."
+            value={form.coverUrl}
+            onChange={e => setForm(f => ({ ...f, coverUrl: e.target.value }))}
+            className="h-9 text-xs"
+          />
+        </div>
+
+        {/* Slug */}
+        <div className="space-y-1">
+          <Label className="text-[11px] text-muted-foreground">URL slug</Label>
+          <div className="flex items-center h-9 rounded-lg border border-border/40 bg-muted/20 overflow-hidden focus-within:border-primary/40 transition-colors">
+            <span className="px-3 text-xs text-muted-foreground border-r border-border/30 h-full flex items-center bg-muted/20 shrink-0">/l/</span>
+            <input
+              type="text"
+              className="flex-1 px-3 text-sm bg-transparent outline-none text-foreground placeholder:text-muted-foreground/50"
+              placeholder="naziv-pesme"
+              value={form.slug}
+              onChange={e => setForm(f => ({ ...f, slug: e.target.value.toLowerCase().replace(/[^a-z0-9-]/g, "") }))}
+            />
+          </div>
+        </div>
+
+        {/* Platforms */}
+        <div className="space-y-1.5">
+          <Label className="text-[11px] text-muted-foreground uppercase tracking-wider">Platforme</Label>
+          <div className="rounded-xl border border-border/30 overflow-hidden divide-y divide-border/20">
+            {PLATFORMS.map(p => (
+              <div key={p.key} className="flex items-center gap-3 px-3 py-2.5 bg-muted/5 hover:bg-muted/10 transition-colors">
+                <p.Icon size={13} style={{ color: p.color }} className="flex-shrink-0" />
+                <span className="text-xs font-medium w-24 shrink-0 text-foreground/70">{p.label}</span>
+                <input
+                  type="url"
+                  className="flex-1 bg-transparent outline-none text-xs text-foreground placeholder:text-muted-foreground/40 py-0.5"
+                  placeholder={`URL za ${p.label}...`}
+                  value={form[p.key as keyof typeof emptyForm]}
+                  onChange={e => setForm(f => ({ ...f, [p.key]: e.target.value }))}
+                />
+              </div>
+            ))}
+          </div>
+        </div>
+
+        {/* Footer */}
+        <div className="flex justify-end gap-2 pt-1">
+          <Button type="button" variant="outline" onClick={hideForm} className="h-9">
+            Otkaži
+          </Button>
+          <Button
+            type="button"
+            onClick={() => saveMutation.mutate(form)}
+            disabled={saveMutation.isPending || !form.title || !form.artist || !form.slug}
+            className="h-9 px-5 shadow-lg shadow-primary/20"
+          >
+            {saveMutation.isPending
+              ? <><Loader2 className="w-3.5 h-3.5 animate-spin mr-1.5" />Čuvam...</>
+              : editingId !== null ? "Sačuvaj izmene" : "Kreiraj link"}
+          </Button>
+        </div>
+      </div>
+    );
+  }
+
+  // ── LIST VIEW ─────────────────────────────────────────────────────────────
   return (
     <div className="space-y-6">
-
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
@@ -215,187 +389,10 @@ export function SmartLinksTab() {
           </div>
           <p className="text-xs text-muted-foreground ml-[42px]">Tvoji li.sten.to linkovi — jedna pesma, sve platforme</p>
         </div>
-
-        <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
-          <DialogTrigger asChild>
-            <Button onClick={openCreate} className="gap-2 shadow-lg shadow-primary/20">
-              <Plus className="w-4 h-4" />
-              Novi link
-            </Button>
-          </DialogTrigger>
-
-          <DialogContent
-            className="max-w-lg max-h-[90vh] overflow-y-auto bg-[#0f0f0f] border-border/40"
-            onInteractOutside={(e) => e.preventDefault()}
-            onFocusOutside={(e) => e.preventDefault()}
-          >
-            <DialogHeader>
-              <DialogTitle className="text-base">
-                {editingId !== null ? "Uredi smart link" : "Novi smart link"}
-              </DialogTitle>
-            </DialogHeader>
-
-            <div className="space-y-5 pt-1">
-              {/* Auto-fill box */}
-              <div className="rounded-2xl overflow-hidden border border-primary/15 bg-gradient-to-br from-primary/[0.08] to-primary/[0.03]">
-                <div className="px-4 py-3 border-b border-primary/10 flex items-center gap-2">
-                  <Sparkles className="w-3.5 h-3.5 text-primary" />
-                  <span className="text-xs font-semibold text-primary">Auto-popuni</span>
-                </div>
-                <div className="px-4 py-3 space-y-2.5">
-                  <p className="text-[11.5px] text-muted-foreground leading-relaxed">
-                    Ubaci link pesme sa <span className="text-foreground/70">bilo koje platforme</span> — Spotify, YouTube, Apple Music... i mi ćemo naći sve ostalo automatski.
-                  </p>
-                  <div className="flex gap-2">
-                    <Input
-                      type="text"
-                      placeholder="https://open.spotify.com/track/..."
-                      value={autoUrl}
-                      onChange={e => setAutoUrl(e.target.value)}
-                      onKeyDown={e => { if (e.key === "Enter") { e.preventDefault(); handleAutoFill(); } }}
-                      className="text-xs h-9 bg-background/50 border-border/30 focus:border-primary/40"
-                    />
-                    <Button
-                      type="button"
-                      size="sm"
-                      onClick={handleAutoFill}
-                      disabled={!autoUrl || autoFillPending}
-                      className="h-9 px-4 shrink-0 gap-1.5"
-                    >
-                      {autoFillPending
-                        ? <Loader2 className="w-3.5 h-3.5 animate-spin" />
-                        : <Sparkles className="w-3.5 h-3.5" />}
-                      {autoFillPending ? "Tražim..." : "Nađi"}
-                    </Button>
-                  </div>
-                </div>
-              </div>
-
-              {/* Cover + title + artist */}
-              <div className="flex gap-4 items-start">
-                <div
-                  className="relative w-24 h-24 rounded-2xl border border-border/30 bg-muted/20 flex-shrink-0 flex items-center justify-center cursor-pointer overflow-hidden group hover:border-primary/30 transition-all"
-                  onClick={() => fileRef.current?.click()}
-                >
-                  {form.coverUrl ? (
-                    <>
-                      <img src={form.coverUrl} alt="cover" className="absolute inset-0 w-full h-full object-cover" />
-                      <div className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
-                        <Upload className="w-5 h-5 text-white" />
-                      </div>
-                      <button
-                        type="button"
-                        className="absolute top-1.5 right-1.5 bg-black/80 rounded-full p-0.5 z-10 opacity-0 group-hover:opacity-100 transition-opacity"
-                        onClick={e => { e.stopPropagation(); setForm(f => ({ ...f, coverUrl: "" })); }}
-                      >
-                        <X className="w-2.5 h-2.5 text-white" />
-                      </button>
-                    </>
-                  ) : (
-                    <div className="flex flex-col items-center gap-1.5 text-muted-foreground/50">
-                      {uploading
-                        ? <Loader2 className="w-5 h-5 animate-spin text-primary" />
-                        : <><Music2 className="w-6 h-6" /><span className="text-[9px] text-center leading-tight">Cover<br />slika</span></>
-                      }
-                    </div>
-                  )}
-                </div>
-                <input ref={fileRef} type="file" accept="image/*" className="hidden"
-                  onChange={e => { const f = e.target.files?.[0]; if (f) uploadCover(f); e.target.value = ""; }} />
-
-                <div className="flex-1 space-y-2.5">
-                  <div className="space-y-1">
-                    <Label className="text-[11px] text-muted-foreground">Naslov pesme</Label>
-                    <Input
-                      type="text"
-                      placeholder="Naslov pesme"
-                      value={form.title}
-                      onChange={e => {
-                        const title = e.target.value;
-                        setForm(f => ({ ...f, title, slug: f.slug || slugify(title) }));
-                      }}
-                      className="h-9 text-sm"
-                    />
-                  </div>
-                  <div className="space-y-1">
-                    <Label className="text-[11px] text-muted-foreground">Izvođač</Label>
-                    <Input
-                      type="text"
-                      placeholder="Ime izvođača"
-                      value={form.artist}
-                      onChange={e => setForm(f => ({ ...f, artist: e.target.value }))}
-                      className="h-9 text-sm"
-                    />
-                  </div>
-                </div>
-              </div>
-
-              {/* Cover URL */}
-              <div className="space-y-1">
-                <Label className="text-[11px] text-muted-foreground">URL cover slike</Label>
-                <Input
-                  type="url"
-                  placeholder="https://..."
-                  value={form.coverUrl}
-                  onChange={e => setForm(f => ({ ...f, coverUrl: e.target.value }))}
-                  className="h-9 text-xs"
-                />
-              </div>
-
-              {/* Slug */}
-              <div className="space-y-1">
-                <Label className="text-[11px] text-muted-foreground">URL slug</Label>
-                <div className="flex items-center h-9 rounded-lg border border-border/40 bg-muted/20 overflow-hidden focus-within:border-primary/40 transition-colors">
-                  <span className="px-3 text-xs text-muted-foreground border-r border-border/30 h-full flex items-center bg-muted/20 shrink-0">/l/</span>
-                  <input
-                    type="text"
-                    className="flex-1 px-3 text-sm bg-transparent outline-none text-foreground placeholder:text-muted-foreground/50"
-                    placeholder="naziv-pesme"
-                    value={form.slug}
-                    onChange={e => setForm(f => ({ ...f, slug: e.target.value.toLowerCase().replace(/[^a-z0-9-]/g, "") }))}
-                  />
-                </div>
-              </div>
-
-              {/* Platforms */}
-              <div className="space-y-1.5">
-                <Label className="text-[11px] text-muted-foreground uppercase tracking-wider">Platforme</Label>
-                <div className="rounded-xl border border-border/30 overflow-hidden divide-y divide-border/20">
-                  {PLATFORMS.map(p => (
-                    <div key={p.key} className="flex items-center gap-3 px-3 py-2.5 bg-muted/5 hover:bg-muted/10 transition-colors">
-                      <p.Icon size={13} style={{ color: p.color }} className="flex-shrink-0" />
-                      <span className="text-xs font-medium w-24 shrink-0 text-foreground/70">{p.label}</span>
-                      <input
-                        type="url"
-                        className="flex-1 bg-transparent outline-none text-xs text-foreground placeholder:text-muted-foreground/40 py-0.5"
-                        placeholder={`URL za ${p.label}...`}
-                        value={form[p.key as keyof typeof emptyForm]}
-                        onChange={e => setForm(f => ({ ...f, [p.key]: e.target.value }))}
-                      />
-                    </div>
-                  ))}
-                </div>
-              </div>
-
-              {/* Footer */}
-              <div className="flex justify-end gap-2 pt-1">
-                <Button type="button" variant="outline" onClick={closeDialog} className="h-9">
-                  Otkaži
-                </Button>
-                <Button
-                  type="button"
-                  onClick={() => saveMutation.mutate(form)}
-                  disabled={saveMutation.isPending || !form.title || !form.artist || !form.slug}
-                  className="h-9 px-5 shadow-lg shadow-primary/20"
-                >
-                  {saveMutation.isPending
-                    ? <><Loader2 className="w-3.5 h-3.5 animate-spin mr-1.5" />Čuvam...</>
-                    : editingId !== null ? "Sačuvaj" : "Kreiraj link"}
-                </Button>
-              </div>
-            </div>
-          </DialogContent>
-        </Dialog>
+        <Button type="button" onClick={showCreate} className="gap-2 shadow-lg shadow-primary/20">
+          <Plus className="w-4 h-4" />
+          Novi link
+        </Button>
       </div>
 
       {/* Stats */}
@@ -436,7 +433,7 @@ export function SmartLinksTab() {
             <p className="text-sm font-medium">Nema smart linkova</p>
             <p className="text-xs text-muted-foreground/60 mt-0.5">Kreiraj prvi link i podeli muziku na svim platformama</p>
           </div>
-          <Button type="button" variant="outline" size="sm" onClick={openCreate} className="gap-2 mt-1">
+          <Button type="button" variant="outline" size="sm" onClick={showCreate} className="gap-2 mt-1">
             <Plus className="w-3.5 h-3.5" /> Kreiraj prvi
           </Button>
         </div>
@@ -453,7 +450,6 @@ export function SmartLinksTab() {
                     ? <img src={link.coverUrl} alt={link.title} className="w-full h-full object-cover" />
                     : <div className="w-full h-full flex items-center justify-center"><Music2 className="w-7 h-7 text-muted-foreground/25" /></div>
                   }
-                  <div className="absolute inset-0 bg-gradient-to-r from-transparent to-black/20" />
                 </div>
 
                 <div className="flex-1 px-4 py-3.5 min-w-0 flex flex-col justify-between">
@@ -494,7 +490,7 @@ export function SmartLinksTab() {
                       <ExternalLink className="w-3.5 h-3.5" />
                     </a>
                   </Button>
-                  <Button type="button" variant="ghost" size="icon" className="w-7 h-7 hover:bg-primary/10 hover:text-primary" onClick={() => openEdit(link)} title="Uredi">
+                  <Button type="button" variant="ghost" size="icon" className="w-7 h-7 hover:bg-primary/10 hover:text-primary" onClick={() => showEdit(link)} title="Uredi">
                     <Edit2 className="w-3.5 h-3.5" />
                   </Button>
                   <AlertDialog>
