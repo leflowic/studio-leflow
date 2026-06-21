@@ -1,7 +1,7 @@
 import type { Express } from "express";
 import { createServer, type Server } from "http";
 import { storage } from "./storage";
-import { wsHelpers, notifyUser, getOnlineUsersSnapshot } from "./websocket-helpers";
+import { wsHelpers, notifyUser, broadcastToUser, getOnlineUsersSnapshot } from "./websocket-helpers";
 import { insertContactSubmissionSchema, insertCmsContentSchema, insertCmsMediaSchema, insertVideoSpotSchema, insertUserSongSchema, insertNewsletterSubscriberSchema, insertInvoiceSchema, insertCommunityMessageSchema, insertSiteAnnouncementSchema, mixMasterContractDataSchema, copyrightTransferContractDataSchema, instrumentalSaleContractDataSchema, insertSmartLinkSchema, type CmsContent, type CmsMedia, type VideoSpot, type UserSong } from "@shared/schema";
 import { sendEmail, getLastVerificationCode } from "./resend-client";
 import { resendVerificationEmail, adminLoginEmail, contactFormEmail, newsletterConfirmEmail, licenseDeliveryEmail, customEmail } from "./email-templates";
@@ -3960,6 +3960,23 @@ Sitemap: ${siteUrl}/sitemap.xml
       const userId = req.jwtUser!.id;
       const result = await storage.togglePostLike(postId, userId);
       res.json(result);
+
+      // Notify post owner (only on like, not unlike)
+      if (result.liked) {
+        const allPosts = await storage.getPosts(undefined, 1000, 0);
+        const post = allPosts.find(p => p.id === postId);
+        if (post && post.userId !== userId) {
+          const liker = await storage.getUser(userId);
+          const notif = await storage.createNotification({
+            userId: post.userId,
+            fromUserId: userId,
+            type: "like",
+            postId,
+            message: `${liker?.username ?? "Neko"} je lajkovao tvoju objavu`,
+          });
+          broadcastToUser(post.userId, { type: "feed_notification", notification: { ...notif, fromUsername: liker?.username ?? null, fromAvatarUrl: liker?.avatarUrl ?? null } });
+        }
+      }
     } catch (e) {
       console.error("[Feed] POST /api/posts/:id/like error:", e);
       res.status(500).json({ error: "Greška na serveru" });
@@ -3988,6 +4005,36 @@ Sitemap: ${siteUrl}/sitemap.xml
       if (content.length > 500) return res.status(400).json({ error: "Komentar ne može biti duži od 500 karaktera" });
       const comment = await storage.createPostComment({ postId, userId, content: content.trim() });
       res.status(201).json(comment);
+
+      // Notify post owner + mentioned users
+      const allPosts = await storage.getPosts(undefined, 1000, 0);
+      const post = allPosts.find(p => p.id === postId);
+      const commenter = await storage.getUser(userId);
+      if (post && post.userId !== userId) {
+        const notif = await storage.createNotification({
+          userId: post.userId,
+          fromUserId: userId,
+          type: "comment",
+          postId,
+          message: `${commenter?.username ?? "Neko"} je komentarisao tvoju objavu`,
+        });
+        broadcastToUser(post.userId, { type: "feed_notification", notification: { ...notif, fromUsername: commenter?.username ?? null, fromAvatarUrl: commenter?.avatarUrl ?? null } });
+      }
+      // Mentions: @username
+      const mentions = [...content.matchAll(/@(\w+)/g)].map(m => m[1]);
+      for (const mentionedName of mentions) {
+        const mentioned = await storage.getUserByUsername(mentionedName);
+        if (mentioned && mentioned.id !== userId && mentioned.id !== post?.userId) {
+          const notif = await storage.createNotification({
+            userId: mentioned.id,
+            fromUserId: userId,
+            type: "mention",
+            postId,
+            message: `${commenter?.username ?? "Neko"} te pomenuo u komentaru`,
+          });
+          broadcastToUser(mentioned.id, { type: "feed_notification", notification: { ...notif, fromUsername: commenter?.username ?? null, fromAvatarUrl: commenter?.avatarUrl ?? null } });
+        }
+      }
     } catch (e) {
       console.error("[Feed] POST /api/posts/:id/comments error:", e);
       res.status(500).json({ error: "Greška na serveru" });
@@ -4052,6 +4099,69 @@ Sitemap: ${siteUrl}/sitemap.xml
     } catch (e) {
       console.error("[Upload] post-audio error:", e);
       res.status(500).json({ error: "Greška pri otpremanju audio fajla" });
+    }
+  });
+
+  // ─── Notifications ────────────────────────────────────────────────────────
+
+  app.get("/api/notifications", requireNotBanned, async (req, res) => {
+    try {
+      const notifs = await storage.getNotifications(req.jwtUser!.id);
+      res.json(notifs);
+    } catch (e) {
+      res.status(500).json({ error: "Greška na serveru" });
+    }
+  });
+
+  app.get("/api/notifications/unread-count", requireNotBanned, async (req, res) => {
+    try {
+      const count = await storage.getUnreadNotificationCount(req.jwtUser!.id);
+      res.json({ count });
+    } catch (e) {
+      res.status(500).json({ error: "Greška na serveru" });
+    }
+  });
+
+  app.post("/api/notifications/mark-read", requireNotBanned, async (req, res) => {
+    try {
+      await storage.markNotificationsRead(req.jwtUser!.id);
+      res.json({ ok: true });
+    } catch (e) {
+      res.status(500).json({ error: "Greška na serveru" });
+    }
+  });
+
+  // ─── Verified artist + collab ─────────────────────────────────────────────
+
+  app.patch("/api/admin/users/:id/verified", requireAdmin, async (req, res) => {
+    try {
+      const userId = parseInt(req.params.id, 10);
+      const { value } = req.body;
+      if (typeof value !== "boolean") return res.status(400).json({ error: "value mora biti boolean" });
+      await storage.setVerifiedArtist(userId, value);
+      res.json({ ok: true });
+    } catch (e) {
+      res.status(500).json({ error: "Greška na serveru" });
+    }
+  });
+
+  app.patch("/api/me/collab", requireNotBanned, async (req, res) => {
+    try {
+      const { available } = req.body;
+      if (typeof available !== "boolean") return res.status(400).json({ error: "available mora biti boolean" });
+      await storage.setAvailableForCollab(req.jwtUser!.id, available);
+      res.json({ ok: true });
+    } catch (e) {
+      res.status(500).json({ error: "Greška na serveru" });
+    }
+  });
+
+  app.get("/api/collab-users", requireNotBanned, async (req, res) => {
+    try {
+      const collabUsers = await storage.getCollabUsers();
+      res.json(collabUsers);
+    } catch (e) {
+      res.status(500).json({ error: "Greška na serveru" });
     }
   });
 

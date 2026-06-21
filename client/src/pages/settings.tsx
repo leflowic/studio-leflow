@@ -12,7 +12,7 @@ import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import {
   User, Mail, Lock, AlertCircle, Camera, Loader2, Trash2,
-  ShieldCheck, ShieldX, Calendar, Crown, CheckCircle2, Eye, EyeOff,
+  ShieldCheck, ShieldX, Calendar, Crown, CheckCircle2, Eye, EyeOff, Users,
 } from "lucide-react";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { motion } from "framer-motion";
@@ -60,6 +60,44 @@ function PasswordInput({ id, value, onChange, placeholder, autoComplete, disable
       >
         {show ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
       </button>
+    </div>
+  );
+}
+
+function CollabToggle() {
+  const { user } = useAuth();
+  const { toast } = useToast();
+  const [available, setAvailable] = useState((user as any)?.availableForCollab ?? false);
+
+  const toggle = useMutation({
+    mutationFn: (val: boolean) => apiRequest("PATCH", "/api/me/collab", { available: val }),
+    onSuccess: (_, val) => {
+      setAvailable(val);
+      toast({ title: val ? "Dostupan si za saradnju 🎵" : "Više nisi prikazan kao dostupan" });
+    },
+    onError: () => toast({ title: "Greška", variant: "destructive" }),
+  });
+
+  return (
+    <div className="rounded-2xl border border-border/60 bg-card p-6">
+      <div className="flex items-center justify-between gap-4">
+        <div className="flex items-center gap-3">
+          <div className="w-10 h-10 rounded-xl bg-violet-500/10 flex items-center justify-center flex-shrink-0">
+            <Users className="w-5 h-5 text-violet-500" />
+          </div>
+          <div>
+            <p className="font-semibold text-sm">Dostupan za saradnju</p>
+            <p className="text-xs text-muted-foreground mt-0.5">Prikazuješ se u listi kolaboratora na zajednici</p>
+          </div>
+        </div>
+        <button
+          onClick={() => toggle.mutate(!available)}
+          disabled={toggle.isPending}
+          className={`relative w-12 h-6 rounded-full transition-colors flex-shrink-0 ${available ? "bg-primary" : "bg-muted-foreground/30"}`}
+        >
+          <span className={`absolute top-0.5 left-0.5 w-5 h-5 bg-white rounded-full shadow transition-transform ${available ? "translate-x-6" : "translate-x-0"}`} />
+        </button>
+      </div>
     </div>
   );
 }
@@ -369,6 +407,13 @@ export default function Settings() {
             </SectionCard>
           </FadeInWhenVisible>
         </div>
+
+        {/* Collab toggle */}
+        {user?.emailVerified && (
+          <FadeInWhenVisible>
+            <CollabToggle />
+          </FadeInWhenVisible>
+        )}
 
         {/* Account info — info pills */}
         <FadeInWhenVisible>

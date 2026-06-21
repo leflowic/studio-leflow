@@ -34,6 +34,12 @@ export function notifyUser(userId: number, title: string, description?: string, 
   }
 }
 
+export function broadcastToUser(userId: number, message: any) {
+  if (wsHelpers.broadcastToUser) {
+    wsHelpers.broadcastToUser(userId, message);
+  }
+}
+
 export function getOnlineUsersSnapshot(): number[] {
   if (wsHelpers.getOnlineUserIds) {
     return wsHelpers.getOnlineUserIds();

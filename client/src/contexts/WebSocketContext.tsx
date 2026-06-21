@@ -32,6 +32,7 @@ export type WebSocketMessage =
   | { type: 'message_edited'; message: any }
   | { type: 'message_reaction'; messageId: number; userId: number; emoji: string; added: boolean }
   | { type: 'notification'; title: string; description?: string; variant?: 'default' | 'destructive' }
+  | { type: 'feed_notification'; notification: any }
   | { type: 'community-chat:new'; message: any }
   | { type: 'community-chat:delete'; messageId: number }
   | { type: 'community-chat:clear' };
@@ -127,6 +128,15 @@ export function WebSocketProvider({ children }: { children: ReactNode }) {
           playNotificationSound();
         }
         
+        // Handle feed notifications (like, comment, mention)
+        if (message.type === 'feed_notification') {
+          playNotificationSound();
+          // Bust the unread count cache so bell updates immediately
+          import('@/lib/queryClient').then(({ queryClient }) => {
+            queryClient.invalidateQueries({ queryKey: ['/api/notifications/unread-count'] });
+          });
+        }
+
         // Handle new messages from other users
         if (message.type === 'new_message') {
           const currentUserId = userRef.current?.id;

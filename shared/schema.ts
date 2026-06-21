@@ -60,6 +60,8 @@ export const users = pgTable("users", {
   usernameLastChanged: timestamp("username_last_changed"),
   avatarUrl: text("avatar_url"),
   lastSeen: timestamp("last_seen"),
+  isVerifiedArtist: boolean("is_verified_artist").notNull().default(false),
+  availableForCollab: boolean("available_for_collab").notNull().default(false),
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });
 
@@ -942,3 +944,18 @@ export const postComments = pgTable("post_comments", {
 export type Post = typeof posts.$inferSelect;
 export type PostLike = typeof postLikes.$inferSelect;
 export type PostComment = typeof postComments.$inferSelect;
+
+// ─── Notifications ────────────────────────────────────────────────────────────
+
+export const notifications = pgTable("notifications", {
+  id: serial("id").primaryKey(),
+  userId: integer("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  fromUserId: integer("from_user_id").references(() => users.id, { onDelete: "cascade" }),
+  type: text("type").notNull(), // "like" | "comment" | "mention"
+  postId: integer("post_id").references(() => posts.id, { onDelete: "cascade" }),
+  message: text("message").notNull(),
+  read: boolean("read").notNull().default(false),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+
+export type Notification = typeof notifications.$inferSelect;

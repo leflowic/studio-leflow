@@ -6,7 +6,7 @@ import { useToast } from "@/hooks/use-toast";
 import { formatDistanceToNow } from "date-fns";
 import { sr } from "date-fns/locale";
 import { motion, AnimatePresence } from "framer-motion";
-import { Heart, MessageCircle, Music, Image, Users, FileText, Send, Trash2, ChevronDown, ChevronUp, Play, Pause, Upload, X } from "lucide-react";
+import { Heart, MessageCircle, Music, Image, Users, FileText, Send, Trash2, ChevronDown, ChevronUp, Play, Pause, Upload, X, Share2, BadgeCheck } from "lucide-react";
 import { Link } from "wouter";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
@@ -26,6 +26,7 @@ type FeedPost = {
   createdAt: string;
   username: string;
   avatarUrl: string | null;
+  isVerifiedArtist?: boolean;
   likesCount: number;
   commentsCount: number;
   hasLiked: boolean;
@@ -40,6 +41,15 @@ type PostComment = {
   username: string;
   avatarUrl: string | null;
 };
+
+function renderTextWithMentions(text: string) {
+  const parts = text.split(/(@\w+)/g);
+  return parts.map((part, i) =>
+    part.startsWith("@")
+      ? <Link key={i} href={`/u/${part.slice(1)}`} className="text-primary font-semibold hover:underline">{part}</Link>
+      : part
+  );
+}
 
 const COLLAB_TAGS = ["Tražim repera", "Tražim vokal", "Tražim beatmakera", "Tražim feat", "Tražim tekstopisca", "Tražim gitaristu"];
 
@@ -65,43 +75,55 @@ function AvatarImg({ avatarUrl, username }: { avatarUrl: string | null; username
 }
 
 function AudioPlayer({ url }: { url: string }) {
+  const containerRef = useRef<HTMLDivElement>(null);
+  const wsRef = useRef<any>(null);
   const [playing, setPlaying] = useState(false);
-  const [progress, setProgress] = useState(0);
-  const audioRef = useRef<HTMLAudioElement>(null);
+  const [ready, setReady] = useState(false);
 
-  const toggle = () => {
-    const el = audioRef.current;
-    if (!el) return;
-    if (playing) { el.pause(); setPlaying(false); }
-    else { el.play(); setPlaying(true); }
-  };
+  useEffect(() => {
+    if (!containerRef.current) return;
+    let cancelled = false;
+
+    import("wavesurfer.js").then(({ default: WaveSurfer }) => {
+      if (cancelled || !containerRef.current) return;
+      const ws = WaveSurfer.create({
+        container: containerRef.current,
+        waveColor: "hsl(var(--muted-foreground) / 0.4)",
+        progressColor: "hsl(var(--primary))",
+        cursorColor: "transparent",
+        barWidth: 2,
+        barGap: 1,
+        barRadius: 2,
+        height: 36,
+        normalize: true,
+        url,
+      });
+      ws.on("ready", () => setReady(true));
+      ws.on("play", () => setPlaying(true));
+      ws.on("pause", () => setPlaying(false));
+      ws.on("finish", () => setPlaying(false));
+      wsRef.current = ws;
+    });
+
+    return () => {
+      cancelled = true;
+      wsRef.current?.destroy();
+      wsRef.current = null;
+    };
+  }, [url]);
+
+  const toggle = () => wsRef.current?.playPause();
 
   return (
     <div className="flex items-center gap-3 bg-muted/60 rounded-xl px-4 py-3 mt-2">
       <button
         onClick={toggle}
-        className="w-9 h-9 rounded-full bg-primary text-primary-foreground flex items-center justify-center flex-shrink-0 hover:bg-primary/90 transition-colors"
+        disabled={!ready}
+        className="w-9 h-9 rounded-full bg-primary text-primary-foreground flex items-center justify-center flex-shrink-0 hover:bg-primary/90 transition-colors disabled:opacity-50"
       >
         {playing ? <Pause className="w-4 h-4" /> : <Play className="w-4 h-4 translate-x-0.5" />}
       </button>
-      <div className="flex-1 relative h-1.5 bg-border rounded-full overflow-hidden cursor-pointer"
-        onClick={(e) => {
-          const rect = (e.target as HTMLDivElement).getBoundingClientRect();
-          const pct = (e.clientX - rect.left) / rect.width;
-          if (audioRef.current) { audioRef.current.currentTime = pct * audioRef.current.duration; }
-        }}
-      >
-        <div className="absolute inset-y-0 left-0 bg-primary rounded-full transition-all" style={{ width: `${progress}%` }} />
-      </div>
-      <audio
-        ref={audioRef}
-        src={url}
-        onTimeUpdate={() => {
-          const el = audioRef.current;
-          if (el && el.duration) setProgress((el.currentTime / el.duration) * 100);
-        }}
-        onEnded={() => { setPlaying(false); setProgress(0); }}
-      />
+      <div ref={containerRef} className="flex-1 min-w-0" />
     </div>
   );
 }
@@ -150,7 +172,7 @@ function CommentsSection({ postId, currentUserId, onCountChange }: {
               <AvatarImg avatarUrl={c.avatarUrl} username={c.username} />
               <div className="flex-1 bg-muted/50 rounded-xl px-3 py-2 text-sm min-w-0">
                 <span className="font-semibold text-xs text-foreground mr-2">{c.username}</span>
-                <span className="text-foreground/80 break-words">{c.content}</span>
+                <span className="text-foreground/80 break-words">{renderTextWithMentions(c.content)}</span>
               </div>
               {currentUserId === c.userId && (
                 <button
@@ -227,7 +249,10 @@ function PostCard({ post, currentUserId, onDeleted, onLikeChanged, onCommentCoun
         <div className="flex items-center gap-2.5 min-w-0">
           <AvatarImg avatarUrl={post.avatarUrl} username={post.username} />
           <div className="min-w-0">
-            <Link href={`/u/${post.username}`} className="font-semibold text-sm leading-tight truncate hover:underline block">{post.username}</Link>
+            <div className="flex items-center gap-1">
+              <Link href={`/u/${post.username}`} className="font-semibold text-sm leading-tight hover:underline truncate">{post.username}</Link>
+              {post.isVerifiedArtist && <BadgeCheck className="w-3.5 h-3.5 text-primary flex-shrink-0" aria-label="Verifikovani artist" />}
+            </div>
             <p className="text-xs text-muted-foreground">
               {formatDistanceToNow(new Date(post.createdAt), { addSuffix: true, locale: sr })}
             </p>
@@ -259,7 +284,7 @@ function PostCard({ post, currentUserId, onDeleted, onLikeChanged, onCommentCoun
 
       {/* Content */}
       {post.content && (
-        <p className="text-sm leading-relaxed whitespace-pre-wrap break-words">{post.content}</p>
+        <p className="text-sm leading-relaxed whitespace-pre-wrap break-words">{renderTextWithMentions(post.content)}</p>
       )}
 
       {/* Image */}
@@ -296,6 +321,19 @@ function PostCard({ post, currentUserId, onDeleted, onLikeChanged, onCommentCoun
           <MessageCircle className="w-4 h-4" />
           <span>{post.commentsCount}</span>
           {showComments ? <ChevronUp className="w-3 h-3" /> : <ChevronDown className="w-3 h-3" />}
+        </button>
+
+        <button
+          onClick={() => {
+            const url = `${window.location.origin}/zajednica?post=${post.id}`;
+            navigator.clipboard.writeText(url).then(() => {
+              // brief visual feedback via title change
+            });
+          }}
+          className="ml-auto flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl text-sm font-medium text-muted-foreground hover:bg-muted transition-all"
+          title="Kopiraj link"
+        >
+          <Share2 className="w-4 h-4" />
         </button>
       </div>
 
@@ -537,6 +575,7 @@ export function CommunityFeed() {
   const [offset, setOffset] = useState(0);
   const [hasMore, setHasMore] = useState(true);
   const [loadingMore, setLoadingMore] = useState(false);
+  const sentinelRef = useRef<HTMLDivElement>(null);
 
   const { isLoading } = useQuery<FeedPost[]>({
     queryKey: ["/api/posts"],
@@ -551,6 +590,7 @@ export function CommunityFeed() {
   });
 
   const loadMore = async () => {
+    if (loadingMore || !hasMore) return;
     setLoadingMore(true);
     try {
       const data = await fetchPosts(offset);
@@ -564,6 +604,17 @@ export function CommunityFeed() {
       setLoadingMore(false);
     }
   };
+
+  // Infinite scroll via IntersectionObserver
+  useEffect(() => {
+    const el = sentinelRef.current;
+    if (!el) return;
+    const obs = new IntersectionObserver(entries => {
+      if (entries[0]?.isIntersecting) loadMore();
+    }, { rootMargin: "200px" });
+    obs.observe(el);
+    return () => obs.disconnect();
+  }, [offset, hasMore, loadingMore]);
 
   return (
     <div className="space-y-4">
@@ -600,15 +651,11 @@ export function CommunityFeed() {
             ))}
           </AnimatePresence>
 
-          {hasMore && (
-            <Button
-              variant="outline"
-              className="w-full rounded-xl"
-              onClick={loadMore}
-              disabled={loadingMore}
-            >
-              {loadingMore ? "Učitavam..." : "Učitaj više"}
-            </Button>
+          <div ref={sentinelRef} className="h-4" />
+          {loadingMore && (
+            <div className="flex justify-center py-4">
+              <div className="w-5 h-5 border-2 border-primary border-t-transparent rounded-full animate-spin" />
+            </div>
           )}
         </>
       )}

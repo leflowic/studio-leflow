@@ -76,9 +76,11 @@ import {
   type Post,
   type PostLike,
   type PostComment,
+  type Notification,
   posts,
   postLikes,
   postComments,
+  notifications,
 } from "@shared/schema";
 import { db, pool } from "./db";
 import { eq, and, or, desc, sql, notInArray, inArray, gte, lte, count } from "drizzle-orm";
@@ -339,6 +341,17 @@ export interface IStorage {
   getPostComments(postId: number): Promise<Array<PostComment & { username: string; avatarUrl: string | null }>>;
   createPostComment(data: { postId: number; userId: number; content: string }): Promise<PostComment & { username: string; avatarUrl: string | null }>;
   deletePostComment(commentId: number, userId: number): Promise<boolean>;
+
+  // Notifications
+  createNotification(data: { userId: number; fromUserId: number; type: string; postId?: number; message: string }): Promise<Notification>;
+  getNotifications(userId: number): Promise<Array<Notification & { fromUsername: string | null; fromAvatarUrl: string | null }>>;
+  markNotificationsRead(userId: number): Promise<void>;
+  getUnreadNotificationCount(userId: number): Promise<number>;
+
+  // Verified artist + collab
+  setVerifiedArtist(userId: number, value: boolean): Promise<void>;
+  setAvailableForCollab(userId: number, value: boolean): Promise<void>;
+  getCollabUsers(): Promise<Array<{ id: number; username: string; avatarUrl: string | null; availableForCollab: boolean; isVerifiedArtist: boolean }>>;
 
   // Session store
   sessionStore: Store;
@@ -2784,7 +2797,7 @@ export class DatabaseStorage implements IStorage {
     return post!;
   }
 
-  async getPosts(viewerId?: number, limit = 30, offset = 0): Promise<Array<Post & { username: string; avatarUrl: string | null; likesCount: number; commentsCount: number; hasLiked: boolean }>> {
+  async getPosts(viewerId?: number, limit = 30, offset = 0): Promise<Array<Post & { username: string; avatarUrl: string | null; isVerifiedArtist: boolean; likesCount: number; commentsCount: number; hasLiked: boolean }>> {
     const rows = await db
       .select({
         id: posts.id,
@@ -2797,6 +2810,7 @@ export class DatabaseStorage implements IStorage {
         createdAt: posts.createdAt,
         username: users.username,
         avatarUrl: users.avatarUrl,
+        isVerifiedArtist: users.isVerifiedArtist,
         likesCount: sql<number>`(SELECT COUNT(*) FROM post_likes WHERE post_id = ${posts.id})::int`,
         commentsCount: sql<number>`(SELECT COUNT(*) FROM post_comments WHERE post_id = ${posts.id})::int`,
         hasLiked: viewerId
@@ -2811,7 +2825,7 @@ export class DatabaseStorage implements IStorage {
     return rows;
   }
 
-  async getPostsByUser(userId: number, viewerId?: number): Promise<Array<Post & { username: string; avatarUrl: string | null; likesCount: number; commentsCount: number; hasLiked: boolean }>> {
+  async getPostsByUser(userId: number, viewerId?: number): Promise<Array<Post & { username: string; avatarUrl: string | null; isVerifiedArtist: boolean; likesCount: number; commentsCount: number; hasLiked: boolean }>> {
     const rows = await db
       .select({
         id: posts.id,
@@ -2824,6 +2838,7 @@ export class DatabaseStorage implements IStorage {
         createdAt: posts.createdAt,
         username: users.username,
         avatarUrl: users.avatarUrl,
+        isVerifiedArtist: users.isVerifiedArtist,
         likesCount: sql<number>`(SELECT COUNT(*) FROM post_likes WHERE post_id = ${posts.id})::int`,
         commentsCount: sql<number>`(SELECT COUNT(*) FROM post_comments WHERE post_id = ${posts.id})::int`,
         hasLiked: viewerId
@@ -2885,6 +2900,58 @@ export class DatabaseStorage implements IStorage {
   async deletePostComment(commentId: number, userId: number): Promise<boolean> {
     const result = await db.delete(postComments).where(and(eq(postComments.id, commentId), eq(postComments.userId, userId))).returning();
     return result.length > 0;
+  }
+
+  async createNotification(data: { userId: number; fromUserId: number; type: string; postId?: number; message: string }): Promise<Notification> {
+    const [n] = await db.insert(notifications).values(data).returning();
+    return n!;
+  }
+
+  async getNotifications(userId: number): Promise<Array<Notification & { fromUsername: string | null; fromAvatarUrl: string | null }>> {
+    const fromUsers = users;
+    const rows = await db
+      .select({
+        id: notifications.id,
+        userId: notifications.userId,
+        fromUserId: notifications.fromUserId,
+        type: notifications.type,
+        postId: notifications.postId,
+        message: notifications.message,
+        read: notifications.read,
+        createdAt: notifications.createdAt,
+        fromUsername: fromUsers.username,
+        fromAvatarUrl: fromUsers.avatarUrl,
+      })
+      .from(notifications)
+      .leftJoin(fromUsers, eq(notifications.fromUserId, fromUsers.id))
+      .where(eq(notifications.userId, userId))
+      .orderBy(desc(notifications.createdAt))
+      .limit(50);
+    return rows;
+  }
+
+  async markNotificationsRead(userId: number): Promise<void> {
+    await db.update(notifications).set({ read: true }).where(eq(notifications.userId, userId));
+  }
+
+  async getUnreadNotificationCount(userId: number): Promise<number> {
+    const result = await db.select({ cnt: count(notifications.id) }).from(notifications).where(and(eq(notifications.userId, userId), eq(notifications.read, false)));
+    return Number(result[0]?.cnt ?? 0);
+  }
+
+  async setVerifiedArtist(userId: number, value: boolean): Promise<void> {
+    await db.update(users).set({ isVerifiedArtist: value }).where(eq(users.id, userId));
+  }
+
+  async setAvailableForCollab(userId: number, value: boolean): Promise<void> {
+    await db.update(users).set({ availableForCollab: value }).where(eq(users.id, userId));
+  }
+
+  async getCollabUsers(): Promise<Array<{ id: number; username: string; avatarUrl: string | null; availableForCollab: boolean; isVerifiedArtist: boolean }>> {
+    return db.select({ id: users.id, username: users.username, avatarUrl: users.avatarUrl, availableForCollab: users.availableForCollab, isVerifiedArtist: users.isVerifiedArtist })
+      .from(users)
+      .where(eq(users.availableForCollab, true))
+      .orderBy(users.username);
   }
 }
 

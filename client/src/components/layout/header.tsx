@@ -15,6 +15,7 @@ import {
 import { useAuth } from "@/hooks/use-auth";
 import { ThemeToggle } from "@/components/theme-toggle";
 import { useEditMode } from "@/contexts/EditModeContext";
+import { NotificationBell } from "@/components/NotificationBell";
 import { useWebSocketContext } from "@/contexts/WebSocketContext";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import leflowLogo from "@/assets/leflow-logo.png";
@@ -162,6 +163,7 @@ export function Header() {
                 </Button>
               )}
               <ThemeToggle />
+              {user?.emailVerified && <NotificationBell />}
 
               {user ? (
                 <DropdownMenu>

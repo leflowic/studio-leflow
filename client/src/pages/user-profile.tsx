@@ -10,7 +10,7 @@ import { Badge } from "@/components/ui/badge";
 import { Music, MessageCircle, Heart, FileText, Image, Users, Play, Pause, Calendar } from "lucide-react";
 import { formatDistanceToNow } from "date-fns";
 import { sr } from "date-fns/locale";
-import { useState, useRef } from "react";
+import { useState, useRef, useEffect } from "react";
 import { cn } from "@/lib/utils";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
@@ -47,43 +47,43 @@ const POST_TYPE_META: Record<string, { label: string; icon: any; color: string }
 };
 
 function AudioPlayer({ url }: { url: string }) {
+  const containerRef = useRef<HTMLDivElement>(null);
+  const wsRef = useRef<any>(null);
   const [playing, setPlaying] = useState(false);
-  const [progress, setProgress] = useState(0);
-  const audioRef = useRef<HTMLAudioElement>(null);
+  const [ready, setReady] = useState(false);
 
-  const toggle = () => {
-    const el = audioRef.current;
-    if (!el) return;
-    if (playing) { el.pause(); setPlaying(false); }
-    else { el.play(); setPlaying(true); }
-  };
+  useEffect(() => {
+    if (!containerRef.current) return;
+    let cancelled = false;
+    import("wavesurfer.js").then(({ default: WaveSurfer }) => {
+      if (cancelled || !containerRef.current) return;
+      const ws = WaveSurfer.create({
+        container: containerRef.current,
+        waveColor: "hsl(var(--muted-foreground) / 0.4)",
+        progressColor: "hsl(var(--primary))",
+        cursorColor: "transparent",
+        barWidth: 2, barGap: 1, barRadius: 2,
+        height: 36, normalize: true, url,
+      });
+      ws.on("ready", () => setReady(true));
+      ws.on("play", () => setPlaying(true));
+      ws.on("pause", () => setPlaying(false));
+      ws.on("finish", () => setPlaying(false));
+      wsRef.current = ws;
+    });
+    return () => { cancelled = true; wsRef.current?.destroy(); wsRef.current = null; };
+  }, [url]);
 
   return (
     <div className="flex items-center gap-3 bg-muted/60 rounded-xl px-4 py-3 mt-2">
       <button
-        onClick={toggle}
-        className="w-9 h-9 rounded-full bg-primary text-primary-foreground flex items-center justify-center flex-shrink-0 hover:bg-primary/90 transition-colors"
+        onClick={() => wsRef.current?.playPause()}
+        disabled={!ready}
+        className="w-9 h-9 rounded-full bg-primary text-primary-foreground flex items-center justify-center flex-shrink-0 hover:bg-primary/90 transition-colors disabled:opacity-50"
       >
         {playing ? <Pause className="w-4 h-4" /> : <Play className="w-4 h-4 translate-x-0.5" />}
       </button>
-      <div className="flex-1 relative h-1.5 bg-border rounded-full overflow-hidden cursor-pointer"
-        onClick={(e) => {
-          const rect = (e.target as HTMLDivElement).getBoundingClientRect();
-          const pct = (e.clientX - rect.left) / rect.width;
-          if (audioRef.current) audioRef.current.currentTime = pct * audioRef.current.duration;
-        }}
-      >
-        <div className="absolute inset-y-0 left-0 bg-primary rounded-full transition-all" style={{ width: `${progress}%` }} />
-      </div>
-      <audio
-        ref={audioRef}
-        src={url}
-        onTimeUpdate={() => {
-          const el = audioRef.current;
-          if (el && el.duration) setProgress((el.currentTime / el.duration) * 100);
-        }}
-        onEnded={() => { setPlaying(false); setProgress(0); }}
-      />
+      <div ref={containerRef} className="flex-1 min-w-0" />
     </div>
   );
 }

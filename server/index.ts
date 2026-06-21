@@ -235,6 +235,33 @@ async function runMigrations() {
   } finally {
     client4.release();
   }
+
+  // ─── Notifications + user flags ──────────────────────────────────────────
+  const client5 = await pool.connect();
+  try {
+    await client5.query(`
+      ALTER TABLE users
+        ADD COLUMN IF NOT EXISTS is_verified_artist BOOLEAN NOT NULL DEFAULT FALSE,
+        ADD COLUMN IF NOT EXISTS available_for_collab BOOLEAN NOT NULL DEFAULT FALSE;
+    `);
+    await client5.query(`
+      CREATE TABLE IF NOT EXISTS notifications (
+        id SERIAL PRIMARY KEY,
+        user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+        from_user_id INTEGER REFERENCES users(id) ON DELETE CASCADE,
+        type TEXT NOT NULL,
+        post_id INTEGER REFERENCES posts(id) ON DELETE CASCADE,
+        message TEXT NOT NULL,
+        read BOOLEAN NOT NULL DEFAULT FALSE,
+        created_at TIMESTAMP NOT NULL DEFAULT NOW()
+      );
+    `);
+    log('[Migrations] Notifications + user flags ready', 'express');
+  } catch (err: any) {
+    log(`[Migrations] Warning on notifications: ${err.message}`, 'express');
+  } finally {
+    client5.release();
+  }
 }
 
 const app = express();

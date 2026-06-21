@@ -6,7 +6,7 @@ import { useToast } from "@/hooks/use-toast";
 import { Link } from "wouter";
 import { motion } from "framer-motion";
 import { FadeInWhenVisible } from "@/components/motion/FadeIn";
-import { Music, Heart, User, TrendingUp, Youtube, Trophy, Flame, Plus, LayoutList } from "lucide-react";
+import { Music, Heart, User, TrendingUp, Youtube, Trophy, Flame, Plus, LayoutList, Gamepad2, Users } from "lucide-react";
 import { SEO } from "@/components/SEO";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -41,6 +41,54 @@ function RankMedal({ index }: { index: number }) {
   if (index === 1) return <div className="w-7 h-7 rounded-full bg-slate-400 flex items-center justify-center text-white text-xs font-bold shadow-sm"><span>#2</span></div>;
   if (index === 2) return <div className="w-7 h-7 rounded-full bg-amber-700 flex items-center justify-center text-white text-xs font-bold shadow-sm"><span>#3</span></div>;
   return <div className="w-7 h-7 rounded-full bg-muted flex items-center justify-center text-muted-foreground text-xs font-bold">#{index + 1}</div>;
+}
+
+type LeaderboardEntry = { userId: number; username: string; avatarUrl: string | null; totalPoints: number; correctAnswers: number };
+type CollabUser = { id: number; username: string; avatarUrl: string | null; isVerifiedArtist: boolean };
+
+function GameLeaderboardWidget() {
+  const { data = [] } = useQuery<LeaderboardEntry[]>({ queryKey: ["/api/game/leaderboard"] });
+  if (data.length === 0) return null;
+  return (
+    <div className="rounded-2xl border border-border/60 bg-card p-4">
+      <div className="flex items-center gap-2 mb-3">
+        <Gamepad2 className="w-4 h-4 text-primary" />
+        <h2 className="font-semibold text-sm">Top igrači sedmice</h2>
+      </div>
+      <div className="space-y-2">
+        {data.slice(0, 5).map((entry, i) => (
+          <Link key={entry.userId} href={`/u/${entry.username}`} className="flex items-center gap-2.5 hover:bg-muted/50 rounded-xl px-2 py-1.5 transition-colors">
+            <span className={cn("w-5 h-5 rounded-full flex items-center justify-center text-[10px] font-bold flex-shrink-0",
+              i === 0 ? "bg-amber-500 text-white" : i === 1 ? "bg-slate-400 text-white" : i === 2 ? "bg-amber-700 text-white" : "bg-muted text-muted-foreground"
+            )}>{i + 1}</span>
+            <span className="flex-1 text-sm font-medium truncate">{entry.username}</span>
+            <span className="text-xs text-muted-foreground font-semibold">{entry.totalPoints}pt</span>
+          </Link>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+function CollabUsersWidget() {
+  const { data = [] } = useQuery<CollabUser[]>({ queryKey: ["/api/collab-users"] });
+  if (data.length === 0) return null;
+  return (
+    <div className="rounded-2xl border border-border/60 bg-card p-4">
+      <div className="flex items-center gap-2 mb-3">
+        <Users className="w-4 h-4 text-violet-500" />
+        <h2 className="font-semibold text-sm">Traže saradnju</h2>
+      </div>
+      <div className="flex flex-wrap gap-2">
+        {data.slice(0, 8).map(u => (
+          <Link key={u.id} href={`/u/${u.username}`} className="flex items-center gap-1.5 bg-muted/60 hover:bg-muted rounded-xl px-2.5 py-1.5 transition-colors">
+            <span className="text-xs font-medium">{u.username}</span>
+            {u.isVerifiedArtist && <span className="text-primary text-[10px]">✓</span>}
+          </Link>
+        ))}
+      </div>
+    </div>
+  );
 }
 
 type TabKey = "feed" | "ranglista";
@@ -264,16 +312,31 @@ export default function Zajednica() {
               )}
             </div>
 
-            {/* Chat column — 2/5 width, sticky */}
+            {/* Sidebar — 2/5 width, sticky */}
             <div className="lg:col-span-2">
-              <div className="sticky top-20">
-                <div className="flex items-center gap-2 mb-3">
-                  <span className="w-1.5 h-1.5 bg-green-500 rounded-full animate-pulse" />
-                  <h2 className="font-semibold text-sm">Live Chat</h2>
+              <div className="sticky top-20 space-y-5">
+
+                {/* Live Chat */}
+                <div>
+                  <div className="flex items-center gap-2 mb-3">
+                    <span className="w-1.5 h-1.5 bg-green-500 rounded-full animate-pulse" />
+                    <h2 className="font-semibold text-sm">Live Chat</h2>
+                  </div>
+                  <FadeInWhenVisible>
+                    <CommunityChat />
+                  </FadeInWhenVisible>
                 </div>
+
+                {/* Game leaderboard widget */}
                 <FadeInWhenVisible>
-                  <CommunityChat />
+                  <GameLeaderboardWidget />
                 </FadeInWhenVisible>
+
+                {/* Collab users widget */}
+                <FadeInWhenVisible>
+                  <CollabUsersWidget />
+                </FadeInWhenVisible>
+
               </div>
             </div>
 
