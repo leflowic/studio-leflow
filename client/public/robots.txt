@@ -18,16 +18,8 @@ Disallow: /moje-pesme
 Disallow: /moje-pesme/*
 Disallow: /igra
 Disallow: /zajednica
+Disallow: /settings
+Disallow: /settings/*
+Disallow: /u/
 Disallow: /api/
 Disallow: /api/*
-
-# Allow important public pages
-Allow: /
-Allow: /usluge
-Allow: /projekti
-Allow: /kontakt
-Allow: /tim
-Allow: /pravila
-Allow: /uslovi-koriscenja
-Allow: /prijava
-Allow: /registracija

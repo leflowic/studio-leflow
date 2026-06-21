@@ -2,7 +2,7 @@ import { Link } from "wouter";
 import { HelpCircle, ArrowRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { FadeInWhenVisible } from "@/components/motion/FadeIn";
-import { SEO } from "@/components/SEO";
+import { SEO, pageStructuredData } from "@/components/SEO";
 import {
   Accordion,
   AccordionContent,
@@ -51,6 +51,7 @@ export default function FAQPage() {
         description="Odgovori na najčešća pitanja o snimanju, mix/masteru, instrumentalima i rezervaciji termina u Studio LeFlow Beograd."
         keywords={["studio leflow faq", "pitanja snimanje", "kako zakazati studio", "revizije mix", "početnik studio beograd"]}
         canonicalUrl="/faq"
+        structuredData={pageStructuredData.faq}
       />
 
       <main className="min-h-screen bg-background">

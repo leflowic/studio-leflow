@@ -14,7 +14,7 @@ interface SEOProps {
 // Default LocalBusiness structured data for Studio LeFlow
 const defaultStructuredData = {
   "@context": "https://schema.org",
-  "@type": "RecordingStudio",
+  "@type": "MusicRecordingStudio",
   "@id": "https://studioleflow.com/#organization",
   "name": "Studio LeFlow",
   "alternateName": ["LeFlow Studio", "LeFlow", "Studio Le Flow"],
@@ -23,7 +23,7 @@ const defaultStructuredData = {
   "image": "https://studioleflow.com/og-image.png",
   "description": "Vrhunski muzički studio u Beogradu. Profesionalno snimanje, mix/mastering, instrumentalna produkcija i video spotovi.",
   "telephone": "+381637347023",
-  "email": "leflowbusiness@gmail.com",
+  "email": "podrska@studioleflow.com",
   "address": {
     "@type": "PostalAddress",
     "addressLocality": "Beograd",
@@ -119,16 +119,19 @@ function getAbsoluteUrl(path: string): string {
   return path;
 }
 
-// Get canonical URL
+// Get canonical URL — always absolute
 function getCanonicalUrl(customUrl?: string): string {
-  if (customUrl) return customUrl;
+  const base = 'https://studioleflow.com';
+  if (customUrl) {
+    return customUrl.startsWith('http') ? customUrl : `${base}${customUrl.startsWith('/') ? '' : '/'}${customUrl}`;
+  }
   if (typeof window !== 'undefined') {
     const url = new URL(window.location.href);
     url.search = '';
     url.hash = '';
     return url.toString();
   }
-  return 'https://studioleflow.com';
+  return base;
 }
 
 export function SEO({
@@ -225,6 +228,7 @@ export function SEO({
     setMetaTag('og:image:width', '1200', true);
     setMetaTag('og:image:height', '630', true);
     setMetaTag('og:image:alt', 'Studio LeFlow - Profesionalni Muzički Studio Beograd', true);
+    setMetaTag('og:image:type', 'image/png', true);
     setMetaTag('og:type', ogType, true);
     setMetaTag('og:site_name', 'Studio LeFlow', true);
     setMetaTag('og:locale', 'sr_RS', true);
@@ -313,9 +317,9 @@ export const pageStructuredData = {
     "name": "Kontakt - Studio LeFlow",
     "description": "Kontaktirajte Studio LeFlow za profesionalnu muzičku produkciju u Beogradu",
     "mainEntity": {
-      "@type": "RecordingStudio",
+      "@type": "MusicRecordingStudio",
       "name": "Studio LeFlow",
-      "email": "leflowbusiness@gmail.com",
+      "email": "podrska@studioleflow.com",
       "address": {
         "@type": "PostalAddress",
         "addressLocality": "Beograd",
@@ -334,5 +338,61 @@ export const pageStructuredData = {
       "name": "Studio LeFlow Portfolio",
       "itemListOrder": "https://schema.org/ItemListOrderDescending"
     }
+  },
+
+  faq: {
+    "@context": "https://schema.org",
+    "@type": "FAQPage",
+    "name": "Česta Pitanja — Studio LeFlow",
+    "mainEntity": [
+      {
+        "@type": "Question",
+        "name": "Da li moram da dođem sa gotovim tekstom?",
+        "acceptedAnswer": {
+          "@type": "Answer",
+          "text": "Da, obavezno. Sesija snimanja je tu da snimimo ono što si kreirao, ne da pišemo pesmu. Dođi potpuno spreman."
+        }
+      },
+      {
+        "@type": "Question",
+        "name": "Mogu li da dođem kao potpuni početnik?",
+        "acceptedAnswer": {
+          "@type": "Answer",
+          "text": "Tehnički da, ali ne preporučujemo. Studio je opremljen vrhunskom profesionalnom opremom. Ako si početnik, stekni iskustvo na pristupačnijoj opremi, pa kad si spreman — vrata su otvorena."
+        }
+      },
+      {
+        "@type": "Question",
+        "name": "Šta dobijam na kraju sesije?",
+        "acceptedAnswer": {
+          "@type": "Answer",
+          "text": "Zavisi od dogovorene usluge. Za snimanje dobijaš minimalno obrađen demo. Za snimanje + mix/master dobijaš demo spreman za dalju distribuciju."
+        }
+      },
+      {
+        "@type": "Question",
+        "name": "Koliko revizija je uključeno?",
+        "acceptedAnswer": {
+          "@type": "Answer",
+          "text": "Za snimanje i mix uključene su 3 besplatne revizije. Za produkciju beata uključena je 1 revizija. Za video produkciju uključene su 2 revizije montaže."
+        }
+      },
+      {
+        "@type": "Question",
+        "name": "Kako da zakažem termin?",
+        "acceptedAnswer": {
+          "@type": "Answer",
+          "text": "Najbrže putem WhatsApp-a ili Instagram DM-a. Kontakt informacije su dostupne na stranici za kontakt na studioleflow.com/kontakt."
+        }
+      },
+      {
+        "@type": "Question",
+        "name": "Da li snimate samo vokal ili i instrumente?",
+        "acceptedAnswer": {
+          "@type": "Answer",
+          "text": "Primarno snimamo vokal. Za instrumentale i produkciju radimo custom bitove — žanrovi uključuju Hip-Hop, Pop, R&B, Trap i Balkan muziku."
+        }
+      }
+    ]
   }
 };
