@@ -2,7 +2,7 @@ import type { Express } from "express";
 import { createServer, type Server } from "http";
 import { storage } from "./storage";
 import { wsHelpers, notifyUser, getOnlineUsersSnapshot } from "./websocket-helpers";
-import { insertContactSubmissionSchema, insertCmsContentSchema, insertCmsMediaSchema, insertVideoSpotSchema, insertUserSongSchema, insertNewsletterSubscriberSchema, insertInvoiceSchema, insertCommunityMessageSchema, insertSiteAnnouncementSchema, mixMasterContractDataSchema, copyrightTransferContractDataSchema, instrumentalSaleContractDataSchema, type CmsContent, type CmsMedia, type VideoSpot, type UserSong } from "@shared/schema";
+import { insertContactSubmissionSchema, insertCmsContentSchema, insertCmsMediaSchema, insertVideoSpotSchema, insertUserSongSchema, insertNewsletterSubscriberSchema, insertInvoiceSchema, insertCommunityMessageSchema, insertSiteAnnouncementSchema, mixMasterContractDataSchema, copyrightTransferContractDataSchema, instrumentalSaleContractDataSchema, insertSmartLinkSchema, type CmsContent, type CmsMedia, type VideoSpot, type UserSong } from "@shared/schema";
 import { sendEmail, getLastVerificationCode } from "./resend-client";
 import { resendVerificationEmail, adminLoginEmail, contactFormEmail, newsletterConfirmEmail, licenseDeliveryEmail, customEmail } from "./email-templates";
 import { setupAuth, hashPassword, comparePasswords } from "./auth";
@@ -3649,6 +3649,94 @@ Sitemap: ${siteUrl}/sitemap.xml
       res.json(comment);
     } catch (e) {
       console.error("[Portal] POST comment error:", e);
+      res.status(500).json({ error: "Greška na serveru" });
+    }
+  });
+
+  // --- Smart Links ---
+
+  app.get("/api/admin/smart-links", requireAdmin, async (_req, res) => {
+    try {
+      const links = await storage.getAllSmartLinks();
+      res.json(links);
+    } catch {
+      res.status(500).json({ error: "Greška na serveru" });
+    }
+  });
+
+  app.post("/api/admin/smart-links", requireAdmin, async (req, res) => {
+    try {
+      const parsed = insertSmartLinkSchema.safeParse(req.body);
+      if (!parsed.success) return res.status(400).json({ error: parsed.error.errors[0]?.message ?? "Nevažeći podaci" });
+      const link = await storage.createSmartLink(parsed.data);
+      res.json(link);
+    } catch (e: any) {
+      if (e?.code === "23505") return res.status(409).json({ error: "Slug već postoji. Izaberite drugi." });
+      res.status(500).json({ error: "Greška na serveru" });
+    }
+  });
+
+  app.patch("/api/admin/smart-links/:id", requireAdmin, async (req, res) => {
+    try {
+      const id = parseInt(req.params.id);
+      if (isNaN(id)) return res.status(400).json({ error: "Nevažeći ID" });
+      const parsed = insertSmartLinkSchema.partial().safeParse(req.body);
+      if (!parsed.success) return res.status(400).json({ error: parsed.error.errors[0]?.message ?? "Nevažeći podaci" });
+      const link = await storage.updateSmartLink(id, parsed.data);
+      res.json(link);
+    } catch (e: any) {
+      if (e?.code === "23505") return res.status(409).json({ error: "Slug već postoji. Izaberite drugi." });
+      res.status(500).json({ error: "Greška na serveru" });
+    }
+  });
+
+  app.delete("/api/admin/smart-links/:id", requireAdmin, async (req, res) => {
+    try {
+      const id = parseInt(req.params.id);
+      if (isNaN(id)) return res.status(400).json({ error: "Nevažeći ID" });
+      await storage.deleteSmartLink(id);
+      res.json({ ok: true });
+    } catch {
+      res.status(500).json({ error: "Greška na serveru" });
+    }
+  });
+
+  // Upload cover image to Cloudinary for smart links
+  app.post("/api/upload/smart-link-cover", requireAdmin, uploadRateLimiter, upload.single("file"), async (req, res) => {
+    try {
+      if (!req.file) return res.status(400).json({ error: "Fajl nije pronađen" });
+      const buf = req.file.buffer;
+      const type = await fileTypeFromBuffer(buf);
+      if (!type || !type.mime.startsWith("image/")) return res.status(400).json({ error: "Samo slike su dozvoljene" });
+      const url = await uploadImageToCloudinary(buf, "studioleflow/smart-links", `smart_cover_${Date.now()}`);
+      res.json({ url });
+    } catch {
+      res.status(500).json({ error: "Greška pri uploadu slike" });
+    }
+  });
+
+  // Public: get smart link by slug
+  app.get("/api/l/:slug", async (req, res) => {
+    try {
+      const link = await storage.getSmartLinkBySlug(req.params.slug);
+      if (!link) return res.status(404).json({ error: "Link nije pronađen" });
+      res.json(link);
+    } catch {
+      res.status(500).json({ error: "Greška na serveru" });
+    }
+  });
+
+  // Public: record a click on a platform
+  app.post("/api/l/:slug/click", async (req, res) => {
+    try {
+      const link = await storage.getSmartLinkBySlug(req.params.slug);
+      if (!link) return res.status(404).json({ error: "Link nije pronađen" });
+      const { platform } = req.body;
+      const allowed = ["spotify", "youtube", "apple_music", "soundcloud", "tidal", "deezer"];
+      if (!platform || !allowed.includes(platform)) return res.status(400).json({ error: "Nevažeća platforma" });
+      await storage.recordSmartLinkClick(link.id, platform);
+      res.json({ ok: true });
+    } catch {
       res.status(500).json({ error: "Greška na serveru" });
     }
   });

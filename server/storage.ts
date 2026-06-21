@@ -38,6 +38,10 @@ import {
   type ClientPortal,
   type PortalVersion,
   type PortalComment,
+  type SmartLink,
+  type InsertSmartLink,
+  smartLinks,
+  smartLinkClicks,
   contactSubmissions,
   clientPortals,
   portalVersions,
@@ -296,6 +300,14 @@ export interface IStorage {
   adminGetWeeklyPrizes(): Promise<Array<{ id: number; weekStart: string; discountPct: number; prizeDescription: string; promoCode: string | null; winnerUserId: number | null; winnerUsername: string | null }>>;
   adminUpsertWeeklyPrize(data: { weekStart: string; discountPct: number; prizeDescription: string; promoCode?: string }): Promise<void>;
   adminSetPrizeWinner(weekStart: string): Promise<{ winnerUsername: string | null; promoCode: string | null }>;
+
+  // Smart Links
+  createSmartLink(data: InsertSmartLink): Promise<SmartLink>;
+  getAllSmartLinks(): Promise<Array<SmartLink & { totalClicks: number; clicksByPlatform: Record<string, number> }>>;
+  getSmartLinkBySlug(slug: string): Promise<SmartLink | undefined>;
+  updateSmartLink(id: number, data: Partial<InsertSmartLink>): Promise<SmartLink>;
+  deleteSmartLink(id: number): Promise<void>;
+  recordSmartLinkClick(smartLinkId: number, platform: string): Promise<void>;
 
   // Client Portal
   getAllPortals(): Promise<Array<ClientPortal & { versionsCount: number; unresolvedComments: number }>>;
@@ -2704,6 +2716,50 @@ export class DatabaseStorage implements IStorage {
 
   async resolvePortalComment(id: number): Promise<void> {
     await db.update(portalComments).set({ resolved: true }).where(eq(portalComments.id, id));
+  }
+
+  // Smart Links
+  async createSmartLink(data: InsertSmartLink): Promise<SmartLink> {
+    const [link] = await db.insert(smartLinks).values(data).returning();
+    return link!;
+  }
+
+  async getAllSmartLinks(): Promise<Array<SmartLink & { totalClicks: number; clicksByPlatform: Record<string, number> }>> {
+    const links = await db.select().from(smartLinks).orderBy(desc(smartLinks.createdAt));
+    const clicks = await db.select({
+      smartLinkId: smartLinkClicks.smartLinkId,
+      platform: smartLinkClicks.platform,
+      cnt: count(smartLinkClicks.id),
+    }).from(smartLinkClicks).groupBy(smartLinkClicks.smartLinkId, smartLinkClicks.platform);
+
+    return links.map(link => {
+      const linkClicks = clicks.filter(c => c.smartLinkId === link.id);
+      const clicksByPlatform: Record<string, number> = {};
+      let total = 0;
+      for (const c of linkClicks) {
+        clicksByPlatform[c.platform] = Number(c.cnt);
+        total += Number(c.cnt);
+      }
+      return { ...link, totalClicks: total, clicksByPlatform };
+    });
+  }
+
+  async getSmartLinkBySlug(slug: string): Promise<SmartLink | undefined> {
+    const [link] = await db.select().from(smartLinks).where(eq(smartLinks.slug, slug));
+    return link || undefined;
+  }
+
+  async updateSmartLink(id: number, data: Partial<InsertSmartLink>): Promise<SmartLink> {
+    const [link] = await db.update(smartLinks).set(data).where(eq(smartLinks.id, id)).returning();
+    return link!;
+  }
+
+  async deleteSmartLink(id: number): Promise<void> {
+    await db.delete(smartLinks).where(eq(smartLinks.id, id));
+  }
+
+  async recordSmartLinkClick(smartLinkId: number, platform: string): Promise<void> {
+    await db.insert(smartLinkClicks).values({ smartLinkId, platform });
   }
 }
 

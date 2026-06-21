@@ -38,6 +38,7 @@ const RichTextEditor = lazy(() =>
 import { Separator } from "@/components/ui/separator";
 import { AvatarWithInitials } from "@/components/ui/avatar-with-initials";
 import { ContractsTab } from "@/components/admin/ContractsTab";
+import { SmartLinksTab } from "@/components/admin/SmartLinksTab";
 import { CalendarTab } from "@/components/admin/CalendarTab";
 import { KatastarTab } from "@/components/admin/KatastarTab";
 import GameTab from "@/components/admin/GameTab";
@@ -226,6 +227,7 @@ export default function AdminPage() {
               <TabsTrigger value="calendar" data-testid="tab-calendar" className="flex-1 min-w-[100px]">Kalendar</TabsTrigger>
               <TabsTrigger value="katastar" data-testid="tab-katastar" className="flex-1 min-w-[100px]">Katastar</TabsTrigger>
               <TabsTrigger value="game" data-testid="tab-game" className="flex-1 min-w-[100px]">Igra</TabsTrigger>
+              <TabsTrigger value="smart-links" data-testid="tab-smart-links" className="flex-1 min-w-[100px]">Smart Links</TabsTrigger>
               <TabsTrigger value="portal" data-testid="tab-portal" className="flex-1 min-w-[100px]">Portal</TabsTrigger>
               <TabsTrigger value="email" data-testid="tab-email" className="flex-1 min-w-[100px]">Email</TabsTrigger>
               <TabsTrigger value="settings" data-testid="tab-settings" className="flex-1 min-w-[100px]">Podešavanja</TabsTrigger>
@@ -278,6 +280,10 @@ export default function AdminPage() {
 
           <TabsContent value="game" forceMount>
             <GameTab />
+          </TabsContent>
+
+          <TabsContent value="smart-links">
+            <SmartLinksTab />
           </TabsContent>
 
           <TabsContent value="portal">

@@ -868,3 +868,43 @@ export const portalComments = pgTable("portal_comments", {
 export type ClientPortal = typeof clientPortals.$inferSelect;
 export type PortalVersion = typeof portalVersions.$inferSelect;
 export type PortalComment = typeof portalComments.$inferSelect;
+
+// ─── Smart Links ──────────────────────────────────────────────────────────────
+
+export const smartLinks = pgTable("smart_links", {
+  id: serial("id").primaryKey(),
+  slug: text("slug").notNull().unique(),
+  title: text("title").notNull(),
+  artist: text("artist").notNull(),
+  coverUrl: text("cover_url"),
+  spotifyUrl: text("spotify_url"),
+  youtubeUrl: text("youtube_url"),
+  appleMusicUrl: text("apple_music_url"),
+  soundcloudUrl: text("soundcloud_url"),
+  tidalUrl: text("tidal_url"),
+  deezerUrl: text("deezer_url"),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+
+export const smartLinkClicks = pgTable("smart_link_clicks", {
+  id: serial("id").primaryKey(),
+  smartLinkId: integer("smart_link_id").notNull().references(() => smartLinks.id, { onDelete: "cascade" }),
+  platform: text("platform").notNull(),
+  clickedAt: timestamp("clicked_at").defaultNow().notNull(),
+});
+
+export const insertSmartLinkSchema = createInsertSchema(smartLinks).omit({ id: true, createdAt: true }).extend({
+  slug: z.string().min(1, "Slug je obavezan").regex(/^[a-z0-9-]+$/, "Slug može sadržati samo mala slova, brojeve i crtice"),
+  title: z.string().min(1, "Naslov je obavezan"),
+  artist: z.string().min(1, "Ime izvođača je obavezno"),
+  spotifyUrl: z.string().url("Nevažeći URL").optional().nullable().or(z.literal("")),
+  youtubeUrl: z.string().url("Nevažeći URL").optional().nullable().or(z.literal("")),
+  appleMusicUrl: z.string().url("Nevažeći URL").optional().nullable().or(z.literal("")),
+  soundcloudUrl: z.string().url("Nevažeći URL").optional().nullable().or(z.literal("")),
+  tidalUrl: z.string().url("Nevažeći URL").optional().nullable().or(z.literal("")),
+  deezerUrl: z.string().url("Nevažeći URL").optional().nullable().or(z.literal("")),
+});
+
+export type InsertSmartLink = z.infer<typeof insertSmartLinkSchema>;
+export type SmartLink = typeof smartLinks.$inferSelect;
+export type SmartLinkClick = typeof smartLinkClicks.$inferSelect;

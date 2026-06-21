@@ -102,12 +102,26 @@ const NewsletterConfirmationPage = lazy(() => import("@/pages/newsletter-confirm
 const UslugePage = lazy(() => import("@/pages/usluge"));
 const FAQPage = lazy(() => import("@/pages/faq"));
 const PortalPage = lazy(() => import("@/pages/portal"));
+const SmartLinkPage = lazy(() => import("@/pages/l"));
 function Router() {
   const [location] = useLocation();
   const { user } = useAuth();
 
   useScrollToTop();
   usePWARedirect(); // Auto-redirect in PWA standalone mode
+
+  // Smart Link pages — standalone layout (no header/footer)
+  if (location.startsWith("/l/")) {
+    return (
+      <ChunkErrorBoundary>
+        <Suspense fallback={<div className="min-h-screen bg-[#080808] flex items-center justify-center"><div className="w-8 h-8 rounded-full border-2 border-primary/30 border-t-primary animate-spin" /></div>}>
+          <Switch location={location}>
+            <Route path="/l/:slug"><SmartLinkPage /></Route>
+          </Switch>
+        </Suspense>
+      </ChunkErrorBoundary>
+    );
+  }
 
   // Portal pages get their own standalone layout (no main nav/footer)
   if (location.startsWith("/portal/")) {

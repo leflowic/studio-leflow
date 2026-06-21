@@ -161,6 +161,37 @@ async function runMigrations() {
     log('[Migrations] Messaging extensions (edited_at, reactions) ready', 'express');
   } catch (err: any) {
     log(`[Migrations] Warning on messaging extensions: ${err.message}`, 'express');
+  }
+
+  // Smart Links tables
+  try {
+    await client.query(`
+      CREATE TABLE IF NOT EXISTS smart_links (
+        id SERIAL PRIMARY KEY,
+        slug TEXT NOT NULL UNIQUE,
+        title TEXT NOT NULL,
+        artist TEXT NOT NULL,
+        cover_url TEXT,
+        spotify_url TEXT,
+        youtube_url TEXT,
+        apple_music_url TEXT,
+        soundcloud_url TEXT,
+        tidal_url TEXT,
+        deezer_url TEXT,
+        created_at TIMESTAMP NOT NULL DEFAULT NOW()
+      );
+    `);
+    await client.query(`
+      CREATE TABLE IF NOT EXISTS smart_link_clicks (
+        id SERIAL PRIMARY KEY,
+        smart_link_id INTEGER NOT NULL REFERENCES smart_links(id) ON DELETE CASCADE,
+        platform TEXT NOT NULL,
+        clicked_at TIMESTAMP NOT NULL DEFAULT NOW()
+      );
+    `);
+    log('[Migrations] Smart Links tables ready', 'express');
+  } catch (err: any) {
+    log(`[Migrations] Warning on smart links tables: ${err.message}`, 'express');
   } finally {
     client.release();
   }
