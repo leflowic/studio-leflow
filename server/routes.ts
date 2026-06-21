@@ -3798,6 +3798,75 @@ Sitemap: ${siteUrl}/sitemap.xml
     }
   });
 
+  // OG meta tag handler for /l/:slug — returns server-rendered HTML to social crawlers
+  // so Instagram/WhatsApp/Discord show a rich link preview with cover art.
+  // Real users get next() → SPA handles rendering as normal.
+  const CRAWLER_UA = /facebookexternalhit|Twitterbot|LinkedInBot|Slackbot|TelegramBot|WhatsApp|Instagram|Pinterest|Googlebot|bingbot|Discordbot|Applebot|vkShare|Iframely|Embedly/i;
+
+  function escOg(s: string): string {
+    return s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
+  }
+
+  function ogImageUrl(coverUrl: string | null | undefined, appUrl: string): string {
+    if (!coverUrl) return `${appUrl}/leflow-logo-white.png`;
+    // Inject Cloudinary transformation for 1200×630 OG image
+    if (coverUrl.includes("res.cloudinary.com")) {
+      return coverUrl.replace("/upload/", "/upload/w_1200,h_630,c_fill,g_center,q_auto,f_auto/");
+    }
+    return coverUrl;
+  }
+
+  function platformList(link: any): string {
+    const names: string[] = [];
+    if (link.spotifyUrl) names.push("Spotify");
+    if (link.appleMusicUrl) names.push("Apple Music");
+    if (link.youtubeUrl) names.push("YouTube");
+    if (link.soundcloudUrl) names.push("SoundCloud");
+    if (link.tidalUrl) names.push("Tidal");
+    if (link.deezerUrl) names.push("Deezer");
+    if (!names.length) return "Slušaj na svim platformama";
+    if (names.length === 1) return `Slušaj na ${names[0]}`;
+    return `Slušaj na ${names.slice(0, -1).join(", ")} i ${names[names.length - 1]}`;
+  }
+
+  app.get("/l/:slug", async (req, res, next) => {
+    if (!CRAWLER_UA.test(req.headers["user-agent"] ?? "")) return next();
+    try {
+      const link = await storage.getSmartLinkBySlug(req.params.slug);
+      if (!link) return next();
+      const appUrl = (process.env.APP_URL ?? "https://studioleflow.com").replace(/\/$/, "");
+      const pageUrl = `${appUrl}/l/${link.slug}`;
+      const title = escOg(`${link.title} — ${link.artist}`);
+      const desc = escOg(`${platformList(link)} — Studio LeFlow`);
+      const img = escOg(ogImageUrl(link.coverUrl, appUrl));
+      res.setHeader("Content-Type", "text/html; charset=utf-8");
+      res.setHeader("Cache-Control", "public, max-age=3600");
+      res.send(`<!DOCTYPE html>
+<html lang="sr">
+<head>
+<meta charset="UTF-8">
+<title>${title}</title>
+<meta name="description" content="${desc}">
+<meta property="og:type" content="music.song">
+<meta property="og:title" content="${title}">
+<meta property="og:description" content="${desc}">
+<meta property="og:image" content="${img}">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+<meta property="og:url" content="${escOg(pageUrl)}">
+<meta property="og:site_name" content="Studio LeFlow">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="${title}">
+<meta name="twitter:description" content="${desc}">
+<meta name="twitter:image" content="${img}">
+</head>
+<body><script>location.replace(${JSON.stringify(pageUrl)})</script></body>
+</html>`);
+    } catch {
+      next();
+    }
+  });
+
   app.post("/api/portal/:token/versions/:versionId/approve", async (req, res) => {
     try {
       const portal = await storage.getPortalByToken(req.params.token);
