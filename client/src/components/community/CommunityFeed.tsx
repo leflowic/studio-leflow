@@ -41,7 +41,7 @@ type PostComment = {
   avatarUrl: string | null;
 };
 
-const COLLAB_TAGS = ["Beatmaker", "Vokal", "Tekst", "Mix/Master", "Gitara", "Producent", "Videograf"];
+const COLLAB_TAGS = ["Tražim repera", "Tražim vokal", "Tražim beatmakera", "Tražim feat", "Tražim tekstopisca", "Tražim gitaristu"];
 
 const POST_TYPES = [
   { key: "status", label: "Status", icon: FileText, color: "text-blue-500" },
