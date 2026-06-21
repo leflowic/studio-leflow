@@ -117,6 +117,7 @@ There are no automated tests in this project.
 - `submitGuess()` returns `{ correct, points }` where points = correct ? 10 : 0. The correct answer is **not** exposed in the response.
 - Anti-cheat: `GET /api/game/today` strips `clipUrl` from the response — only `hasClip: boolean` is sent to the client. The actual Cloudinary URL is only used server-side via the `/api/game/clip` proxy. `clipFetchCounts` (in-memory Map) limits each user to 6 clip fetches per day; returns 429 on exceeded. Client persists `playsLeft` in localStorage under key `igra_plays_${userId}_${challengeDate}`.
 - `getWeekStart()` in both `routes.ts` and `storage.ts` must use Belgrade time (same as `getTodayDateString()`). Using UTC causes the wrong week bucket near Sunday/Monday midnight Belgrade time.
+- **`GET /api/game/leaderboard` returns an object, not an array:** `{ weekStart: string, leaderboard: LeaderboardEntry[], prize: any }`. Always extract `data?.leaderboard ?? []` — calling `.slice()` or `.map()` directly on `data` throws `TypeError: e.slice is not a function`.
 
 **Smart Links:**
 - Tables: `smart_links` (slug, title, artist, coverUrl, 6 platform URLs) and `smart_link_clicks` (smartLinkId, platform, clickedAt).
@@ -175,6 +176,13 @@ There are no automated tests in this project.
 
 **FAQ page:**
 - Route `/faq` — accordion component at `client/src/pages/faq.tsx`. Linked from the footer only (was removed from the main nav). Listed in `sitemap.xml`.
+
+**Navbar architecture (`client/src/components/layout/header.tsx`):**
+- Three nav arrays: `desktopNav` (3 primary links shown inline), `moreNav` (secondary links in a "Još ▾" Radix dropdown), `mobileNav` = `[...desktopNav, ...moreNav]` (all links in the slide-out panel).
+- The "Još" dropdown uses `DropdownMenu` from Radix and highlights its trigger when any `moreNav` route is active: `moreNav.some(i => isActive(i.href))`.
+- To add a new nav link: decide if it's primary (→ `desktopNav`) or secondary (→ `moreNav`). `mobileNav` is derived automatically.
+- Logo text uses `hidden sm:inline` — visible from 640px up. Desktop nav shows at `lg` (1024px). Keep `desktopNav` to ≤4 items to prevent overflow at 1024px.
+- `WhatsAppButton`: drag to top 96px of viewport → dismiss zone turns red → release hides the button for the session (`sessionStorage`, no persistence across refreshes).
 
 **Community feed (/zajednica):**
 - Tables: `posts` (userId, type, content, audioUrl, imageUrl, collabTag, createdAt), `post_likes` (postId, userId, UNIQUE), `post_comments` (postId, userId, content, createdAt), `notifications` (userId, fromUserId, type, postId, message, read, createdAt).
