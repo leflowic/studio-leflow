@@ -55,12 +55,21 @@ There are no automated tests in this project.
 - `EditModeContext` (`client/src/contexts/EditModeContext.tsx`) — CMS in-place editing toggle (admin only).
 - All pages are lazy-loaded via `React.lazy`. Routes are defined in `client/src/App.tsx` using `wouter`.
 
+**Standalone layouts:**
+- `/l/:slug` (Smart Links) and `/portal/:token` (Client Portal) skip the main header/footer entirely. They are matched before the main Router in `App.tsx` and rendered in their own `<Suspense>` wrappers.
+- `WhatsAppButton` and similar global UI components must check `useLocation()` and return `null` on these routes.
+
 **Admin panel tabs:**
 - Each tab is its own component, either defined inline in `client/src/pages/admin.tsx` or as a separate file in `client/src/components/admin/`.
-- Separate-file tabs: `ContractsTab`, `CalendarTab`, `KatastarTab`, `GameTab` — import and add a `<TabsTrigger>` + `<TabsContent>` pair in `admin.tsx`.
+- Separate-file tabs: `ContractsTab`, `CalendarTab`, `KatastarTab`, `GameTab`, `SmartLinksTab` — import and add a `<TabsTrigger>` + `<TabsContent>` pair in `admin.tsx`.
 - Admin-only API routes go in `server/routes.ts` under `requireAdmin` middleware. Always use `requireAdmin`, never trust `req.jwtUser?.role` manually in route handlers.
 - `GET /api/admin/katastar/:userId` returns `{ user, projects, contracts, invoices }` for the Katastar (client registry) tab.
-- **Tabs with forms must use `forceMount`** on their `<TabsContent>` to prevent React state loss on tab switch. Radix UI unmounts `TabsContent` by default — any local form state (dates, inputs, uploads) is wiped when the user navigates to another tab and back. `tabs.tsx` has `data-[state=inactive]:hidden` so forceMount content is still visually hidden when inactive. Currently `GameTab` uses this.
+- **Tabs with forms must use `forceMount`** on their `<TabsContent>` to prevent React state loss on tab switch. Radix UI unmounts `TabsContent` by default — any local form state (dates, inputs, uploads) is wiped when the user navigates to another tab and back. `tabs.tsx` has `data-[state=inactive]:hidden` so forceMount content is still visually hidden when inactive. `GameTab` and `SmartLinksTab` both use this.
+
+**Avoiding Radix Dialog FocusTrap bugs:**
+- Radix `<Dialog>` closes itself when the focused element becomes `disabled` mid-operation (e.g. a "Search" button that becomes disabled during an async fetch). This is caused by the FocusTrap moving focus to `document.body`, firing `onFocusOutside`.
+- The fix: use `createPortal` from `react-dom` directly instead of Radix Dialog. The custom `Modal` component in `SmartLinksTab.tsx` is the reference implementation — it's a pure React portal with no FocusTrap, so it only closes when you explicitly set state to `false`.
+- Additionally, persist any form state that must survive a component remount to `sessionStorage`. `SmartLinksTab` does this for `showForm`, `form`, and `editingId` so that even if a toast dispatch causes `AdminPage` to remount the tab, the form state is restored. Key pattern: `useState(() => ssGet("sl_form", emptyForm))` with a setter that writes to `sessionStorage` before calling the React setter.
 
 **Real-time messaging:**
 - `WebSocketContext` is the single shared WS connection (app-level). `ChatInterface` and `ConversationList` subscribe to it via `useWebSocketContext()`. Reconnect uses exponential backoff: 3s → 6s → 12s → 30s max, reset on successful open.
@@ -109,11 +118,33 @@ There are no automated tests in this project.
 - Anti-cheat: `GET /api/game/today` strips `clipUrl` from the response — only `hasClip: boolean` is sent to the client. The actual Cloudinary URL is only used server-side via the `/api/game/clip` proxy. `clipFetchCounts` (in-memory Map) limits each user to 6 clip fetches per day; returns 429 on exceeded. Client persists `playsLeft` in localStorage under key `igra_plays_${userId}_${challengeDate}`.
 - `getWeekStart()` in both `routes.ts` and `storage.ts` must use Belgrade time (same as `getTodayDateString()`). Using UTC causes the wrong week bucket near Sunday/Monday midnight Belgrade time.
 
+**Smart Links:**
+- Tables: `smart_links` (slug, title, artist, coverUrl, 6 platform URLs) and `smart_link_clicks` (smartLinkId, platform, clickedAt).
+- Public page: `client/src/pages/l.tsx` — standalone layout (no header/footer). Fetches `/api/l/:slug`, tracks platform clicks via `POST /api/l/:slug/click`, then opens the target URL.
+- **Instagram story generator** in `l.tsx`: `generateStoryBlob()` draws a 1080×1920 PNG on a `<canvas>` (blurred cover background, cover art, title, artist, QR code via `qrcode` npm package). Then `shareToStory()` tries `navigator.share({ files: [file] })` (Web Share API — works on iOS Safari 15+ and Android Chrome, opens native share sheet). Falls back to direct PNG download on desktop. Button label adapts: `canNativeShare ? "Okači na Instagram story" : "Sačuvaj story sliku"`.
+- When loading Cloudinary images onto canvas, append `?_dc=1` as a cache-buster and set `img.crossOrigin = "anonymous"` to avoid tainted-canvas CORS errors from cached non-CORS responses.
+- Admin: `SmartLinksTab.tsx` — CRUD with the custom portal modal (see Radix Dialog section above). `POST /api/admin/smart-links/fetch-meta` calls the Odesli API (`api.song.link/v1-alpha.1/links`) with an 8s timeout to auto-fill platform URLs from any music link.
+- Cover image upload: `POST /api/upload/smart-link-cover` (requireAdmin) → Cloudinary `studioleflow/smart-links` folder.
+- Maintenance mode allowlist in `server/routes.ts` includes `'/l/'` so smart link pages are accessible during maintenance.
+
+**Client Portal:**
+- Tables: `client_portals` (name, clientName, shareToken), `portal_versions` (portalId, versionName, audioUrl, approved), `portal_comments` (versionId, authorName, authorType, timestampSeconds, text, resolved).
+- Access is token-based — no auth required. `GET /api/portal/:token` returns the portal with versions.
+- Clients can add timestamped comments and approve versions. Producers (admin) can add comments, upload versions, and mark comments resolved.
+- Route `/portal/:token` uses a standalone layout (no header/footer), same as smart links.
+
+**DebugConsole:**
+- `client/src/components/admin/DebugConsole.tsx` — mounted globally in `App.tsx`, visible only to admin role.
+- **Hidden by default.** Toggle via `window.dispatchEvent(new CustomEvent("toggle-debug-console"))`. The Terminal icon button in the navbar header (admin-only, desktop) dispatches this event.
+- Console and fetch patching (`patchConsole()`, `patchFetch()`) run at module level immediately on mount regardless of visibility — so all logs/requests are captured even before opening the panel.
+- Three tabs: Console (intercepts `console.log/warn/error/info` + uncaught errors/rejections), Network (intercepts all `fetch()` with method/URL/status/duration/body), Storage (localStorage + sessionStorage viewer/editor with delete support).
+
 **File uploads:**
 - Avatar/image uploads: `POST /api/upload/avatar` → Cloudinary (`server/cloudinary.ts`), fixed `user_${id}` public_id with face-crop transformation.
 - Message images: `POST /api/upload/message-image` → Cloudinary `studioleflow/messages` folder, unique `msg_${userId}_${timestamp}` public_id (no overwrite, no crop).
 - Audio uploads: `POST /api/upload/audio` → Cloudinary, with `fileTypeFromBuffer` magic-bytes validation.
 - Game clip: `POST /api/upload/game-clip` (admin) → Cloudinary `studioleflow/game-clips` folder.
+- Smart link cover: `POST /api/upload/smart-link-cover` (admin) → Cloudinary `studioleflow/smart-links` folder.
 - CMS media: multer to `attached_assets/temp/`, then moved to `attached_assets/`. **Note:** this path is ephemeral on Railway — CMS media uploads are lost on redeploy. Only `attached_assets/` files bundled at build time persist (they're baked into `dist/public/`). If persistent CMS media is needed, route through Cloudinary instead.
 - All upload routes have `uploadRateLimiter` applied (30/hr). Avatar and message-image routes also validate magic bytes via `fileTypeFromBuffer`.
 
