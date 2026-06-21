@@ -5,7 +5,6 @@ import { useWebSocketContext } from "@/contexts/WebSocketContext";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { Card } from "@/components/ui/card";
 import { AvatarWithInitials } from "@/components/ui/avatar-with-initials";
 import {
   AlertDialog,
@@ -18,7 +17,7 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
-import { ArrowLeft, Send, Loader2, Check, CheckCheck, Trash2, Smile, Paperclip, CornerUpLeft, X } from "lucide-react";
+import { ArrowLeft, Send, Loader2, Check, CheckCheck, Trash2, Smile, Paperclip, CornerUpLeft, X, ChevronDown } from "lucide-react";
 import { format, isToday, isYesterday, isSameDay } from "date-fns";
 import { cn } from "@/lib/utils";
 import { apiRequest } from "@/lib/queryClient";
@@ -85,12 +84,15 @@ export default function ChatInterface({ selectedUserId, onBack }: ChatInterfaceP
   const queryClient = useQueryClient();
   const { toast } = useToast();
 
-  const [messageText, setMessageText] = useState("");
+  const DRAFT_KEY = `draft_msg_${selectedUserId}`;
+  const [messageText, setMessageText] = useState(() => localStorage.getItem(`draft_msg_${selectedUserId}`) ?? "");
   const [isTyping, setIsTyping] = useState(false);
   const [otherUserTyping, setOtherUserTyping] = useState(false);
   const [replyTo, setReplyTo] = useState<Message | null>(null);
   const [showEmojiPicker, setShowEmojiPicker] = useState(false);
   const [uploadingImage, setUploadingImage] = useState(false);
+  const [showScrollBtn, setShowScrollBtn] = useState(false);
+  const [highlightedMsgId, setHighlightedMsgId] = useState<number | null>(null);
 
   const scrollAreaRef = useRef<HTMLDivElement>(null);
   const typingTimeoutRef = useRef<NodeJS.Timeout>();
@@ -98,6 +100,7 @@ export default function ChatInterface({ selectedUserId, onBack }: ChatInterfaceP
   const fileInputRef = useRef<HTMLInputElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const emojiPickerRef = useRef<HTMLDivElement>(null);
+  const bottomSentinelRef = useRef<HTMLDivElement>(null);
 
   const { data: messages, isLoading: messagesLoading } = useQuery<Message[]>({
     queryKey: ["/api/messages/conversation", selectedUserId],
@@ -157,6 +160,7 @@ export default function ChatInterface({ selectedUserId, onBack }: ChatInterfaceP
       );
       queryClient.invalidateQueries({ queryKey: ["/api/messages/conversation", selectedUserId] });
       setMessageText("");
+      localStorage.removeItem(DRAFT_KEY);
       setReplyTo(null);
       scrollToBottom();
     },
@@ -181,14 +185,50 @@ export default function ChatInterface({ selectedUserId, onBack }: ChatInterfaceP
     },
   });
 
+  const getScrollViewport = useCallback(() =>
+    scrollAreaRef.current?.querySelector('[data-radix-scroll-area-viewport]') as HTMLElement | null
+  , []);
+
   const scrollToBottom = useCallback(() => {
-    if (scrollAreaRef.current) {
-      const sc = scrollAreaRef.current.querySelector('[data-radix-scroll-area-viewport]');
-      if (sc) sc.scrollTop = sc.scrollHeight;
-    }
-  }, []);
+    const sc = getScrollViewport();
+    if (sc) sc.scrollTop = sc.scrollHeight;
+  }, [getScrollViewport]);
+
+  // Scroll-to-bottom button visibility
+  useEffect(() => {
+    const sc = getScrollViewport();
+    if (!sc) return;
+    const onScroll = () => {
+      const distFromBottom = sc.scrollHeight - sc.scrollTop - sc.clientHeight;
+      setShowScrollBtn(distFromBottom > 120);
+    };
+    sc.addEventListener("scroll", onScroll, { passive: true });
+    return () => sc.removeEventListener("scroll", onScroll);
+  }, [getScrollViewport, messages]);
+
+  // Draft saving
+  useEffect(() => {
+    if (messageText) localStorage.setItem(DRAFT_KEY, messageText);
+    else localStorage.removeItem(DRAFT_KEY);
+  }, [messageText, DRAFT_KEY]);
+
+  // Clear draft key when switching conversations (runs on unmount)
+  useEffect(() => () => { /* draft stays — intentional */ }, [selectedUserId]);
 
   useEffect(() => { scrollToBottom(); }, [messages, scrollToBottom]);
+
+  // Jump to quoted message
+  const jumpToMessage = useCallback((msgId: number) => {
+    const el = document.getElementById(`msg-${msgId}`);
+    if (!el) return;
+    const sc = getScrollViewport();
+    if (sc) {
+      const offset = el.offsetTop - sc.clientHeight / 2;
+      sc.scrollTo({ top: offset, behavior: "smooth" });
+    }
+    setHighlightedMsgId(msgId);
+    setTimeout(() => setHighlightedMsgId(null), 1500);
+  }, [getScrollViewport]);
 
   useEffect(() => {
     const unsubscribe = subscribe((message) => {
@@ -342,7 +382,7 @@ export default function ChatInterface({ selectedUserId, onBack }: ChatInterfaceP
   };
 
   return (
-    <div className="flex-1 flex flex-col h-full">
+    <div className="flex-1 flex flex-col h-full relative overflow-hidden">
       {/* Header */}
       <div className="flex items-center gap-3 px-4 py-3 border-b border-border/60 bg-card/80 backdrop-blur-sm flex-shrink-0">
         <Button variant="ghost" size="icon" onClick={onBack} className="md:hidden -ml-1 rounded-xl">
@@ -402,6 +442,18 @@ export default function ChatInterface({ selectedUserId, onBack }: ChatInterfaceP
         </AlertDialog>
       </div>
 
+      {/* Scroll to bottom button */}
+      {showScrollBtn && (
+        <div className="absolute bottom-24 right-4 z-10">
+          <button
+            onClick={scrollToBottom}
+            className="flex items-center justify-center w-9 h-9 rounded-full bg-primary text-primary-foreground shadow-lg hover:bg-primary/90 transition-all"
+          >
+            <ChevronDown className="w-5 h-5" />
+          </button>
+        </div>
+      )}
+
       {/* Messages */}
       <ScrollArea className="flex-1 px-3 md:px-4" ref={scrollAreaRef}>
         <div className="flex flex-col gap-0.5 py-4">
@@ -417,7 +469,10 @@ export default function ChatInterface({ selectedUserId, onBack }: ChatInterfaceP
                 (currentDate.getTime() - new Date(previousMessage.createdAt).getTime()) < 60000;
 
               return (
-                <div key={message.id}>
+                <div key={message.id} id={`msg-${message.id}`} className={cn(
+                  "rounded-xl transition-colors duration-700",
+                  highlightedMsgId === message.id && "bg-primary/10"
+                )}>
                   {showDateHeader && (
                     <div className="flex items-center justify-center my-5">
                       <div className="bg-muted px-3 py-1 rounded-full">
@@ -481,15 +536,19 @@ export default function ChatInterface({ selectedUserId, onBack }: ChatInterfaceP
                           : "bg-card border border-border/60 text-foreground rounded-bl-md",
                         message.deleted && "opacity-50"
                       )}>
-                        {/* Reply quote */}
+                        {/* Reply quote — clickable, jumps to original */}
                         {!message.deleted && message.replyToId && (
-                          <div className={cn(
-                            "mb-2 px-2.5 py-1.5 rounded-xl text-xs border-l-[3px]",
-                            isOwn ? "border-primary-foreground/50 bg-primary-foreground/10" : "border-primary bg-primary/8"
-                          )}>
+                          <button
+                            type="button"
+                            onClick={() => jumpToMessage(message.replyToId!)}
+                            className={cn(
+                              "mb-2 px-2.5 py-1.5 rounded-xl text-xs border-l-[3px] w-full text-left transition-opacity hover:opacity-80 active:opacity-60",
+                              isOwn ? "border-primary-foreground/50 bg-primary-foreground/10" : "border-primary bg-primary/10"
+                            )}
+                          >
                             <p className="font-semibold mb-0.5 opacity-80">{getReplyUsername(message.replyToId)}</p>
                             <p className="truncate opacity-70">{getReplyPreview(message.replyToId)}</p>
-                          </div>
+                          </button>
                         )}
 
                         {message.deleted ? (
@@ -546,6 +605,7 @@ export default function ChatInterface({ selectedUserId, onBack }: ChatInterfaceP
               <p className="text-xs text-muted-foreground">Pošaljite prvu poruku ispod</p>
             </div>
           )}
+          <div ref={bottomSentinelRef} className="h-1" />
         </div>
       </ScrollArea>
 
