@@ -282,7 +282,7 @@ export default function AdminPage() {
             <GameTab />
           </TabsContent>
 
-          <TabsContent value="smart-links">
+          <TabsContent value="smart-links" forceMount>
             <SmartLinksTab />
           </TabsContent>
 
