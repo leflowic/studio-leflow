@@ -25,7 +25,7 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
-import { Users, Music, Heart, MessageCircle, Trash2, Shield, ShieldOff, Settings, Construction, Send, Mail, Eye, Search, Download, UserPlus, FileText, Crown, Trophy } from "lucide-react";
+import { Users, Music, Heart, MessageCircle, Trash2, Shield, ShieldOff, Settings, Construction, Send, Mail, Eye, Search, Download, UserPlus, FileText, Crown, Trophy, BadgeCheck } from "lucide-react";
 import { format } from "date-fns";
 import type { User } from "@shared/schema";
 import { lazy, Suspense } from "react";
@@ -1662,6 +1662,19 @@ function UsersTab() {
     },
   });
 
+  const verifiedMutation = useMutation({
+    mutationFn: async ({ userId, value }: { userId: number; value: boolean }) => {
+      await apiRequest("PATCH", `/api/admin/users/${userId}/verified`, { verified: value });
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/admin/users"] });
+      toast({ title: "Uspeh", description: "Verifikacija ažurirana" });
+    },
+    onError: () => {
+      toast({ title: "Greška", description: "Greška pri verifikaciji", variant: "destructive" });
+    },
+  });
+
   const updateRankMutation = useMutation({
     mutationFn: async ({ userId, rank }: { userId: number; rank: string }) => {
       await apiRequest("PATCH", `/api/users/${userId}/rank`, { rank });
@@ -1815,6 +1828,16 @@ function UsersTab() {
                       >
                         <Shield className="h-4 w-4 mr-1" />
                         {user.role === 'admin' ? 'Remove Admin' : 'Make Admin'}
+                      </Button>
+                      <Button
+                        size="sm"
+                        variant={user.isVerifiedArtist ? "default" : "outline"}
+                        onClick={() => verifiedMutation.mutate({ userId: user.id, value: !user.isVerifiedArtist })}
+                        disabled={verifiedMutation.isPending}
+                        title={user.isVerifiedArtist ? "Ukloni verifikaciju" : "Verifikuj"}
+                      >
+                        <BadgeCheck className="h-4 w-4 mr-1" />
+                        {user.isVerifiedArtist ? "Verifikovan" : "Verifikuj"}
                       </Button>
                       <AlertDialog>
                         <AlertDialogTrigger asChild>

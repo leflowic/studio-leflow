@@ -1,4 +1,5 @@
 import { useState, useRef, useEffect } from "react";
+import { createPortal } from "react-dom";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { useAuth } from "@/hooks/use-auth";
 import { apiRequest, queryClient } from "@/lib/queryClient";
@@ -358,6 +359,152 @@ function PostCard({ post, currentUserId, onDeleted, onLikeChanged, onCommentCoun
   );
 }
 
+function ImageCropModal({ src, onApply, onCancel }: {
+  src: string;
+  onApply: (blob: Blob) => void;
+  onCancel: () => void;
+}) {
+  const imgRef = useRef<HTMLImageElement>(null);
+  const containerRef = useRef<HTMLDivElement>(null);
+  const dragStart = useRef<{ x: number; y: number; px: number; py: number } | null>(null);
+  const [zoom, setZoom] = useState(1);
+  const [pos, setPos] = useState({ x: 0, y: 0 });
+  const [dragging, setDragging] = useState(false);
+  const [natural, setNatural] = useState({ w: 0, h: 0 });
+
+  const CROP = 300;
+  const minZoom = natural.w > 0 ? Math.max(CROP / natural.w, CROP / natural.h) : 1;
+  const maxZoom = minZoom * 5;
+
+  function clamp(newPos: { x: number; y: number }, z: number) {
+    if (natural.w === 0) return newPos;
+    const hw = Math.max(0, (natural.w * z - CROP) / 2);
+    const hh = Math.max(0, (natural.h * z - CROP) / 2);
+    return {
+      x: Math.max(-hw, Math.min(hw, newPos.x)),
+      y: Math.max(-hh, Math.min(hh, newPos.y)),
+    };
+  }
+
+  function onImgLoad(e: React.SyntheticEvent<HTMLImageElement>) {
+    const img = e.currentTarget;
+    const w = img.naturalWidth, h = img.naturalHeight;
+    setNatural({ w, h });
+    const mz = Math.max(CROP / w, CROP / h);
+    setZoom(mz);
+    setPos({ x: 0, y: 0 });
+  }
+
+  function onPointerDown(e: React.PointerEvent<HTMLDivElement>) {
+    e.currentTarget.setPointerCapture(e.pointerId);
+    dragStart.current = { x: e.clientX, y: e.clientY, px: pos.x, py: pos.y };
+    setDragging(true);
+  }
+
+  function onPointerMove(e: React.PointerEvent<HTMLDivElement>) {
+    if (!dragStart.current) return;
+    const dx = e.clientX - dragStart.current.x;
+    const dy = e.clientY - dragStart.current.y;
+    setPos(clamp({ x: dragStart.current.px + dx, y: dragStart.current.py + dy }, zoom));
+  }
+
+  function onPointerUp() {
+    dragStart.current = null;
+    setDragging(false);
+  }
+
+  function onZoomChange(v: number) {
+    setZoom(v);
+    setPos(p => clamp(p, v));
+  }
+
+  function apply() {
+    const canvas = document.createElement("canvas");
+    canvas.width = 800;
+    canvas.height = 800;
+    const ctx = canvas.getContext("2d");
+    const img = imgRef.current;
+    if (!ctx || !img || natural.w === 0) return;
+    const srcX = natural.w / 2 - CROP / 2 / zoom - pos.x / zoom;
+    const srcY = natural.h / 2 - CROP / 2 / zoom - pos.y / zoom;
+    const srcSize = CROP / zoom;
+    ctx.drawImage(img, srcX, srcY, srcSize, srcSize, 0, 0, 800, 800);
+    canvas.toBlob(blob => { if (blob) onApply(blob); }, "image/jpeg", 0.92);
+  }
+
+  return createPortal(
+    <div
+      className="fixed inset-0 z-[200] flex items-center justify-center bg-black/70 backdrop-blur-sm px-4"
+      onClick={e => { if (e.target === e.currentTarget) onCancel(); }}
+    >
+      <div className="bg-card border border-border/60 rounded-2xl p-5 w-full max-w-sm space-y-4 shadow-2xl">
+        <h3 className="font-semibold text-base">Uredi sliku</h3>
+
+        <div
+          ref={containerRef}
+          className="relative overflow-hidden rounded-xl bg-black mx-auto select-none"
+          style={{ width: CROP, height: CROP, cursor: dragging ? "grabbing" : "grab", touchAction: "none" }}
+          onPointerDown={onPointerDown}
+          onPointerMove={onPointerMove}
+          onPointerUp={onPointerUp}
+          onPointerLeave={onPointerUp}
+        >
+          <img
+            ref={imgRef}
+            src={src}
+            alt="crop"
+            onLoad={onImgLoad}
+            draggable={false}
+            style={{
+              position: "absolute",
+              left: "50%",
+              top: "50%",
+              width: natural.w || "auto",
+              maxWidth: "none",
+              transform: `translate(calc(-50% + ${pos.x}px), calc(-50% + ${pos.y}px)) scale(${zoom})`,
+              transformOrigin: "center",
+              userSelect: "none",
+              pointerEvents: "none",
+            }}
+          />
+          <div
+            className="absolute inset-0 pointer-events-none"
+            style={{
+              backgroundImage: "linear-gradient(rgba(255,255,255,0.1) 1px,transparent 1px),linear-gradient(90deg,rgba(255,255,255,0.1) 1px,transparent 1px)",
+              backgroundSize: `${CROP / 3}px ${CROP / 3}px`,
+            }}
+          />
+          <div className="absolute inset-0 ring-2 ring-white/25 pointer-events-none rounded-xl" />
+        </div>
+
+        <div className="space-y-1.5">
+          <div className="flex justify-between text-xs text-muted-foreground">
+            <span>Zum</span>
+            <span>{natural.w > 0 ? `${Math.round(zoom / minZoom * 100)}%` : "—"}</span>
+          </div>
+          <input
+            type="range"
+            min={minZoom}
+            max={maxZoom}
+            step={0.001}
+            value={zoom}
+            onChange={e => onZoomChange(parseFloat(e.target.value))}
+            className="w-full accent-primary"
+          />
+        </div>
+
+        <p className="text-xs text-muted-foreground text-center">Prevuci da pozicioniraš · Klizač za zum</p>
+
+        <div className="flex gap-2 pt-1">
+          <Button variant="outline" className="flex-1 rounded-xl" onClick={onCancel}>Otkaži</Button>
+          <Button className="flex-1 rounded-xl" onClick={apply}>Primeni</Button>
+        </div>
+      </div>
+    </div>,
+    document.body
+  );
+}
+
 function CreatePost({ userId, onCreated }: { userId: number; onCreated: (post: FeedPost) => void }) {
   const { user } = useAuth();
   const { toast } = useToast();
@@ -367,6 +514,7 @@ function CreatePost({ userId, onCreated }: { userId: number; onCreated: (post: F
   const [audioFile, setAudioFile] = useState<File | null>(null);
   const [imageFile, setImageFile] = useState<File | null>(null);
   const [imagePreview, setImagePreview] = useState<string | null>(null);
+  const [cropSrc, setCropSrc] = useState<string | null>(null);
   const [uploading, setUploading] = useState(false);
   const audioInputRef = useRef<HTMLInputElement>(null);
   const imageInputRef = useRef<HTMLInputElement>(null);
@@ -521,7 +669,8 @@ function CreatePost({ userId, onCreated }: { userId: number; onCreated: (post: F
           <input ref={imageInputRef} type="file" accept="image/*" className="hidden"
             onChange={e => {
               const f = e.target.files?.[0];
-              if (f) { setImageFile(f); setImagePreview(URL.createObjectURL(f)); }
+              if (f) setCropSrc(URL.createObjectURL(f));
+              e.target.value = "";
             }} />
         </div>
       )}
@@ -554,6 +703,19 @@ function CreatePost({ userId, onCreated }: { userId: number; onCreated: (post: F
           )}
         </Button>
       </div>
+
+      {cropSrc && (
+        <ImageCropModal
+          src={cropSrc}
+          onApply={blob => {
+            const file = new File([blob], "slika.jpg", { type: "image/jpeg" });
+            setImageFile(file);
+            setImagePreview(URL.createObjectURL(blob));
+            setCropSrc(null);
+          }}
+          onCancel={() => setCropSrc(null)}
+        />
+      )}
     </div>
   );
 }
