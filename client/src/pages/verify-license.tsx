@@ -6,6 +6,7 @@ import { format } from "date-fns";
 import { sr } from "date-fns/locale";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { SEO } from "@/components/SEO";
 
 interface VerifyResult {
   valid: boolean;
@@ -39,6 +40,13 @@ export default function VerifyLicensePage() {
   };
 
   return (
+    <>
+      <SEO
+        title="Verifikacija Licence — Studio LeFlow"
+        description="Proverite autentičnost vaše Studio LeFlow licence. Unesite verifikacioni kod sa PDF-a da biste potvrdili da je licenca validna i izdata od Studio LeFlow."
+        keywords={["verifikacija licence studio leflow", "provjera licence", "studio leflow licenca", "autentičnost ugovora"]}
+        canonicalUrl="/proveri"
+      />
     <div className="min-h-screen flex items-center justify-center bg-background px-4 py-16">
       <div className="w-full max-w-md">
         {/* Header */}
@@ -159,6 +167,7 @@ export default function VerifyLicensePage() {
         </p>
       </div>
     </div>
+    </>
   );
 }
 

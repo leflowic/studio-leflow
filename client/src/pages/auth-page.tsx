@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { useLocation, Link } from "wouter";
+import { SEO } from "@/components/SEO";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
@@ -529,6 +530,12 @@ export default function AuthPage() {
 
   // Main Auth View (Login & Register)
   return (
+    <>
+      <SEO
+        title="Prijava i Registracija — Studio LeFlow"
+        description="Prijavite se ili kreirajte nalog na Studio LeFlow platformi."
+        noIndex={true}
+      />
     <div className="min-h-screen flex relative overflow-hidden">
       <div className="absolute inset-0 bg-gradient-to-br from-background via-background to-black/90" />
 
@@ -951,5 +958,6 @@ export default function AuthPage() {
         />
       )}
     </div>
+    </>
   );
 }
