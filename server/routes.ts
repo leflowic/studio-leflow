@@ -3768,8 +3768,8 @@ Sitemap: ${siteUrl}/sitemap.xml
     }
   });
 
-  // VIP+: get smart link by slug
-  app.get("/api/l/:slug", requireVip, async (req, res) => {
+  // Public: get smart link by slug
+  app.get("/api/l/:slug", async (req, res) => {
     try {
       const link = await storage.getSmartLinkBySlug(req.params.slug);
       if (!link) {
@@ -3783,8 +3783,8 @@ Sitemap: ${siteUrl}/sitemap.xml
     }
   });
 
-  // VIP+: record a click on a platform
-  app.post("/api/l/:slug/click", requireVip, async (req, res) => {
+  // Public: record a click on a platform
+  app.post("/api/l/:slug/click", async (req, res) => {
     try {
       const link = await storage.getSmartLinkBySlug(req.params.slug);
       if (!link) return res.status(404).json({ error: "Link nije pronađen" });
