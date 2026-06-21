@@ -31,7 +31,7 @@ export function Footer() {
   ];
 
   return (
-    <footer className="bg-muted/30 border-t">
+    <footer className="bg-gradient-to-b from-muted/20 to-muted/40 border-t border-border/50">
       <div className="max-w-7xl mx-auto px-6 py-12 lg:py-16">
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8 lg:gap-12">
           <FadeInWhenVisible delay={0.1}>
