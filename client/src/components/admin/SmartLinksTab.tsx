@@ -5,7 +5,6 @@ import { useToast } from "@/hooks/use-toast";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import {
   Dialog,
@@ -13,7 +12,6 @@ import {
   DialogHeader,
   DialogTitle,
   DialogTrigger,
-  DialogClose,
 } from "@/components/ui/dialog";
 import {
   AlertDialog,
@@ -41,7 +39,10 @@ const PLATFORMS = [
   { key: "appleMusicUrl", label: "Apple Music", color: "#FC3C44", clickKey: "apple_music", Icon: SiApplemusic },
   { key: "soundcloudUrl", label: "SoundCloud", color: "#FF5500", clickKey: "soundcloud", Icon: SiSoundcloud },
   { key: "tidalUrl", label: "Tidal", color: "#00CFFF", clickKey: "tidal", Icon: SiTidal },
-  { key: "deezerUrl", label: "Deezer", color: "#9B59FF", clickKey: "deezer", Icon: () => <svg viewBox="0 0 24 24" fill="currentColor" width={13} height={13}><path d="M18.81 11.834h3.19v1.969h-3.19zm0-3.483h3.19v1.969h-3.19zm0 6.967h3.19v1.969h-3.19zm-4.271 3.483h3.19v1.969h-3.19zm0-3.483h3.19v1.969h-3.19zm0-3.484h3.19v1.969h-3.19zm0-3.483h3.19v1.969h-3.19zm-4.27 10.45h3.19v1.969h-3.19zm0-3.483h3.19v1.969h-3.19zm0-3.484h3.19v1.969h-3.19zm-4.271 6.967h3.19v1.969H6v-1.969zm0-3.483h3.19v1.969H6v-1.969zm-4.27 3.483H5v1.969H1.73v-1.969z"/></svg> },
+  {
+    key: "deezerUrl", label: "Deezer", color: "#9B59FF", clickKey: "deezer",
+    Icon: () => <svg viewBox="0 0 24 24" fill="currentColor" width={13} height={13}><path d="M18.81 11.834h3.19v1.969h-3.19zm0-3.483h3.19v1.969h-3.19zm0 6.967h3.19v1.969h-3.19zm-4.271 3.483h3.19v1.969h-3.19zm0-3.483h3.19v1.969h-3.19zm0-3.484h3.19v1.969h-3.19zm0-3.483h3.19v1.969h-3.19zm-4.27 10.45h3.19v1.969h-3.19zm0-3.483h3.19v1.969h-3.19zm0-3.484h3.19v1.969h-3.19zm-4.271 6.967h3.19v1.969H6v-1.969zm0-3.483h3.19v1.969H6v-1.969zm-4.27 3.483H5v1.969H1.73v-1.969z" /></svg>,
+  },
 ] as const;
 
 const emptyForm = {
@@ -67,6 +68,7 @@ export function SmartLinksTab() {
   const [dialogOpen, setDialogOpen] = useState(false);
   const [uploading, setUploading] = useState(false);
   const [autoUrl, setAutoUrl] = useState("");
+  const [autoFillPending, setAutoFillPending] = useState(false);
   const fileRef = useRef<HTMLInputElement>(null);
 
   const { data: links, isLoading } = useQuery<SmartLinkWithStats[]>({
@@ -87,8 +89,9 @@ export function SmartLinksTab() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/admin/smart-links"] });
+      const wasEditing = editingId !== null;
       closeDialog();
-      toast({ title: editingId !== null ? "Link ažuriran" : "Link kreiran" });
+      toast({ title: wasEditing ? "Link ažuriran" : "Link kreiran" });
     },
     onError: async (e: any) => {
       const msg = await e?.response?.json?.().catch(() => null);
@@ -105,12 +108,19 @@ export function SmartLinksTab() {
     onError: () => toast({ title: "Greška", description: "Brisanje nije uspelo", variant: "destructive" }),
   });
 
-  const fetchMetaMutation = useMutation({
-    mutationFn: async (url: string) => {
-      const r = await apiRequest("POST", "/api/admin/smart-links/fetch-meta", { url });
-      return r.json();
-    },
-    onSuccess: (data) => {
+  // Plain async function — no useMutation to avoid React Query interfering with dialog state
+  async function handleAutoFill() {
+    if (!autoUrl || autoFillPending) return;
+    setAutoFillPending(true);
+    try {
+      const token = localStorage.getItem("auth_token");
+      const r = await fetch("/api/admin/smart-links/fetch-meta", {
+        method: "POST",
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+        body: JSON.stringify({ url: autoUrl }),
+      });
+      const data = await r.json();
+      if (!r.ok) throw new Error(data.error ?? "Greška");
       setForm(f => ({
         ...f,
         title: data.title || f.title,
@@ -126,12 +136,12 @@ export function SmartLinksTab() {
       }));
       setAutoUrl("");
       toast({ title: "Pronađeno!", description: "Proveri podatke i sačuvaj link." });
-    },
-    onError: async (e: any) => {
-      const msg = await e?.response?.json?.().catch(() => null);
-      toast({ title: "Greška", description: msg?.error ?? "Nije moguće pronaći pesmu", variant: "destructive" });
-    },
-  });
+    } catch (e: any) {
+      toast({ title: "Greška", description: e.message ?? "Nije moguće pronaći pesmu", variant: "destructive" });
+    } finally {
+      setAutoFillPending(false);
+    }
+  }
 
   function closeDialog() {
     setDialogOpen(false);
@@ -203,10 +213,10 @@ export function SmartLinksTab() {
             </div>
             <h2 className="text-xl font-bold">Smart Links</h2>
           </div>
-          <p className="text-xs text-muted-foreground ml-10.5">Tvoji li.sten.to linkovi — jedna pesma, sve platforme</p>
+          <p className="text-xs text-muted-foreground ml-[42px]">Tvoji li.sten.to linkovi — jedna pesma, sve platforme</p>
         </div>
 
-        <Dialog open={dialogOpen} onOpenChange={(open) => { if (open) setDialogOpen(true); }}>
+        <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
           <DialogTrigger asChild>
             <Button onClick={openCreate} className="gap-2 shadow-lg shadow-primary/20">
               <Plus className="w-4 h-4" />
@@ -216,9 +226,8 @@ export function SmartLinksTab() {
 
           <DialogContent
             className="max-w-lg max-h-[90vh] overflow-y-auto bg-[#0f0f0f] border-border/40"
-            onFocusOutside={(e) => e.preventDefault()}
             onInteractOutside={(e) => e.preventDefault()}
-            onEscapeKeyDown={closeDialog}
+            onFocusOutside={(e) => e.preventDefault()}
           >
             <DialogHeader>
               <DialogTitle className="text-base">
@@ -228,7 +237,7 @@ export function SmartLinksTab() {
 
             <div className="space-y-5 pt-1">
               {/* Auto-fill box */}
-              <div className="rounded-2xl overflow-hidden border border-primary/15 bg-gradient-to-br from-primary/8 to-primary/3">
+              <div className="rounded-2xl overflow-hidden border border-primary/15 bg-gradient-to-br from-primary/[0.08] to-primary/[0.03]">
                 <div className="px-4 py-3 border-b border-primary/10 flex items-center gap-2">
                   <Sparkles className="w-3.5 h-3.5 text-primary" />
                   <span className="text-xs font-semibold text-primary">Auto-popuni</span>
@@ -239,30 +248,31 @@ export function SmartLinksTab() {
                   </p>
                   <div className="flex gap-2">
                     <Input
+                      type="text"
                       placeholder="https://open.spotify.com/track/..."
                       value={autoUrl}
                       onChange={e => setAutoUrl(e.target.value)}
-                      onKeyDown={e => { if (e.key === "Enter" && autoUrl) fetchMetaMutation.mutate(autoUrl); }}
+                      onKeyDown={e => { if (e.key === "Enter") { e.preventDefault(); handleAutoFill(); } }}
                       className="text-xs h-9 bg-background/50 border-border/30 focus:border-primary/40"
                     />
                     <Button
+                      type="button"
                       size="sm"
-                      onClick={() => fetchMetaMutation.mutate(autoUrl)}
-                      disabled={!autoUrl || fetchMetaMutation.isPending}
+                      onClick={handleAutoFill}
+                      disabled={!autoUrl || autoFillPending}
                       className="h-9 px-4 shrink-0 gap-1.5"
                     >
-                      {fetchMetaMutation.isPending
+                      {autoFillPending
                         ? <Loader2 className="w-3.5 h-3.5 animate-spin" />
                         : <Sparkles className="w-3.5 h-3.5" />}
-                      {fetchMetaMutation.isPending ? "Tražim..." : "Nađi"}
+                      {autoFillPending ? "Tražim..." : "Nađi"}
                     </Button>
                   </div>
                 </div>
               </div>
 
-              {/* Cover + preview */}
+              {/* Cover + title + artist */}
               <div className="flex gap-4 items-start">
-                {/* Cover upload */}
                 <div
                   className="relative w-24 h-24 rounded-2xl border border-border/30 bg-muted/20 flex-shrink-0 flex items-center justify-center cursor-pointer overflow-hidden group hover:border-primary/30 transition-all"
                   onClick={() => fileRef.current?.click()}
@@ -274,6 +284,7 @@ export function SmartLinksTab() {
                         <Upload className="w-5 h-5 text-white" />
                       </div>
                       <button
+                        type="button"
                         className="absolute top-1.5 right-1.5 bg-black/80 rounded-full p-0.5 z-10 opacity-0 group-hover:opacity-100 transition-opacity"
                         onClick={e => { e.stopPropagation(); setForm(f => ({ ...f, coverUrl: "" })); }}
                       >
@@ -284,10 +295,7 @@ export function SmartLinksTab() {
                     <div className="flex flex-col items-center gap-1.5 text-muted-foreground/50">
                       {uploading
                         ? <Loader2 className="w-5 h-5 animate-spin text-primary" />
-                        : <>
-                          <Music2 className="w-6 h-6" />
-                          <span className="text-[9px] text-center leading-tight">Cover<br />slika</span>
-                        </>
+                        : <><Music2 className="w-6 h-6" /><span className="text-[9px] text-center leading-tight">Cover<br />slika</span></>
                       }
                     </div>
                   )}
@@ -295,11 +303,11 @@ export function SmartLinksTab() {
                 <input ref={fileRef} type="file" accept="image/*" className="hidden"
                   onChange={e => { const f = e.target.files?.[0]; if (f) uploadCover(f); e.target.value = ""; }} />
 
-                {/* Title + artist + slug */}
                 <div className="flex-1 space-y-2.5">
                   <div className="space-y-1">
                     <Label className="text-[11px] text-muted-foreground">Naslov pesme</Label>
                     <Input
+                      type="text"
                       placeholder="Naslov pesme"
                       value={form.title}
                       onChange={e => {
@@ -312,6 +320,7 @@ export function SmartLinksTab() {
                   <div className="space-y-1">
                     <Label className="text-[11px] text-muted-foreground">Izvođač</Label>
                     <Input
+                      type="text"
                       placeholder="Ime izvođača"
                       value={form.artist}
                       onChange={e => setForm(f => ({ ...f, artist: e.target.value }))}
@@ -321,10 +330,11 @@ export function SmartLinksTab() {
                 </div>
               </div>
 
-              {/* Cover URL input */}
+              {/* Cover URL */}
               <div className="space-y-1">
                 <Label className="text-[11px] text-muted-foreground">URL cover slike</Label>
                 <Input
+                  type="url"
                   placeholder="https://..."
                   value={form.coverUrl}
                   onChange={e => setForm(f => ({ ...f, coverUrl: e.target.value }))}
@@ -336,10 +346,9 @@ export function SmartLinksTab() {
               <div className="space-y-1">
                 <Label className="text-[11px] text-muted-foreground">URL slug</Label>
                 <div className="flex items-center h-9 rounded-lg border border-border/40 bg-muted/20 overflow-hidden focus-within:border-primary/40 transition-colors">
-                  <span className="px-3 text-xs text-muted-foreground border-r border-border/30 h-full flex items-center bg-muted/20 shrink-0">
-                    /l/
-                  </span>
+                  <span className="px-3 text-xs text-muted-foreground border-r border-border/30 h-full flex items-center bg-muted/20 shrink-0">/l/</span>
                   <input
+                    type="text"
                     className="flex-1 px-3 text-sm bg-transparent outline-none text-foreground placeholder:text-muted-foreground/50"
                     placeholder="naziv-pesme"
                     value={form.slug}
@@ -357,6 +366,7 @@ export function SmartLinksTab() {
                       <p.Icon size={13} style={{ color: p.color }} className="flex-shrink-0" />
                       <span className="text-xs font-medium w-24 shrink-0 text-foreground/70">{p.label}</span>
                       <input
+                        type="url"
                         className="flex-1 bg-transparent outline-none text-xs text-foreground placeholder:text-muted-foreground/40 py-0.5"
                         placeholder={`URL za ${p.label}...`}
                         value={form[p.key as keyof typeof emptyForm]}
@@ -367,17 +377,20 @@ export function SmartLinksTab() {
                 </div>
               </div>
 
-              {/* Footer buttons */}
+              {/* Footer */}
               <div className="flex justify-end gap-2 pt-1">
-                <Button variant="outline" onClick={closeDialog} className="h-9">
+                <Button type="button" variant="outline" onClick={closeDialog} className="h-9">
                   Otkaži
                 </Button>
                 <Button
+                  type="button"
                   onClick={() => saveMutation.mutate(form)}
                   disabled={saveMutation.isPending || !form.title || !form.artist || !form.slug}
                   className="h-9 px-5 shadow-lg shadow-primary/20"
                 >
-                  {saveMutation.isPending ? <><Loader2 className="w-3.5 h-3.5 animate-spin mr-1.5" />Čuvam...</> : editingId !== null ? "Sačuvaj" : "Kreiraj link"}
+                  {saveMutation.isPending
+                    ? <><Loader2 className="w-3.5 h-3.5 animate-spin mr-1.5" />Čuvam...</>
+                    : editingId !== null ? "Sačuvaj" : "Kreiraj link"}
                 </Button>
               </div>
             </div>
@@ -423,7 +436,7 @@ export function SmartLinksTab() {
             <p className="text-sm font-medium">Nema smart linkova</p>
             <p className="text-xs text-muted-foreground/60 mt-0.5">Kreiraj prvi link i podeli muziku na svim platformama</p>
           </div>
-          <Button variant="outline" size="sm" onClick={openCreate} className="gap-2 mt-1">
+          <Button type="button" variant="outline" size="sm" onClick={openCreate} className="gap-2 mt-1">
             <Plus className="w-3.5 h-3.5" /> Kreiraj prvi
           </Button>
         </div>
@@ -435,20 +448,14 @@ export function SmartLinksTab() {
               className="group rounded-2xl border border-border/30 bg-card overflow-hidden hover:border-primary/20 hover:bg-card/80 transition-all duration-200"
             >
               <div className="flex items-stretch">
-                {/* Cover */}
                 <div className="w-[88px] h-[88px] flex-shrink-0 relative overflow-hidden bg-muted/30">
-                  {link.coverUrl ? (
-                    <img src={link.coverUrl} alt={link.title} className="w-full h-full object-cover" />
-                  ) : (
-                    <div className="w-full h-full flex items-center justify-center">
-                      <Music2 className="w-7 h-7 text-muted-foreground/25" />
-                    </div>
-                  )}
-                  {/* Gradient overlay on cover */}
+                  {link.coverUrl
+                    ? <img src={link.coverUrl} alt={link.title} className="w-full h-full object-cover" />
+                    : <div className="w-full h-full flex items-center justify-center"><Music2 className="w-7 h-7 text-muted-foreground/25" /></div>
+                  }
                   <div className="absolute inset-0 bg-gradient-to-r from-transparent to-black/20" />
                 </div>
 
-                {/* Info */}
                 <div className="flex-1 px-4 py-3.5 min-w-0 flex flex-col justify-between">
                   <div>
                     <p className="font-bold text-sm leading-tight truncate">{link.title}</p>
@@ -463,7 +470,6 @@ export function SmartLinksTab() {
                       {link.totalClicks} klikova
                     </div>
                   </div>
-                  {/* Platform dots */}
                   <div className="flex items-center gap-1.5 mt-1.5">
                     {PLATFORMS.filter(p => link[p.key as keyof SmartLink]).map(p => (
                       <div
@@ -479,32 +485,21 @@ export function SmartLinksTab() {
                   </div>
                 </div>
 
-                {/* Actions */}
                 <div className="flex flex-col items-center justify-center gap-0.5 px-3 border-l border-border/20 opacity-0 group-hover:opacity-100 transition-opacity">
-                  <Button
-                    variant="ghost" size="icon"
-                    className="w-7 h-7 hover:bg-primary/10 hover:text-primary"
-                    onClick={() => copyLink(link.slug)}
-                    title="Kopiraj link"
-                  >
+                  <Button type="button" variant="ghost" size="icon" className="w-7 h-7 hover:bg-primary/10 hover:text-primary" onClick={() => copyLink(link.slug)} title="Kopiraj link">
                     <Copy className="w-3.5 h-3.5" />
                   </Button>
-                  <Button variant="ghost" size="icon" className="w-7 h-7" asChild title="Otvori stranicu">
+                  <Button type="button" variant="ghost" size="icon" className="w-7 h-7" asChild title="Otvori stranicu">
                     <a href={`/l/${link.slug}`} target="_blank" rel="noopener noreferrer">
                       <ExternalLink className="w-3.5 h-3.5" />
                     </a>
                   </Button>
-                  <Button
-                    variant="ghost" size="icon"
-                    className="w-7 h-7 hover:bg-primary/10 hover:text-primary"
-                    onClick={() => openEdit(link)}
-                    title="Uredi"
-                  >
+                  <Button type="button" variant="ghost" size="icon" className="w-7 h-7 hover:bg-primary/10 hover:text-primary" onClick={() => openEdit(link)} title="Uredi">
                     <Edit2 className="w-3.5 h-3.5" />
                   </Button>
                   <AlertDialog>
                     <AlertDialogTrigger asChild>
-                      <Button variant="ghost" size="icon" className="w-7 h-7 hover:bg-destructive/10 hover:text-destructive" title="Obriši">
+                      <Button type="button" variant="ghost" size="icon" className="w-7 h-7 hover:bg-destructive/10 hover:text-destructive" title="Obriši">
                         <Trash2 className="w-3.5 h-3.5" />
                       </Button>
                     </AlertDialogTrigger>
@@ -517,10 +512,7 @@ export function SmartLinksTab() {
                       </AlertDialogHeader>
                       <AlertDialogFooter>
                         <AlertDialogCancel>Otkaži</AlertDialogCancel>
-                        <AlertDialogAction
-                          onClick={() => deleteMutation.mutate(link.id)}
-                          className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
-                        >
+                        <AlertDialogAction onClick={() => deleteMutation.mutate(link.id)} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
                           Obriši
                         </AlertDialogAction>
                       </AlertDialogFooter>
