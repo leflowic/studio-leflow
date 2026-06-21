@@ -2,7 +2,7 @@ import { useState, useEffect } from "react";
 import { Link, useLocation } from "wouter";
 import {
   LogOut, Edit3, Save, MessageCircle, LayoutDashboard, Settings,
-  Menu, X, Gift, Users, Video, Users2, ScrollText, Layers, ChevronRight,
+  Menu, X, Gift, Users, Video, Users2, ScrollText, Layers, ChevronRight, Terminal,
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Button } from "@/components/ui/button";
@@ -150,6 +150,17 @@ export function Header() {
 
             {/* Desktop right side */}
             <div className="hidden lg:flex items-center gap-2">
+              {user?.role === "admin" && (
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="h-9 w-9 rounded-xl p-0 text-muted-foreground hover:text-emerald-400"
+                  title="Dev console"
+                  onClick={() => window.dispatchEvent(new CustomEvent("toggle-debug-console"))}
+                >
+                  <Terminal className="w-4 h-4" />
+                </Button>
+              )}
               <ThemeToggle />
 
               {user ? (

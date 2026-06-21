@@ -1,8 +1,9 @@
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { useParams } from "wouter";
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import type { SmartLink } from "@shared/schema";
 import { SiSpotify, SiYoutube, SiApplemusic, SiSoundcloud, SiTidal } from "react-icons/si";
+import QRCode from "qrcode";
 
 const PLATFORMS = [
   { key: "spotifyUrl" as keyof SmartLink, clickKey: "spotify", label: "Spotify", color: "#1DB954", Icon: SiSpotify },
@@ -13,9 +14,215 @@ const PLATFORMS = [
   { key: "deezerUrl" as keyof SmartLink, clickKey: "deezer", label: "Deezer", color: "#9B59FF", Icon: () => <svg viewBox="0 0 24 24" fill="currentColor" width={18} height={18}><path d="M18.81 11.834h3.19v1.969h-3.19zm0-3.483h3.19v1.969h-3.19zm0 6.967h3.19v1.969h-3.19zm-4.271 3.483h3.19v1.969h-3.19zm0-3.483h3.19v1.969h-3.19zm0-3.484h3.19v1.969h-3.19zm0-3.483h3.19v1.969h-3.19zm-4.27 10.45h3.19v1.969h-3.19zm0-3.483h3.19v1.969h-3.19zm0-3.484h3.19v1.969h-3.19zm-4.271 6.967h3.19v1.969H6v-1.969zm0-3.483h3.19v1.969H6v-1.969zm-4.27 3.483H5v1.969H1.73v-1.969z"/></svg> },
 ];
 
+function wrapText(ctx: CanvasRenderingContext2D, text: string, maxWidth: number): string[] {
+  const words = text.split(" ");
+  const lines: string[] = [];
+  let line = "";
+  for (const word of words) {
+    const test = line ? `${line} ${word}` : word;
+    if (ctx.measureText(test).width > maxWidth && line) {
+      lines.push(line);
+      line = word;
+    } else {
+      line = test;
+    }
+  }
+  if (line) lines.push(line);
+  return lines;
+}
+
+function roundRect(ctx: CanvasRenderingContext2D, x: number, y: number, w: number, h: number, r: number) {
+  ctx.beginPath();
+  ctx.moveTo(x + r, y);
+  ctx.lineTo(x + w - r, y);
+  ctx.quadraticCurveTo(x + w, y, x + w, y + r);
+  ctx.lineTo(x + w, y + h - r);
+  ctx.quadraticCurveTo(x + w, y + h, x + w - r, y + h);
+  ctx.lineTo(x + r, y + h);
+  ctx.quadraticCurveTo(x, y + h, x, y + h - r);
+  ctx.lineTo(x, y + r);
+  ctx.quadraticCurveTo(x, y, x + r, y);
+  ctx.closePath();
+}
+
+async function generateStoryImage(link: SmartLink) {
+  const W = 1080, H = 1920;
+  const canvas = document.createElement("canvas");
+  canvas.width = W; canvas.height = H;
+  const ctx = canvas.getContext("2d")!;
+
+  // Background
+  ctx.fillStyle = "#070008";
+  ctx.fillRect(0, 0, W, H);
+
+  // Blurred cover background
+  if (link.coverUrl) {
+    try {
+      const img = await new Promise<HTMLImageElement>((res, rej) => {
+        const i = new Image();
+        i.crossOrigin = "anonymous";
+        i.onload = () => res(i);
+        i.onerror = rej;
+        i.src = link.coverUrl! + (link.coverUrl!.includes("?") ? "&_dc=1" : "?_dc=1");
+      });
+      ctx.save();
+      ctx.filter = "blur(55px)";
+      ctx.globalAlpha = 0.38;
+      ctx.drawImage(img, -120, -120, W + 240, H + 240);
+      ctx.restore();
+    } catch {}
+  }
+
+  // Gradient overlays
+  const topGrad = ctx.createLinearGradient(0, 0, 0, H * 0.35);
+  topGrad.addColorStop(0, "rgba(0,0,0,0.72)");
+  topGrad.addColorStop(1, "rgba(0,0,0,0)");
+  ctx.fillStyle = topGrad;
+  ctx.fillRect(0, 0, W, H * 0.35);
+
+  const botGrad = ctx.createLinearGradient(0, H * 0.55, 0, H);
+  botGrad.addColorStop(0, "rgba(0,0,0,0)");
+  botGrad.addColorStop(1, "rgba(0,0,0,0.88)");
+  ctx.fillStyle = botGrad;
+  ctx.fillRect(0, H * 0.55, W, H * 0.45);
+
+  // Purple radial glow top
+  const glow = ctx.createRadialGradient(W / 2, 0, 0, W / 2, 0, W * 0.9);
+  glow.addColorStop(0, "rgba(99,52,255,0.22)");
+  glow.addColorStop(1, "rgba(0,0,0,0)");
+  ctx.fillStyle = glow;
+  ctx.fillRect(0, 0, W, H);
+
+  // Cover art
+  const COVER = 680;
+  const cx = (W - COVER) / 2;
+  const cy = 170;
+
+  if (link.coverUrl) {
+    try {
+      const img = await new Promise<HTMLImageElement>((res, rej) => {
+        const i = new Image();
+        i.crossOrigin = "anonymous";
+        i.onload = () => res(i);
+        i.onerror = rej;
+        i.src = link.coverUrl! + (link.coverUrl!.includes("?") ? "&_dc=1" : "?_dc=1");
+      });
+
+      // Shadow
+      ctx.save();
+      ctx.shadowColor = "rgba(0,0,0,0.85)";
+      ctx.shadowBlur = 80;
+      ctx.shadowOffsetY = 30;
+      roundRect(ctx, cx, cy, COVER, COVER, 40);
+      ctx.fillStyle = "#000";
+      ctx.fill();
+      ctx.restore();
+
+      // Image clipped to rounded rect
+      ctx.save();
+      roundRect(ctx, cx, cy, COVER, COVER, 40);
+      ctx.clip();
+      ctx.drawImage(img, cx, cy, COVER, COVER);
+      ctx.restore();
+
+      // Subtle border
+      ctx.save();
+      roundRect(ctx, cx, cy, COVER, COVER, 40);
+      ctx.strokeStyle = "rgba(255,255,255,0.10)";
+      ctx.lineWidth = 2;
+      ctx.stroke();
+      ctx.restore();
+    } catch {
+      // fallback placeholder
+      ctx.save();
+      roundRect(ctx, cx, cy, COVER, COVER, 40);
+      ctx.fillStyle = "rgba(99,52,255,0.12)";
+      ctx.fill();
+      ctx.restore();
+    }
+  }
+
+  // Title
+  const titleY = cy + COVER + 90;
+  ctx.textAlign = "center";
+  ctx.fillStyle = "#ffffff";
+  ctx.font = `bold 78px system-ui, -apple-system, Arial, sans-serif`;
+  const titleLines = wrapText(ctx, link.title, W - 160);
+  titleLines.slice(0, 2).forEach((line, i) => {
+    ctx.fillText(line, W / 2, titleY + i * 90);
+  });
+
+  // Artist
+  const artistY = titleY + Math.min(titleLines.length, 2) * 90 + 36;
+  ctx.font = `500 44px system-ui, -apple-system, Arial, sans-serif`;
+  ctx.fillStyle = "rgba(255,255,255,0.42)";
+  ctx.fillText(link.artist.toUpperCase(), W / 2, artistY);
+
+  // Divider
+  const divY = artistY + 54;
+  ctx.fillStyle = "rgba(255,255,255,0.10)";
+  ctx.fillRect(W / 2 - 120, divY, 240, 1.5);
+
+  // QR section label
+  const labelY = divY + 54;
+  ctx.font = `400 34px system-ui, -apple-system, Arial, sans-serif`;
+  ctx.fillStyle = "rgba(255,255,255,0.28)";
+  ctx.fillText("Skeniraj za slušanje", W / 2, labelY);
+
+  // QR code
+  const QR_SIZE = 220;
+  const qrCanvas = document.createElement("canvas");
+  await QRCode.toCanvas(qrCanvas, `${window.location.origin}/l/${link.slug}`, {
+    width: QR_SIZE,
+    margin: 1,
+    color: { dark: "#ffffff", light: "#00000000" },
+  });
+
+  // QR background
+  const qrX = (W - QR_SIZE) / 2;
+  const qrY = labelY + 30;
+  ctx.save();
+  ctx.fillStyle = "rgba(255,255,255,0.06)";
+  roundRect(ctx, qrX - 20, qrY - 16, QR_SIZE + 40, QR_SIZE + 32, 20);
+  ctx.fill();
+  ctx.restore();
+
+  ctx.drawImage(qrCanvas, qrX, qrY, QR_SIZE, QR_SIZE);
+
+  // URL text
+  const urlY = qrY + QR_SIZE + 44;
+  ctx.font = `400 30px "Courier New", monospace`;
+  ctx.fillStyle = "rgba(99,82,255,0.70)";
+  ctx.fillText(`studioleflow.com/l/${link.slug}`, W / 2, urlY);
+
+  // Branding at bottom
+  ctx.font = `600 32px system-ui, -apple-system, Arial, sans-serif`;
+  ctx.fillStyle = "rgba(255,255,255,0.20)";
+  ctx.fillText("Studio LeFlow", W / 2, H - 72);
+
+  ctx.font = `400 24px system-ui, -apple-system, Arial, sans-serif`;
+  ctx.fillStyle = "rgba(255,255,255,0.10)";
+  ctx.fillText("studioleflow.com", W / 2, H - 38);
+
+  // Download
+  return new Promise<void>((resolve) => {
+    canvas.toBlob((blob) => {
+      if (!blob) { resolve(); return; }
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `${link.slug}-story.png`;
+      a.click();
+      URL.revokeObjectURL(url);
+      resolve();
+    }, "image/png");
+  });
+}
+
 export default function SmartLinkPage() {
   const params = useParams<{ slug: string }>();
   const slug = params.slug;
+  const [generatingStory, setGeneratingStory] = useState(false);
 
   const { data: link, isLoading, isError } = useQuery<SmartLink>({
     queryKey: [`/api/l/${slug}`],
@@ -40,6 +247,18 @@ export default function SmartLinkPage() {
     clickMutation.mutate({ platform, url }, {
       onSuccess: (targetUrl) => window.open(targetUrl, "_blank", "noopener,noreferrer"),
     });
+  }
+
+  async function handleDownloadStory() {
+    if (!link || generatingStory) return;
+    setGeneratingStory(true);
+    try {
+      await generateStoryImage(link);
+    } catch (e) {
+      console.error("Story generation failed", e);
+    } finally {
+      setGeneratingStory(false);
+    }
   }
 
   useEffect(() => {
@@ -162,7 +381,58 @@ export default function SmartLinkPage() {
           )}
         </div>
 
-        <div className="mt-12 flex flex-col items-center gap-[6px]">
+        {/* Instagram story download */}
+        <div className="w-full mt-8">
+          <div className="flex items-center gap-3 mb-4">
+            <div className="flex-1 h-px bg-white/[0.06]" />
+            <span className="text-[10px] text-white/20 tracking-[0.25em] uppercase font-medium">Podeli</span>
+            <div className="flex-1 h-px bg-white/[0.06]" />
+          </div>
+
+          <button
+            onClick={handleDownloadStory}
+            disabled={generatingStory}
+            className="w-full flex items-center justify-center gap-2.5 h-12 rounded-2xl text-[13px] font-semibold transition-all disabled:opacity-50"
+            style={{
+              background: "rgba(255,255,255,0.04)",
+              border: "1px solid rgba(255,255,255,0.08)",
+              color: "rgba(255,255,255,0.55)",
+            }}
+            onMouseEnter={e => {
+              e.currentTarget.style.background = "rgba(255,255,255,0.07)";
+              e.currentTarget.style.color = "rgba(255,255,255,0.80)";
+            }}
+            onMouseLeave={e => {
+              e.currentTarget.style.background = "rgba(255,255,255,0.04)";
+              e.currentTarget.style.color = "rgba(255,255,255,0.55)";
+            }}
+          >
+            {generatingStory ? (
+              <>
+                <svg className="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24">
+                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="3" />
+                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
+                </svg>
+                Generišem...
+              </>
+            ) : (
+              <>
+                {/* Instagram-like camera icon */}
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <rect x="2" y="2" width="20" height="20" rx="5" />
+                  <circle cx="12" cy="12" r="4" />
+                  <circle cx="17.5" cy="6.5" r="1" fill="currentColor" stroke="none" />
+                </svg>
+                Napravi story sliku
+              </>
+            )}
+          </button>
+          <p className="text-center text-[10px] mt-2" style={{ color: "rgba(255,255,255,0.18)" }}>
+            1080×1920 PNG · spreman za Instagram priču
+          </p>
+        </div>
+
+        <div className="mt-10 flex flex-col items-center gap-[6px]">
           <a href="/" className="opacity-30 hover:opacity-60 transition-opacity">
             <img src="/leflow-logo-white.png" alt="Studio LeFlow" className="h-[18px] object-contain" />
           </a>

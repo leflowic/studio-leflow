@@ -379,6 +379,7 @@ type Tab = "logs" | "net" | "storage";
 
 export function DebugConsole() {
   const { user } = useAuth();
+  const [panelVisible, setPanelVisible] = useState(false);
   const [open, setOpen] = useState(false);
   const [tab, setTab] = useState<Tab>("logs");
   const [entries, setEntries] = useState<Entry[]>([]);
@@ -389,13 +390,19 @@ export function DebugConsole() {
     patchFetch();
     const handler = (e: Entry) => setEntries(prev => [...prev.slice(-499), e]);
     listeners.push(handler);
+
+    const toggle = () => setPanelVisible(v => !v);
+    window.addEventListener("toggle-debug-console", toggle);
+
     return () => {
       const i = listeners.indexOf(handler);
       if (i > -1) listeners.splice(i, 1);
+      window.removeEventListener("toggle-debug-console", toggle);
     };
   }, []);
 
   if (!user || user.role !== "admin") return null;
+  if (!panelVisible) return null;
 
   const logs = entries.filter((e): e is LogEntry => e.kind === "log");
   const nets = entries.filter((e): e is NetEntry => e.kind === "net");
