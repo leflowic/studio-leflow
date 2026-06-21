@@ -13,6 +13,7 @@ import {
   DialogHeader,
   DialogTitle,
   DialogTrigger,
+  DialogClose,
 } from "@/components/ui/dialog";
 import {
   AlertDialog,
@@ -86,9 +87,7 @@ export function SmartLinksTab() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/admin/smart-links"] });
-      setDialogOpen(false);
-      setForm(emptyForm);
-      setEditingId(null);
+      closeDialog();
       toast({ title: editingId !== null ? "Link ažuriran" : "Link kreiran" });
     },
     onError: async (e: any) => {
@@ -133,6 +132,13 @@ export function SmartLinksTab() {
       toast({ title: "Greška", description: msg?.error ?? "Nije moguće pronaći pesmu", variant: "destructive" });
     },
   });
+
+  function closeDialog() {
+    setDialogOpen(false);
+    setForm(emptyForm);
+    setAutoUrl("");
+    setEditingId(null);
+  }
 
   function openCreate() {
     setForm(emptyForm);
@@ -200,7 +206,7 @@ export function SmartLinksTab() {
           <p className="text-xs text-muted-foreground ml-10.5">Tvoji li.sten.to linkovi — jedna pesma, sve platforme</p>
         </div>
 
-        <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
+        <Dialog open={dialogOpen} onOpenChange={(open) => { if (open) setDialogOpen(true); }}>
           <DialogTrigger asChild>
             <Button onClick={openCreate} className="gap-2 shadow-lg shadow-primary/20">
               <Plus className="w-4 h-4" />
@@ -212,6 +218,7 @@ export function SmartLinksTab() {
             className="max-w-lg max-h-[90vh] overflow-y-auto bg-[#0f0f0f] border-border/40"
             onFocusOutside={(e) => e.preventDefault()}
             onInteractOutside={(e) => e.preventDefault()}
+            onEscapeKeyDown={closeDialog}
           >
             <DialogHeader>
               <DialogTitle className="text-base">
@@ -362,7 +369,7 @@ export function SmartLinksTab() {
 
               {/* Footer buttons */}
               <div className="flex justify-end gap-2 pt-1">
-                <Button variant="outline" onClick={() => setDialogOpen(false)} className="h-9">
+                <Button variant="outline" onClick={closeDialog} className="h-9">
                   Otkaži
                 </Button>
                 <Button
