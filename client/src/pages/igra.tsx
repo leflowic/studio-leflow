@@ -197,8 +197,14 @@ export default function IgraPage() {
           <div className="w-16 h-16 rounded-full bg-muted flex items-center justify-center mx-auto">
             <Lock className="w-8 h-8 text-muted-foreground" />
           </div>
-          <p className="text-lg font-semibold">Potvrdite email da biste igrali</p>
-          <p className="text-sm text-muted-foreground">Proverite vaš inbox i kliknite na link za potvrdu.</p>
+          <p className="text-lg font-semibold">Verifikuj email da bi igrao</p>
+          <p className="text-sm text-muted-foreground">
+            Poslali smo ti email na <span className="text-foreground font-medium">{user.email}</span>.
+            <br />Otvori ga i klikni na link za potvrdu, pa osvježi ovu stranicu.
+          </p>
+          <Button variant="outline" size="sm" onClick={() => window.location.reload()}>
+            Osvježi stranicu
+          </Button>
         </div>
       </div>
     );
