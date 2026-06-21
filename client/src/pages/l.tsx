@@ -55,6 +55,14 @@ async function loadImg(src: string): Promise<HTMLImageElement> {
   });
 }
 
+// Draws image scaled to cover the entire canvas (no stretch, center-crop)
+function drawCover(ctx: CanvasRenderingContext2D, img: HTMLImageElement, W: number, H: number) {
+  const scale = Math.max(W / img.naturalWidth, H / img.naturalHeight);
+  const sw = img.naturalWidth * scale;
+  const sh = img.naturalHeight * scale;
+  ctx.drawImage(img, (W - sw) / 2, (H - sh) / 2, sw, sh);
+}
+
 async function generateStoryBlob(link: SmartLink): Promise<Blob> {
   const W = 1080, H = 1920;
   const canvas = document.createElement("canvas");
@@ -71,20 +79,21 @@ async function generateStoryBlob(link: SmartLink): Promise<Blob> {
   ctx.fillStyle = "#06000a";
   ctx.fillRect(0, 0, W, H);
 
-  // ── 3. Vivid blurred background ──────────────────────────────────────────
+  // ── 3. Vivid blurred background (cover-fill, no stretch) ─────────────────
   if (coverImg) {
-    // Pass 1 — wide, heavy blur, full color punch
+    // Pass 1 — heavy blur, vivid alpha
     ctx.save();
-    ctx.filter = "blur(90px) saturate(180%) brightness(0.9)";
-    ctx.globalAlpha = 0.82;
-    ctx.drawImage(coverImg, -250, -250, W + 500, H + 500);
+    ctx.filter = "blur(80px)";
+    ctx.globalAlpha = 0.88;
+    drawCover(ctx, coverImg, W, H);
     ctx.restore();
 
-    // Pass 2 — tighter blur for mid-range detail
+    // Pass 2 — screen blend for extra saturation pop
     ctx.save();
-    ctx.filter = "blur(40px) saturate(140%)";
-    ctx.globalAlpha = 0.22;
-    ctx.drawImage(coverImg, -80, H * 0.4, W + 160, H * 0.75);
+    ctx.filter = "blur(50px)";
+    ctx.globalAlpha = 0.18;
+    ctx.globalCompositeOperation = "screen";
+    drawCover(ctx, coverImg, W, H);
     ctx.restore();
   }
 
