@@ -20,15 +20,21 @@ import { useWebSocketContext } from "@/contexts/WebSocketContext";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import leflowLogo from "@/assets/leflow-logo.png";
 
-const navigation = [
-  { name: "Giveaway",  href: "/giveaway",  icon: Gift,       desktopOnly: false },
-  { name: "Zajednica", href: "/zajednica", icon: Users,      desktopOnly: true },
-  { name: "Projekti",  href: "/projekti",  icon: Video,      desktopOnly: true },
-  { name: "Tim",       href: "/tim",       icon: Users2,     desktopOnly: true },
-  { name: "Pravila",   href: "/pravila",   icon: ScrollText, desktopOnly: true },
+// Desktop: 4 items max to avoid overflow at 1024px
+const desktopNav = [
+  { name: "Zajednica", href: "/zajednica", icon: Users },
+  { name: "Projekti",  href: "/projekti",  icon: Video },
+  { name: "Giveaway",  href: "/giveaway",  icon: Gift },
 ];
 
-const desktopNav = navigation.filter(n => n.desktopOnly);
+// Mobile: all items
+const mobileNav = [
+  { name: "Zajednica", href: "/zajednica", icon: Users },
+  { name: "Projekti",  href: "/projekti",  icon: Video },
+  { name: "Giveaway",  href: "/giveaway",  icon: Gift },
+  { name: "Tim",       href: "/tim",       icon: Users2 },
+  { name: "Pravila",   href: "/pravila",   icon: ScrollText },
+];
 
 export function Header() {
   const [location, setLocation] = useLocation();
@@ -61,7 +67,6 @@ export function Header() {
     });
   }, [user, subscribe, queryClient]);
 
-  // close mobile menu on navigation
   useEffect(() => { setMobileMenuOpen(false); }, [location]);
 
   const handleLogout = () => {
@@ -89,21 +94,19 @@ export function Header() {
           <div className="flex items-center justify-between h-16">
 
             {/* Logo */}
-            <Link href="/" className="flex items-center gap-2 -ml-2 px-2 py-2 rounded-xl hover:bg-muted/50 transition-colors" data-testid="link-logo">
+            <Link href="/" className="flex items-center gap-2 -ml-2 px-2 py-2 rounded-xl hover:bg-muted/50 transition-colors shrink-0" data-testid="link-logo">
               <img src={leflowLogo} alt="Studio LeFlow" draggable={false} onContextMenu={e => e.preventDefault()} className="h-8 md:h-9 w-auto dark:invert select-none" />
-              <span className="hidden xl:inline text-sm md:text-base font-bold font-[Montserrat] uppercase tracking-wide">Studio LeFlow</span>
+              <span className="hidden sm:inline text-sm font-bold font-[Montserrat] uppercase tracking-wide">Studio LeFlow</span>
             </Link>
 
             {/* Desktop nav */}
-            <nav className="hidden lg:flex items-center gap-1">
+            <nav className="hidden lg:flex items-center gap-0.5">
               {desktopNav.map(item => (
                 <Link
                   key={item.name}
                   href={item.href}
-                  className={`relative px-3.5 py-2 rounded-xl text-sm font-medium transition-all flex items-center gap-1.5 group ${
-                    isActive(item.href)
-                      ? "text-primary"
-                      : "text-muted-foreground hover:text-foreground"
+                  className={`relative px-3 py-2 rounded-xl text-sm font-medium transition-all flex items-center gap-1.5 group ${
+                    isActive(item.href) ? "text-primary" : "text-muted-foreground hover:text-foreground"
                   }`}
                   data-testid={`link-nav-${item.name.toLowerCase()}`}
                 >
@@ -121,32 +124,18 @@ export function Header() {
 
               <button
                 onClick={scrollToServices}
-                className="relative px-3.5 py-2 rounded-xl text-sm font-medium text-muted-foreground hover:text-foreground transition-all flex items-center gap-1.5 group"
+                className="relative px-3 py-2 rounded-xl text-sm font-medium text-muted-foreground hover:text-foreground transition-all flex items-center gap-1.5 group"
                 data-testid="link-nav-usluge"
               >
                 <Layers className="w-3.5 h-3.5 transition-transform group-hover:scale-110" />
                 Usluge
               </button>
 
-              <Link
-                href="/giveaway"
-                className={`relative px-3.5 py-2 rounded-xl text-sm font-medium transition-all flex items-center gap-1.5 group ${
-                  isActive("/giveaway") ? "text-primary" : "text-muted-foreground hover:text-foreground"
-                }`}
-                data-testid="link-nav-giveaway"
-              >
-                {isActive("/giveaway") && (
-                  <motion.div layoutId="nav-pill" className="absolute inset-0 bg-primary/10 rounded-xl" transition={{ type: "spring", bounce: 0.2, duration: 0.4 }} />
-                )}
-                <Gift className={`w-3.5 h-3.5 relative z-10 transition-transform group-hover:scale-110 ${isActive("/giveaway") ? "text-primary" : ""}`} />
-                <span className="relative z-10">Giveaway</span>
-              </Link>
-
               {user?.role === "admin" && (
                 <>
                   <Link
                     href="/admin"
-                    className={`relative px-3.5 py-2 rounded-xl text-sm font-medium transition-all flex items-center gap-1.5 ${
+                    className={`relative px-3 py-2 rounded-xl text-sm font-medium transition-all flex items-center gap-1.5 ${
                       isActive("/admin") ? "text-primary" : "text-muted-foreground hover:text-foreground"
                     }`}
                     data-testid="link-nav-admin"
@@ -166,7 +155,7 @@ export function Header() {
             </nav>
 
             {/* Desktop right side */}
-            <div className="hidden lg:flex items-center gap-2">
+            <div className="hidden lg:flex items-center gap-1.5 shrink-0">
               {user?.role === "admin" && (
                 <Button
                   variant="ghost"
@@ -191,7 +180,7 @@ export function Header() {
                           : <AvatarFallback className="bg-primary/20 text-primary text-xs font-bold">{initials}</AvatarFallback>
                         }
                       </Avatar>
-                      <span className="text-sm font-medium max-w-[100px] truncate">{user.username}</span>
+                      <span className="text-sm font-medium max-w-[80px] truncate">{user.username}</span>
                       {user.emailVerified && unreadCount > 0 && (
                         <span className="absolute -top-0.5 -right-0.5 w-4 h-4 bg-destructive text-destructive-foreground text-[10px] font-bold rounded-full flex items-center justify-center">
                           {unreadCount > 9 ? "9+" : unreadCount}
@@ -244,33 +233,36 @@ export function Header() {
                 </DropdownMenu>
               ) : (
                 <Link href="/prijava">
-                  <Button variant="ghost" size="sm" className="h-9 rounded-xl">Prijava</Button>
+                  <Button variant="ghost" size="sm" className="h-9 rounded-xl px-3">Prijava</Button>
                 </Link>
               )}
 
               <Link href="/kontakt">
-                <Button size="sm" className="h-9 rounded-xl gap-1.5 font-medium" data-testid="button-header-contact">
+                <Button size="sm" className="h-9 rounded-xl gap-1.5 font-medium px-4" data-testid="button-header-contact">
                   Zakažite Termin <ChevronRight className="w-3.5 h-3.5" />
                 </Button>
               </Link>
             </div>
 
-            {/* Mobile hamburger */}
-            <button
-              className="lg:hidden p-2 rounded-xl hover:bg-muted/50 transition-colors relative"
-              onClick={() => setMobileMenuOpen(v => !v)}
-              data-testid="button-mobile-menu"
-              aria-label="Meni"
-            >
-              <AnimatePresence mode="wait" initial={false}>
-                <motion.div key={mobileMenuOpen ? "x" : "menu"} initial={{ opacity: 0, rotate: -90, scale: 0.7 }} animate={{ opacity: 1, rotate: 0, scale: 1 }} exit={{ opacity: 0, rotate: 90, scale: 0.7 }} transition={{ duration: 0.15 }}>
-                  {mobileMenuOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
-                </motion.div>
-              </AnimatePresence>
-              {!mobileMenuOpen && unreadCount > 0 && (
-                <span className="absolute top-1 right-1 w-2 h-2 bg-destructive rounded-full" />
-              )}
-            </button>
+            {/* Mobile: right side icons + hamburger */}
+            <div className="lg:hidden flex items-center gap-1">
+              {user?.emailVerified && <NotificationBell />}
+              <button
+                className="p-2 rounded-xl hover:bg-muted/50 transition-colors relative"
+                onClick={() => setMobileMenuOpen(v => !v)}
+                data-testid="button-mobile-menu"
+                aria-label="Meni"
+              >
+                <AnimatePresence mode="wait" initial={false}>
+                  <motion.div key={mobileMenuOpen ? "x" : "menu"} initial={{ opacity: 0, rotate: -90, scale: 0.7 }} animate={{ opacity: 1, rotate: 0, scale: 1 }} exit={{ opacity: 0, rotate: 90, scale: 0.7 }} transition={{ duration: 0.15 }}>
+                    {mobileMenuOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
+                  </motion.div>
+                </AnimatePresence>
+                {!mobileMenuOpen && unreadCount > 0 && (
+                  <span className="absolute top-1 right-1 w-2 h-2 bg-destructive rounded-full" />
+                )}
+              </button>
+            </div>
           </div>
         </div>
       </header>
@@ -279,7 +271,6 @@ export function Header() {
       <AnimatePresence>
         {mobileMenuOpen && (
           <>
-            {/* Backdrop */}
             <motion.div
               initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
               transition={{ duration: 0.2 }}
@@ -287,14 +278,12 @@ export function Header() {
               onClick={() => setMobileMenuOpen(false)}
             />
 
-            {/* Panel */}
             <motion.div
               initial={{ x: "100%" }} animate={{ x: 0 }} exit={{ x: "100%" }}
               transition={{ type: "spring", damping: 28, stiffness: 300 }}
               className="fixed top-0 right-0 bottom-0 z-50 w-[280px] bg-background border-l border-border/60 shadow-2xl lg:hidden flex flex-col"
               data-testid="mobile-menu"
             >
-              {/* Panel header */}
               <div className="flex items-center justify-between p-4 border-b border-border/60">
                 <span className="font-bold text-sm uppercase tracking-wider text-muted-foreground">Meni</span>
                 <button onClick={() => setMobileMenuOpen(false)} className="p-1.5 rounded-lg hover:bg-muted transition-colors">
@@ -302,16 +291,13 @@ export function Header() {
                 </button>
               </div>
 
-              {/* Nav links */}
               <nav className="flex-1 overflow-y-auto p-3 space-y-1">
-                {navigation.map((item, i) => (
+                {mobileNav.map((item, i) => (
                   <motion.div key={item.name} initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: i * 0.04 }}>
                     <Link
                       href={item.href}
                       className={`flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium transition-all ${
-                        isActive(item.href)
-                          ? "bg-primary/10 text-primary"
-                          : "text-muted-foreground hover:text-foreground hover:bg-muted/50"
+                        isActive(item.href) ? "bg-primary/10 text-primary" : "text-muted-foreground hover:text-foreground hover:bg-muted/50"
                       }`}
                       data-testid={`link-mobile-${item.name.toLowerCase()}`}
                     >
@@ -324,7 +310,7 @@ export function Header() {
                   </motion.div>
                 ))}
 
-                <motion.div initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: navigation.length * 0.04 }}>
+                <motion.div initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: mobileNav.length * 0.04 }}>
                   <button
                     onClick={scrollToServices}
                     className="w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium text-muted-foreground hover:text-foreground hover:bg-muted/50 transition-all"
@@ -338,7 +324,7 @@ export function Header() {
                 </motion.div>
 
                 {user?.role === "admin" && (
-                  <motion.div initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: (navigation.length + 1) * 0.04 }}>
+                  <motion.div initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: (mobileNav.length + 1) * 0.04 }}>
                     <Link
                       href="/admin"
                       className={`flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium transition-all ${
@@ -355,11 +341,9 @@ export function Header() {
                 )}
               </nav>
 
-              {/* Bottom section */}
               <div className="p-3 border-t border-border/60 space-y-2">
                 {user ? (
                   <>
-                    {/* User row */}
                     <div className="flex items-center gap-3 px-3 py-2.5 rounded-xl bg-muted/50">
                       <Avatar className="h-9 w-9">
                         {user.avatarUrl
@@ -406,14 +390,19 @@ export function Header() {
                     </Button>
                   </>
                 ) : (
-                  <div className="flex items-center gap-1.5">
-                    <div className="flex items-center gap-2 border rounded-xl h-9 px-3 flex-1 justify-center">
+                  <div className="space-y-1.5">
+                    <div className="grid grid-cols-2 gap-1.5">
+                      <Link href="/prijava" className="col-span-1">
+                        <Button variant="outline" size="sm" className="w-full h-9 rounded-xl text-xs">Prijava</Button>
+                      </Link>
+                      <Link href="/registracija" className="col-span-1">
+                        <Button size="sm" className="w-full h-9 rounded-xl text-xs">Registracija</Button>
+                      </Link>
+                    </div>
+                    <div className="flex items-center justify-center gap-2 border rounded-xl h-9 px-3">
                       <span className="text-xs text-muted-foreground">Tema</span>
                       <ThemeToggle />
                     </div>
-                    <Link href="/prijava" className="flex-1">
-                      <Button variant="outline" size="sm" className="w-full h-9 rounded-xl text-xs">Prijava</Button>
-                    </Link>
                   </div>
                 )}
 
