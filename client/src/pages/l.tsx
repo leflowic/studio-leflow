@@ -45,7 +45,7 @@ function roundRect(ctx: CanvasRenderingContext2D, x: number, y: number, w: numbe
   ctx.closePath();
 }
 
-async function generateStoryImage(link: SmartLink) {
+async function generateStoryBlob(link: SmartLink): Promise<Blob> {
   const W = 1080, H = 1920;
   const canvas = document.createElement("canvas");
   canvas.width = W; canvas.height = H;
@@ -204,19 +204,34 @@ async function generateStoryImage(link: SmartLink) {
   ctx.fillStyle = "rgba(255,255,255,0.10)";
   ctx.fillText("studioleflow.com", W / 2, H - 38);
 
-  // Download
-  return new Promise<void>((resolve) => {
+  return new Promise<Blob>((resolve, reject) => {
     canvas.toBlob((blob) => {
-      if (!blob) { resolve(); return; }
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement("a");
-      a.href = url;
-      a.download = `${link.slug}-story.png`;
-      a.click();
-      URL.revokeObjectURL(url);
-      resolve();
+      if (!blob) reject(new Error("Canvas toBlob failed"));
+      else resolve(blob);
     }, "image/png");
   });
+}
+
+async function shareToStory(link: SmartLink) {
+  const blob = await generateStoryBlob(link);
+  const file = new File([blob], `${link.slug}-story.png`, { type: "image/png" });
+
+  // Web Share API with files — works on iOS Safari 15+ and Android Chrome
+  if (typeof navigator.share === "function" && navigator.canShare?.({ files: [file] })) {
+    await navigator.share({
+      files: [file],
+      title: `${link.title} — ${link.artist}`,
+    });
+    return;
+  }
+
+  // Desktop / unsupported: direct download
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = `${link.slug}-story.png`;
+  a.click();
+  URL.revokeObjectURL(url);
 }
 
 export default function SmartLinkPage() {
@@ -249,13 +264,16 @@ export default function SmartLinkPage() {
     });
   }
 
-  async function handleDownloadStory() {
+  const canNativeShare = typeof navigator.share === "function";
+
+  async function handleShareStory() {
     if (!link || generatingStory) return;
     setGeneratingStory(true);
     try {
-      await generateStoryImage(link);
-    } catch (e) {
-      console.error("Story generation failed", e);
+      await shareToStory(link);
+    } catch (e: any) {
+      // User cancelled share sheet — not an error
+      if (e?.name !== "AbortError") console.error("Story share failed", e);
     } finally {
       setGeneratingStory(false);
     }
@@ -390,21 +408,23 @@ export default function SmartLinkPage() {
           </div>
 
           <button
-            onClick={handleDownloadStory}
+            onClick={handleShareStory}
             disabled={generatingStory}
             className="w-full flex items-center justify-center gap-2.5 h-12 rounded-2xl text-[13px] font-semibold transition-all disabled:opacity-50"
             style={{
-              background: "rgba(255,255,255,0.04)",
-              border: "1px solid rgba(255,255,255,0.08)",
-              color: "rgba(255,255,255,0.55)",
+              background: "linear-gradient(135deg, rgba(131,58,180,0.18) 0%, rgba(253,29,29,0.12) 50%, rgba(252,176,69,0.12) 100%)",
+              border: "1px solid rgba(131,58,180,0.25)",
+              color: "rgba(255,255,255,0.65)",
             }}
             onMouseEnter={e => {
-              e.currentTarget.style.background = "rgba(255,255,255,0.07)";
-              e.currentTarget.style.color = "rgba(255,255,255,0.80)";
+              e.currentTarget.style.background = "linear-gradient(135deg, rgba(131,58,180,0.30) 0%, rgba(253,29,29,0.20) 50%, rgba(252,176,69,0.18) 100%)";
+              e.currentTarget.style.color = "rgba(255,255,255,0.90)";
+              e.currentTarget.style.borderColor = "rgba(131,58,180,0.45)";
             }}
             onMouseLeave={e => {
-              e.currentTarget.style.background = "rgba(255,255,255,0.04)";
-              e.currentTarget.style.color = "rgba(255,255,255,0.55)";
+              e.currentTarget.style.background = "linear-gradient(135deg, rgba(131,58,180,0.18) 0%, rgba(253,29,29,0.12) 50%, rgba(252,176,69,0.12) 100%)";
+              e.currentTarget.style.color = "rgba(255,255,255,0.65)";
+              e.currentTarget.style.borderColor = "rgba(131,58,180,0.25)";
             }}
           >
             {generatingStory ? (
@@ -417,18 +437,18 @@ export default function SmartLinkPage() {
               </>
             ) : (
               <>
-                {/* Instagram-like camera icon */}
+                {/* Instagram gradient camera icon */}
                 <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                   <rect x="2" y="2" width="20" height="20" rx="5" />
                   <circle cx="12" cy="12" r="4" />
                   <circle cx="17.5" cy="6.5" r="1" fill="currentColor" stroke="none" />
                 </svg>
-                Napravi story sliku
+                {canNativeShare ? "Okači na Instagram story" : "Sačuvaj story sliku"}
               </>
             )}
           </button>
           <p className="text-center text-[10px] mt-2" style={{ color: "rgba(255,255,255,0.18)" }}>
-            1080×1920 PNG · spreman za Instagram priču
+            {canNativeShare ? "Otvara Instagram — izaberi Stories" : "1080×1920 PNG · spreman za Instagram priču"}
           </p>
         </div>
 
