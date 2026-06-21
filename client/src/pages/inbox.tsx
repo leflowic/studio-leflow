@@ -6,13 +6,15 @@ import { MessageCircle, Search, ShieldAlert } from "lucide-react";
 import ConversationList from "@/components/messaging/ConversationList";
 import ChatInterface from "@/components/messaging/ChatInterface";
 import { SEO } from "@/components/SEO";
-import { Link } from "wouter";
+import { Link, useSearch } from "wouter";
 import { useQuery } from "@tanstack/react-query";
 
 export default function Inbox() {
   const { user } = useAuth();
   const [selectedUserId, setSelectedUserId] = useState<number | null>(null);
-  const [searchQuery, setSearchQuery] = useState("");
+  const search = useSearch();
+  const initialSearch = new URLSearchParams(search).get("search") ?? "";
+  const [searchQuery, setSearchQuery] = useState(initialSearch);
 
   // Update browser tab title with unread count
   const { data: unreadData } = useQuery<{ count: number }>({

@@ -908,3 +908,37 @@ export const insertSmartLinkSchema = createInsertSchema(smartLinks).omit({ id: t
 export type InsertSmartLink = z.infer<typeof insertSmartLinkSchema>;
 export type SmartLink = typeof smartLinks.$inferSelect;
 export type SmartLinkClick = typeof smartLinkClicks.$inferSelect;
+
+// ─── Community Feed ───────────────────────────────────────────────────────────
+
+export const posts = pgTable("posts", {
+  id: serial("id").primaryKey(),
+  userId: integer("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  type: text("type").notNull().default("status"), // status | demo | moment | collab
+  content: text("content"),
+  audioUrl: text("audio_url"),
+  imageUrl: text("image_url"),
+  collabTag: text("collab_tag"), // beatmaker | vokal | tekstar | producent
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+
+export const postLikes = pgTable("post_likes", {
+  id: serial("id").primaryKey(),
+  postId: integer("post_id").notNull().references(() => posts.id, { onDelete: "cascade" }),
+  userId: integer("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+}, (t) => ({
+  uniq: unique().on(t.postId, t.userId),
+}));
+
+export const postComments = pgTable("post_comments", {
+  id: serial("id").primaryKey(),
+  postId: integer("post_id").notNull().references(() => posts.id, { onDelete: "cascade" }),
+  userId: integer("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  content: text("content").notNull(),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+
+export type Post = typeof posts.$inferSelect;
+export type PostLike = typeof postLikes.$inferSelect;
+export type PostComment = typeof postComments.$inferSelect;

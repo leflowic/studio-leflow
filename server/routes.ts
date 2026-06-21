@@ -11,7 +11,7 @@ import fs from "fs";
 import path from "path";
 import { z } from "zod";
 import { randomBytes, createHmac } from "crypto";
-import { upload, uploadImageToCloudinary, uploadAudioToCloudinary } from "./cloudinary";
+import { upload, uploadImageToCloudinary, uploadRawImageToCloudinary, uploadAudioToCloudinary } from "./cloudinary";
 import { generateMixMasterPDF, generateCopyrightTransferPDF, generateInstrumentalSalePDF, type MixMasterContract, type CopyrightTransferContract, type InstrumentalSaleContract } from "./pdf-generators";
 import rateLimit from "express-rate-limit";
 import { fileTypeFromBuffer } from "file-type";
@@ -2182,6 +2182,19 @@ Sitemap: ${siteUrl}/sitemap.xml
 
   // ===== MESSAGING ENDPOINTS =====
   
+  // Lookup by username — MUST BE BEFORE /api/users/:id
+  app.get("/api/users/by-username/:username", requireNotBanned, async (req, res) => {
+    try {
+      const { username } = req.params;
+      const user = await storage.getUserByUsername(username);
+      if (!user) return res.status(404).json({ error: "Korisnik nije pronađen" });
+      res.json({ id: user.id, username: user.username, avatarUrl: user.avatarUrl, createdAt: user.createdAt });
+    } catch (e) {
+      console.error("[Users] by-username error:", e);
+      res.status(500).json({ error: "Greška na serveru" });
+    }
+  });
+
   // Search users (verified users only) - MUST BE BEFORE /api/users/:id
   app.get("/api/users/search", requireVerifiedEmail, async (req, res) => {
     try {
@@ -3374,8 +3387,6 @@ Sitemap: ${siteUrl}/sitemap.xml
         challenge: { ...safeChallenge, hasClip: !!clipUrl },
         alreadyPlayed: !!guess,
         guess,
-        // Only reveal correct answer when the user got it wrong (not on correct guess)
-        ...(guess && !guess.correct ? { correctAnswer: (correctAnswers.split(',')[0] ?? correctAnswers).trim() } : {}),
       });
     } catch (e) {
       res.status(500).json({ error: "Greška na serveru" });
@@ -3881,6 +3892,166 @@ Sitemap: ${siteUrl}/sitemap.xml
     } catch (e) {
       console.error("[Portal] POST approve error:", e);
       res.status(500).json({ error: "Greška na serveru" });
+    }
+  });
+
+  // ─── Community Feed ────────────────────────────────────────────────────────
+
+  app.get("/api/posts", requireNotBanned, async (req, res) => {
+    try {
+      const limit = Math.min(Number(req.query.limit) || 30, 50);
+      const offset = Number(req.query.offset) || 0;
+      const viewerId = req.jwtUser?.id;
+      const feedPosts = await storage.getPosts(viewerId, limit, offset);
+      res.json(feedPosts);
+    } catch (e) {
+      console.error("[Feed] GET /api/posts error:", e);
+      res.status(500).json({ error: "Greška na serveru" });
+    }
+  });
+
+  app.get("/api/posts/user/:userId", requireNotBanned, async (req, res) => {
+    try {
+      const userId = parseInt(req.params.userId, 10);
+      if (isNaN(userId)) return res.status(400).json({ error: "Nevažeći ID korisnika" });
+      const viewerId = req.jwtUser?.id;
+      const userPosts = await storage.getPostsByUser(userId, viewerId);
+      res.json(userPosts);
+    } catch (e) {
+      console.error("[Feed] GET /api/posts/user/:userId error:", e);
+      res.status(500).json({ error: "Greška na serveru" });
+    }
+  });
+
+  app.post("/api/posts", requireNotBanned, async (req, res) => {
+    try {
+      const userId = req.jwtUser!.id;
+      const { type, content, audioUrl, imageUrl, collabTag } = req.body;
+      const validTypes = ["status", "audio", "image", "collab"];
+      if (!type || !validTypes.includes(type)) return res.status(400).json({ error: "Nevažeći tip objave" });
+      if (type === "status" && (!content || content.trim().length === 0)) return res.status(400).json({ error: "Status ne može biti prazan" });
+      if (content && content.length > 1000) return res.status(400).json({ error: "Tekst ne može biti duži od 1000 karaktera" });
+      const post = await storage.createPost({ userId, type, content: content?.trim(), audioUrl, imageUrl, collabTag });
+      res.status(201).json(post);
+    } catch (e) {
+      console.error("[Feed] POST /api/posts error:", e);
+      res.status(500).json({ error: "Greška na serveru" });
+    }
+  });
+
+  app.delete("/api/posts/:id", requireNotBanned, async (req, res) => {
+    try {
+      const postId = parseInt(req.params.id, 10);
+      if (isNaN(postId)) return res.status(400).json({ error: "Nevažeći ID objave" });
+      const userId = req.jwtUser!.id;
+      const deleted = await storage.deletePost(postId, userId);
+      if (!deleted) return res.status(404).json({ error: "Objava nije pronađena ili nemate dozvolu" });
+      res.json({ ok: true });
+    } catch (e) {
+      console.error("[Feed] DELETE /api/posts/:id error:", e);
+      res.status(500).json({ error: "Greška na serveru" });
+    }
+  });
+
+  app.post("/api/posts/:id/like", requireNotBanned, async (req, res) => {
+    try {
+      const postId = parseInt(req.params.id, 10);
+      if (isNaN(postId)) return res.status(400).json({ error: "Nevažeći ID objave" });
+      const userId = req.jwtUser!.id;
+      const result = await storage.togglePostLike(postId, userId);
+      res.json(result);
+    } catch (e) {
+      console.error("[Feed] POST /api/posts/:id/like error:", e);
+      res.status(500).json({ error: "Greška na serveru" });
+    }
+  });
+
+  app.get("/api/posts/:id/comments", requireNotBanned, async (req, res) => {
+    try {
+      const postId = parseInt(req.params.id, 10);
+      if (isNaN(postId)) return res.status(400).json({ error: "Nevažeći ID objave" });
+      const postComments = await storage.getPostComments(postId);
+      res.json(postComments);
+    } catch (e) {
+      console.error("[Feed] GET /api/posts/:id/comments error:", e);
+      res.status(500).json({ error: "Greška na serveru" });
+    }
+  });
+
+  app.post("/api/posts/:id/comments", requireNotBanned, async (req, res) => {
+    try {
+      const postId = parseInt(req.params.id, 10);
+      if (isNaN(postId)) return res.status(400).json({ error: "Nevažeći ID objave" });
+      const userId = req.jwtUser!.id;
+      const { content } = req.body;
+      if (!content || content.trim().length === 0) return res.status(400).json({ error: "Komentar ne može biti prazan" });
+      if (content.length > 500) return res.status(400).json({ error: "Komentar ne može biti duži od 500 karaktera" });
+      const comment = await storage.createPostComment({ postId, userId, content: content.trim() });
+      res.status(201).json(comment);
+    } catch (e) {
+      console.error("[Feed] POST /api/posts/:id/comments error:", e);
+      res.status(500).json({ error: "Greška na serveru" });
+    }
+  });
+
+  app.delete("/api/posts/:postId/comments/:commentId", requireNotBanned, async (req, res) => {
+    try {
+      const commentId = parseInt(req.params.commentId, 10);
+      if (isNaN(commentId)) return res.status(400).json({ error: "Nevažeći ID komentara" });
+      const userId = req.jwtUser!.id;
+      const deleted = await storage.deletePostComment(commentId, userId);
+      if (!deleted) return res.status(404).json({ error: "Komentar nije pronađen" });
+      res.json({ ok: true });
+    } catch (e) {
+      console.error("[Feed] DELETE comment error:", e);
+      res.status(500).json({ error: "Greška na serveru" });
+    }
+  });
+
+  app.delete("/api/admin/posts/:id", requireAdmin, async (req, res) => {
+    try {
+      const postId = parseInt(req.params.id, 10);
+      if (isNaN(postId)) return res.status(400).json({ error: "Nevažeći ID objave" });
+      const deleted = await storage.deletePostAdmin(postId);
+      if (!deleted) return res.status(404).json({ error: "Objava nije pronađena" });
+      res.json({ ok: true });
+    } catch (e) {
+      console.error("[Feed] DELETE admin post error:", e);
+      res.status(500).json({ error: "Greška na serveru" });
+    }
+  });
+
+  app.post("/api/upload/post-image", uploadRateLimiter, requireNotBanned, upload.single("file"), async (req, res) => {
+    try {
+      if (!req.file) return res.status(400).json({ error: "Fajl nije priložen" });
+      const buf = req.file.buffer;
+      const ft = await fileTypeFromBuffer(buf);
+      if (!ft || !["image/jpeg", "image/png", "image/webp", "image/gif"].includes(ft.mime)) {
+        return res.status(400).json({ error: "Dozvoljena su samo JPEG, PNG, WebP i GIF fajlovi" });
+      }
+      const userId = req.jwtUser!.id;
+      const url = await uploadRawImageToCloudinary(buf, "studioleflow/posts", `post_${userId}_${Date.now()}`);
+      res.json({ url });
+    } catch (e) {
+      console.error("[Upload] post-image error:", e);
+      res.status(500).json({ error: "Greška pri otpremanju slike" });
+    }
+  });
+
+  app.post("/api/upload/post-audio", uploadRateLimiter, requireNotBanned, upload.single("file"), async (req, res) => {
+    try {
+      if (!req.file) return res.status(400).json({ error: "Fajl nije priložen" });
+      const buf = req.file.buffer;
+      const ft = await fileTypeFromBuffer(buf);
+      if (!ft || !["audio/mpeg", "audio/wav", "audio/ogg", "audio/aac", "audio/flac"].includes(ft.mime)) {
+        return res.status(400).json({ error: "Dozvoljena su samo MP3, WAV, OGG, AAC i FLAC fajlovi" });
+      }
+      const userId = req.jwtUser!.id;
+      const url = await uploadAudioToCloudinary(buf, "studioleflow/posts", `post_audio_${userId}_${Date.now()}`);
+      res.json({ url });
+    } catch (e) {
+      console.error("[Upload] post-audio error:", e);
+      res.status(500).json({ error: "Greška pri otpremanju audio fajla" });
     }
   });
 

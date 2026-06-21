@@ -195,6 +195,46 @@ async function runMigrations() {
   } finally {
     client.release();
   }
+
+  // Community Feed tables
+  const client4 = await pool.connect();
+  try {
+    await client4.query(`
+      CREATE TABLE IF NOT EXISTS posts (
+        id SERIAL PRIMARY KEY,
+        user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+        type TEXT NOT NULL DEFAULT 'status',
+        content TEXT,
+        audio_url TEXT,
+        image_url TEXT,
+        collab_tag TEXT,
+        created_at TIMESTAMP NOT NULL DEFAULT NOW()
+      );
+    `);
+    await client4.query(`
+      CREATE TABLE IF NOT EXISTS post_likes (
+        id SERIAL PRIMARY KEY,
+        post_id INTEGER NOT NULL REFERENCES posts(id) ON DELETE CASCADE,
+        user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+        created_at TIMESTAMP NOT NULL DEFAULT NOW(),
+        UNIQUE(post_id, user_id)
+      );
+    `);
+    await client4.query(`
+      CREATE TABLE IF NOT EXISTS post_comments (
+        id SERIAL PRIMARY KEY,
+        post_id INTEGER NOT NULL REFERENCES posts(id) ON DELETE CASCADE,
+        user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+        content TEXT NOT NULL,
+        created_at TIMESTAMP NOT NULL DEFAULT NOW()
+      );
+    `);
+    log('[Migrations] Community Feed tables ready', 'express');
+  } catch (err: any) {
+    log(`[Migrations] Warning on community feed tables: ${err.message}`, 'express');
+  } finally {
+    client4.release();
+  }
 }
 
 const app = express();

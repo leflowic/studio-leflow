@@ -104,6 +104,7 @@ const UslugePage = lazy(() => import("@/pages/usluge"));
 const FAQPage = lazy(() => import("@/pages/faq"));
 const PortalPage = lazy(() => import("@/pages/portal"));
 const SmartLinkPage = lazy(() => import("@/pages/l"));
+const UserProfilePage = lazy(() => import("@/pages/user-profile"));
 function Router() {
   const [location] = useLocation();
   const { user } = useAuth();
@@ -187,6 +188,7 @@ function Router() {
                 <Route path="/uslovi-koriscenja"><TermsOfUsePage /></Route>
                 <Route path="/usluge"><UslugePage /></Route>
                 <Route path="/faq"><FAQPage /></Route>
+                <ProtectedRoute path="/u/:username" component={() => <UserProfilePage />} />
                 <ProtectedRoute path="/igra" component={() => <IgraPage />} />
                 <ProtectedRoute path="/zajednica" component={() => <ZajednicaPage />} />
                 <ProtectedRoute path="/giveaway" component={() => <GiveawayPage />} />

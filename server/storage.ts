@@ -73,6 +73,12 @@ import {
   dailyChallenges,
   dailyGuesses,
   weeklyPrizes,
+  type Post,
+  type PostLike,
+  type PostComment,
+  posts,
+  postLikes,
+  postComments,
 } from "@shared/schema";
 import { db, pool } from "./db";
 import { eq, and, or, desc, sql, notInArray, inArray, gte, lte, count } from "drizzle-orm";
@@ -322,6 +328,17 @@ export interface IStorage {
   getPortalComments(versionId: number): Promise<PortalComment[]>;
   addPortalComment(data: { versionId: number; authorName: string; authorType: string; timestampSeconds: number; text: string }): Promise<PortalComment>;
   resolvePortalComment(id: number): Promise<void>;
+
+  // Community Feed
+  createPost(data: { userId: number; type: string; content?: string; audioUrl?: string; imageUrl?: string; collabTag?: string }): Promise<Post>;
+  getPosts(viewerId?: number, limit?: number, offset?: number): Promise<Array<Post & { username: string; avatarUrl: string | null; likesCount: number; commentsCount: number; hasLiked: boolean }>>;
+  getPostsByUser(userId: number, viewerId?: number): Promise<Array<Post & { username: string; avatarUrl: string | null; likesCount: number; commentsCount: number; hasLiked: boolean }>>;
+  deletePost(postId: number, userId: number): Promise<boolean>;
+  deletePostAdmin(postId: number): Promise<boolean>;
+  togglePostLike(postId: number, userId: number): Promise<{ liked: boolean; likesCount: number }>;
+  getPostComments(postId: number): Promise<Array<PostComment & { username: string; avatarUrl: string | null }>>;
+  createPostComment(data: { postId: number; userId: number; content: string }): Promise<PostComment & { username: string; avatarUrl: string | null }>;
+  deletePostComment(commentId: number, userId: number): Promise<boolean>;
 
   // Session store
   sessionStore: Store;
@@ -2760,6 +2777,114 @@ export class DatabaseStorage implements IStorage {
 
   async recordSmartLinkClick(smartLinkId: number, platform: string): Promise<void> {
     await db.insert(smartLinkClicks).values({ smartLinkId, platform });
+  }
+
+  async createPost(data: { userId: number; type: string; content?: string; audioUrl?: string; imageUrl?: string; collabTag?: string }): Promise<Post> {
+    const [post] = await db.insert(posts).values(data).returning();
+    return post!;
+  }
+
+  async getPosts(viewerId?: number, limit = 30, offset = 0): Promise<Array<Post & { username: string; avatarUrl: string | null; likesCount: number; commentsCount: number; hasLiked: boolean }>> {
+    const rows = await db
+      .select({
+        id: posts.id,
+        userId: posts.userId,
+        type: posts.type,
+        content: posts.content,
+        audioUrl: posts.audioUrl,
+        imageUrl: posts.imageUrl,
+        collabTag: posts.collabTag,
+        createdAt: posts.createdAt,
+        username: users.username,
+        avatarUrl: users.avatarUrl,
+        likesCount: sql<number>`(SELECT COUNT(*) FROM post_likes WHERE post_id = ${posts.id})::int`,
+        commentsCount: sql<number>`(SELECT COUNT(*) FROM post_comments WHERE post_id = ${posts.id})::int`,
+        hasLiked: viewerId
+          ? sql<boolean>`EXISTS(SELECT 1 FROM post_likes WHERE post_id = ${posts.id} AND user_id = ${viewerId})`
+          : sql<boolean>`false`,
+      })
+      .from(posts)
+      .innerJoin(users, eq(posts.userId, users.id))
+      .orderBy(desc(posts.createdAt))
+      .limit(limit)
+      .offset(offset);
+    return rows;
+  }
+
+  async getPostsByUser(userId: number, viewerId?: number): Promise<Array<Post & { username: string; avatarUrl: string | null; likesCount: number; commentsCount: number; hasLiked: boolean }>> {
+    const rows = await db
+      .select({
+        id: posts.id,
+        userId: posts.userId,
+        type: posts.type,
+        content: posts.content,
+        audioUrl: posts.audioUrl,
+        imageUrl: posts.imageUrl,
+        collabTag: posts.collabTag,
+        createdAt: posts.createdAt,
+        username: users.username,
+        avatarUrl: users.avatarUrl,
+        likesCount: sql<number>`(SELECT COUNT(*) FROM post_likes WHERE post_id = ${posts.id})::int`,
+        commentsCount: sql<number>`(SELECT COUNT(*) FROM post_comments WHERE post_id = ${posts.id})::int`,
+        hasLiked: viewerId
+          ? sql<boolean>`EXISTS(SELECT 1 FROM post_likes WHERE post_id = ${posts.id} AND user_id = ${viewerId})`
+          : sql<boolean>`false`,
+      })
+      .from(posts)
+      .innerJoin(users, eq(posts.userId, users.id))
+      .where(eq(posts.userId, userId))
+      .orderBy(desc(posts.createdAt));
+    return rows;
+  }
+
+  async deletePost(postId: number, userId: number): Promise<boolean> {
+    const result = await db.delete(posts).where(and(eq(posts.id, postId), eq(posts.userId, userId))).returning();
+    return result.length > 0;
+  }
+
+  async deletePostAdmin(postId: number): Promise<boolean> {
+    const result = await db.delete(posts).where(eq(posts.id, postId)).returning();
+    return result.length > 0;
+  }
+
+  async togglePostLike(postId: number, userId: number): Promise<{ liked: boolean; likesCount: number }> {
+    const existing = await db.select().from(postLikes).where(and(eq(postLikes.postId, postId), eq(postLikes.userId, userId)));
+    if (existing.length > 0) {
+      await db.delete(postLikes).where(and(eq(postLikes.postId, postId), eq(postLikes.userId, userId)));
+    } else {
+      await db.insert(postLikes).values({ postId, userId });
+    }
+    const cntResult = await db.select({ cnt: count(postLikes.id) }).from(postLikes).where(eq(postLikes.postId, postId));
+    return { liked: existing.length === 0, likesCount: Number(cntResult[0]?.cnt ?? 0) };
+  }
+
+  async getPostComments(postId: number): Promise<Array<PostComment & { username: string; avatarUrl: string | null }>> {
+    const rows = await db
+      .select({
+        id: postComments.id,
+        postId: postComments.postId,
+        userId: postComments.userId,
+        content: postComments.content,
+        createdAt: postComments.createdAt,
+        username: users.username,
+        avatarUrl: users.avatarUrl,
+      })
+      .from(postComments)
+      .innerJoin(users, eq(postComments.userId, users.id))
+      .where(eq(postComments.postId, postId))
+      .orderBy(postComments.createdAt);
+    return rows;
+  }
+
+  async createPostComment(data: { postId: number; userId: number; content: string }): Promise<PostComment & { username: string; avatarUrl: string | null }> {
+    const [comment] = await db.insert(postComments).values(data).returning();
+    const [user] = await db.select({ username: users.username, avatarUrl: users.avatarUrl }).from(users).where(eq(users.id, data.userId));
+    return { ...comment!, username: user!.username, avatarUrl: user!.avatarUrl };
+  }
+
+  async deletePostComment(commentId: number, userId: number): Promise<boolean> {
+    const result = await db.delete(postComments).where(and(eq(postComments.id, commentId), eq(postComments.userId, userId))).returning();
+    return result.length > 0;
   }
 }
 

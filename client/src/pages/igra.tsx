@@ -281,17 +281,6 @@ export default function IgraPage() {
                     <p className="text-4xl font-black text-destructive">Netačno</p>
                     <p className="text-muted-foreground mt-1">Bolje sreće sutra 💪</p>
                   </motion.div>
-                  {data.correctAnswer && (
-                    <motion.div
-                      initial={{ y: 10, opacity: 0 }}
-                      animate={{ y: 0, opacity: 1 }}
-                      transition={{ delay: 0.35 }}
-                      className="bg-primary/5 border border-primary/20 rounded-2xl px-6 py-4 inline-block"
-                    >
-                      <p className="text-xs text-muted-foreground mb-1">Tačan odgovor je bio</p>
-                      <p className="font-black text-foreground text-2xl">{data.correctAnswer}</p>
-                    </motion.div>
-                  )}
                 </>
               )}
               {displayedAnswer && (

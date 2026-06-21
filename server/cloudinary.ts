@@ -32,6 +32,19 @@ export async function uploadImageToCloudinary(buffer: Buffer, folder: string, pu
   });
 }
 
+export async function uploadRawImageToCloudinary(buffer: Buffer, folder: string, publicId: string): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const stream = cloudinary.uploader.upload_stream(
+      { folder, public_id: publicId, resource_type: "image", overwrite: false },
+      (error, result) => {
+        if (error || !result) return reject(error || new Error("Upload failed"));
+        resolve(result.secure_url);
+      }
+    );
+    stream.end(buffer);
+  });
+}
+
 export async function uploadAudioToCloudinary(buffer: Buffer, folder: string, filename: string): Promise<string> {
   return new Promise((resolve, reject) => {
     const base = filename.replace(/\.[^/.]+$/, "").replace(/[^a-zA-Z0-9_-]/g, "_");
