@@ -69,175 +69,184 @@ async function generateStoryBlob(link: SmartLink): Promise<Blob> {
   canvas.width = W; canvas.height = H;
   const ctx = canvas.getContext("2d")!;
 
-  // ── 1. Load cover image once, reuse everywhere ───────────────────────────
+  // Load assets
   let coverImg: HTMLImageElement | null = null;
   if (link.coverUrl) {
     try { coverImg = await loadImg(link.coverUrl); } catch {}
   }
 
-  // ── 2. Dark base ─────────────────────────────────────────────────────────
-  ctx.fillStyle = "#06000a";
+  // ── 1. Base ───────────────────────────────────────────────────────────────
+  ctx.fillStyle = "#08000e";
   ctx.fillRect(0, 0, W, H);
 
-  // ── 3. Vivid blurred background (cover-fill, no stretch) ─────────────────
+  // ── 2. Blurred background — vivid, full cover ─────────────────────────────
   if (coverImg) {
-    // Pass 1 — heavy blur, vivid alpha
     ctx.save();
     ctx.filter = "blur(80px)";
-    ctx.globalAlpha = 0.88;
+    ctx.globalAlpha = 0.90;
     drawCover(ctx, coverImg, W, H);
     ctx.restore();
 
-    // Pass 2 — screen blend for extra saturation pop
+    // Second pass — screen blend for color richness
     ctx.save();
-    ctx.filter = "blur(50px)";
-    ctx.globalAlpha = 0.18;
+    ctx.filter = "blur(40px)";
+    ctx.globalAlpha = 0.15;
     ctx.globalCompositeOperation = "screen";
     drawCover(ctx, coverImg, W, H);
     ctx.restore();
   }
 
-  // ── 4. Vignette — darkens edges, keeps center vivid ──────────────────────
-  // Top edge
-  const tg = ctx.createLinearGradient(0, 0, 0, H * 0.22);
-  tg.addColorStop(0, "rgba(0,0,0,0.80)");
+  // ── 3. Gradients (no panel — text floats on gradient) ────────────────────
+  // Thin dark strip at top
+  const tg = ctx.createLinearGradient(0, 0, 0, H * 0.14);
+  tg.addColorStop(0, "rgba(0,0,0,0.65)");
   tg.addColorStop(1, "rgba(0,0,0,0)");
-  ctx.fillStyle = tg; ctx.fillRect(0, 0, W, H * 0.22);
+  ctx.fillStyle = tg;
+  ctx.fillRect(0, 0, W, H * 0.14);
 
-  // Bottom half fade to near-black (so text + QR are legible)
-  const bg = ctx.createLinearGradient(0, H * 0.52, 0, H);
-  bg.addColorStop(0, "rgba(0,0,0,0)");
-  bg.addColorStop(0.4, "rgba(0,0,0,0.55)");
-  bg.addColorStop(1, "rgba(0,0,0,0.88)");
-  ctx.fillStyle = bg; ctx.fillRect(0, H * 0.52, W, H * 0.48);
+  // Strong fade bottom half → almost full black at base
+  const bg = ctx.createLinearGradient(0, H * 0.46, 0, H);
+  bg.addColorStop(0,    "rgba(0,0,0,0)");
+  bg.addColorStop(0.28, "rgba(0,0,0,0.60)");
+  bg.addColorStop(0.55, "rgba(0,0,0,0.82)");
+  bg.addColorStop(1,    "rgba(0,0,0,0.97)");
+  ctx.fillStyle = bg;
+  ctx.fillRect(0, H * 0.46, W, H * 0.54);
 
-  // Radial center lift (keeps cover area bright)
-  const cg = ctx.createRadialGradient(W / 2, H * 0.38, 0, W / 2, H * 0.38, W * 0.72);
-  cg.addColorStop(0, "rgba(0,0,0,0)");
-  cg.addColorStop(1, "rgba(0,0,0,0.38)");
-  ctx.fillStyle = cg; ctx.fillRect(0, 0, W, H);
-
-  // ── 5. Cover art ─────────────────────────────────────────────────────────
-  const COVER = 700;
+  // ── 4. Cover art ─────────────────────────────────────────────────────────
+  const COVER = 750;
   const cx = (W - COVER) / 2;
-  const cy = 148;
+  const cy = 160;
 
   if (coverImg) {
-    // Glow behind cover
+    // Glow underneath (colored halo)
     ctx.save();
-    ctx.filter = "blur(48px)";
-    ctx.globalAlpha = 0.55;
-    ctx.drawImage(coverImg, cx + 40, cy + 60, COVER - 80, COVER - 80);
+    ctx.filter = "blur(55px)";
+    ctx.globalAlpha = 0.62;
+    ctx.drawImage(coverImg, cx + 50, cy + 70, COVER - 100, COVER - 100);
     ctx.restore();
 
     // Drop shadow
     ctx.save();
-    ctx.shadowColor = "rgba(0,0,0,0.90)";
-    ctx.shadowBlur = 100;
-    ctx.shadowOffsetY = 40;
-    roundRect(ctx, cx, cy, COVER, COVER, 44);
+    ctx.shadowColor = "rgba(0,0,0,0.95)";
+    ctx.shadowBlur = 110;
+    ctx.shadowOffsetY = 45;
+    roundRect(ctx, cx, cy, COVER, COVER, 48);
     ctx.fillStyle = "#000";
     ctx.fill();
     ctx.restore();
 
     // Image
     ctx.save();
-    roundRect(ctx, cx, cy, COVER, COVER, 44);
+    roundRect(ctx, cx, cy, COVER, COVER, 48);
     ctx.clip();
     ctx.drawImage(coverImg, cx, cy, COVER, COVER);
     ctx.restore();
 
-    // Subtle inner border
+    // Border
     ctx.save();
-    roundRect(ctx, cx, cy, COVER, COVER, 44);
-    ctx.strokeStyle = "rgba(255,255,255,0.13)";
-    ctx.lineWidth = 2.5;
+    roundRect(ctx, cx, cy, COVER, COVER, 48);
+    ctx.strokeStyle = "rgba(255,255,255,0.14)";
+    ctx.lineWidth = 3;
     ctx.stroke();
     ctx.restore();
   } else {
     ctx.save();
-    roundRect(ctx, cx, cy, COVER, COVER, 44);
+    roundRect(ctx, cx, cy, COVER, COVER, 48);
     ctx.fillStyle = "rgba(255,255,255,0.05)";
     ctx.fill();
     ctx.restore();
   }
 
-  // ── 6. Frosted glass info panel ──────────────────────────────────────────
-  const panelY = cy + COVER + 56;
-  const panelH = H - panelY - 110;
-  const panelPad = 54;
+  // ── 5. Platform color dots ────────────────────────────────────────────────
+  const PLAT_COLORS = [
+    { key: "spotifyUrl",    color: "#1DB954" },
+    { key: "youtubeUrl",    color: "#FF0033" },
+    { key: "appleMusicUrl", color: "#FC3C44" },
+    { key: "soundcloudUrl", color: "#FF5500" },
+    { key: "tidalUrl",      color: "#00CFFF" },
+    { key: "deezerUrl",     color: "#A259FF" },
+  ].filter(p => (link as any)[p.key]);
 
-  ctx.save();
-  roundRect(ctx, panelPad, panelY, W - panelPad * 2, panelH, 40);
-  ctx.fillStyle = "rgba(0,0,0,0.38)";
-  ctx.fill();
-  roundRect(ctx, panelPad, panelY, W - panelPad * 2, panelH, 40);
-  ctx.strokeStyle = "rgba(255,255,255,0.09)";
-  ctx.lineWidth = 1.5;
-  ctx.stroke();
-  ctx.restore();
+  const dotR = 11;
+  const dotGap = 30;
+  const dotsY = cy + COVER + 64;
 
-  // ── 7. Title ─────────────────────────────────────────────────────────────
+  if (PLAT_COLORS.length) {
+    const totalW = PLAT_COLORS.length * (dotR * 2) + (PLAT_COLORS.length - 1) * dotGap;
+    let dotX = (W - totalW) / 2 + dotR;
+    PLAT_COLORS.forEach(p => {
+      ctx.beginPath();
+      ctx.arc(dotX, dotsY, dotR, 0, Math.PI * 2);
+      ctx.fillStyle = p.color;
+      ctx.fill();
+      dotX += dotR * 2 + dotGap;
+    });
+  }
+
+  // ── 6. Title ──────────────────────────────────────────────────────────────
+  const titleY = cy + COVER + (PLAT_COLORS.length ? 138 : 80);
   ctx.textAlign = "center";
-  const titleY = panelY + 76;
-  ctx.font = `bold 76px system-ui, -apple-system, Arial, sans-serif`;
+  ctx.shadowColor = "rgba(0,0,0,0.85)";
+  ctx.shadowBlur = 24;
+  ctx.font = `bold 84px system-ui, -apple-system, Arial, sans-serif`;
   ctx.fillStyle = "#ffffff";
-  const titleLines = wrapText(ctx, link.title, W - panelPad * 2 - 48);
-  titleLines.slice(0, 2).forEach((line, i) => ctx.fillText(line, W / 2, titleY + i * 88));
+  const titleLines = wrapText(ctx, link.title, W - 100);
+  titleLines.slice(0, 2).forEach((line, i) => ctx.fillText(line, W / 2, titleY + i * 96));
+  ctx.shadowBlur = 0;
 
-  // Artist
-  const artistY = titleY + Math.min(titleLines.length, 2) * 88 + 32;
-  ctx.font = `500 40px system-ui, -apple-system, Arial, sans-serif`;
-  ctx.fillStyle = "rgba(255,255,255,0.45)";
-  ctx.fillText(link.artist.toUpperCase(), W / 2, artistY);
+  // ── 7. Artist ─────────────────────────────────────────────────────────────
+  const artistY = titleY + Math.min(titleLines.length, 2) * 96 + 30;
+  ctx.font = `400 48px system-ui, -apple-system, Arial, sans-serif`;
+  ctx.fillStyle = "rgba(255,255,255,0.50)";
+  ctx.shadowColor = "rgba(0,0,0,0.7)";
+  ctx.shadowBlur = 16;
+  ctx.fillText(link.artist, W / 2, artistY);
+  ctx.shadowBlur = 0;
 
-  // Divider
-  const divY = artistY + 48;
-  ctx.fillStyle = "rgba(255,255,255,0.10)";
-  ctx.fillRect(W / 2 - 100, divY, 200, 1.5);
-
-  // ── 8. QR code ───────────────────────────────────────────────────────────
-  const QR_SIZE = 210;
-  const qrCanvas = document.createElement("canvas");
-  await QRCode.toCanvas(qrCanvas, `${window.location.origin}/l/${link.slug}`, {
-    width: QR_SIZE, margin: 1,
-    color: { dark: "#ffffff", light: "#00000000" },
+  // ── 8. QR code — black on white, actually scannable ───────────────────────
+  const QR_SIZE = 192;
+  const qrC = document.createElement("canvas");
+  await QRCode.toCanvas(qrC, `${window.location.origin}/l/${link.slug}`, {
+    width: QR_SIZE, margin: 2,
+    color: { dark: "#000000", light: "#ffffff" },
   });
 
-  const labelY = divY + 50;
-  ctx.font = `400 32px system-ui, -apple-system, Arial, sans-serif`;
-  ctx.fillStyle = "rgba(255,255,255,0.30)";
-  ctx.fillText("Skeniraj i slušaj", W / 2, labelY);
-
+  const qrPad = 20;
   const qrX = (W - QR_SIZE) / 2;
-  const qrY = labelY + 28;
+  const qrY = artistY + 68;
 
-  // QR frosted pill
+  // White card behind QR
   ctx.save();
-  roundRect(ctx, qrX - 22, qrY - 14, QR_SIZE + 44, QR_SIZE + 28, 24);
-  ctx.fillStyle = "rgba(255,255,255,0.07)";
+  roundRect(ctx, qrX - qrPad, qrY - qrPad, QR_SIZE + qrPad * 2, QR_SIZE + qrPad * 2, 26);
+  ctx.fillStyle = "#ffffff";
+  ctx.shadowColor = "rgba(0,0,0,0.5)";
+  ctx.shadowBlur = 30;
   ctx.fill();
   ctx.restore();
 
-  ctx.drawImage(qrCanvas, qrX, qrY, QR_SIZE, QR_SIZE);
+  ctx.drawImage(qrC, qrX, qrY, QR_SIZE, QR_SIZE);
 
   // URL
-  ctx.font = `400 28px "Courier New", monospace`;
-  ctx.fillStyle = "rgba(255,255,255,0.28)";
-  ctx.fillText(`studioleflow.com/l/${link.slug}`, W / 2, qrY + QR_SIZE + 42);
+  ctx.font = `400 27px "Courier New", monospace`;
+  ctx.fillStyle = "rgba(255,255,255,0.32)";
+  ctx.shadowColor = "rgba(0,0,0,0.9)";
+  ctx.shadowBlur = 12;
+  ctx.fillText(`studioleflow.com/l/${link.slug}`, W / 2, qrY + QR_SIZE + qrPad + 44);
+  ctx.shadowBlur = 0;
 
   // ── 9. Logo ───────────────────────────────────────────────────────────────
   try {
     const logo = await loadImg(`${window.location.origin}/leflow-logo-white.png`);
-    const logoW = 200;
+    const logoW = 190;
     const logoH = Math.round((logo.naturalHeight / logo.naturalWidth) * logoW);
-    ctx.globalAlpha = 0.35;
-    ctx.drawImage(logo, (W - logoW) / 2, H - 52 - logoH, logoW, logoH);
+    ctx.globalAlpha = 0.28;
+    ctx.drawImage(logo, (W - logoW) / 2, H - 56 - logoH, logoW, logoH);
     ctx.globalAlpha = 1;
   } catch {
-    ctx.font = `600 30px system-ui, -apple-system, Arial, sans-serif`;
-    ctx.fillStyle = "rgba(255,255,255,0.22)";
-    ctx.fillText("Studio LeFlow", W / 2, H - 58);
+    ctx.font = `500 28px system-ui, -apple-system, Arial, sans-serif`;
+    ctx.fillStyle = "rgba(255,255,255,0.20)";
+    ctx.fillText("Studio LeFlow", W / 2, H - 62);
   }
 
   return new Promise<Blob>((resolve, reject) => {
