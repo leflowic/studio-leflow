@@ -27,19 +27,20 @@ import {
 } from "@/components/ui/alert-dialog";
 import {
   Link2, Plus, Trash2, Edit2, Copy, ExternalLink,
-  BarChart2, Music2, Upload, X, Sparkles, Loader2, MousePointerClick, TrendingUp,
+  Music2, Upload, X, Sparkles, Loader2, MousePointerClick, TrendingUp,
 } from "lucide-react";
+import { SiSpotify, SiYoutube, SiApplemusic, SiSoundcloud, SiTidal } from "react-icons/si";
 import type { SmartLink } from "@shared/schema";
 
 type SmartLinkWithStats = SmartLink & { totalClicks: number; clicksByPlatform: Record<string, number> };
 
 const PLATFORMS = [
-  { key: "spotifyUrl", label: "Spotify", color: "#1DB954", clickKey: "spotify" },
-  { key: "youtubeUrl", label: "YouTube", color: "#FF0033", clickKey: "youtube" },
-  { key: "appleMusicUrl", label: "Apple Music", color: "#FC3C44", clickKey: "apple_music" },
-  { key: "soundcloudUrl", label: "SoundCloud", color: "#FF5500", clickKey: "soundcloud" },
-  { key: "tidalUrl", label: "Tidal", color: "#00CFFF", clickKey: "tidal" },
-  { key: "deezerUrl", label: "Deezer", color: "#9B59FF", clickKey: "deezer" },
+  { key: "spotifyUrl", label: "Spotify", color: "#1DB954", clickKey: "spotify", Icon: SiSpotify },
+  { key: "youtubeUrl", label: "YouTube", color: "#FF0033", clickKey: "youtube", Icon: SiYoutube },
+  { key: "appleMusicUrl", label: "Apple Music", color: "#FC3C44", clickKey: "apple_music", Icon: SiApplemusic },
+  { key: "soundcloudUrl", label: "SoundCloud", color: "#FF5500", clickKey: "soundcloud", Icon: SiSoundcloud },
+  { key: "tidalUrl", label: "Tidal", color: "#00CFFF", clickKey: "tidal", Icon: SiTidal },
+  { key: "deezerUrl", label: "Deezer", color: "#9B59FF", clickKey: "deezer", Icon: () => <svg viewBox="0 0 24 24" fill="currentColor" width={13} height={13}><path d="M18.81 11.834h3.19v1.969h-3.19zm0-3.483h3.19v1.969h-3.19zm0 6.967h3.19v1.969h-3.19zm-4.271 3.483h3.19v1.969h-3.19zm0-3.483h3.19v1.969h-3.19zm0-3.484h3.19v1.969h-3.19zm0-3.483h3.19v1.969h-3.19zm-4.27 10.45h3.19v1.969h-3.19zm0-3.483h3.19v1.969h-3.19zm0-3.484h3.19v1.969h-3.19zm-4.271 6.967h3.19v1.969H6v-1.969zm0-3.483h3.19v1.969H6v-1.969zm-4.27 3.483H5v1.969H1.73v-1.969z"/></svg> },
 ] as const;
 
 const emptyForm = {
@@ -342,7 +343,7 @@ export function SmartLinksTab() {
                 <div className="rounded-xl border border-border/30 overflow-hidden divide-y divide-border/20">
                   {PLATFORMS.map(p => (
                     <div key={p.key} className="flex items-center gap-3 px-3 py-2.5 bg-muted/5 hover:bg-muted/10 transition-colors">
-                      <div className="w-2 h-2 rounded-full flex-shrink-0" style={{ background: p.color }} />
+                      <p.Icon size={13} style={{ color: p.color }} className="flex-shrink-0" />
                       <span className="text-xs font-medium w-24 shrink-0 text-foreground/70">{p.label}</span>
                       <input
                         className="flex-1 bg-transparent outline-none text-xs text-foreground placeholder:text-muted-foreground/40 py-0.5"
