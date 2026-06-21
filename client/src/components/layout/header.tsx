@@ -2,7 +2,7 @@ import { useState, useEffect } from "react";
 import { Link, useLocation } from "wouter";
 import {
   LogOut, Edit3, Save, MessageCircle, LayoutDashboard, Settings,
-  Menu, X, Gift, Users, Video, Users2, ScrollText, Layers, ChevronRight, Terminal,
+  Menu, X, Gift, Users, Video, Users2, ScrollText, Layers, ChevronRight, Terminal, ChevronDown,
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Button } from "@/components/ui/button";
@@ -20,21 +20,19 @@ import { useWebSocketContext } from "@/contexts/WebSocketContext";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import leflowLogo from "@/assets/leflow-logo.png";
 
-// Desktop: 4 items max to avoid overflow at 1024px
 const desktopNav = [
   { name: "Zajednica", href: "/zajednica", icon: Users },
   { name: "Projekti",  href: "/projekti",  icon: Video },
   { name: "Giveaway",  href: "/giveaway",  icon: Gift },
 ];
 
-// Mobile: all items
-const mobileNav = [
-  { name: "Zajednica", href: "/zajednica", icon: Users },
-  { name: "Projekti",  href: "/projekti",  icon: Video },
-  { name: "Giveaway",  href: "/giveaway",  icon: Gift },
-  { name: "Tim",       href: "/tim",       icon: Users2 },
-  { name: "Pravila",   href: "/pravila",   icon: ScrollText },
+// Items that live in the "Još" dropdown on desktop
+const moreNav = [
+  { name: "Tim",     href: "/tim",     icon: Users2 },
+  { name: "Pravila", href: "/pravila", icon: ScrollText },
 ];
+
+const mobileNav = [...desktopNav, ...moreNav];
 
 export function Header() {
   const [location, setLocation] = useLocation();
@@ -130,6 +128,34 @@ export function Header() {
                 <Layers className="w-3.5 h-3.5 transition-transform group-hover:scale-110" />
                 Usluge
               </button>
+
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <button className={`relative px-3 py-2 rounded-xl text-sm font-medium transition-all flex items-center gap-1 group ${
+                    moreNav.some(i => isActive(i.href)) ? "text-primary" : "text-muted-foreground hover:text-foreground"
+                  }`}>
+                    {moreNav.some(i => isActive(i.href)) && (
+                      <motion.div layoutId="nav-pill" className="absolute inset-0 bg-primary/10 rounded-xl" transition={{ type: "spring", bounce: 0.2, duration: 0.4 }} />
+                    )}
+                    <span className="relative z-10">Još</span>
+                    <ChevronDown className="w-3.5 h-3.5 relative z-10 transition-transform group-data-[state=open]:rotate-180" />
+                  </button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="start" className="w-44 rounded-xl mt-1">
+                  {moreNav.map(item => (
+                    <DropdownMenuItem key={item.name} asChild>
+                      <Link
+                        href={item.href}
+                        className={`flex items-center gap-2 cursor-pointer ${isActive(item.href) ? "text-primary" : ""}`}
+                      >
+                        <item.icon className="w-4 h-4 text-muted-foreground" />
+                        {item.name}
+                        {isActive(item.href) && <div className="ml-auto w-1.5 h-1.5 rounded-full bg-primary" />}
+                      </Link>
+                    </DropdownMenuItem>
+                  ))}
+                </DropdownMenuContent>
+              </DropdownMenu>
 
               {user?.role === "admin" && (
                 <>
