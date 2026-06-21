@@ -131,20 +131,14 @@ async function generateStoryBlob(link: SmartLink): Promise<Blob> {
   btg.addColorStop(1,    "rgba(0,0,0,0.96)");
   ctx.fillStyle = btg; ctx.fillRect(0, H * 0.48, W, H * 0.52);
 
-  // ── 4. Studio logo — top center ───────────────────────────────────────────
+  // Load logo (drawn at bottom only)
   let logoImg: HTMLImageElement | null = null;
   try { logoImg = await loadImg(`${window.location.origin}/leflow-logo-white.png`); } catch {}
-  if (logoImg) {
-    const lW = 136, lH = Math.round((logoImg.naturalHeight / logoImg.naturalWidth) * lW);
-    ctx.save(); ctx.globalAlpha = 0.35;
-    ctx.drawImage(logoImg, (W - lW) / 2, 58, lW, lH);
-    ctx.restore();
-  }
 
-  // ── 5. Cover art ──────────────────────────────────────────────────────────
-  const COVER = 800;
+  // ── 4. Cover art ──────────────────────────────────────────────────────────
+  const COVER = 750;
   const cx = (W - COVER) / 2;
-  const cy = 160;
+  const cy = 130;
 
   if (coverImg) {
     // Colored glow halo
@@ -158,7 +152,7 @@ async function generateStoryBlob(link: SmartLink): Promise<Blob> {
     // Drop shadow layer
     ctx.save();
     ctx.shadowColor = "rgba(0,0,0,0.95)";
-    ctx.shadowBlur = 140; ctx.shadowOffsetY = 60;
+    ctx.shadowBlur = 70; ctx.shadowOffsetY = 24;
     roundRect(ctx, cx, cy, COVER, COVER, 56);
     ctx.fillStyle = "#000"; ctx.fill();
     ctx.restore();
@@ -194,7 +188,7 @@ async function generateStoryBlob(link: SmartLink): Promise<Blob> {
   }
 
   // ── 6. Title ──────────────────────────────────────────────────────────────
-  const titleY = cy + COVER + 76;
+  const titleY = cy + COVER + 108;
   ctx.textAlign = "center";
   ctx.shadowColor = "rgba(0,0,0,0.95)"; ctx.shadowBlur = 36;
   ctx.font = `800 94px system-ui, -apple-system, Arial, sans-serif`;
@@ -297,8 +291,10 @@ async function generateStoryBlob(link: SmartLink): Promise<Blob> {
   });
 
   const qrX = (W - QR_SIZE) / 2;
-  // Pin QR consistently near bottom, never too high
-  const qrY = Math.max(afterIconsY + 58, H - QR_SIZE - qrPad * 2 - 44 - 28 - 48 - 88);
+  const logoH = logoImg ? Math.round((logoImg.naturalHeight / logoImg.naturalWidth) * 150) : 36;
+  // Leave room: URL(40) + gap(52) + logo + bottomMargin(60)
+  const bottomReserve = 40 + 52 + logoH + 60;
+  const qrY = Math.max(afterIconsY + 56, H - QR_SIZE - qrPad * 2 - bottomReserve);
 
   ctx.save();
   roundRect(ctx, qrX - qrPad, qrY - qrPad, QR_SIZE + qrPad * 2, QR_SIZE + qrPad * 2, 20);
@@ -310,11 +306,24 @@ async function generateStoryBlob(link: SmartLink): Promise<Blob> {
   ctx.drawImage(qrC, qrX, qrY, QR_SIZE, QR_SIZE);
 
   // URL
+  const urlY = qrY + QR_SIZE + qrPad + 40;
   ctx.font = `400 24px "Courier New", monospace`;
   ctx.fillStyle = "rgba(255,255,255,0.26)";
   ctx.shadowColor = "rgba(0,0,0,0.9)"; ctx.shadowBlur = 10;
-  ctx.fillText(`studioleflow.com/l/${link.slug}`, W / 2, qrY + QR_SIZE + qrPad + 40);
+  ctx.fillText(`studioleflow.com/l/${link.slug}`, W / 2, urlY);
   ctx.shadowBlur = 0;
+
+  // ── Logo — dole, uvek prikovano ───────────────────────────────────────────
+  if (logoImg) {
+    const lW = 150;
+    ctx.save(); ctx.globalAlpha = 0.38;
+    ctx.drawImage(logoImg, (W - lW) / 2, H - 56 - logoH, lW, logoH);
+    ctx.restore();
+  } else {
+    ctx.font = `300 26px system-ui, -apple-system, Arial, sans-serif`;
+    ctx.fillStyle = "rgba(255,255,255,0.22)";
+    ctx.fillText("STUDIO LEFLOW", W / 2, H - 58);
+  }
 
   return new Promise<Blob>((resolve, reject) => {
     canvas.toBlob(b => b ? resolve(b) : reject(new Error("toBlob failed")), "image/png");
