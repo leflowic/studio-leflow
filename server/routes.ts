@@ -3756,10 +3756,14 @@ Sitemap: ${siteUrl}/sitemap.xml
   app.get("/api/l/:slug", async (req, res) => {
     try {
       const link = await storage.getSmartLinkBySlug(req.params.slug);
-      if (!link) return res.status(404).json({ error: "Link nije pronađen" });
+      if (!link) {
+        console.log(`[SmartLink] 404 slug="${req.params.slug}"`);
+        return res.status(404).json({ error: `Link nije pronađen (slug: ${req.params.slug})` });
+      }
       res.json(link);
-    } catch {
-      res.status(500).json({ error: "Greška na serveru" });
+    } catch (e: any) {
+      console.error(`[SmartLink] 500 slug="${req.params.slug}":`, e?.message);
+      res.status(500).json({ error: `Greška na serveru: ${e?.message ?? "nepoznata greška"}` });
     }
   });
 

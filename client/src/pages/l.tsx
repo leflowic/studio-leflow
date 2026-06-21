@@ -1,6 +1,6 @@
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { useParams } from "wouter";
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import type { SmartLink } from "@shared/schema";
 import { SiSpotify, SiYoutube, SiApplemusic, SiSoundcloud, SiTidal } from "react-icons/si";
 
@@ -17,11 +17,18 @@ export default function SmartLinkPage() {
   const params = useParams<{ slug: string }>();
   const slug = params.slug;
 
+  const [fetchError, setFetchError] = useState<string | null>(null);
   const { data: link, isLoading, isError } = useQuery<SmartLink>({
     queryKey: [`/api/l/${slug}`],
     queryFn: async () => {
       const r = await fetch(`/api/l/${slug}`);
-      if (!r.ok) throw new Error("Not found");
+      if (!r.ok) {
+        let msg = `HTTP ${r.status}`;
+        try { const j = await r.json(); msg = j.error ?? msg; } catch {}
+        console.error(`[SmartLink] fetch /api/l/${slug} failed:`, msg);
+        setFetchError(msg);
+        throw new Error(msg);
+      }
       return r.json();
     },
     retry: false,
@@ -61,6 +68,11 @@ export default function SmartLinkPage() {
       <div className="min-h-screen bg-[#050505] flex flex-col items-center justify-center gap-3 text-center px-6">
         <p className="text-xl font-bold text-white">Link nije pronađen</p>
         <p className="text-sm text-white/40">Ovaj smart link ne postoji ili je obrisan.</p>
+        {fetchError && (
+          <p className="text-[11px] font-mono text-white/20 mt-1 bg-white/5 px-3 py-1.5 rounded-lg">
+            {fetchError}
+          </p>
+        )}
         <a href="/" className="mt-3 text-xs text-white/30 hover:text-white/60 transition-colors tracking-widest uppercase">
           ← Studio LeFlow
         </a>
