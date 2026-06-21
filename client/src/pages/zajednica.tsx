@@ -47,8 +47,9 @@ type LeaderboardEntry = { userId: number; username: string; avatarUrl: string | 
 type CollabUser = { id: number; username: string; avatarUrl: string | null; isVerifiedArtist: boolean };
 
 function GameLeaderboardWidget() {
-  const { data = [] } = useQuery<LeaderboardEntry[]>({ queryKey: ["/api/game/leaderboard"] });
-  if (data.length === 0) return null;
+  const { data } = useQuery<{ leaderboard: LeaderboardEntry[] }>({ queryKey: ["/api/game/leaderboard"] });
+  const entries = data?.leaderboard ?? [];
+  if (entries.length === 0) return null;
   return (
     <div className="rounded-2xl border border-border/60 bg-card p-4">
       <div className="flex items-center gap-2 mb-3">
@@ -56,7 +57,7 @@ function GameLeaderboardWidget() {
         <h2 className="font-semibold text-sm">Top igrači sedmice</h2>
       </div>
       <div className="space-y-2">
-        {data.slice(0, 5).map((entry, i) => (
+        {entries.slice(0, 5).map((entry, i) => (
           <Link key={entry.userId} href={`/u/${entry.username}`} className="flex items-center gap-2.5 hover:bg-muted/50 rounded-xl px-2 py-1.5 transition-colors">
             <span className={cn("w-5 h-5 rounded-full flex items-center justify-center text-[10px] font-bold flex-shrink-0",
               i === 0 ? "bg-amber-500 text-white" : i === 1 ? "bg-slate-400 text-white" : i === 2 ? "bg-amber-700 text-white" : "bg-muted text-muted-foreground"

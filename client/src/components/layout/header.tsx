@@ -21,12 +21,14 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import leflowLogo from "@/assets/leflow-logo.png";
 
 const navigation = [
-  { name: "Giveaway",  href: "/giveaway",  icon: Gift },
-  { name: "Zajednica", href: "/zajednica", icon: Users },
-  { name: "Projekti",  href: "/projekti",  icon: Video },
-  { name: "Tim",       href: "/tim",       icon: Users2 },
-  { name: "Pravila",   href: "/pravila",   icon: ScrollText },
+  { name: "Giveaway",  href: "/giveaway",  icon: Gift,       desktopOnly: false },
+  { name: "Zajednica", href: "/zajednica", icon: Users,      desktopOnly: true },
+  { name: "Projekti",  href: "/projekti",  icon: Video,      desktopOnly: true },
+  { name: "Tim",       href: "/tim",       icon: Users2,     desktopOnly: true },
+  { name: "Pravila",   href: "/pravila",   icon: ScrollText, desktopOnly: true },
 ];
+
+const desktopNav = navigation.filter(n => n.desktopOnly);
 
 export function Header() {
   const [location, setLocation] = useLocation();
@@ -89,12 +91,12 @@ export function Header() {
             {/* Logo */}
             <Link href="/" className="flex items-center gap-2 -ml-2 px-2 py-2 rounded-xl hover:bg-muted/50 transition-colors" data-testid="link-logo">
               <img src={leflowLogo} alt="Studio LeFlow" draggable={false} onContextMenu={e => e.preventDefault()} className="h-8 md:h-9 w-auto dark:invert select-none" />
-              <span className="hidden sm:inline text-sm md:text-base font-bold font-[Montserrat] uppercase tracking-wide">Studio LeFlow</span>
+              <span className="hidden xl:inline text-sm md:text-base font-bold font-[Montserrat] uppercase tracking-wide">Studio LeFlow</span>
             </Link>
 
             {/* Desktop nav */}
             <nav className="hidden lg:flex items-center gap-1">
-              {navigation.map(item => (
+              {desktopNav.map(item => (
                 <Link
                   key={item.name}
                   href={item.href}
@@ -125,6 +127,20 @@ export function Header() {
                 <Layers className="w-3.5 h-3.5 transition-transform group-hover:scale-110" />
                 Usluge
               </button>
+
+              <Link
+                href="/giveaway"
+                className={`relative px-3.5 py-2 rounded-xl text-sm font-medium transition-all flex items-center gap-1.5 group ${
+                  isActive("/giveaway") ? "text-primary" : "text-muted-foreground hover:text-foreground"
+                }`}
+                data-testid="link-nav-giveaway"
+              >
+                {isActive("/giveaway") && (
+                  <motion.div layoutId="nav-pill" className="absolute inset-0 bg-primary/10 rounded-xl" transition={{ type: "spring", bounce: 0.2, duration: 0.4 }} />
+                )}
+                <Gift className={`w-3.5 h-3.5 relative z-10 transition-transform group-hover:scale-110 ${isActive("/giveaway") ? "text-primary" : ""}`} />
+                <span className="relative z-10">Giveaway</span>
+              </Link>
 
               {user?.role === "admin" && (
                 <>
