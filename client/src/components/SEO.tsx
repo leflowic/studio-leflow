@@ -20,7 +20,7 @@ const defaultStructuredData = {
   "alternateName": ["LeFlow Studio", "LeFlow", "Studio Le Flow"],
   "url": "https://studioleflow.com",
   "logo": "https://studioleflow.com/favicon-512x512.png",
-  "image": "https://studioleflow.com/og-image.jpg",
+  "image": "https://studioleflow.com/og-image.png",
   "description": "Vrhunski muzički studio u Beogradu. Profesionalno snimanje, mix/mastering, instrumentalna produkcija i video spotovi.",
   "telephone": "+381637347023",
   "email": "leflowbusiness@gmail.com",
@@ -162,7 +162,7 @@ export function SEO({
     "trap beat srbija",
     "rap snimanje beograd"
   ],
-  ogImage = "/og-image.jpg",
+  ogImage = "/og-image.png",
   ogType = "website",
   canonicalUrl,
   structuredData,
