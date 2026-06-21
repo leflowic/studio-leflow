@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { Link, useLocation } from "wouter";
-import { Music, Mic2, Video, ArrowRight, CheckCircle2, Headphones, Phone, Play, Mail, AlertCircle, Gamepad2 } from "lucide-react";
+import { Music, Mic2, Video, ArrowRight, CheckCircle2, Headphones, Phone, Play, Mail, AlertCircle, Gamepad2, UserPlus, X, LogIn } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Alert, AlertDescription } from "@/components/ui/alert";
@@ -80,6 +80,61 @@ function GameAnnouncement() {
           Sledeća igra počinje <strong>{dateLabel}</strong>
           {countdown && <span className="ml-1.5 font-mono text-white/80">— još {countdown}</span>}
         </span>
+      </div>
+    </motion.div>
+  );
+}
+
+function GuestBanner() {
+  const [visible, setVisible] = useState(false);
+  const [dismissed, setDismissed] = useState(() => sessionStorage.getItem("guest_banner_dismissed") === "1");
+
+  useEffect(() => {
+    if (dismissed) return;
+    const onScroll = () => { if (window.scrollY > 280) setVisible(true); };
+    window.addEventListener("scroll", onScroll, { passive: true });
+    return () => window.removeEventListener("scroll", onScroll);
+  }, [dismissed]);
+
+  const dismiss = () => {
+    setDismissed(true);
+    setVisible(false);
+    sessionStorage.setItem("guest_banner_dismissed", "1");
+  };
+
+  if (dismissed || !visible) return null;
+
+  return (
+    <motion.div
+      initial={{ y: 80, opacity: 0 }}
+      animate={{ y: 0, opacity: 1 }}
+      exit={{ y: 80, opacity: 0 }}
+      transition={{ type: "spring", damping: 24, stiffness: 280 }}
+      className="fixed bottom-24 left-1/2 -translate-x-1/2 z-40 w-[calc(100%-2rem)] max-w-lg"
+    >
+      <div className="flex items-center gap-3 bg-card border border-border/80 rounded-2xl shadow-2xl px-4 py-3 backdrop-blur-sm">
+        <div className="w-9 h-9 rounded-xl bg-primary/10 flex items-center justify-center flex-shrink-0">
+          <UserPlus className="w-4 h-4 text-primary" />
+        </div>
+        <div className="flex-1 min-w-0">
+          <p className="text-sm font-semibold leading-tight">Pridruži se zajednici</p>
+          <p className="text-xs text-muted-foreground">Besplatno · Igre · Feed · Poruke</p>
+        </div>
+        <div className="flex items-center gap-1.5 flex-shrink-0">
+          <Link href="/registracija">
+            <Button size="sm" className="h-8 rounded-xl text-xs px-3 gap-1.5">
+              Registruj se
+            </Button>
+          </Link>
+          <Link href="/prijava">
+            <Button size="sm" variant="ghost" className="h-8 rounded-xl text-xs px-2.5">
+              Prijava
+            </Button>
+          </Link>
+          <button onClick={dismiss} className="text-muted-foreground hover:text-foreground transition-colors ml-0.5">
+            <X className="w-4 h-4" />
+          </button>
+        </div>
       </div>
     </motion.div>
   );
@@ -186,6 +241,7 @@ export default function Home() {
 
   return (
     <div className="min-h-screen relative">
+      {!user && <GuestBanner />}
       <SEO
         title="Studio LeFlow - Muzički Studio Beograd | Snimanje Pesama, Miks, Mastering"
         description="Vrhunski muzički studio u Beogradu. Snimanje, mix/mastering, instrumentali, video spotovi. WA-47, Apollo Twin X, UAD plugins. Preko 5 godina iskustva."
@@ -364,6 +420,18 @@ export default function Home() {
                         LIVE
                       </span>
                     )}
+                  </Button>
+                </Link>
+              )}
+              {!user && (
+                <Link href="/registracija" className="w-full sm:w-auto">
+                  <Button
+                    size="lg"
+                    variant="outline"
+                    className="w-full sm:w-auto text-lg px-8 py-6 backdrop-blur-md bg-white/10 text-white border-white/30 hover:bg-white/20 transition-all hover:scale-105 hover:shadow-xl font-semibold gap-2"
+                  >
+                    <UserPlus className="w-5 h-5" />
+                    Pridruži se besplatno
                   </Button>
                 </Link>
               )}
