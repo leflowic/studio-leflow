@@ -145,6 +145,8 @@ There are no automated tests in this project.
 - Audio uploads: `POST /api/upload/audio` → Cloudinary, with `fileTypeFromBuffer` magic-bytes validation.
 - Game clip: `POST /api/upload/game-clip` (admin) → Cloudinary `studioleflow/game-clips` folder.
 - Smart link cover: `POST /api/upload/smart-link-cover` (admin) → Cloudinary `studioleflow/smart-links` folder.
+- Post images: `POST /api/upload/post-image` → `uploadRawImageToCloudinary()` (no face-crop, no overwrite), `studioleflow/posts` folder. Use `uploadRawImageToCloudinary` not `uploadImageToCloudinary` — the latter applies face-crop and would corrupt post images.
+- Post audio: `POST /api/upload/post-audio` → `uploadAudioToCloudinary()`, `studioleflow/posts` folder.
 - CMS media: multer to `attached_assets/temp/`, then moved to `attached_assets/`. **Note:** this path is ephemeral on Railway — CMS media uploads are lost on redeploy. Only `attached_assets/` files bundled at build time persist (they're baked into `dist/public/`). If persistent CMS media is needed, route through Cloudinary instead.
 - All upload routes have `uploadRateLimiter` applied (30/hr). Avatar and message-image routes also validate magic bytes via `fileTypeFromBuffer`.
 
@@ -173,6 +175,44 @@ There are no automated tests in this project.
 
 **FAQ page:**
 - Route `/faq` — accordion component at `client/src/pages/faq.tsx`. Linked from the footer only (was removed from the main nav). Listed in `sitemap.xml`.
+
+**Community feed (/zajednica):**
+- Tables: `posts` (userId, type, content, audioUrl, imageUrl, collabTag, createdAt), `post_likes` (postId, userId, UNIQUE), `post_comments` (postId, userId, content, createdAt), `notifications` (userId, fromUserId, type, postId, message, read, createdAt).
+- User fields added for the feed: `isVerifiedArtist boolean DEFAULT false`, `availableForCollab boolean DEFAULT false`.
+- Post types: `status`, `audio`, `image`, `collab`. Collab tags are artist-to-artist only (beatmakers, rappers, features) — never studio services.
+- `GET /api/posts?limit=N&offset=N` — paginated feed (JWT optional, affects `hasLiked`). `GET /api/posts/user/:userId` — all posts by a user.
+- Feed pagination uses **local state accumulation** (not React Query cache pagination). `CommunityFeed` keeps a `posts` state array and appends on infinite scroll. Do **not** use `useQuery` pagination for this — `staleTime: Infinity` means `invalidateQueries` triggers a fetch not an instant update, and offset-based RQ pagination has cache collision issues with prepended new posts.
+- Infinite scroll: `IntersectionObserver` on a sentinel `<div>` at the bottom with `rootMargin: "200px"`. Sentinel effect depends on `[offset, hasMore, loadingMore]`.
+- `renderTextWithMentions(text)` in `CommunityFeed.tsx` splits on `/@(\w+)/g` and renders `<Link href="/u/username">` for each mention.
+- `GET /api/users/by-username/:username` — case-insensitive username lookup, returns public fields only (no email).
+- User profile route: `/u/:username` → `client/src/pages/user-profile.tsx`. Protected route, uses `GET /api/users/by-username/:username` then `GET /api/posts/user/:userId`.
+- When a post is liked, the server creates a notification AND calls `broadcastToUser(post.userId, { type: "feed_notification", notification: {...} })`. Same for comments and @mentions.
+- `PATCH /api/admin/users/:id/verified` (requireAdmin) — sets `isVerifiedArtist`. `PATCH /api/me/collab` — sets `availableForCollab`. `GET /api/collab-users` — returns users with `availableForCollab: true`.
+
+**WS broadcast vs. notification:**
+- `notifyUser(userId, title, description?)` from `server/websocket-helpers.ts` — sends a toast string to the client. Used for simple alerts.
+- `broadcastToUser(userId, message)` from `server/websocket-helpers.ts` — sends an arbitrary object. Used for structured events like `feed_notification` and `message_reaction`. Both are registered in `server/websocket.ts` via `setBroadcastFunction` / `setNotificationFunction`.
+- When adding new WS event types, add them to the `WebSocketMessage` union in `client/src/contexts/WebSocketContext.tsx`.
+
+**Notification bell:**
+- `client/src/components/NotificationBell.tsx` — shows unread count badge, dropdown list on click.
+- On open: calls `POST /api/notifications/mark-read` to clear badge.
+- WS subscription: on `feed_notification` event, increments count +1 and invalidates `/api/notifications/unread-count`.
+- Rendered in the header (`client/src/components/layout/header.tsx`) only for `emailVerified` users.
+
+**Audio waveform (wavesurfer.js):**
+- Use **dynamic import** to avoid SSR/bundle issues: `import("wavesurfer.js").then(({ default: WaveSurfer }) => { ... })`.
+- Always use a `cancelled` flag in the `useEffect` to discard stale callbacks when `url` changes or the component unmounts.
+- Cleanup: `wsRef.current?.destroy(); wsRef.current = null` in the effect return.
+- The `AudioPlayer` component in `CommunityFeed.tsx` is the canonical implementation.
+
+**Image crop modal:**
+- `ImageCropModal` in `CommunityFeed.tsx` — portal-based (same pattern as SmartLinksTab modal, using `createPortal`).
+- Drag to reposition (pointer events with `setPointerCapture`), zoom slider (min zoom fills the 300×300 container, max = 5×).
+- Canvas output is always 800×800 JPEG at 0.92 quality, regardless of display size.
+- Source rect math: `srcX = natural.w/2 - CROP/2/zoom - pos.x/zoom`, `srcSize = CROP/zoom`. This correctly handles pan+zoom combinations.
+- After `onApply(blob)`, convert to `File` with `new File([blob], "slika.jpg", { type: "image/jpeg" })` before setting state.
+- Reset `input.value = ""` after each file pick so the same file can be re-selected after cropping.
 
 **Security notes:**
 - Admin 2FA: one-time token emailed on admin login (`adminLoginToken` / `adminLoginExpiry` fields on user).
