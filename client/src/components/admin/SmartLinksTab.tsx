@@ -211,6 +211,7 @@ export function SmartLinksTab() {
           <DialogContent
             className="max-w-lg max-h-[90vh] overflow-y-auto bg-[#0f0f0f] border-border/40"
             onFocusOutside={(e) => e.preventDefault()}
+            onInteractOutside={(e) => e.preventDefault()}
           >
             <DialogHeader>
               <DialogTitle className="text-base">
