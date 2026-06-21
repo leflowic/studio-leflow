@@ -5,7 +5,6 @@ import { useToast } from "@/hooks/use-toast";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import {
@@ -26,31 +25,27 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
-import { Link2, Plus, Trash2, Edit2, Copy, ExternalLink, BarChart2, Music2, Upload, X, Sparkles, Loader2 } from "lucide-react";
+import {
+  Link2, Plus, Trash2, Edit2, Copy, ExternalLink,
+  BarChart2, Music2, Upload, X, Sparkles, Loader2, MousePointerClick, TrendingUp,
+} from "lucide-react";
 import type { SmartLink } from "@shared/schema";
 
 type SmartLinkWithStats = SmartLink & { totalClicks: number; clicksByPlatform: Record<string, number> };
 
 const PLATFORMS = [
   { key: "spotifyUrl", label: "Spotify", color: "#1DB954", clickKey: "spotify" },
-  { key: "youtubeUrl", label: "YouTube", color: "#FF0000", clickKey: "youtube" },
+  { key: "youtubeUrl", label: "YouTube", color: "#FF0033", clickKey: "youtube" },
   { key: "appleMusicUrl", label: "Apple Music", color: "#FC3C44", clickKey: "apple_music" },
   { key: "soundcloudUrl", label: "SoundCloud", color: "#FF5500", clickKey: "soundcloud" },
-  { key: "tidalUrl", label: "Tidal", color: "#00D4FF", clickKey: "tidal" },
-  { key: "deezerUrl", label: "Deezer", color: "#A04FFF", clickKey: "deezer" },
+  { key: "tidalUrl", label: "Tidal", color: "#00CFFF", clickKey: "tidal" },
+  { key: "deezerUrl", label: "Deezer", color: "#9B59FF", clickKey: "deezer" },
 ] as const;
 
 const emptyForm = {
-  slug: "",
-  title: "",
-  artist: "",
-  coverUrl: "",
-  spotifyUrl: "",
-  youtubeUrl: "",
-  appleMusicUrl: "",
-  soundcloudUrl: "",
-  tidalUrl: "",
-  deezerUrl: "",
+  slug: "", title: "", artist: "", coverUrl: "",
+  spotifyUrl: "", youtubeUrl: "", appleMusicUrl: "",
+  soundcloudUrl: "", tidalUrl: "", deezerUrl: "",
 };
 
 function slugify(text: string) {
@@ -76,16 +71,17 @@ export function SmartLinksTab() {
     queryKey: ["/api/admin/smart-links"],
   });
 
+  const totalClicks = links?.reduce((s, l) => s + l.totalClicks, 0) ?? 0;
+
   const saveMutation = useMutation({
     mutationFn: async (data: typeof emptyForm) => {
       const clean: Record<string, string | null> = { ...data };
       for (const key of ["spotifyUrl", "youtubeUrl", "appleMusicUrl", "soundcloudUrl", "tidalUrl", "deezerUrl"]) {
         if (!clean[key]) clean[key] = null;
       }
-      if (editingId !== null) {
-        return apiRequest("PATCH", `/api/admin/smart-links/${editingId}`, clean);
-      }
-      return apiRequest("POST", "/api/admin/smart-links", clean);
+      return editingId !== null
+        ? apiRequest("PATCH", `/api/admin/smart-links/${editingId}`, clean)
+        : apiRequest("POST", "/api/admin/smart-links", clean);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/admin/smart-links"] });
@@ -129,7 +125,7 @@ export function SmartLinksTab() {
         deezerUrl: data.deezerUrl || f.deezerUrl,
       }));
       setAutoUrl("");
-      toast({ title: "Pronađeno! Proveri podatke pre čuvanja." });
+      toast({ title: "Pronađeno!", description: "Proveri podatke i sačuvaj link." });
     },
     onError: async (e: any) => {
       const msg = await e?.response?.json?.().catch(() => null);
@@ -184,167 +180,192 @@ export function SmartLinksTab() {
   }
 
   function copyLink(slug: string) {
-    const url = `${window.location.origin}/l/${slug}`;
-    navigator.clipboard.writeText(url);
+    navigator.clipboard.writeText(`${window.location.origin}/l/${slug}`);
     toast({ title: "Link kopiran!" });
   }
 
   return (
     <div className="space-y-6">
+
+      {/* Header */}
       <div className="flex items-center justify-between">
-        <div className="flex items-center gap-2">
-          <Link2 className="w-5 h-5 text-primary" />
-          <h2 className="text-xl font-bold">Smart Links</h2>
-          <Badge variant="secondary" className="text-xs">{links?.length ?? 0} linkova</Badge>
+        <div>
+          <div className="flex items-center gap-2.5 mb-0.5">
+            <div className="w-8 h-8 rounded-xl bg-primary/10 flex items-center justify-center">
+              <Link2 className="w-4 h-4 text-primary" />
+            </div>
+            <h2 className="text-xl font-bold">Smart Links</h2>
+          </div>
+          <p className="text-xs text-muted-foreground ml-10.5">Tvoji li.sten.to linkovi — jedna pesma, sve platforme</p>
         </div>
+
         <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
           <DialogTrigger asChild>
-            <Button onClick={openCreate} className="gap-2">
+            <Button onClick={openCreate} className="gap-2 shadow-lg shadow-primary/20">
               <Plus className="w-4 h-4" />
               Novi link
             </Button>
           </DialogTrigger>
-          <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto">
+
+          <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto bg-[#0f0f0f] border-border/40">
             <DialogHeader>
-              <DialogTitle>{editingId !== null ? "Uredi link" : "Novi smart link"}</DialogTitle>
+              <DialogTitle className="text-base">
+                {editingId !== null ? "Uredi smart link" : "Novi smart link"}
+              </DialogTitle>
             </DialogHeader>
-            <div className="space-y-4 pt-2">
-              {/* Auto-fill */}
-              <div className="rounded-xl border border-primary/20 bg-primary/5 p-3 space-y-2">
-                <p className="text-xs font-semibold text-primary flex items-center gap-1.5">
-                  <Sparkles className="w-3.5 h-3.5" />
-                  Auto-popuni
-                </p>
-                <p className="text-xs text-muted-foreground">Ubaci link pesme sa bilo koje platforme i mi ćemo naći sve ostalo.</p>
-                <div className="flex gap-2">
-                  <Input
-                    placeholder="https://open.spotify.com/track/..."
-                    value={autoUrl}
-                    onChange={e => setAutoUrl(e.target.value)}
-                    onKeyDown={e => { if (e.key === "Enter" && autoUrl) fetchMetaMutation.mutate(autoUrl); }}
-                    className="text-xs"
-                  />
-                  <Button
-                    size="sm"
-                    onClick={() => fetchMetaMutation.mutate(autoUrl)}
-                    disabled={!autoUrl || fetchMetaMutation.isPending}
-                    className="shrink-0 gap-1.5"
-                  >
-                    {fetchMetaMutation.isPending ? (
-                      <Loader2 className="w-3.5 h-3.5 animate-spin" />
-                    ) : (
-                      <Sparkles className="w-3.5 h-3.5" />
-                    )}
-                    {fetchMetaMutation.isPending ? "Tražim..." : "Nađi"}
-                  </Button>
+
+            <div className="space-y-5 pt-1">
+              {/* Auto-fill box */}
+              <div className="rounded-2xl overflow-hidden border border-primary/15 bg-gradient-to-br from-primary/8 to-primary/3">
+                <div className="px-4 py-3 border-b border-primary/10 flex items-center gap-2">
+                  <Sparkles className="w-3.5 h-3.5 text-primary" />
+                  <span className="text-xs font-semibold text-primary">Auto-popuni</span>
+                </div>
+                <div className="px-4 py-3 space-y-2.5">
+                  <p className="text-[11.5px] text-muted-foreground leading-relaxed">
+                    Ubaci link pesme sa <span className="text-foreground/70">bilo koje platforme</span> — Spotify, YouTube, Apple Music... i mi ćemo naći sve ostalo automatski.
+                  </p>
+                  <div className="flex gap-2">
+                    <Input
+                      placeholder="https://open.spotify.com/track/..."
+                      value={autoUrl}
+                      onChange={e => setAutoUrl(e.target.value)}
+                      onKeyDown={e => { if (e.key === "Enter" && autoUrl) fetchMetaMutation.mutate(autoUrl); }}
+                      className="text-xs h-9 bg-background/50 border-border/30 focus:border-primary/40"
+                    />
+                    <Button
+                      size="sm"
+                      onClick={() => fetchMetaMutation.mutate(autoUrl)}
+                      disabled={!autoUrl || fetchMetaMutation.isPending}
+                      className="h-9 px-4 shrink-0 gap-1.5"
+                    >
+                      {fetchMetaMutation.isPending
+                        ? <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                        : <Sparkles className="w-3.5 h-3.5" />}
+                      {fetchMetaMutation.isPending ? "Tražim..." : "Nađi"}
+                    </Button>
+                  </div>
                 </div>
               </div>
 
-              {/* Cover image */}
-              <div className="space-y-2">
-                <Label>Cover slika</Label>
+              {/* Cover + preview */}
+              <div className="flex gap-4 items-start">
+                {/* Cover upload */}
                 <div
-                  className="relative w-full h-36 rounded-xl border border-border/40 bg-muted/30 flex items-center justify-center cursor-pointer overflow-hidden group hover:border-primary/40 transition-colors"
+                  className="relative w-24 h-24 rounded-2xl border border-border/30 bg-muted/20 flex-shrink-0 flex items-center justify-center cursor-pointer overflow-hidden group hover:border-primary/30 transition-all"
                   onClick={() => fileRef.current?.click()}
                 >
                   {form.coverUrl ? (
                     <>
                       <img src={form.coverUrl} alt="cover" className="absolute inset-0 w-full h-full object-cover" />
-                      <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
-                        <Upload className="w-6 h-6 text-white" />
+                      <div className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+                        <Upload className="w-5 h-5 text-white" />
                       </div>
                       <button
-                        className="absolute top-2 right-2 bg-black/70 rounded-full p-1 z-10"
+                        className="absolute top-1.5 right-1.5 bg-black/80 rounded-full p-0.5 z-10 opacity-0 group-hover:opacity-100 transition-opacity"
                         onClick={e => { e.stopPropagation(); setForm(f => ({ ...f, coverUrl: "" })); }}
                       >
-                        <X className="w-3 h-3 text-white" />
+                        <X className="w-2.5 h-2.5 text-white" />
                       </button>
                     </>
                   ) : (
-                    <div className="flex flex-col items-center gap-2 text-muted-foreground">
-                      {uploading ? (
-                        <div className="animate-spin w-5 h-5 rounded-full border-2 border-primary border-t-transparent" />
-                      ) : (
-                        <>
-                          <Music2 className="w-8 h-8 opacity-40" />
-                          <span className="text-xs">Klikni za upload slike</span>
+                    <div className="flex flex-col items-center gap-1.5 text-muted-foreground/50">
+                      {uploading
+                        ? <Loader2 className="w-5 h-5 animate-spin text-primary" />
+                        : <>
+                          <Music2 className="w-6 h-6" />
+                          <span className="text-[9px] text-center leading-tight">Cover<br />slika</span>
                         </>
-                      )}
+                      }
                     </div>
                   )}
                 </div>
-                <input
-                  ref={fileRef}
-                  type="file"
-                  accept="image/*"
-                  className="hidden"
-                  onChange={e => { const f = e.target.files?.[0]; if (f) uploadCover(f); e.target.value = ""; }}
-                />
+                <input ref={fileRef} type="file" accept="image/*" className="hidden"
+                  onChange={e => { const f = e.target.files?.[0]; if (f) uploadCover(f); e.target.value = ""; }} />
+
+                {/* Title + artist + slug */}
+                <div className="flex-1 space-y-2.5">
+                  <div className="space-y-1">
+                    <Label className="text-[11px] text-muted-foreground">Naslov pesme</Label>
+                    <Input
+                      placeholder="Naslov pesme"
+                      value={form.title}
+                      onChange={e => {
+                        const title = e.target.value;
+                        setForm(f => ({ ...f, title, slug: f.slug || slugify(title) }));
+                      }}
+                      className="h-9 text-sm"
+                    />
+                  </div>
+                  <div className="space-y-1">
+                    <Label className="text-[11px] text-muted-foreground">Izvođač</Label>
+                    <Input
+                      placeholder="Ime izvođača"
+                      value={form.artist}
+                      onChange={e => setForm(f => ({ ...f, artist: e.target.value }))}
+                      className="h-9 text-sm"
+                    />
+                  </div>
+                </div>
+              </div>
+
+              {/* Cover URL input */}
+              <div className="space-y-1">
+                <Label className="text-[11px] text-muted-foreground">URL cover slike</Label>
                 <Input
-                  placeholder="Ili unesite URL slike..."
+                  placeholder="https://..."
                   value={form.coverUrl}
                   onChange={e => setForm(f => ({ ...f, coverUrl: e.target.value }))}
-                  className="text-xs"
+                  className="h-9 text-xs"
                 />
               </div>
 
-              <div className="grid grid-cols-2 gap-3">
-                <div className="space-y-1.5">
-                  <Label>Naslov</Label>
-                  <Input
-                    placeholder="Ime pesme"
-                    value={form.title}
-                    onChange={e => {
-                      const title = e.target.value;
-                      setForm(f => ({ ...f, title, slug: f.slug || slugify(title) }));
-                    }}
-                  />
-                </div>
-                <div className="space-y-1.5">
-                  <Label>Izvođač</Label>
-                  <Input
-                    placeholder="Ime izvođača"
-                    value={form.artist}
-                    onChange={e => setForm(f => ({ ...f, artist: e.target.value }))}
-                  />
-                </div>
-              </div>
-
-              <div className="space-y-1.5">
-                <Label>Slug (URL)</Label>
-                <div className="flex items-center gap-2">
-                  <span className="text-xs text-muted-foreground whitespace-nowrap">/l/</span>
-                  <Input
-                    placeholder="moja-pesma"
+              {/* Slug */}
+              <div className="space-y-1">
+                <Label className="text-[11px] text-muted-foreground">URL slug</Label>
+                <div className="flex items-center h-9 rounded-lg border border-border/40 bg-muted/20 overflow-hidden focus-within:border-primary/40 transition-colors">
+                  <span className="px-3 text-xs text-muted-foreground border-r border-border/30 h-full flex items-center bg-muted/20 shrink-0">
+                    /l/
+                  </span>
+                  <input
+                    className="flex-1 px-3 text-sm bg-transparent outline-none text-foreground placeholder:text-muted-foreground/50"
+                    placeholder="naziv-pesme"
                     value={form.slug}
                     onChange={e => setForm(f => ({ ...f, slug: e.target.value.toLowerCase().replace(/[^a-z0-9-]/g, "") }))}
                   />
                 </div>
               </div>
 
-              <div className="space-y-2 pt-1">
-                <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Platforme</p>
-                {PLATFORMS.map(p => (
-                  <div key={p.key} className="flex items-center gap-2">
-                    <div className="w-2.5 h-2.5 rounded-full flex-shrink-0" style={{ background: p.color }} />
-                    <Label className="w-28 text-sm flex-shrink-0">{p.label}</Label>
-                    <Input
-                      placeholder={`URL za ${p.label}...`}
-                      value={form[p.key as keyof typeof emptyForm]}
-                      onChange={e => setForm(f => ({ ...f, [p.key]: e.target.value }))}
-                      className="text-xs"
-                    />
-                  </div>
-                ))}
+              {/* Platforms */}
+              <div className="space-y-1.5">
+                <Label className="text-[11px] text-muted-foreground uppercase tracking-wider">Platforme</Label>
+                <div className="rounded-xl border border-border/30 overflow-hidden divide-y divide-border/20">
+                  {PLATFORMS.map(p => (
+                    <div key={p.key} className="flex items-center gap-3 px-3 py-2.5 bg-muted/5 hover:bg-muted/10 transition-colors">
+                      <div className="w-2 h-2 rounded-full flex-shrink-0" style={{ background: p.color }} />
+                      <span className="text-xs font-medium w-24 shrink-0 text-foreground/70">{p.label}</span>
+                      <input
+                        className="flex-1 bg-transparent outline-none text-xs text-foreground placeholder:text-muted-foreground/40 py-0.5"
+                        placeholder={`URL za ${p.label}...`}
+                        value={form[p.key as keyof typeof emptyForm]}
+                        onChange={e => setForm(f => ({ ...f, [p.key]: e.target.value }))}
+                      />
+                    </div>
+                  ))}
+                </div>
               </div>
 
-              <div className="flex justify-end gap-2 pt-2">
-                <Button variant="outline" onClick={() => setDialogOpen(false)}>Otkaži</Button>
+              {/* Footer buttons */}
+              <div className="flex justify-end gap-2 pt-1">
+                <Button variant="outline" onClick={() => setDialogOpen(false)} className="h-9">
+                  Otkaži
+                </Button>
                 <Button
                   onClick={() => saveMutation.mutate(form)}
                   disabled={saveMutation.isPending || !form.title || !form.artist || !form.slug}
+                  className="h-9 px-5 shadow-lg shadow-primary/20"
                 >
-                  {saveMutation.isPending ? "Čuvam..." : editingId !== null ? "Sačuvaj" : "Kreiraj"}
+                  {saveMutation.isPending ? <><Loader2 className="w-3.5 h-3.5 animate-spin mr-1.5" />Čuvam...</> : editingId !== null ? "Sačuvaj" : "Kreiraj link"}
                 </Button>
               </div>
             </div>
@@ -352,104 +373,150 @@ export function SmartLinksTab() {
         </Dialog>
       </div>
 
+      {/* Stats */}
+      {!!links?.length && (
+        <div className="grid grid-cols-2 gap-3">
+          <div className="rounded-2xl border border-border/30 bg-card px-5 py-4 flex items-center gap-3">
+            <div className="w-9 h-9 rounded-xl bg-primary/10 flex items-center justify-center flex-shrink-0">
+              <Link2 className="w-4 h-4 text-primary" />
+            </div>
+            <div>
+              <p className="text-2xl font-black leading-none">{links.length}</p>
+              <p className="text-xs text-muted-foreground mt-0.5">Smart linkova</p>
+            </div>
+          </div>
+          <div className="rounded-2xl border border-border/30 bg-card px-5 py-4 flex items-center gap-3">
+            <div className="w-9 h-9 rounded-xl bg-green-500/10 flex items-center justify-center flex-shrink-0">
+              <MousePointerClick className="w-4 h-4 text-green-500" />
+            </div>
+            <div>
+              <p className="text-2xl font-black leading-none">{totalClicks}</p>
+              <p className="text-xs text-muted-foreground mt-0.5">Ukupno klikova</p>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* List */}
       {isLoading ? (
         <div className="space-y-3">
-          {[1, 2, 3].map(i => <Skeleton key={i} className="h-24 w-full rounded-xl" />)}
+          {[1, 2, 3].map(i => <Skeleton key={i} className="h-[88px] w-full rounded-2xl" />)}
         </div>
       ) : !links?.length ? (
-        <Card className="border-dashed border-border/40">
-          <CardContent className="py-16 flex flex-col items-center gap-3 text-muted-foreground">
-            <Link2 className="w-10 h-10 opacity-30" />
-            <p className="text-sm">Nema smart linkova</p>
-            <Button variant="outline" size="sm" onClick={openCreate} className="gap-2 mt-1">
-              <Plus className="w-4 h-4" /> Kreiraj prvi
-            </Button>
-          </CardContent>
-        </Card>
+        <div className="rounded-2xl border border-dashed border-border/30 py-16 flex flex-col items-center gap-3 text-muted-foreground">
+          <div className="w-14 h-14 rounded-2xl bg-muted/30 flex items-center justify-center">
+            <Link2 className="w-6 h-6 opacity-40" />
+          </div>
+          <div className="text-center">
+            <p className="text-sm font-medium">Nema smart linkova</p>
+            <p className="text-xs text-muted-foreground/60 mt-0.5">Kreiraj prvi link i podeli muziku na svim platformama</p>
+          </div>
+          <Button variant="outline" size="sm" onClick={openCreate} className="gap-2 mt-1">
+            <Plus className="w-3.5 h-3.5" /> Kreiraj prvi
+          </Button>
+        </div>
       ) : (
-        <div className="space-y-3">
+        <div className="space-y-2.5">
           {links.map(link => (
-            <Card key={link.id} className="border-border/40 bg-card overflow-hidden hover:border-primary/20 transition-colors">
-              <CardContent className="p-0">
-                <div className="flex items-stretch gap-0">
-                  {/* Cover */}
-                  <div className="w-20 h-20 flex-shrink-0 bg-muted/40 relative overflow-hidden">
-                    {link.coverUrl ? (
-                      <img src={link.coverUrl} alt={link.title} className="w-full h-full object-cover" />
-                    ) : (
-                      <div className="w-full h-full flex items-center justify-center">
-                        <Music2 className="w-6 h-6 text-muted-foreground/40" />
-                      </div>
+            <div
+              key={link.id}
+              className="group rounded-2xl border border-border/30 bg-card overflow-hidden hover:border-primary/20 hover:bg-card/80 transition-all duration-200"
+            >
+              <div className="flex items-stretch">
+                {/* Cover */}
+                <div className="w-[88px] h-[88px] flex-shrink-0 relative overflow-hidden bg-muted/30">
+                  {link.coverUrl ? (
+                    <img src={link.coverUrl} alt={link.title} className="w-full h-full object-cover" />
+                  ) : (
+                    <div className="w-full h-full flex items-center justify-center">
+                      <Music2 className="w-7 h-7 text-muted-foreground/25" />
+                    </div>
+                  )}
+                  {/* Gradient overlay on cover */}
+                  <div className="absolute inset-0 bg-gradient-to-r from-transparent to-black/20" />
+                </div>
+
+                {/* Info */}
+                <div className="flex-1 px-4 py-3.5 min-w-0 flex flex-col justify-between">
+                  <div>
+                    <p className="font-bold text-sm leading-tight truncate">{link.title}</p>
+                    <p className="text-xs text-muted-foreground truncate mt-0.5">{link.artist}</p>
+                  </div>
+                  <div className="flex items-center gap-2 mt-1.5">
+                    <span className="text-[10px] font-mono text-primary/50 bg-primary/5 px-2 py-0.5 rounded-md border border-primary/10">
+                      /l/{link.slug}
+                    </span>
+                    <div className="flex items-center gap-1 text-[10px] text-muted-foreground">
+                      <TrendingUp className="w-3 h-3" />
+                      {link.totalClicks} klikova
+                    </div>
+                  </div>
+                  {/* Platform dots */}
+                  <div className="flex items-center gap-1.5 mt-1.5">
+                    {PLATFORMS.filter(p => link[p.key as keyof SmartLink]).map(p => (
+                      <div
+                        key={p.key}
+                        className="w-1.5 h-1.5 rounded-full"
+                        style={{ background: p.color }}
+                        title={`${p.label}: ${link.clicksByPlatform[p.clickKey] ?? 0} klikova`}
+                      />
+                    ))}
+                    {PLATFORMS.every(p => !link[p.key as keyof SmartLink]) && (
+                      <span className="text-[10px] text-muted-foreground/50">Nema platformi</span>
                     )}
                   </div>
-
-                  {/* Info */}
-                  <div className="flex-1 px-4 py-3 min-w-0">
-                    <div className="flex items-start justify-between gap-2">
-                      <div className="min-w-0">
-                        <p className="font-semibold text-sm truncate">{link.title}</p>
-                        <p className="text-xs text-muted-foreground truncate">{link.artist}</p>
-                        <p className="text-xs text-primary/70 mt-0.5 font-mono">/l/{link.slug}</p>
-                      </div>
-                      <div className="flex items-center gap-1.5 flex-shrink-0">
-                        <Badge variant="secondary" className="gap-1 text-xs">
-                          <BarChart2 className="w-3 h-3" />
-                          {link.totalClicks}
-                        </Badge>
-                      </div>
-                    </div>
-
-                    {/* Platform clicks */}
-                    <div className="flex flex-wrap gap-1.5 mt-2">
-                      {PLATFORMS.filter(p => link[p.key as keyof SmartLink]).map(p => (
-                        <span key={p.key} className="text-xs rounded-full px-2 py-0.5 font-medium" style={{ background: `${p.color}20`, color: p.color }}>
-                          {p.label}: {link.clicksByPlatform[p.clickKey] ?? 0}
-                        </span>
-                      ))}
-                      {PLATFORMS.every(p => !link[p.key as keyof SmartLink]) && (
-                        <span className="text-xs text-muted-foreground">Nema platformi</span>
-                      )}
-                    </div>
-                  </div>
-
-                  {/* Actions */}
-                  <div className="flex flex-col items-center justify-center gap-1.5 pr-3 pl-1 border-l border-border/30">
-                    <Button variant="ghost" size="icon" className="w-7 h-7" onClick={() => copyLink(link.slug)}>
-                      <Copy className="w-3.5 h-3.5" />
-                    </Button>
-                    <Button variant="ghost" size="icon" className="w-7 h-7" asChild>
-                      <a href={`/l/${link.slug}`} target="_blank" rel="noopener noreferrer">
-                        <ExternalLink className="w-3.5 h-3.5" />
-                      </a>
-                    </Button>
-                    <Button variant="ghost" size="icon" className="w-7 h-7" onClick={() => openEdit(link)}>
-                      <Edit2 className="w-3.5 h-3.5" />
-                    </Button>
-                    <AlertDialog>
-                      <AlertDialogTrigger asChild>
-                        <Button variant="ghost" size="icon" className="w-7 h-7 text-destructive hover:text-destructive">
-                          <Trash2 className="w-3.5 h-3.5" />
-                        </Button>
-                      </AlertDialogTrigger>
-                      <AlertDialogContent>
-                        <AlertDialogHeader>
-                          <AlertDialogTitle>Obriši link?</AlertDialogTitle>
-                          <AlertDialogDescription>
-                            Link za &quot;{link.title}&quot; i svi podaci o klikovima biće trajno obrisani.
-                          </AlertDialogDescription>
-                        </AlertDialogHeader>
-                        <AlertDialogFooter>
-                          <AlertDialogCancel>Otkaži</AlertDialogCancel>
-                          <AlertDialogAction onClick={() => deleteMutation.mutate(link.id)} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
-                            Obriši
-                          </AlertDialogAction>
-                        </AlertDialogFooter>
-                      </AlertDialogContent>
-                    </AlertDialog>
-                  </div>
                 </div>
-              </CardContent>
-            </Card>
+
+                {/* Actions */}
+                <div className="flex flex-col items-center justify-center gap-0.5 px-3 border-l border-border/20 opacity-0 group-hover:opacity-100 transition-opacity">
+                  <Button
+                    variant="ghost" size="icon"
+                    className="w-7 h-7 hover:bg-primary/10 hover:text-primary"
+                    onClick={() => copyLink(link.slug)}
+                    title="Kopiraj link"
+                  >
+                    <Copy className="w-3.5 h-3.5" />
+                  </Button>
+                  <Button variant="ghost" size="icon" className="w-7 h-7" asChild title="Otvori stranicu">
+                    <a href={`/l/${link.slug}`} target="_blank" rel="noopener noreferrer">
+                      <ExternalLink className="w-3.5 h-3.5" />
+                    </a>
+                  </Button>
+                  <Button
+                    variant="ghost" size="icon"
+                    className="w-7 h-7 hover:bg-primary/10 hover:text-primary"
+                    onClick={() => openEdit(link)}
+                    title="Uredi"
+                  >
+                    <Edit2 className="w-3.5 h-3.5" />
+                  </Button>
+                  <AlertDialog>
+                    <AlertDialogTrigger asChild>
+                      <Button variant="ghost" size="icon" className="w-7 h-7 hover:bg-destructive/10 hover:text-destructive" title="Obriši">
+                        <Trash2 className="w-3.5 h-3.5" />
+                      </Button>
+                    </AlertDialogTrigger>
+                    <AlertDialogContent>
+                      <AlertDialogHeader>
+                        <AlertDialogTitle>Obriši link?</AlertDialogTitle>
+                        <AlertDialogDescription>
+                          &ldquo;{link.title}&rdquo; i svi podaci o klikovima biće trajno obrisani.
+                        </AlertDialogDescription>
+                      </AlertDialogHeader>
+                      <AlertDialogFooter>
+                        <AlertDialogCancel>Otkaži</AlertDialogCancel>
+                        <AlertDialogAction
+                          onClick={() => deleteMutation.mutate(link.id)}
+                          className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                        >
+                          Obriši
+                        </AlertDialogAction>
+                      </AlertDialogFooter>
+                    </AlertDialogContent>
+                  </AlertDialog>
+                </div>
+              </div>
+            </div>
           ))}
         </div>
       )}
