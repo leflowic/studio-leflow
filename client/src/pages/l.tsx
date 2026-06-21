@@ -95,11 +95,11 @@ async function generateStoryBlob(link: SmartLink): Promise<Blob> {
 
   // ── 2. Blurred background — scale-down/up (works in all browsers + downloads) ──
   if (coverImg) {
-    const bgBlurred = blurredCanvas(coverImg, W, H, 22);
+    const bgBlurred = blurredCanvas(coverImg, W, H, 40);
     ctx.save();
     ctx.imageSmoothingEnabled = true;
     ctx.imageSmoothingQuality = "high";
-    ctx.globalAlpha = 0.92;
+    ctx.globalAlpha = 0.72;
     ctx.drawImage(bgBlurred, 0, 0, W, H);
     ctx.restore();
 
@@ -107,7 +107,7 @@ async function generateStoryBlob(link: SmartLink): Promise<Blob> {
     ctx.save();
     ctx.imageSmoothingEnabled = true;
     ctx.imageSmoothingQuality = "high";
-    ctx.globalAlpha = 0.18;
+    ctx.globalAlpha = 0.14;
     ctx.globalCompositeOperation = "screen";
     ctx.drawImage(bgBlurred, 0, 0, W, H);
     ctx.restore();
