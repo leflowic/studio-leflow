@@ -26,7 +26,7 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
-import { Link2, Plus, Trash2, Edit2, Copy, ExternalLink, BarChart2, Music2, Upload, X } from "lucide-react";
+import { Link2, Plus, Trash2, Edit2, Copy, ExternalLink, BarChart2, Music2, Upload, X, Sparkles, Loader2 } from "lucide-react";
 import type { SmartLink } from "@shared/schema";
 
 type SmartLinkWithStats = SmartLink & { totalClicks: number; clicksByPlatform: Record<string, number> };
@@ -69,6 +69,7 @@ export function SmartLinksTab() {
   const [editingId, setEditingId] = useState<number | null>(null);
   const [dialogOpen, setDialogOpen] = useState(false);
   const [uploading, setUploading] = useState(false);
+  const [autoUrl, setAutoUrl] = useState("");
   const fileRef = useRef<HTMLInputElement>(null);
 
   const { data: links, isLoading } = useQuery<SmartLinkWithStats[]>({
@@ -108,13 +109,43 @@ export function SmartLinksTab() {
     onError: () => toast({ title: "Greška", description: "Brisanje nije uspelo", variant: "destructive" }),
   });
 
+  const fetchMetaMutation = useMutation({
+    mutationFn: async (url: string) => {
+      const r = await apiRequest("POST", "/api/admin/smart-links/fetch-meta", { url });
+      return r.json();
+    },
+    onSuccess: (data) => {
+      setForm(f => ({
+        ...f,
+        title: data.title || f.title,
+        artist: data.artist || f.artist,
+        coverUrl: data.coverUrl || f.coverUrl,
+        slug: f.slug || slugify(data.title || ""),
+        spotifyUrl: data.spotifyUrl || f.spotifyUrl,
+        youtubeUrl: data.youtubeUrl || f.youtubeUrl,
+        appleMusicUrl: data.appleMusicUrl || f.appleMusicUrl,
+        soundcloudUrl: data.soundcloudUrl || f.soundcloudUrl,
+        tidalUrl: data.tidalUrl || f.tidalUrl,
+        deezerUrl: data.deezerUrl || f.deezerUrl,
+      }));
+      setAutoUrl("");
+      toast({ title: "Pronađeno! Proveri podatke pre čuvanja." });
+    },
+    onError: async (e: any) => {
+      const msg = await e?.response?.json?.().catch(() => null);
+      toast({ title: "Greška", description: msg?.error ?? "Nije moguće pronaći pesmu", variant: "destructive" });
+    },
+  });
+
   function openCreate() {
     setForm(emptyForm);
+    setAutoUrl("");
     setEditingId(null);
     setDialogOpen(true);
   }
 
   function openEdit(link: SmartLinkWithStats) {
+    setAutoUrl("");
     setForm({
       slug: link.slug,
       title: link.title,
@@ -178,6 +209,37 @@ export function SmartLinksTab() {
               <DialogTitle>{editingId !== null ? "Uredi link" : "Novi smart link"}</DialogTitle>
             </DialogHeader>
             <div className="space-y-4 pt-2">
+              {/* Auto-fill */}
+              <div className="rounded-xl border border-primary/20 bg-primary/5 p-3 space-y-2">
+                <p className="text-xs font-semibold text-primary flex items-center gap-1.5">
+                  <Sparkles className="w-3.5 h-3.5" />
+                  Auto-popuni
+                </p>
+                <p className="text-xs text-muted-foreground">Ubaci link pesme sa bilo koje platforme i mi ćemo naći sve ostalo.</p>
+                <div className="flex gap-2">
+                  <Input
+                    placeholder="https://open.spotify.com/track/..."
+                    value={autoUrl}
+                    onChange={e => setAutoUrl(e.target.value)}
+                    onKeyDown={e => { if (e.key === "Enter" && autoUrl) fetchMetaMutation.mutate(autoUrl); }}
+                    className="text-xs"
+                  />
+                  <Button
+                    size="sm"
+                    onClick={() => fetchMetaMutation.mutate(autoUrl)}
+                    disabled={!autoUrl || fetchMetaMutation.isPending}
+                    className="shrink-0 gap-1.5"
+                  >
+                    {fetchMetaMutation.isPending ? (
+                      <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                    ) : (
+                      <Sparkles className="w-3.5 h-3.5" />
+                    )}
+                    {fetchMetaMutation.isPending ? "Tražim..." : "Nađi"}
+                  </Button>
+                </div>
+              </div>
+
               {/* Cover image */}
               <div className="space-y-2">
                 <Label>Cover slika</Label>

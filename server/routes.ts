@@ -3655,6 +3655,43 @@ Sitemap: ${siteUrl}/sitemap.xml
 
   // --- Smart Links ---
 
+  app.post("/api/admin/smart-links/fetch-meta", requireAdmin, async (req, res) => {
+    try {
+      const { url } = req.body;
+      if (!url) return res.status(400).json({ error: "URL je obavezan" });
+
+      const controller = new AbortController();
+      const timeout = setTimeout(() => controller.abort(), 8000);
+
+      const r = await fetch(
+        `https://api.song.link/v1-alpha.1/links?url=${encodeURIComponent(url)}&userCountry=RS`,
+        { signal: controller.signal }
+      );
+      clearTimeout(timeout);
+
+      if (!r.ok) return res.status(400).json({ error: "Pesma nije pronađena. Proveri link." });
+
+      const data = await r.json() as any;
+      const entity = data.entitiesByUniqueId?.[data.entityUniqueId];
+      const links = data.linksByPlatform ?? {};
+
+      res.json({
+        title: entity?.title ?? "",
+        artist: entity?.artistName ?? "",
+        coverUrl: entity?.thumbnailUrl ?? "",
+        spotifyUrl: links.spotify?.url ?? "",
+        youtubeUrl: links.youtube?.url ?? links.youtubeMusic?.url ?? "",
+        appleMusicUrl: links.appleMusic?.url ?? "",
+        soundcloudUrl: links.soundcloud?.url ?? "",
+        tidalUrl: links.tidal?.url ?? "",
+        deezerUrl: links.deezer?.url ?? "",
+      });
+    } catch (e: any) {
+      if (e.name === "AbortError") return res.status(408).json({ error: "Zahtev je predugo trajao. Pokušaj ponovo." });
+      res.status(500).json({ error: "Greška pri pretrazi pesme" });
+    }
+  });
+
   app.get("/api/admin/smart-links", requireAdmin, async (_req, res) => {
     try {
       const links = await storage.getAllSmartLinks();
