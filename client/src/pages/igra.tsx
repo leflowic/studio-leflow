@@ -78,8 +78,11 @@ export default function IgraPage() {
   const { isOpen, minutesLeft } = useCountdown(openHour, openMinute);
 
   useEffect(() => {
-    if (isOpen && data && !data.available) refetch();
-  }, [isOpen, data?.available]);
+    if (!isOpen || data?.available) return;
+    refetch();
+    const id = setInterval(refetch, 5000);
+    return () => clearInterval(id);
+  }, [isOpen, data?.available]); // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => {
     const date = challenge?.challengeDate;
