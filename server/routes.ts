@@ -263,6 +263,7 @@ async function checkMaintenanceMode(req: any, res: any, next: any) {
     '/admin-login-request',
     '/admin-login-verify',
     '/portal',  // Public client portal links must work even in maintenance
+    '/l/',      // Public smart link pages must work even in maintenance
   ];
   
   // Check if the request is for an allowed path
