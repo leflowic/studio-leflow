@@ -202,7 +202,7 @@ export default function Home() {
         "Finalni fajlovi u WAV i MP3 formatu"
       ],
       imageKey: "service_1_image",
-      imageFallback: recordingBoothImage
+      imageFallback: "/services/wa47-microphone-service.jpg"
     },
     {
       icon: Music,
@@ -215,7 +215,7 @@ export default function Home() {
         "Ekskluzivna i neekskluzivna prava"
       ],
       imageKey: "service_2_image",
-      imageFallback: synthImage
+      imageFallback: "/services/midi-keyboard-service.jpg"
     },
     {
       icon: Video,
@@ -246,10 +246,10 @@ export default function Home() {
     { value: "4K", label: "Video produkcija" },
   ];
 
-  const eq0 = { src: apolloTwinImage, alt: "Universal Audio Apollo Twin X Duo", title: "Apollo Twin X Duo", desc: "Thunderbolt audio interface sa Realtime UAD processing-om. Kristalno čist konvertor, ultra niska latencija." };
-  const eq1 = { src: wa47Image, alt: "Warm Audio WA-47 mikrofon", title: "Warm Audio WA-47", desc: "Kondenzatorski mikrofon sa lampom — topli, prirodni zvuk vokala u svim žanrovima." };
-  const eq2 = { src: studioEquipImage, alt: "Studio oprema", title: "UAD Plugin Suite", desc: "Neve 1073, Pultec EQ, 1176, LA-2A — legendarni analog zvuk u digitalnom domenu." };
-  const eq3 = { src: synthImage, alt: "Synthesizer i MIDI kontroleri", title: "Synthesizeri & MIDI", desc: "Profesionalni synthesizeri i MIDI kontroleri za kreiranje originalnih beatova i produkciju." };
+  const eq0 = { src: "/equipment/apollo-twin-duo.jpg", alt: "Universal Audio Apollo Twin X Duo", title: "Apollo Twin X Duo", desc: "Thunderbolt audio interface sa Realtime UAD processing-om. Kristalno čist konvertor, ultra niska latencija." };
+  const eq1 = { src: "/equipment/dt990-headphones.jpg", alt: "Beyerdynamic DT 990 PRO", title: "Beyerdynamic DT 990 & 770 PRO", desc: "Studio referentne slušalice za precizno miksovanje i monitoring." };
+  const eq2 = { src: "/equipment/uad-plugins.jpg", alt: "UAD Plugin Collection", title: "UAD Plugin Suite", desc: "Neve 1073, Pultec EQ, 1176, LA-2A — legendarni analog zvuk u digitalnom domenu." };
+  const eq3 = { src: "/equipment/autotune-uad.jpg", alt: "AutoTune RealTime Advanced", title: "AutoTune RealTime", desc: "Live pitch correction bez čujnog kasnjenja — profesionalni zvuk tokom snimanja." };
 
   return (
     <div className="min-h-screen relative">
@@ -564,7 +564,7 @@ export default function Home() {
                       section="equipment"
                       contentKey="equipment_image"
                       currentImageUrl={getCmsValue("equipment", "equipment_image", undefined)}
-                      fallbackSrc={studioInteriorImage}
+                      fallbackSrc="/services/yamaha-hs8-service.jpg"
                       alt="Studio oprema"
                       className="w-full object-cover"
                     />
