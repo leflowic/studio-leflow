@@ -253,3 +253,19 @@ There are no automated tests in this project.
 - Logout calls `queryClient.clear()` to wipe all cached private data, not just the user query.
 - Production build disables React DevTools and blocks F12/DevTools keyboard shortcuts via `client/src/main.tsx`.
 - JWT expiry: 7 days. Secret: `SESSION_SECRET` env var.
+
+**UI/Design rules — forbidden patterns ("AI slop"):**
+The owner explicitly dislikes these patterns. Never introduce them:
+- **Badge/pill above H1** — `rounded-full` tag with icon pinned above a page heading
+- **Full `bg-primary` CTA sections** — entire `<section className="bg-primary text-primary-foreground">` at page bottom
+- **Gradient hero backgrounds** — `bg-gradient-to-b from-primary/10 to-background` on page heroes
+- **Icon-topped card grids** — 3 identical cards each starting with an icon in `w-10 h-10 rounded-lg bg-primary/10`
+- **CheckCircle2 "why us" lists** — bullet lists where every item has a checkmark icon
+- **Fake testimonials** — hardcoded quotes with names like "Marko M." or "Ana S." with no photos or links. Use a real Google Reviews CTA instead
+- **Generic filler phrases** — "od ideje do finalnog", "razgovarajmo o vašoj viziji", "sve na jednom mestu", "Vaša satisfakcija je naš prioritet", "profesionalan pristup"
+- **Per-element FadeInWhenVisible** — wrapping every individual `<li>` or small element in its own animation. Animate sections, not atoms
+- **Stat banner rows** — horizontal row of abstract numbers/metrics that don't mean anything concrete
+- **Emoji as icons** — use Lucide icon components, never emoji characters as UI icons
+
+**MCP tools available:**
+- **Playwright** — browser automation (navigate, screenshot, click, scroll). Use to visually verify UI changes before reporting done. Configured in local MCP settings.
