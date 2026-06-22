@@ -1,6 +1,5 @@
 import { useRef } from "react";
 import { motion, useScroll, useTransform, useSpring } from "framer-motion";
-import { Music, Headphones, Mic2, Volume2 } from "lucide-react";
 
 interface ParallaxHeroProps {
   children: React.ReactNode;
@@ -22,21 +21,9 @@ export function ParallaxHero({ children }: ParallaxHeroProps) {
 
   const darkOverlayOpacity = useTransform(smoothProgress, [0, 1], [0.55, 1]);
 
-  const midLayerOpacity = useTransform(smoothProgress, [0, 0.5], [0.08, 0]);
-  
   const contentY = useTransform(smoothProgress, [0, 1], ["0%", "20%"]);
   const contentOpacity = useTransform(smoothProgress, [0, 0.8], [1, 0]);
   const contentScale = useTransform(smoothProgress, [0, 0.5], [1, 0.95]);
-
-  const floatingElements = [
-    { icon: Music, x: "10%", y: "20%", size: 40, delay: 0, rotate: 15 },
-    { icon: Headphones, x: "85%", y: "25%", size: 48, delay: 0.2, rotate: -10 },
-    { icon: Mic2, x: "15%", y: "70%", size: 36, delay: 0.4, rotate: 20 },
-    { icon: Volume2, x: "80%", y: "65%", size: 44, delay: 0.6, rotate: -15 },
-    { icon: Music, x: "50%", y: "15%", size: 32, delay: 0.8, rotate: 25 },
-    { icon: Music, x: "25%", y: "45%", size: 28, delay: 1, rotate: -20 },
-    { icon: Headphones, x: "70%", y: "40%", size: 34, delay: 1.2, rotate: 10 },
-  ];
 
   return (
     <div 
@@ -61,110 +48,7 @@ export function ParallaxHero({ children }: ParallaxHeroProps) {
 
       <div className="absolute inset-0 z-[2] bg-gradient-to-b from-black/40 via-transparent to-black/60" />
 
-      <motion.div 
-        className="absolute inset-0 z-[3] pointer-events-none"
-        style={{
-          opacity: midLayerOpacity,
-        }}
-      >
-        {floatingElements.map((element, index) => {
-          const Icon = element.icon;
-          const elementY = useTransform(
-            smoothProgress, 
-            [0, 1], 
-            ["0px", `${-150 - index * 30}px`]
-          );
-          const elementRotate = useTransform(
-            smoothProgress,
-            [0, 1],
-            [element.rotate, element.rotate + 45]
-          );
-          const elementScale = useTransform(
-            smoothProgress,
-            [0, 0.5, 1],
-            [1, 1.2, 0.8]
-          );
-
-          return (
-            <motion.div
-              key={index}
-              className="absolute"
-              style={{
-                left: element.x,
-                top: element.y,
-                y: elementY,
-                rotate: elementRotate,
-                scale: elementScale,
-              }}
-              initial={{ opacity: 0, scale: 0 }}
-              animate={{ 
-                opacity: 1, 
-                scale: 1,
-                y: [0, -10, 0],
-              }}
-              transition={{
-                opacity: { delay: element.delay, duration: 0.8 },
-                scale: { delay: element.delay, duration: 0.8, type: "spring" },
-                y: {
-                  delay: element.delay + 0.5,
-                  duration: 3 + index * 0.5,
-                  repeat: Infinity,
-                  repeatType: "reverse",
-                  ease: "easeInOut",
-                }
-              }}
-            >
-              <div className="relative">
-                <div className="absolute inset-0 bg-primary/30 blur-xl rounded-full" />
-                <Icon 
-                  size={element.size} 
-                  className="text-primary/40 drop-shadow-lg relative z-10"
-                />
-              </div>
-            </motion.div>
-          );
-        })}
-      </motion.div>
-
       <motion.div
-        className="absolute inset-0 z-[4] pointer-events-none overflow-hidden"
-        style={{
-          opacity: midLayerOpacity,
-        }}
-      >
-        {[...Array(20)].map((_, i) => {
-          const particleY = useTransform(
-            smoothProgress,
-            [0, 1],
-            ["0vh", `${-50 - i * 5}vh`]
-          );
-          
-          return (
-            <motion.div
-              key={`particle-${i}`}
-              className="absolute w-1 h-1 bg-primary/30 rounded-full"
-              style={{
-                left: `${5 + (i * 4.7) % 90}%`,
-                top: `${10 + (i * 7) % 80}%`,
-                y: particleY,
-              }}
-              initial={{ opacity: 0 }}
-              animate={{
-                opacity: [0, 0.6, 0],
-                scale: [0.5, 1.5, 0.5],
-              }}
-              transition={{
-                duration: 4 + (i % 3),
-                repeat: Infinity,
-                delay: i * 0.2,
-                ease: "easeInOut",
-              }}
-            />
-          );
-        })}
-      </motion.div>
-
-      <motion.div 
         className="relative z-10"
         style={{
           y: contentY,

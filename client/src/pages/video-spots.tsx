@@ -1,5 +1,4 @@
 import { Video, Plus, Trash2, Edit } from "lucide-react";
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { FadeInWhenVisible } from "@/components/motion/FadeIn";
@@ -26,12 +25,12 @@ function extractYouTubeVideoId(url: string): string | null {
     /(?:youtube\.com\/watch\?v=|youtu\.be\/)([^&\s]+)/,
     /youtube\.com\/embed\/([^&\s]+)/,
   ];
-  
+
   for (const pattern of patterns) {
     const match = url.match(pattern);
     if (match && match[1]) return match[1];
   }
-  
+
   return null;
 }
 
@@ -163,7 +162,7 @@ export default function VideoSpots() {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-b from-background to-muted/20">
+    <div className="min-h-screen">
       <SEO
         title="Projekti - Studio LeFlow"
         description="Projekti u kojima je naš tim učestvovao - video spotovi, pesme i muzička produkcija. Profesionalni muzički studio u Beogradu."
@@ -171,114 +170,126 @@ export default function VideoSpots() {
         structuredData={pageStructuredData.portfolio}
       />
 
-      <section className="py-20">
-        <div className="container px-4 mx-auto">
-          <FadeInWhenVisible>
-            <div className="flex flex-col items-center text-center mb-12">
-              <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-primary/10 mb-4">
-                <Video className="w-8 h-8 text-primary" />
-              </div>
-              <h1 className="text-4xl md:text-5xl font-bold mb-4">
-                Naši <span className="text-primary">Projekti</span>
-              </h1>
-              <p className="text-lg text-muted-foreground max-w-2xl">
-                Projekti u kojima je naš tim učestvovao - pogledajte šta smo kreirali
-              </p>
-            </div>
-          </FadeInWhenVisible>
+      {/* Hero */}
+      <section className="relative pt-24 pb-16 overflow-hidden">
+        <div className="absolute inset-0 bg-[radial-gradient(ellipse_60%_50%_at_50%_0%,hsl(var(--primary)/0.12),transparent)] pointer-events-none" />
+        <div className="max-w-4xl mx-auto px-4 text-center relative">
+          <p className="text-primary text-sm font-semibold uppercase tracking-[0.2em] mb-3">Video Produkcija</p>
+          <h1 className="text-4xl md:text-5xl font-bold tracking-tight mb-4">
+            Video Spotovi
+          </h1>
+          <p className="text-muted-foreground text-lg max-w-xl mx-auto">
+            Pogledajte produkciju Studio LeFlow-a
+          </p>
+        </div>
+      </section>
 
+      {/* Content */}
+      <section className="py-12">
+        <div className="max-w-7xl mx-auto px-4">
+
+          {/* Admin add button */}
           {isEditMode && (
-            <div className="flex justify-center mb-8">
+            <div className="flex justify-end mb-8">
               <Button
                 onClick={() => handleOpenDialog()}
+                variant="outline"
+                size="sm"
                 className="gap-2"
-                size="lg"
               >
-                <Plus className="w-5 h-5" />
-                Dodaj Novi Projekat
+                <Plus className="w-4 h-4" />
+                Dodaj Novi Spot
               </Button>
             </div>
           )}
 
           {spots.length === 0 ? (
             <FadeInWhenVisible>
-              <div className="text-center py-12">
+              <div className="text-center py-24">
+                <div className="w-16 h-16 rounded-full bg-primary/10 border border-primary/20 flex items-center justify-center mx-auto mb-6">
+                  <Video className="w-8 h-8 text-primary" />
+                </div>
+                <h3 className="text-xl font-bold mb-2">
+                  {isEditMode ? "Dodajte prvi spot" : "Spotovi dolaze uskoro"}
+                </h3>
                 <p className="text-muted-foreground">
                   {isEditMode
-                    ? "Kliknite na dugme iznad da dodate prvi projekat"
-                    : "Trenutno nema dostupnih projekata"}
+                    ? "Kliknite na dugme u gornjem desnom uglu da dodate prvi projekat"
+                    : "Pratite nas na Instagramu za najnovije projekte."}
                 </p>
               </div>
             </FadeInWhenVisible>
           ) : (
-            <div className="grid md:grid-cols-2 lg:grid-cols-2 gap-8">
-              {spots.map((spot, index) => {
-                const videoId = extractYouTubeVideoId(spot.youtubeUrl);
-                
-                return (
-                  <FadeInWhenVisible key={spot.id} delay={index * 0.1}>
-                    <Card className="overflow-visible hover-elevate active-elevate-2">
-                      <CardHeader>
-                        <div className="flex items-start justify-between">
-                          <div className="flex-1">
-                            <CardTitle className="text-2xl mb-2">{spot.title}</CardTitle>
-                            <CardDescription className="text-base">
-                              <span className="font-semibold text-primary">{spot.artist}</span>
-                            </CardDescription>
-                          </div>
-                          {isEditMode && (
-                            <div className="flex gap-2">
-                              <Button
-                                variant="outline"
-                                size="icon"
-                                onClick={() => handleOpenDialog(spot)}
-                              >
-                                <Edit className="w-4 h-4" />
-                              </Button>
-                              <Button
-                                variant="destructive"
-                                size="icon"
-                                onClick={() => deleteMutation.mutate(spot.id)}
-                              >
-                                <Trash2 className="w-4 h-4" />
-                              </Button>
-                            </div>
-                          )}
+            <FadeInWhenVisible>
+              <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
+                {spots.map((spot) => {
+                  const videoId = extractYouTubeVideoId(spot.youtubeUrl);
+
+                  return (
+                    <div
+                      key={spot.id}
+                      className="group relative rounded-2xl border border-white/[0.07] bg-card/40 backdrop-blur-sm overflow-hidden hover:border-primary/30 hover:shadow-[0_0_30px_-8px] hover:shadow-primary/20 transition-all duration-500"
+                    >
+                      {/* Admin controls — appear on hover */}
+                      {isEditMode && (
+                        <div className="absolute top-3 right-3 z-10 flex gap-2 opacity-0 group-hover:opacity-100 transition-opacity duration-200">
+                          <Button
+                            variant="outline"
+                            size="icon"
+                            className="w-8 h-8 bg-background/80 backdrop-blur-sm"
+                            onClick={() => handleOpenDialog(spot)}
+                          >
+                            <Edit className="w-3.5 h-3.5" />
+                          </Button>
+                          <Button
+                            variant="destructive"
+                            size="icon"
+                            className="w-8 h-8"
+                            onClick={() => deleteMutation.mutate(spot.id)}
+                          >
+                            <Trash2 className="w-3.5 h-3.5" />
+                          </Button>
                         </div>
-                      </CardHeader>
-                      <CardContent className="space-y-4">
+                      )}
+
+                      {/* YouTube embed */}
+                      <div className="aspect-video">
                         {videoId ? (
-                          <div className="overflow-hidden rounded-lg">
-                            <div className="relative w-full" style={{ paddingBottom: "56.25%" }}>
-                              <iframe
-                                className="absolute top-0 left-0 w-full h-full"
-                                src={`https://www.youtube-nocookie.com/embed/${videoId}`}
-                                title={spot.title}
-                                allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
-                                allowFullScreen
-                                loading="lazy"
-                              />
-                            </div>
-                          </div>
+                          <iframe
+                            src={`https://www.youtube-nocookie.com/embed/${videoId}`}
+                            title={spot.title}
+                            className="w-full h-full"
+                            allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+                            allowFullScreen
+                            loading="lazy"
+                          />
                         ) : (
-                          <div className="bg-muted rounded-lg p-8 text-center">
-                            <p className="text-muted-foreground">Nevažeći YouTube URL</p>
+                          <div className="w-full h-full bg-muted/30 flex items-center justify-center">
+                            <p className="text-sm text-muted-foreground">Nevažeći YouTube URL</p>
                           </div>
                         )}
-                        
-                        {spot.description && (
-                          <p className="text-muted-foreground">{spot.description}</p>
+                      </div>
+
+                      {/* Info */}
+                      <div className="p-5">
+                        <h3 className="font-bold text-lg mb-1">{spot.title}</h3>
+                        {spot.artist && (
+                          <p className="text-primary text-sm font-medium mb-2">{spot.artist}</p>
                         )}
-                      </CardContent>
-                    </Card>
-                  </FadeInWhenVisible>
-                );
-              })}
-            </div>
+                        {spot.description && (
+                          <p className="text-muted-foreground text-sm">{spot.description}</p>
+                        )}
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </FadeInWhenVisible>
           )}
         </div>
       </section>
 
+      {/* Dialog */}
       <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
         <DialogContent className="sm:max-w-[525px]">
           <DialogHeader>
@@ -317,7 +328,7 @@ export default function VideoSpots() {
                 placeholder="https://www.youtube.com/watch?v=..."
               />
               <p className="text-xs text-muted-foreground">
-                ⚠️ Napomena: Age-restricted YouTube videi (18+) ne mogu da se prikazuju preko iframe-a. Koristite samo javne videe bez starosnih ograničenja.
+                Napomena: Age-restricted YouTube videi (18+) ne mogu da se prikazuju preko iframe-a. Koristite samo javne videe bez starosnih ograničenja.
               </p>
             </div>
             <div className="grid gap-2">

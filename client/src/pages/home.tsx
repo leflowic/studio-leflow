@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { Link, useLocation } from "wouter";
-import { Music, Mic2, Video, ArrowRight, CheckCircle2, Headphones, Phone, Play, Mail, AlertCircle, Gamepad2, UserPlus, X, LogIn } from "lucide-react";
+import { Music, Mic2, Video, ArrowRight, CheckCircle2, Headphones, Phone, Play, Mail, AlertCircle, Gamepad2, UserPlus, X, LogIn, Star } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { useQuery } from "@tanstack/react-query";
@@ -74,7 +74,7 @@ function GameAnnouncement() {
       className="mt-4 flex justify-center"
     >
       <div className="flex items-center gap-2 px-4 py-2 rounded-full bg-white/10 backdrop-blur-md border border-white/20 text-white text-sm">
-        <span className="text-base">🎵</span>
+        <Music className="w-4 h-4 text-primary flex-shrink-0" />
         <span>
           Sledeća igra počinje <strong>{dateLabel}</strong>
           {countdown && <span className="ml-1.5 font-mono text-white/80">— još {countdown}</span>}
@@ -233,9 +233,9 @@ export default function Home() {
   ];
 
   const stats = [
-    { value: "5+", label: "Godina iskustva" },
-    { value: "200+", label: "Pesama snimljeno" },
-    { value: "3", label: "Studio usluge" },
+    { value: "WA-47", label: "Warm Audio kondenzatorski mikrofon" },
+    { value: "UAD", label: "Universal Audio plugin suite" },
+    { value: "4K", label: "Video produkcija" },
   ];
 
   const eq0 = { src: "/equipment/apollo-twin-duo.jpg", alt: "Universal Audio Apollo Twin X Duo", title: "Apollo Twin X Duo", desc: "Thunderbolt audio interface sa Realtime UAD processing-om. Kristalno čist konvertor, ultra niska latencija." };
@@ -431,16 +431,16 @@ export default function Home() {
       {/* ── STATS ── */}
       <section className="relative z-10 bg-background border-b border-border/40">
         <div className="max-w-5xl mx-auto px-4">
-          <div className="grid grid-cols-3 divide-x divide-border/40">
-            {stats.map((stat, i) => (
-              <FadeInWhenVisible key={i} delay={i * 0.1}>
-                <div className="py-10 px-6 text-center">
+          <FadeInWhenVisible>
+            <div className="grid grid-cols-3 divide-x divide-border/40">
+              {stats.map((stat, i) => (
+                <div key={i} className="py-10 px-6 text-center">
                   <p className="text-4xl md:text-5xl font-bold text-primary mb-1 font-[Montserrat]">{stat.value}</p>
                   <p className="text-sm text-muted-foreground uppercase tracking-widest">{stat.label}</p>
                 </div>
-              </FadeInWhenVisible>
-            ))}
-          </div>
+              ))}
+            </div>
+          </FadeInWhenVisible>
         </div>
       </section>
 
@@ -480,10 +480,10 @@ export default function Home() {
             </div>
           </ParallaxSection>
 
+          <FadeInWhenVisible>
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
             {services.map((service, index) => (
-              <FadeInWhenVisible key={index} delay={index * 0.12}>
-                <Parallax3DCard>
+              <Parallax3DCard key={index}>
                   <div
                     className="group relative overflow-hidden rounded-2xl border border-white/[0.07] bg-card/40 backdrop-blur-sm hover:border-primary/30 transition-all duration-500 hover:shadow-[0_0_40px_-8px] hover:shadow-primary/20 h-full flex flex-col cursor-pointer"
                     data-testid={`card-service-${index}`}
@@ -541,9 +541,9 @@ export default function Home() {
                     </div>
                   </div>
                 </Parallax3DCard>
-              </FadeInWhenVisible>
             ))}
           </div>
+          </FadeInWhenVisible>
         </div>
       </section>
 
@@ -650,9 +650,9 @@ export default function Home() {
             </div>
           </FadeInWhenVisible>
 
+          <FadeInWhenVisible>
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 max-w-6xl mx-auto">
             {/* Large card — spans 2 cols on lg */}
-            <FadeInWhenVisible delay={0.05}>
               <div className="lg:col-span-2 group relative rounded-2xl overflow-hidden border border-white/[0.07] bg-card/40 backdrop-blur-sm hover:border-primary/25 transition-all duration-500 hover:shadow-[0_0_30px_-8px] hover:shadow-primary/15 cursor-default">
                 <div className="aspect-video lg:aspect-[16/7] overflow-hidden">
                   <OptimizedImage
@@ -671,10 +671,8 @@ export default function Home() {
                   <p className="text-white/60 text-sm">{eq0.desc}</p>
                 </div>
               </div>
-            </FadeInWhenVisible>
 
             {/* Small card */}
-            <FadeInWhenVisible delay={0.1}>
               <div className="group relative rounded-2xl overflow-hidden border border-white/[0.07] bg-card/40 backdrop-blur-sm hover:border-primary/25 transition-all duration-500 hover:shadow-[0_0_30px_-8px] hover:shadow-primary/15 cursor-default">
                 <div className="aspect-video overflow-hidden">
                   <OptimizedImage
@@ -689,10 +687,8 @@ export default function Home() {
                   <p className="text-white/55 text-xs">{eq1.desc}</p>
                 </div>
               </div>
-            </FadeInWhenVisible>
 
             {/* Small card */}
-            <FadeInWhenVisible delay={0.15}>
               <div className="group relative rounded-2xl overflow-hidden border border-white/[0.07] bg-card/40 backdrop-blur-sm hover:border-primary/25 transition-all duration-500 hover:shadow-[0_0_30px_-8px] hover:shadow-primary/15 cursor-default">
                 <div className="aspect-video overflow-hidden">
                   <OptimizedImage
@@ -707,10 +703,8 @@ export default function Home() {
                   <p className="text-white/55 text-xs">{eq2.desc}</p>
                 </div>
               </div>
-            </FadeInWhenVisible>
 
             {/* Small card */}
-            <FadeInWhenVisible delay={0.2}>
               <div className="group relative rounded-2xl overflow-hidden border border-white/[0.07] bg-card/40 backdrop-blur-sm hover:border-primary/25 transition-all duration-500 hover:shadow-[0_0_30px_-8px] hover:shadow-primary/15 cursor-default">
                 <div className="aspect-video overflow-hidden">
                   <OptimizedImage
@@ -725,10 +719,8 @@ export default function Home() {
                   <p className="text-white/55 text-xs">{eq3.desc}</p>
                 </div>
               </div>
-            </FadeInWhenVisible>
 
             {/* CTA card */}
-            <FadeInWhenVisible delay={0.25}>
               <div className="rounded-2xl border border-primary/20 bg-primary/5 backdrop-blur-sm p-6 flex flex-col justify-between hover:border-primary/40 hover:bg-primary/10 transition-all duration-500 group cursor-default aspect-video">
                 <div>
                   <p className="text-xs text-primary font-semibold uppercase tracking-widest mb-3">Projekti</p>
@@ -742,41 +734,32 @@ export default function Home() {
                   </Button>
                 </Link>
               </div>
-            </FadeInWhenVisible>
           </div>
+          </FadeInWhenVisible>
         </div>
       </section>
 
-      {/* ── TESTIMONIJALI ── */}
-      <section className="py-24 lg:py-36 bg-muted/10 relative z-10">
-        <div className="max-w-7xl mx-auto px-4 md:px-6">
+      {/* ── RECENZIJE ── */}
+      <section className="py-20 bg-background relative z-10">
+        <div className="max-w-3xl mx-auto px-4 text-center">
           <FadeInWhenVisible>
-            <div className="text-center mb-14">
-              <p className="text-primary text-sm font-semibold uppercase tracking-[0.2em] mb-3">Recenzije</p>
-              <h2 className="heading-md mb-3">Šta Kažu Naši Klijenti</h2>
-              <p className="text-muted-foreground max-w-md mx-auto text-sm">Više stotina pesama snimljeno — zadovoljni klijenti govore sami za sebe</p>
-            </div>
+            <p className="text-primary text-sm font-semibold uppercase tracking-[0.2em] mb-3">Recenzije</p>
+            <h2 className="text-3xl font-bold mb-4">Šta kažu klijenti</h2>
+            <p className="text-muted-foreground mb-8 max-w-md mx-auto">
+              Naši klijenti su naš najveći dokaz. Pročitajte iskustva na Google-u.
+            </p>
+            <a
+              href="https://www.google.com/search?q=Studio+LeFlow+Beograd"
+              target="_blank"
+              rel="noopener noreferrer"
+            >
+              <Button size="lg" variant="outline" className="gap-2">
+                <Star className="w-5 h-5 text-primary" />
+                Pročitaj recenzije na Google-u
+                <ArrowRight className="w-5 h-5" />
+              </Button>
+            </a>
           </FadeInWhenVisible>
-
-          <div className="grid md:grid-cols-3 gap-5">
-            {[
-              { name: "Marko M.", text: "Profesionalan pristup od prvog kontakta. Zvuk je tačno onakav kakav sam zamišljao, a ekipa je super strpljiva i kreativna. Preporučujem svima!", stars: 5 },
-              { name: "Ana S.", text: "Snimala sam dve pesme i oba puta odlično iskustvo. Oprema je vrhunska, ambijent opušten, i što je najvažnije — rezultat je bio profesionalan na prvu loptu.", stars: 5 },
-              { name: "Stefan P.", text: "Odradio sam mix i mastering ovde posle više studija u gradu — razlika se odmah čuje. Zvuk je dubok, jasan i radio-ready. Definitivno se vraćam.", stars: 5 },
-            ].map((testimonial, i) => (
-              <FadeInWhenVisible key={i} delay={i * 0.1}>
-                <div className="rounded-2xl border border-white/[0.07] bg-card/30 backdrop-blur-sm p-6 h-full flex flex-col gap-5 hover:border-primary/20 transition-all duration-300">
-                  <div className="flex gap-0.5">
-                    {Array.from({ length: testimonial.stars }).map((_, s) => (
-                      <span key={s} className="text-primary text-base">★</span>
-                    ))}
-                  </div>
-                  <p className="text-muted-foreground flex-1 text-sm leading-relaxed">"{testimonial.text}"</p>
-                  <p className="font-semibold text-sm">{testimonial.name}</p>
-                </div>
-              </FadeInWhenVisible>
-            ))}
-          </div>
         </div>
       </section>
 

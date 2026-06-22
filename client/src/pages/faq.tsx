@@ -1,5 +1,5 @@
 import { Link } from "wouter";
-import { HelpCircle, ArrowRight } from "lucide-react";
+import { ArrowRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { FadeInWhenVisible } from "@/components/motion/FadeIn";
 import { SEO, pageStructuredData } from "@/components/SEO";
@@ -19,12 +19,12 @@ const faqs = [
   {
     question: "Mogu li da dođem kao potpuni početnik?",
     answer:
-      "Tehnički da, ali iskreno — ne preporučujemo. Studio je opremljen vrhunskom profesionalnom opremom i ne bismo voleli da plaćaš profesionalne cene dok još razvijaš tehniku. Ako si početnik, stekni iskustvo na pristupačnijoj opremi, pa kad si spreman — vrata su otvorena.",
+      "Tehnički da, ali iskreno — ne preporučujemo. Studio nije za početnike koji još razvijaju tehniku. Ako si početnik, stekni iskustvo na pristupačnijoj opremi, pa kad si spreman — vrata su otvorena.",
   },
   {
     question: "Šta dobijam na kraju sesije?",
     answer:
-      "Zavisi od dogovorene usluge. Ako dolaziš samo na snimanje, dobijaš minimalno obrađen demo — autotune, kompresija i EQ po potrebi. Ako dolaziš na snimanje + mix/master, dobijaš demo priblično smixan, spreman za dalju obradu ili distribuciju.",
+      "Zavisi od dogovorene usluge. Ako dolaziš samo na snimanje, dobijaš minimalno obrađen demo — autotune, kompresija i EQ po potrebi. Ako dolaziš na snimanje + mix/master, dobijaš pesmu smixanu i masterovanu, spremu za distribuciju.",
   },
   {
     question: "Koliko revizija je uključeno?",
@@ -55,36 +55,37 @@ export default function FAQPage() {
       />
 
       <main className="min-h-screen bg-background">
-        <section className="py-20 px-6">
-          <div className="max-w-3xl mx-auto">
+        {/* Hero */}
+        <section className="relative pt-24 pb-12 overflow-hidden">
+          <div className="absolute inset-0 bg-[radial-gradient(ellipse_60%_50%_at_50%_0%,hsl(var(--primary)/0.12),transparent)] pointer-events-none" />
+          <div className="max-w-4xl mx-auto px-4 text-center relative">
             <FadeInWhenVisible>
-              <div className="text-center mb-14">
-                <div className="flex justify-center mb-4">
-                  <div className="p-3 rounded-full bg-primary/10">
-                    <HelpCircle className="w-8 h-8 text-primary" />
-                  </div>
-                </div>
-                <h1 className="text-4xl md:text-5xl font-bold font-[Montserrat] mb-4">
-                  Česta Pitanja
-                </h1>
-                <p className="text-lg text-muted-foreground">
-                  Sve što trebaš da znaš pre dolaska u studio.
-                </p>
-              </div>
+              <p className="text-primary text-sm font-semibold uppercase tracking-[0.2em] mb-3">Česta Pitanja</p>
+              <h1 className="heading-xl mb-4">
+                Sve što trebaš da znaš
+              </h1>
+              <p className="text-muted-foreground text-lg max-w-2xl mx-auto">
+                Odgovori na najčešća pitanja pre dolaska u studio.
+              </p>
             </FadeInWhenVisible>
+          </div>
+        </section>
 
+        {/* Accordion */}
+        <section className="pb-24 px-4">
+          <div className="max-w-3xl mx-auto">
             <FadeInWhenVisible delay={0.1}>
-              <Accordion type="single" collapsible className="space-y-3">
+              <Accordion type="single" collapsible className="space-y-2">
                 {faqs.map((faq, index) => (
                   <AccordionItem
                     key={index}
                     value={`item-${index}`}
-                    className="border rounded-lg px-6"
+                    className="border border-white/[0.07] rounded-xl bg-card/30 backdrop-blur-sm overflow-hidden"
                   >
-                    <AccordionTrigger className="text-left font-semibold hover:no-underline py-5">
+                    <AccordionTrigger className="px-6 py-5 text-left font-semibold hover:text-primary hover:no-underline transition-colors duration-200">
                       {faq.question}
                     </AccordionTrigger>
-                    <AccordionContent className="text-muted-foreground pb-5 leading-relaxed">
+                    <AccordionContent className="px-6 pb-5 text-muted-foreground leading-relaxed">
                       {faq.answer}
                     </AccordionContent>
                   </AccordionItem>
@@ -92,18 +93,14 @@ export default function FAQPage() {
               </Accordion>
             </FadeInWhenVisible>
 
-            <FadeInWhenVisible delay={0.2}>
-              <div className="mt-14 text-center bg-muted/40 rounded-xl p-8">
-                <p className="text-muted-foreground mb-5">
-                  Nisi pronašao odgovor? Javi nam se direktno.
-                </p>
-                <Button asChild size="lg">
-                  <Link href="/kontakt">
-                    Kontaktiraj nas <ArrowRight className="ml-2 w-4 h-4" />
-                  </Link>
+            <div className="text-center mt-12">
+              <p className="text-muted-foreground mb-4">Imaš još pitanja?</p>
+              <Link href="/kontakt">
+                <Button size="lg" className="cursor-pointer">
+                  Kontaktiraj nas <ArrowRight className="ml-2 w-5 h-5" />
                 </Button>
-              </div>
-            </FadeInWhenVisible>
+              </Link>
+            </div>
           </div>
         </section>
       </main>
