@@ -79,21 +79,21 @@ export default function UslugePage() {
       />
 
       {/* Hero */}
-      <section className="py-20 lg:py-28 bg-gradient-to-b from-primary/10 to-background">
-        <div className="max-w-4xl mx-auto px-4 md:px-6 text-center">
+      <section className="py-20 lg:py-28 bg-background border-b border-border/40">
+        <div className="max-w-4xl mx-auto px-4 md:px-6">
           <FadeInWhenVisible>
-            <h1 className="text-4xl md:text-5xl lg:text-6xl font-bold mb-6">
-              Naše <span className="text-primary">Usluge</span>
+            <h1 className="text-4xl md:text-5xl lg:text-6xl font-bold mb-4">
+              Usluge
             </h1>
           </FadeInWhenVisible>
-          <FadeInWhenVisible delay={0.15}>
-            <p className="text-xl text-muted-foreground max-w-2xl mx-auto mb-8">
-              Sve što vam treba za profesionalnu muzičku produkciju — na jednom mestu, u Beogradu.
+          <FadeInWhenVisible delay={0.1}>
+            <p className="text-lg text-muted-foreground max-w-xl mb-8">
+              Snimanje vokala, mix i mastering, custom instrumentali, video spotovi i više — u jednom studiju u Beogradu.
             </p>
           </FadeInWhenVisible>
-          <FadeInWhenVisible delay={0.25}>
+          <FadeInWhenVisible delay={0.2}>
             <Link href="/kontakt">
-              <Button size="lg" className="text-lg px-8">
+              <Button size="lg" className="text-base px-8">
                 <Phone className="mr-2 w-5 h-5" />
                 Zakažite Termin
                 <ArrowRight className="ml-2 w-5 h-5" />
@@ -145,30 +145,18 @@ export default function UslugePage() {
       </section>
 
       {/* Extra services */}
-      <section className="py-20 bg-muted/20">
-        <div className="max-w-7xl mx-auto px-4 md:px-6">
+      <section className="py-20 bg-muted/10 border-t border-border/40">
+        <div className="max-w-4xl mx-auto px-4 md:px-6">
           <FadeInWhenVisible>
-            <div className="text-center mb-12">
-              <h2 className="text-3xl font-bold mb-4">Dodatne Usluge</h2>
-              <p className="text-muted-foreground max-w-xl mx-auto">
-                Pored glavnih usluga, nudimo i specijalizovane opcije za različite potrebe.
-              </p>
-            </div>
+            <h2 className="text-2xl font-bold mb-8">Dodatne usluge</h2>
           </FadeInWhenVisible>
-          <div className="grid md:grid-cols-3 gap-6">
+          <div className="space-y-0 divide-y divide-border/50">
             {extras.map((extra, i) => (
-              <FadeInWhenVisible key={extra.title} delay={i * 0.1}>
-                <Card className="h-full">
-                  <CardHeader>
-                    <div className="inline-flex items-center justify-center w-10 h-10 rounded-lg bg-primary/10 mb-2">
-                      <extra.icon className="w-5 h-5 text-primary" />
-                    </div>
-                    <CardTitle className="text-lg">{extra.title}</CardTitle>
-                  </CardHeader>
-                  <CardContent>
-                    <p className="text-muted-foreground text-sm">{extra.description}</p>
-                  </CardContent>
-                </Card>
+              <FadeInWhenVisible key={extra.title} delay={i * 0.07}>
+                <div className="py-6 grid sm:grid-cols-[200px_1fr] gap-2 sm:gap-6">
+                  <p className="font-semibold text-foreground">{extra.title}</p>
+                  <p className="text-muted-foreground text-sm leading-relaxed">{extra.description}</p>
+                </div>
               </FadeInWhenVisible>
             ))}
           </div>
@@ -176,26 +164,26 @@ export default function UslugePage() {
       </section>
 
       {/* CTA */}
-      <section className="py-20 bg-primary text-primary-foreground">
-        <div className="max-w-4xl mx-auto px-4 md:px-6 text-center">
+      <section className="py-20 bg-background border-t border-border/40">
+        <div className="max-w-4xl mx-auto px-4 md:px-6">
           <FadeInWhenVisible>
-            <h2 className="text-4xl font-bold mb-4">Gotovi za Snimanje?</h2>
+            <h2 className="text-3xl font-bold mb-3">Zakažite termin</h2>
           </FadeInWhenVisible>
-          <FadeInWhenVisible delay={0.15}>
-            <p className="text-xl text-primary-foreground/90 mb-10">
-              Zakažite besplatnu konsultaciju i razgovarajmo o vašoj muzičkoj viziji.
+          <FadeInWhenVisible delay={0.1}>
+            <p className="text-muted-foreground mb-8 max-w-lg">
+              Besplatna konsultacija — dođite u studio ili pišite pa dogovorimo šta vam treba.
             </p>
           </FadeInWhenVisible>
-          <FadeInWhenVisible delay={0.25}>
-            <div className="flex flex-wrap gap-4 justify-center">
+          <FadeInWhenVisible delay={0.2}>
+            <div className="flex flex-wrap gap-4">
               <Link href="/kontakt">
-                <Button size="lg" variant="outline" className="text-lg px-8 bg-white/10 text-primary-foreground border-white/30 hover:bg-white/20">
+                <Button size="lg" className="text-base px-8">
                   Kontaktirajte Nas
                   <ArrowRight className="ml-2 w-5 h-5" />
                 </Button>
               </Link>
               <Link href="/projekti">
-                <Button size="lg" variant="outline" className="text-lg px-8 bg-white/10 text-primary-foreground border-white/30 hover:bg-white/20">
+                <Button size="lg" variant="outline" className="text-base px-8">
                   Pogledajte Projekte
                 </Button>
               </Link>

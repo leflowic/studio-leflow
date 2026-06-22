@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { Link, useLocation } from "wouter";
-import { Music, Mic2, Video, ArrowRight, CheckCircle2, Headphones, Phone, Play, Mail, AlertCircle, Gamepad2, UserPlus, X, LogIn } from "lucide-react";
+import { Music, Mic2, Video, ArrowRight, CheckCircle2, Headphones, Phone, Play, AlertCircle, Gamepad2, UserPlus, X, Star } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Alert, AlertDescription } from "@/components/ui/alert";
@@ -301,31 +301,18 @@ export default function Home() {
       <ParallaxHero>
         <div className="flex items-center justify-center min-h-screen">
           <div className="max-w-7xl mx-auto px-4 md:px-6 py-20 text-center">
-            <div className="flex flex-col items-center gap-12 mb-6">
-              {announcement?.isActive && announcement.message && (
-                <motion.div 
-                  className="flex items-center justify-center gap-2 px-4 py-2 rounded-lg bg-destructive/20 backdrop-blur-md border border-destructive/40 announcement-badge-shimmer max-w-md"
-                  initial={{ opacity: 0, y: -20, rotateX: 45 }}
-                  animate={{ opacity: 1, y: 0, rotateX: 0 }}
-                  transition={{ duration: 0.8, delay: 0.05, type: "spring" }}
-                  data-testid="badge-site-announcement"
-                  style={{ transformStyle: "preserve-3d" }}
-                >
-                  <AlertCircle className="w-4 h-4 text-destructive flex-shrink-0" />
-                  <span className="text-sm font-medium text-white text-center whitespace-pre-line">{announcement.message}</span>
-                </motion.div>
-              )}
-
-              <motion.div 
-                className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-primary/20 backdrop-blur-md border border-primary/30"
-                initial={{ opacity: 0, y: -20, scale: 0.8 }}
-                animate={{ opacity: 1, y: 0, scale: 1 }}
-                transition={{ duration: 0.6, delay: 0.1, type: "spring" }}
+            {announcement?.isActive && announcement.message && (
+              <motion.div
+                className="flex items-center justify-center gap-2 px-4 py-2 rounded-lg bg-destructive/20 backdrop-blur-md border border-destructive/40 max-w-md mb-8"
+                initial={{ opacity: 0, y: -20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.6, delay: 0.05 }}
+                data-testid="badge-site-announcement"
               >
-                <Headphones className="w-4 h-4 text-primary" />
-                <span className="text-sm font-medium text-white" data-testid="text-location">Beograd, Srbija</span>
+                <AlertCircle className="w-4 h-4 text-destructive flex-shrink-0" />
+                <span className="text-sm font-medium text-white text-center whitespace-pre-line">{announcement.message}</span>
               </motion.div>
-            </div>
+            )}
             
             <motion.div
               initial={{ opacity: 0, y: 40, rotateX: 15 }}
@@ -458,14 +445,14 @@ export default function Home() {
               >
                 Naše Usluge
               </motion.h2>
-              <motion.p 
+              <motion.p
                 className="text-lg text-muted-foreground max-w-2xl mx-auto"
                 initial={{ opacity: 0, y: 20 }}
                 whileInView={{ opacity: 1, y: 0 }}
                 viewport={{ once: true }}
                 transition={{ duration: 0.8, delay: 0.2 }}
               >
-                Pružamo kompletne usluge muzičke i video produkcije, od ideje do finalnog proizvoda
+                Snimanje vokala, mix/mastering, custom instrumentali i muzički spotovi — sve na jednom mestu u Beogradu
               </motion.p>
             </div>
           </ParallaxSection>
@@ -570,49 +557,37 @@ export default function Home() {
             
             <ParallaxSection direction="right" intensity={40}>
               <div>
-                <motion.h2 
-                  className="heading-lg mb-6" 
+                <motion.h2
+                  className="heading-lg mb-6"
                   data-testid="text-why-choose-title"
                   initial={{ opacity: 0, x: 30 }}
                   whileInView={{ opacity: 1, x: 0 }}
                   viewport={{ once: true }}
                   transition={{ duration: 0.8 }}
                 >
-                  Zašto Izabrati Studio LeFlow?
+                  Oprema i Pristup
                 </motion.h2>
-                
-                <motion.p 
-                  className="text-lg text-muted-foreground mb-8"
+
+                <motion.p
+                  className="text-lg text-muted-foreground mb-6 leading-relaxed"
                   initial={{ opacity: 0, x: 30 }}
                   whileInView={{ opacity: 1, x: 0 }}
                   viewport={{ once: true }}
                   transition={{ duration: 0.8, delay: 0.1 }}
                 >
-                  Naš studio kombinuje najsavremeniju tehnologiju sa kreativnim pristupom i stručnošću, 
-                  pružajući vam profesionalnu produkciju koja će istaći vaš muzički rad.
+                  Warm Audio WA-47, Apollo Twin X sa UAD plugin suiteom i Yamaha HS8 monitori — oprema koja se koristi u komercijalnim studijima. Bez kompromisa u zvuku, bez skrivenih troškova.
                 </motion.p>
-                
-                <ul className="space-y-4 mb-8">
-                  {whyChooseUs.map((reason, index) => (
-                    <motion.li 
-                      key={index} 
-                      className="flex items-start gap-3 group" 
-                      data-testid={`text-reason-${index}`}
-                      initial={{ opacity: 0, x: 20 }}
-                      whileInView={{ opacity: 1, x: 0 }}
-                      viewport={{ once: true }}
-                      transition={{ duration: 0.5, delay: index * 0.08 }}
-                    >
-                      <motion.div
-                        whileHover={{ scale: 1.15, rotate: 180 }}
-                        transition={{ duration: 0.4 }}
-                      >
-                        <CheckCircle2 className="w-6 h-6 text-primary mt-0.5 flex-shrink-0" />
-                      </motion.div>
-                      <span className="text-lg group-hover:text-primary transition-colors">{reason}</span>
-                    </motion.li>
-                  ))}
-                </ul>
+
+                <motion.p
+                  className="text-muted-foreground mb-8 leading-relaxed"
+                  data-testid="text-reason-0"
+                  initial={{ opacity: 0, x: 30 }}
+                  whileInView={{ opacity: 1, x: 0 }}
+                  viewport={{ once: true }}
+                  transition={{ duration: 0.8, delay: 0.2 }}
+                >
+                  Fleksibilni termini, individualan pristup svakom projektu i neograničen broj revizija miksa — dok ne budete zadovoljni rezultatom.
+                </motion.p>
                 
                 <motion.div
                   initial={{ opacity: 0, y: 20 }}
@@ -637,26 +612,16 @@ export default function Home() {
         </div>
       </section>
 
-      <section className="py-20 lg:py-32 bg-gradient-to-br from-primary/5 to-primary/10">
-        <div className="max-w-4xl mx-auto px-4 md:px-6 text-center">
+      <section className="py-20 lg:py-32 bg-muted/10">
+        <div className="max-w-xl mx-auto px-4 md:px-6 text-center">
           <FadeInWhenVisible>
-            <h2 className="heading-lg mb-6">
-              Budite u Toku sa Najnovijim Novostima
-            </h2>
+            <p className="text-primary text-sm font-semibold uppercase tracking-[0.15em] mb-3">Newsletter</p>
+            <h2 className="text-2xl md:text-3xl font-bold mb-3">Budite u toku</h2>
+            <p className="text-muted-foreground text-sm mb-8 max-w-sm mx-auto leading-relaxed">
+              Novi projekti, promocije i ekskluzivne ponude — direktno na vaš email. Bez spama.
+            </p>
           </FadeInWhenVisible>
-          
           <FadeInWhenVisible delay={0.2}>
-            <p className="text-xl mb-4 text-muted-foreground max-w-2xl mx-auto flex items-center justify-center gap-2 flex-wrap">
-              <Mail className="w-5 h-5 text-primary" />
-              Prijavite se na naš newsletter i budite prvi koji će saznati o novim projektima, promocijama i ekskluzivnim ponudama
-            </p>
-            <p className="text-sm text-muted-foreground/70 mb-12 flex items-center justify-center gap-2">
-              <CheckCircle2 className="w-4 h-4 text-primary" />
-              Nikada nećemo deliti vaš email sa trećim stranama
-            </p>
-          </FadeInWhenVisible>
-          
-          <FadeInWhenVisible delay={0.4}>
             <NewsletterForm />
           </FadeInWhenVisible>
         </div>
@@ -774,82 +739,59 @@ export default function Home() {
         </div>
       </section>
 
-      <section className="py-20 lg:py-32 bg-muted/10 relative z-10">
-        <div className="max-w-7xl mx-auto px-4 md:px-6">
+      <section className="py-20 bg-background relative z-10">
+        <div className="max-w-3xl mx-auto px-4 text-center">
           <FadeInWhenVisible>
-            <div className="text-center mb-16">
-              <h2 className="heading-md mb-4">Šta Kažu Naši Klijenti</h2>
-              <p className="text-muted-foreground max-w-2xl mx-auto">
-                Više stotina pesama snimljeno, zadovoljni klijenti govore sami za sebe
-              </p>
-            </div>
+            <p className="text-primary text-sm font-semibold uppercase tracking-[0.15em] mb-3">Recenzije</p>
+            <h2 className="text-3xl font-bold mb-4">Šta kažu klijenti</h2>
+            <p className="text-muted-foreground mb-8 max-w-md mx-auto">
+              Više stotina pesama snimljeno. Pročitajte iskustva klijenata direktno na Google-u.
+            </p>
+            <a
+              href="https://www.google.com/search?q=Studio+LeFlow+Beograd"
+              target="_blank"
+              rel="noopener noreferrer"
+            >
+              <Button size="lg" variant="outline" className="gap-2">
+                <Star className="w-5 h-5 text-yellow-400 fill-yellow-400" />
+                Pročitaj recenzije na Google-u
+                <ArrowRight className="w-4 h-4" />
+              </Button>
+            </a>
           </FadeInWhenVisible>
-
-          <div className="grid md:grid-cols-3 gap-6">
-            {[
-              {
-                name: "Marko M.",
-                text: "Profesionalan pristup od prvog kontakta. Zvuk je tačno onakav kakav sam zamišljao, a ekipa je super strpljiva i kreativna. Preporučujem svima!",
-                stars: 5,
-              },
-              {
-                name: "Ana S.",
-                text: "Snimala sam dve pesme i oba puta odlično iskustvo. Oprema je vrhunska, ambijent opušten, i što je najvažnije — rezultat je bio profesionalan na prvu loptu.",
-                stars: 5,
-              },
-              {
-                name: "Stefan P.",
-                text: "Odradio sam mix i mastering ovde posle više studija u gradu — razlika se odmah čuje. Zvuk je dubok, jasan i radio-ready. Definitivno se vraćam.",
-                stars: 5,
-              },
-            ].map((testimonial, i) => (
-              <FadeInWhenVisible key={i} delay={i * 0.12}>
-                <div className="bg-card border border-border rounded-xl p-6 h-full flex flex-col gap-4">
-                  <div className="flex gap-0.5">
-                    {Array.from({ length: testimonial.stars }).map((_, s) => (
-                      <span key={s} className="text-yellow-400 text-lg">★</span>
-                    ))}
-                  </div>
-                  <p className="text-muted-foreground flex-1 text-sm leading-relaxed">"{testimonial.text}"</p>
-                  <p className="font-semibold text-sm">{testimonial.name}</p>
-                </div>
-              </FadeInWhenVisible>
-            ))}
-          </div>
         </div>
       </section>
 
-      <section className="py-20 lg:py-32 bg-primary text-primary-foreground">
+      <section className="py-20 lg:py-32 bg-background border-t border-border/40 relative z-10">
         <div className="max-w-4xl mx-auto px-4 md:px-6 text-center">
           <FadeInWhenVisible>
             <EditableText
               page="home"
               section="cta"
               contentKey="title"
-              value={getCmsValue("cta", "title", "Spremni za Vašu Sledeću Produkciju?")}
+              value={getCmsValue("cta", "title", "Zakažite termin")}
               as="h2"
-              className="text-4xl md:text-5xl font-bold mb-6 tracking-tight"
+              className="text-4xl md:text-5xl font-bold mb-4 tracking-tight"
             />
           </FadeInWhenVisible>
-          
-          <FadeInWhenVisible delay={0.2}>
+
+          <FadeInWhenVisible delay={0.15}>
             <EditableText
               page="home"
               section="cta"
               contentKey="description"
-              value={getCmsValue("cta", "description", "Zakažite besplatnu konsultaciju i razgovarajmo o vašoj muzičkoj viziji")}
+              value={getCmsValue("cta", "description", "Pozovite ili pišite — besplatna konsultacija, bez obaveze")}
               as="p"
-              className="text-xl mb-12 text-primary-foreground/90"
+              className="text-lg mb-10 text-muted-foreground max-w-xl mx-auto"
             />
           </FadeInWhenVisible>
-          
-          <FadeInWhenVisible delay={0.4}>
+
+          <FadeInWhenVisible delay={0.3}>
             <div className="flex flex-wrap gap-4 justify-center">
               <Link href="/kontakt">
-                <Button 
-                  size="lg" 
-                  variant="outline"
-                  className="text-lg px-8 py-6 bg-white/10 text-primary-foreground border-white/30 hover:bg-white/20 backdrop-blur-md animate-pulse-slow transition-transform hover:scale-105"
+                <Button
+                  size="lg"
+                  className="text-base px-8 py-6 transition-all hover:scale-105"
                   data-testid="button-cta-book"
                 >
                   Zakažite Termin
@@ -860,10 +802,10 @@ export default function Home() {
                 <Button
                   size="lg"
                   variant="outline"
-                  className="text-lg px-8 py-6 bg-white/10 text-primary-foreground border-white/30 hover:bg-white/20 backdrop-blur-md transition-transform hover:scale-105"
+                  className="text-base px-8 py-6 transition-all hover:scale-105"
                   data-testid="button-view-team"
                 >
-                  Upoznajte Naš Tim
+                  Upoznajte Tim
                 </Button>
               </Link>
             </div>
