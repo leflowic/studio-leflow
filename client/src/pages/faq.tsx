@@ -1,5 +1,5 @@
 import { Link } from "wouter";
-import { HelpCircle, ArrowRight } from "lucide-react";
+import { ArrowRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { FadeInWhenVisible } from "@/components/motion/FadeIn";
 import { SEO, pageStructuredData } from "@/components/SEO";
@@ -59,11 +59,6 @@ export default function FAQPage() {
           <div className="max-w-3xl mx-auto">
             <FadeInWhenVisible>
               <div className="text-center mb-14">
-                <div className="flex justify-center mb-4">
-                  <div className="p-3 rounded-full bg-primary/10">
-                    <HelpCircle className="w-8 h-8 text-primary" />
-                  </div>
-                </div>
                 <h1 className="text-4xl md:text-5xl font-bold font-[Montserrat] mb-4">
                   Česta Pitanja
                 </h1>

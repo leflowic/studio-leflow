@@ -57,16 +57,8 @@ export default function Contact() {
       />
 
       {/* Hero */}
-      <div className="relative overflow-hidden border-b border-border/40 bg-gradient-to-br from-primary/10 via-background to-muted/20">
-        <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top_left,hsl(var(--primary)/0.12),transparent_60%)]" />
-        <div className="relative container mx-auto px-4 max-w-6xl py-12 md:py-16">
-          <motion.div
-            initial={{ opacity: 0, y: 10 }}
-            animate={{ opacity: 1, y: 0 }}
-            className="flex items-center gap-2 mb-3"
-          >
-            <span className="text-xs font-semibold text-primary uppercase tracking-widest">Kontakt</span>
-          </motion.div>
+      <div className="border-b border-border/40">
+        <div className="container mx-auto px-4 max-w-6xl py-12 md:py-16">
           <motion.h1
             initial={{ opacity: 0, y: 10 }}
             animate={{ opacity: 1, y: 0 }}
