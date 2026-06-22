@@ -1,13 +1,12 @@
 import { Link } from "wouter";
-import { Mic2, Music, Video, CheckCircle2, ArrowRight, Phone, Headphones } from "lucide-react";
+import { ArrowRight, Phone } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 import { FadeInWhenVisible } from "@/components/motion/FadeIn";
 import { SEO, pageStructuredData } from "@/components/SEO";
 
 const services = [
   {
-    icon: Mic2,
     title: "Snimanje & Mix/Mastering",
     description: "Profesionalno snimanje vokala i instrumenata uz kompletan signal chain — od ulaska u booth do finalnog mastered fajla.",
     features: [
@@ -21,7 +20,6 @@ const services = [
     slug: "snimanje",
   },
   {
-    icon: Music,
     title: "Instrumentali & Produkcija",
     description: "Custom bitovi i kompletna muzička produkcija pesama — od ideje do gotovog backing tracka.",
     features: [
@@ -35,7 +33,6 @@ const services = [
     slug: "instrumentali",
   },
   {
-    icon: Video,
     title: "Video Produkcija",
     description: "Snimanje i postprodukcija profesionalnih muzičkih spotova — od koncepta do finalne verzije optimizovane za YouTube.",
     features: [
@@ -51,9 +48,9 @@ const services = [
 ];
 
 const extras = [
-  { icon: Headphones, title: "Voice Over & Podcast", description: "Snimanje glasovnih reklama, podkast epizoda i audio knjiga u profesionalnom okruženju." },
-  { icon: Mic2, title: "Demo snimanje", description: "Brzo snimanje demo verzije pesme za audicioniranje, pitch deck ili lični arhiv." },
-  { icon: Music, title: "Aranžman & Orkestracija", description: "Aranžiranje gotove pesme — dodavanje instrumenata, harmonija i produkcijskih elemenata." },
+  { title: "Voice Over & Podcast", description: "Snimanje glasovnih reklama, podkast epizoda i audio knjiga u profesionalnom okruženju." },
+  { title: "Demo snimanje", description: "Brzo snimanje demo verzije pesme za audicioniranje, pitch deck ili lični arhiv." },
+  { title: "Aranžman & Orkestracija", description: "Aranžiranje gotove pesme — dodavanje instrumenata, harmonija i produkcijskih elemenata." },
 ];
 
 export default function UslugePage() {
@@ -113,23 +110,14 @@ export default function UslugePage() {
                   <CardContent className="p-0">
                     <div className="grid md:grid-cols-2 gap-0">
                       <div className="p-5 md:p-8 lg:p-10">
-                        <div className="inline-flex items-center justify-center w-14 h-14 rounded-xl bg-primary/10 mb-6">
-                          <service.icon className="w-7 h-7 text-primary" />
-                        </div>
                         <h2 className="text-2xl lg:text-3xl font-bold mb-4">{service.title}</h2>
-                        <p className="text-muted-foreground text-lg mb-6">{service.description}</p>
-                        <Link href="/kontakt">
-                          <Button>
-                            Pitajte za cenu
-                            <ArrowRight className="ml-2 w-4 h-4" />
-                          </Button>
-                        </Link>
+                        <p className="text-muted-foreground text-lg">{service.description}</p>
                       </div>
                       <div className="bg-muted/30 p-5 md:p-8 lg:p-10 flex items-center">
                         <ul className="space-y-3 w-full">
                           {service.features.map((f) => (
                             <li key={f} className="flex items-start gap-3">
-                              <CheckCircle2 className="w-5 h-5 text-primary mt-0.5 flex-shrink-0" />
+                              <span className="text-muted-foreground mt-0.5 flex-shrink-0">—</span>
                               <span>{f}</span>
                             </li>
                           ))}

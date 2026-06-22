@@ -1,5 +1,5 @@
 import { Link } from "wouter";
-import { MapPin, Phone, Mail, Instagram, BadgeCheck, ArrowRight, Music } from "lucide-react";
+import { MapPin, Phone, Mail, Instagram, BadgeCheck, ArrowRight } from "lucide-react";
 import { NewsletterForm } from "@/components/newsletter-form";
 import { Button } from "@/components/ui/button";
 import leflowLogo from "@/assets/leflow-logo.png";
@@ -26,26 +26,17 @@ export function Footer() {
   const currentYear = new Date().getFullYear();
 
   return (
-    <footer className="relative overflow-hidden border-t border-border/40">
-      {/* Background */}
-      <div className="absolute inset-0 bg-gradient-to-b from-background via-muted/10 to-muted/30 pointer-events-none" />
-      <div className="absolute inset-0 bg-[radial-gradient(ellipse_80%_50%_at_50%_-20%,hsl(var(--primary)/0.06),transparent)] pointer-events-none" />
-
-      <div className="relative max-w-7xl mx-auto px-6 pt-16 pb-8">
+    <footer className="border-t border-border/40 bg-background">
+      <div className="max-w-7xl mx-auto px-6 pt-16 pb-8">
 
         {/* Top CTA strip */}
-        <div className="rounded-2xl bg-primary/5 border border-primary/15 px-6 py-5 mb-14 flex flex-col sm:flex-row items-center justify-between gap-4">
-          <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center flex-shrink-0">
-              <Music className="w-5 h-5 text-primary" />
-            </div>
-            <div>
-              <p className="font-semibold text-sm">Spremni za sledeću produkciju?</p>
-              <p className="text-xs text-muted-foreground">Besplatna konsultacija — odgovaramo u roku od 24h</p>
-            </div>
+        <div className="border border-border/60 rounded-xl px-6 py-5 mb-14 flex flex-col sm:flex-row items-center justify-between gap-4">
+          <div>
+            <p className="font-semibold text-sm">Spremni za sledeću produkciju?</p>
+            <p className="text-xs text-muted-foreground">Besplatna konsultacija — odgovaramo u roku od 24h</p>
           </div>
           <Link href="/kontakt">
-            <Button size="sm" className="gap-2 rounded-xl flex-shrink-0" data-testid="button-footer-cta">
+            <Button size="sm" className="gap-2 flex-shrink-0" data-testid="button-footer-cta">
               Zakažite Termin <ArrowRight className="w-3.5 h-3.5" />
             </Button>
           </Link>
