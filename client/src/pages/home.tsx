@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { Link, useLocation } from "wouter";
-import { Music, Mic2, Video, ArrowRight, CheckCircle2, Headphones, Phone, Play, AlertCircle, Gamepad2, UserPlus, X, Star } from "lucide-react";
+import { Music, Mic2, Video, ArrowRight, Headphones, Phone, Play, AlertCircle, Gamepad2, UserPlus, X, Star, Sliders, Zap } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Alert, AlertDescription } from "@/components/ui/alert";
@@ -231,14 +231,6 @@ export default function Home() {
     }
   ];
 
-  const whyChooseUs = [
-    "Preko 5 godina iskustva u muzičkoj produkciji",
-    "Profesionalna oprema (WA-47, Apollo Twin X, HS8)",
-    "Universal Audio plugin suite i vrhunski processing",
-    "Individualan pristup svakom klijentu",
-    "Fleksibilni termini i prilagođeni paketi"
-  ];
-
   return (
     <div className="min-h-screen relative">
       {!user && <GuestBanner />}
@@ -452,7 +444,7 @@ export default function Home() {
                 viewport={{ once: true }}
                 transition={{ duration: 0.8, delay: 0.2 }}
               >
-                Snimanje vokala, mix/mastering, custom instrumentali i muzički spotovi — sve na jednom mestu u Beogradu
+                Snimanje vokala, mix/mastering, custom instrumentali i muzički spotovi — u akustički tretiranom studiju u Beogradu
               </motion.p>
             </div>
           </ParallaxSection>
@@ -480,14 +472,7 @@ export default function Home() {
                       </motion.div>
                     </div>
                     <CardContent className="p-6 relative">
-                      <motion.div 
-                        className="mb-4 inline-flex items-center justify-center w-12 h-12 rounded-lg bg-primary/10 group-hover:bg-primary/20 transition-colors"
-                        style={{ transform: "translateZ(20px)" }}
-                      >
-                        <service.icon className="w-6 h-6 text-primary" />
-                      </motion.div>
-                      
-                      <h3 
+                      <h3
                         className="text-2xl font-bold mb-3 group-hover:text-primary transition-colors" 
                         data-testid={`text-service-title-${index}`}
                         style={{ transform: "translateZ(15px)" }}
@@ -501,17 +486,10 @@ export default function Home() {
                       
                       <ul className="space-y-2" style={{ transform: "translateZ(5px)" }}>
                         {service.features.map((feature, fIndex) => (
-                          <motion.li
-                            key={fIndex}
-                            className="flex items-start gap-2 text-sm"
-                            initial={{ opacity: 0, x: -10 }}
-                            whileInView={{ opacity: 1, x: 0 }}
-                            viewport={{ once: true }}
-                            transition={{ delay: 0.1 * fIndex }}
-                          >
-                            <CheckCircle2 className="w-4 h-4 text-primary mt-0.5 flex-shrink-0" />
+                          <li key={fIndex} className="flex items-start gap-2 text-sm">
+                            <span className="text-primary mt-0.5 flex-shrink-0">—</span>
                             <span>{feature}</span>
-                          </motion.li>
+                          </li>
                         ))}
                       </ul>
                       <div className="mt-6 pt-4 border-t" style={{ transform: "translateZ(5px)" }}>
@@ -693,7 +671,7 @@ export default function Home() {
                   />
                   <div className="p-6">
                     <h3 className="text-xl font-bold mb-3 flex items-center gap-2">
-                      <CheckCircle2 className="w-5 h-5 text-primary" />
+                      <Sliders className="w-5 h-5 text-primary" />
                       UAD Plugin Suite - Sve Originalne Licence
                     </h3>
                     <p className="text-muted-foreground">
@@ -714,7 +692,7 @@ export default function Home() {
                   />
                   <div className="p-6">
                     <h3 className="text-xl font-bold mb-3 flex items-center gap-2">
-                      <CheckCircle2 className="w-5 h-5 text-primary" />
+                      <Zap className="w-5 h-5 text-primary" />
                       AutoTune RealTime Advanced - Bez Kasnjenja
                     </h3>
                     <p className="text-muted-foreground">
