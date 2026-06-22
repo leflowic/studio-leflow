@@ -66,18 +66,6 @@ export default {
         },
       },
       keyframes: {
-        shimmer: {
-          "0%": { transform: "translateX(-100%)" },
-          "100%": { transform: "translateX(200%)" },
-        },
-        "shimmer-rotate": {
-          "0%": { transform: "translateX(-50%) translateY(-50%) rotate(0deg)" },
-          "100%": { transform: "translateX(-50%) translateY(-50%) rotate(360deg)" },
-        },
-        "gradient-x": {
-          "0%, 100%": { "background-position": "0% 50%" },
-          "50%": { "background-position": "100% 50%" },
-        },
         "accordion-down": {
           from: { height: "0" },
           to: { height: "var(--radix-accordion-content-height)" },
@@ -115,9 +103,6 @@ export default {
         "scale-in": "scale-in 0.3s ease-out",
         "slide-in-right": "slide-in-right 0.3s ease-out",
         "pulse-slow": "pulse-slow 3s ease-in-out infinite",
-        shimmer: "shimmer 2.2s linear infinite",
-        "shimmer-rotate": "shimmer-rotate 3s linear infinite",
-        "gradient-x": "gradient-x 4s ease infinite",
       },
     },
   },
