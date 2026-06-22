@@ -4,7 +4,6 @@ import { Music, Mic2, Video, ArrowRight, CheckCircle2, Headphones, Phone, Play, 
 import { Button } from "@/components/ui/button";
 import { ShimmerButton } from "@/components/ui/shimmer-button";
 import { WordRotate } from "@/components/ui/word-rotate";
-import { FlickeringGrid } from "@/components/ui/flickering-grid";
 import { useQuery } from "@tanstack/react-query";
 import { useAuth } from "@/hooks/use-auth";
 import { apiRequest } from "@/lib/queryClient";
@@ -19,14 +18,26 @@ import { NewsletterForm } from "@/components/newsletter-form";
 import { ParallaxHero, ParallaxSection, Parallax3DCard } from "@/components/parallax/ParallaxHero";
 
 import type { CmsContent } from "@shared/schema";
-import studioInteriorImage from "@assets/generated_images/Hero_music_studio_interior_f15ae0f7.png";
-import recordingBoothImage from "@assets/generated_images/Recording_booth_interior_3575d847.png";
-import apolloTwinImage from "@assets/generated_images/Apollo_Twin_X_audio_interface_8905cd94.png";
-import wa47Image from "@assets/generated_images/Warm_Audio_WA-47_microphone_closeup_3054e6fe.png";
-import synthImage from "@assets/generated_images/Synthesizer_keyboard_with_controls_c7b4f573.png";
 import videoSetupImage from "@assets/generated_images/Video_production_setup_1a03de08.png";
-import studioEquipImage from "@assets/generated_images/Studio_equipment_close-up_569bcc0b.png";
 
+// ── Clip-reveal line component ──────────────────────────────────────────────
+function RevealLine({ children, className = "", delay = 0 }: { children: React.ReactNode; className?: string; delay?: number }) {
+  return (
+    <div className="overflow-hidden">
+      <motion.div
+        initial={{ y: "105%" }}
+        whileInView={{ y: 0 }}
+        viewport={{ once: true, margin: "-80px" }}
+        transition={{ duration: 0.9, delay, ease: [0.22, 1, 0.36, 1] }}
+        className={className}
+      >
+        {children}
+      </motion.div>
+    </div>
+  );
+}
+
+// ── Game announcement banner ────────────────────────────────────────────────
 function GameAnnouncement() {
   const { data } = useQuery<any>({
     queryKey: ["/api/game/upcoming"],
@@ -79,7 +90,7 @@ function GameAnnouncement() {
       initial={{ opacity: 0, y: 10 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.5, delay: 1.1 }}
-      className="mt-4 flex justify-center"
+      className="mt-6 flex justify-start"
     >
       <div className="flex items-center gap-2 px-4 py-2 rounded-full bg-white/10 backdrop-blur-md border border-white/20 text-white text-sm">
         <Music className="w-4 h-4 text-primary flex-shrink-0" />
@@ -92,6 +103,7 @@ function GameAnnouncement() {
   );
 }
 
+// ── Guest banner (sticky bottom) ────────────────────────────────────────────
 function GuestBanner() {
   const [visible, setVisible] = useState(false);
   const [dismissed, setDismissed] = useState(() => sessionStorage.getItem("guest_banner_dismissed") === "1");
@@ -147,6 +159,7 @@ function GuestBanner() {
   );
 }
 
+// ── Main page ────────────────────────────────────────────────────────────────
 export default function Home() {
   const [location] = useLocation();
   const { user } = useAuth();
@@ -251,6 +264,8 @@ export default function Home() {
   const eq2 = { src: "/equipment/uad-plugins.jpg", alt: "UAD Plugin Collection", title: "UAD Plugin Suite", desc: "Neve 1073, Pultec EQ, 1176, LA-2A — legendarni analog zvuk u digitalnom domenu." };
   const eq3 = { src: "/equipment/autotune-uad.jpg", alt: "AutoTune RealTime Advanced", title: "AutoTune RealTime", desc: "Live pitch correction bez čujnog kasnjenja — profesionalni zvuk tokom snimanja." };
 
+  const tickerItems = ["Snimanje Vokala", "Mix & Mastering", "Instrumentali", "Video Spotovi", "Podcast Produkcija", "Beat Produkcija"];
+
   return (
     <div className="min-h-screen relative">
       {!user && <GuestBanner />}
@@ -296,133 +311,119 @@ export default function Home() {
 
       {/* ── HERO ── */}
       <ParallaxHero>
-        <div className="flex items-center justify-center min-h-screen">
-          <div className="max-w-7xl mx-auto px-4 md:px-6 py-20 text-center">
-
-            {announcement?.isActive && announcement.message && (
-              <motion.div
-                className="flex items-center justify-center gap-2 px-4 py-2 rounded-lg bg-destructive/20 backdrop-blur-md border border-destructive/40 max-w-md mx-auto mb-8"
-                initial={{ opacity: 0, y: -20 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ duration: 0.6, delay: 0.05 }}
-                data-testid="badge-site-announcement"
-              >
-                <AlertCircle className="w-4 h-4 text-destructive flex-shrink-0" />
-                <span className="text-sm font-medium text-white text-center whitespace-pre-line">{announcement.message}</span>
-              </motion.div>
-            )}
-
+        <div className="relative flex flex-col justify-end min-h-screen pb-12 md:pb-20 px-4 md:px-10">
+          {/* Site-wide announcement */}
+          {announcement?.isActive && announcement.message && (
             <motion.div
-              className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-white/10 backdrop-blur-md border border-white/20 mb-10"
-              initial={{ opacity: 0, y: -16, scale: 0.9 }}
-              animate={{ opacity: 1, y: 0, scale: 1 }}
-              transition={{ duration: 0.6, delay: 0.1, type: "spring" }}
+              className="absolute top-6 left-1/2 -translate-x-1/2 flex items-center gap-2 px-4 py-2 rounded-lg bg-destructive/20 backdrop-blur-md border border-destructive/40 max-w-md w-[calc(100%-2rem)]"
+              initial={{ opacity: 0, y: -20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.6, delay: 0.05 }}
+              data-testid="badge-site-announcement"
+            >
+              <AlertCircle className="w-4 h-4 text-destructive flex-shrink-0" />
+              <span className="text-sm font-medium text-white text-center whitespace-pre-line">{announcement.message}</span>
+            </motion.div>
+          )}
+
+          <div className="max-w-[1400px] w-full mx-auto">
+            {/* Location pill */}
+            <motion.div
+              className="mb-6 md:mb-10 inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-white/10 backdrop-blur-md border border-white/20"
+              initial={{ opacity: 0, y: 16 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.6, delay: 0.05 }}
             >
               <span className="w-1.5 h-1.5 rounded-full bg-primary animate-pulse" />
               <span className="text-sm font-medium text-white/90 tracking-wide" data-testid="text-location">Beograd, Srbija</span>
             </motion.div>
 
-            <motion.div
-              initial={{ opacity: 0, y: 40 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.9, delay: 0.2, type: "spring" }}
-            >
-              <EditableText
-                page="home"
-                section="hero"
-                contentKey="title"
-                value={getCmsValue("hero", "title", "Studio LeFlow")}
-                as="h1"
-                className="text-5xl sm:text-6xl md:text-8xl lg:text-9xl font-bold mb-5 text-white tracking-tight font-[Montserrat] drop-shadow-2xl"
-              />
-            </motion.div>
+            {/* Massive two-line title with clip-reveal */}
+            <div className="mb-8 md:mb-10">
+              <RevealLine
+                className="text-[18vw] sm:text-[14vw] md:text-[12vw] font-bold leading-[0.88] text-white tracking-tight font-[Montserrat]"
+                delay={0.1}
+              >
+                Studio
+              </RevealLine>
+              <RevealLine
+                className="text-[18vw] sm:text-[14vw] md:text-[12vw] font-bold leading-[0.88] text-primary tracking-tight font-[Montserrat]"
+                delay={0.25}
+              >
+                LeFlow
+              </RevealLine>
+            </div>
 
-            <motion.div
-              initial={{ opacity: 0, y: 24 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.8, delay: 0.38 }}
-            >
-              <EditableText
-                page="home"
-                section="hero"
-                contentKey="subtitle"
-                value={getCmsValue("hero", "subtitle", "Profesionalna Muzička Produkcija")}
-                as="p"
-                className="text-xl md:text-2xl lg:text-3xl mb-3 text-white/85 max-w-3xl mx-auto font-light tracking-wide"
-              />
-            </motion.div>
+            {/* Bottom row: subtitle + CTAs */}
+            <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-6">
+              <motion.p
+                initial={{ opacity: 0, y: 16 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: 0.7, duration: 0.7 }}
+                className="text-white/60 text-base md:text-lg max-w-sm leading-relaxed"
+              >
+                Profesionalno snimanje, mix/mastering,<br />instrumentali i video produkcija
+              </motion.p>
 
-            <motion.div
-              initial={{ opacity: 0, y: 16 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.7, delay: 0.52 }}
-              className="mb-12"
-            >
-              <WordRotate
-                words={["Snimanje & Mix/Master", "Instrumentali & Produkcija", "Video Spotovi"]}
-                duration={3000}
-                className="text-sm md:text-base text-white/55 tracking-widest uppercase"
-              />
-            </motion.div>
-
-            <motion.div
-              className="flex flex-wrap gap-4 justify-center"
-              initial={{ opacity: 0, y: 24 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.8, delay: 0.68 }}
-            >
-              <Link href="/kontakt" className="w-full sm:w-auto" data-testid="button-book-session">
-                <ShimmerButton className="w-full sm:w-auto text-base px-8 py-4 hover:shadow-primary/30">
-                  <Phone className="w-5 h-5" />
-                  Zakažite Termin
-                  <ArrowRight className="w-5 h-5" />
-                </ShimmerButton>
-              </Link>
-              <Link href="/projekti" className="w-full sm:w-auto">
-                <Button
-                  size="lg"
-                  variant="outline"
-                  className="w-full sm:w-auto text-base px-8 py-6 backdrop-blur-md bg-white/10 text-white border-white/25 hover:bg-white/20 transition-all hover:scale-105 font-semibold"
-                  data-testid="button-view-projects"
-                >
-                  <Play className="mr-2 w-5 h-5" />
-                  Pogledaj Projekte
-                </Button>
-              </Link>
-              {user?.emailVerified && (
-                <Link href="/igra" className="w-full sm:w-auto">
+              <motion.div
+                initial={{ opacity: 0, y: 16 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: 0.85, duration: 0.7 }}
+                className="flex flex-wrap gap-3 flex-shrink-0"
+              >
+                <Link href="/kontakt" data-testid="button-book-session">
+                  <ShimmerButton className="px-7 py-3.5 text-sm font-semibold">
+                    <Phone className="w-4 h-4" />
+                    Zakažite Termin
+                    <ArrowRight className="w-4 h-4" />
+                  </ShimmerButton>
+                </Link>
+                <Link href="/projekti">
                   <Button
-                    size="lg"
                     variant="outline"
-                    className="w-full sm:w-auto text-base px-8 py-6 backdrop-blur-md bg-white/10 text-white border-white/25 hover:bg-white/20 transition-all hover:scale-105 font-semibold relative"
+                    size="lg"
+                    className="text-sm px-7 py-3.5 backdrop-blur-md bg-white/10 text-white border-white/25 hover:bg-white/20 font-semibold"
+                    data-testid="button-view-projects"
                   >
-                    <Gamepad2 className="mr-2 w-5 h-5" />
-                    Pogodi Pesmu
-                    {gameIsLive && (
-                      <span className="absolute -top-1.5 -right-1.5 flex items-center gap-0.5 bg-red-500 text-white text-[10px] font-bold px-1.5 py-0.5 rounded-full">
-                        <span className="relative flex h-1.5 w-1.5">
-                          <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-white opacity-75" />
-                          <span className="relative inline-flex rounded-full h-1.5 w-1.5 bg-white" />
+                    <Play className="w-4 h-4 mr-2" />
+                    Projekti
+                  </Button>
+                </Link>
+                {user?.emailVerified && (
+                  <Link href="/igra">
+                    <Button
+                      variant="outline"
+                      size="lg"
+                      className="text-sm px-7 py-3.5 backdrop-blur-md bg-white/10 text-white border-white/25 hover:bg-white/20 font-semibold relative"
+                    >
+                      <Gamepad2 className="w-4 h-4 mr-2" />
+                      Pogodi Pesmu
+                      {gameIsLive && (
+                        <span className="absolute -top-1.5 -right-1.5 flex items-center gap-0.5 bg-red-500 text-white text-[10px] font-bold px-1.5 py-0.5 rounded-full">
+                          <span className="relative flex h-1.5 w-1.5">
+                            <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-white opacity-75" />
+                            <span className="relative inline-flex rounded-full h-1.5 w-1.5 bg-white" />
+                          </span>
+                          LIVE
                         </span>
-                        LIVE
-                      </span>
-                    )}
-                  </Button>
-                </Link>
-              )}
-              {!user && (
-                <Link href="/registracija" className="w-full sm:w-auto">
-                  <Button
-                    size="lg"
-                    variant="outline"
-                    className="w-full sm:w-auto text-base px-8 py-6 backdrop-blur-md bg-white/10 text-white border-white/25 hover:bg-white/20 transition-all hover:scale-105 font-semibold gap-2"
-                  >
-                    <UserPlus className="w-5 h-5" />
-                    Pridruži se besplatno
-                  </Button>
-                </Link>
-              )}
-            </motion.div>
+                      )}
+                    </Button>
+                  </Link>
+                )}
+                {!user && (
+                  <Link href="/registracija">
+                    <Button
+                      variant="outline"
+                      size="lg"
+                      className="text-sm px-7 py-3.5 backdrop-blur-md bg-white/10 text-white border-white/25 hover:bg-white/20 font-semibold gap-2"
+                    >
+                      <UserPlus className="w-4 h-4" />
+                      Pridruži se besplatno
+                    </Button>
+                  </Link>
+                )}
+              </motion.div>
+            </div>
 
             <GameAnnouncement />
           </div>
@@ -430,122 +431,137 @@ export default function Home() {
         <ScrollIndicator targetId="usluge" />
       </ParallaxHero>
 
+      {/* ── TICKER STRIP ── */}
+      <div className="relative z-10 bg-primary/5 border-y border-primary/15 py-4 overflow-hidden">
+        <motion.div
+          className="flex gap-16 whitespace-nowrap"
+          animate={{ x: ["0%", "-50%"] }}
+          transition={{ duration: 25, repeat: Infinity, ease: "linear" }}
+        >
+          {[...Array(2)].flatMap((_, ai) =>
+            tickerItems.map((item, i) => (
+              <span key={`${ai}-${i}`} className="inline-flex items-center gap-4 text-sm font-semibold uppercase tracking-[0.18em] text-muted-foreground">
+                <span className="w-1 h-1 rounded-full bg-primary inline-block" />
+                {item}
+              </span>
+            ))
+          )}
+        </motion.div>
+      </div>
+
       {/* ── STATS ── */}
       <section className="relative z-10 bg-background border-b border-border/40">
         <div className="max-w-5xl mx-auto px-4">
-          <FadeInWhenVisible>
-            <div className="grid grid-cols-3 divide-x divide-border/40">
-              {stats.map((stat, i) => (
-                <div key={i} className="py-10 px-6 text-center">
-                  <p className="text-4xl md:text-5xl font-bold text-primary mb-1 font-[Montserrat]">{stat.value}</p>
-                  <p className="text-sm text-muted-foreground uppercase tracking-widest">{stat.label}</p>
-                </div>
-              ))}
-            </div>
-          </FadeInWhenVisible>
+          <div className="grid grid-cols-3 divide-x divide-border/40">
+            {stats.map((stat, i) => (
+              <div key={i} className="py-10 px-6 text-center overflow-hidden">
+                <RevealLine
+                  className="text-4xl md:text-5xl font-bold text-primary mb-1 font-[Montserrat]"
+                  delay={i * 0.1}
+                >
+                  {stat.value}
+                </RevealLine>
+                <p className="text-sm text-muted-foreground uppercase tracking-widest">{stat.label}</p>
+              </div>
+            ))}
+          </div>
         </div>
       </section>
 
-      {/* ── USLUGE ── */}
-      <section className="py-24 lg:py-36 bg-background relative z-10" id="usluge">
-        <div className="max-w-7xl mx-auto px-4 md:px-6">
-          <ParallaxSection direction="up" intensity={30}>
-            <div className="text-center mb-16">
-              <motion.p
-                className="text-primary text-sm font-semibold uppercase tracking-[0.2em] mb-3"
-                initial={{ opacity: 0, y: 16 }}
-                whileInView={{ opacity: 1, y: 0 }}
-                viewport={{ once: true }}
-                transition={{ duration: 0.6 }}
-              >
-                Šta radimo
-              </motion.p>
-              <motion.h2
-                className="heading-lg mb-4"
-                data-testid="text-services-title"
-                initial={{ opacity: 0, y: 24 }}
-                whileInView={{ opacity: 1, y: 0 }}
-                viewport={{ once: true }}
-                transition={{ duration: 0.7, delay: 0.1 }}
-              >
-                Naše Usluge
-              </motion.h2>
-              <motion.p
-                className="text-muted-foreground max-w-xl mx-auto"
-                initial={{ opacity: 0, y: 16 }}
-                whileInView={{ opacity: 1, y: 0 }}
-                viewport={{ once: true }}
-                transition={{ duration: 0.7, delay: 0.2 }}
-              >
-                Kompletna muzička i video produkcija — od ideje do finalnog proizvoda
-              </motion.p>
-            </div>
-          </ParallaxSection>
+      {/* ── USLUGE — numbered rows ── */}
+      <section className="bg-background relative z-10 border-t border-border/30" id="usluge">
+        <div className="max-w-7xl mx-auto px-4 md:px-10">
+          {/* Section heading */}
+          <div className="pt-20 pb-4 md:pt-28 md:pb-6">
+            <motion.p
+              className="text-primary text-sm font-semibold uppercase tracking-[0.2em] mb-4"
+              initial={{ opacity: 0, y: 16 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              viewport={{ once: true }}
+              transition={{ duration: 0.6 }}
+            >
+              Šta radimo
+            </motion.p>
+            <RevealLine
+              className="text-4xl md:text-6xl font-bold tracking-tight font-[Montserrat]"
+              delay={0.08}
+            >
+              <span data-testid="text-services-title">Naše Usluge</span>
+            </RevealLine>
+          </div>
 
-          <FadeInWhenVisible>
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+          {/* Numbered service rows */}
+          <div className="pb-16 md:pb-24">
             {services.map((service, index) => (
-              <Parallax3DCard key={index}>
-                  <div
-                    className="group relative overflow-hidden rounded-2xl border border-white/[0.07] bg-card/40 backdrop-blur-sm hover:border-primary/30 transition-all duration-500 hover:shadow-[0_0_40px_-8px] hover:shadow-primary/20 h-full flex flex-col cursor-pointer"
-                    data-testid={`card-service-${index}`}
+              <motion.div
+                key={index}
+                className="group border-b border-border/30 last:border-b-0 py-10 md:py-14 grid md:grid-cols-[100px_1fr_auto] gap-6 items-start hover:bg-white/[0.02] transition-colors duration-500 cursor-default"
+                initial={{ opacity: 0, y: 32 }}
+                whileInView={{ opacity: 1, y: 0 }}
+                viewport={{ once: true, margin: "-60px" }}
+                transition={{ duration: 0.7, delay: index * 0.08, ease: [0.22, 1, 0.36, 1] }}
+                data-testid={`card-service-${index}`}
+              >
+                {/* Big number */}
+                <div className="overflow-hidden">
+                  <motion.div
+                    initial={{ y: "105%" }}
+                    whileInView={{ y: 0 }}
+                    viewport={{ once: true }}
+                    transition={{ duration: 0.8, delay: index * 0.08 + 0.05, ease: [0.22, 1, 0.36, 1] }}
+                    className="text-7xl md:text-8xl font-bold text-primary/12 leading-none font-[Montserrat] group-hover:text-primary/25 transition-colors duration-500"
                   >
-                    <div className="aspect-video overflow-hidden">
-                      <motion.div
-                        className="w-full h-full"
-                        whileHover={{ scale: 1.07 }}
-                        transition={{ duration: 0.6 }}
-                      >
-                        <EditableImage
-                          page="home"
-                          section="services"
-                          contentKey={service.imageKey}
-                          currentImageUrl={getCmsValue("services", service.imageKey, undefined)}
-                          fallbackSrc={service.imageFallback}
-                          alt={service.title}
-                          className="w-full h-full object-cover transition-all duration-500 brightness-90 group-hover:brightness-100"
-                        />
-                      </motion.div>
-                      <div className="absolute inset-0 bg-gradient-to-t from-card/80 via-transparent to-transparent" />
-                    </div>
+                    0{index + 1}
+                  </motion.div>
+                </div>
 
-                    <div className="p-6 flex flex-col flex-1">
-                      <div className="mb-4 inline-flex items-center justify-center w-11 h-11 rounded-xl bg-primary/10 border border-primary/20 group-hover:bg-primary/20 transition-colors">
-                        <service.icon className="w-5 h-5 text-primary" />
-                      </div>
-
-                      <h3
-                        className="text-xl font-bold mb-2 group-hover:text-primary transition-colors duration-300"
-                        data-testid={`text-service-title-${index}`}
-                      >
-                        {service.title}
-                      </h3>
-
-                      <p className="text-muted-foreground text-sm mb-5 leading-relaxed flex-1">
-                        {service.description}
-                      </p>
-
-                      <ul className="space-y-2 mb-6">
-                        {service.features.map((feature, fIndex) => (
-                          <li key={fIndex} className="flex items-start gap-2 text-sm text-muted-foreground">
-                            <CheckCircle2 className="w-4 h-4 text-primary mt-0.5 flex-shrink-0" />
-                            <span>{feature}</span>
-                          </li>
-                        ))}
-                      </ul>
-
-                      <Link href="/kontakt">
-                        <Button size="sm" variant="outline" className="w-full group-hover:bg-primary group-hover:text-primary-foreground group-hover:border-primary transition-all duration-300">
-                          Zakažite Termin
-                          <ArrowRight className="ml-2 w-4 h-4" />
-                        </Button>
-                      </Link>
-                    </div>
+                {/* Content */}
+                <div>
+                  <div className="overflow-hidden mb-3">
+                    <motion.h3
+                      initial={{ y: "105%" }}
+                      whileInView={{ y: 0 }}
+                      viewport={{ once: true }}
+                      transition={{ duration: 0.8, delay: index * 0.08 + 0.1, ease: [0.22, 1, 0.36, 1] }}
+                      className="text-2xl md:text-3xl font-bold group-hover:text-primary transition-colors duration-300"
+                      data-testid={`text-service-title-${index}`}
+                    >
+                      {service.title}
+                    </motion.h3>
                   </div>
-                </Parallax3DCard>
+                  <p className="text-muted-foreground text-sm leading-relaxed max-w-xl mb-5">
+                    {service.description}
+                  </p>
+                  <ul className="flex flex-wrap gap-2 mb-5">
+                    {service.features.map((f, fi) => (
+                      <li key={fi} className="text-xs text-muted-foreground bg-white/[0.04] border border-white/[0.07] rounded-full px-3 py-1">
+                        {f}
+                      </li>
+                    ))}
+                  </ul>
+                  <Link href="/kontakt">
+                    <Button size="sm" variant="outline" className="group-hover:bg-primary group-hover:text-primary-foreground group-hover:border-primary transition-all duration-300 text-xs gap-1.5">
+                      Zakažite Termin
+                      <ArrowRight className="w-3.5 h-3.5" />
+                    </Button>
+                  </Link>
+                </div>
+
+                {/* Hover image — desktop only */}
+                <div className="hidden md:block w-52 h-36 rounded-xl overflow-hidden opacity-0 group-hover:opacity-100 transition-opacity duration-500 flex-shrink-0">
+                  <EditableImage
+                    page="home"
+                    section="services"
+                    contentKey={service.imageKey}
+                    currentImageUrl={getCmsValue("services", service.imageKey, undefined)}
+                    fallbackSrc={service.imageFallback}
+                    alt={service.title}
+                    className="w-full h-full object-cover"
+                  />
+                </div>
+              </motion.div>
             ))}
           </div>
-          </FadeInWhenVisible>
         </div>
       </section>
 
@@ -585,16 +601,18 @@ export default function Home() {
                 >
                   Naša prednost
                 </motion.p>
-                <motion.h2
-                  className="heading-lg mb-5"
-                  data-testid="text-why-choose-title"
-                  initial={{ opacity: 0, x: 24 }}
-                  whileInView={{ opacity: 1, x: 0 }}
-                  viewport={{ once: true }}
-                  transition={{ duration: 0.7, delay: 0.1 }}
-                >
-                  Zašto Izabrati Studio LeFlow?
-                </motion.h2>
+                <div className="mb-5 overflow-hidden">
+                  <motion.h2
+                    className="text-3xl md:text-4xl lg:text-5xl font-bold tracking-tight font-[Montserrat]"
+                    data-testid="text-why-choose-title"
+                    initial={{ y: "105%" }}
+                    whileInView={{ y: 0 }}
+                    viewport={{ once: true }}
+                    transition={{ duration: 0.8, delay: 0.1, ease: [0.22, 1, 0.36, 1] }}
+                  >
+                    Zašto Izabrati Studio LeFlow?
+                  </motion.h2>
+                </div>
                 <motion.p
                   className="text-muted-foreground mb-8 leading-relaxed"
                   initial={{ opacity: 0, x: 20 }}
