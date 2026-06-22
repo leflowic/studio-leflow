@@ -1,5 +1,6 @@
 import { useRef } from "react";
 import { motion, useScroll, useTransform, useSpring } from "framer-motion";
+import { FlickeringGrid } from "@/components/ui/flickering-grid";
 
 interface ParallaxHeroProps {
   children: React.ReactNode;
@@ -47,6 +48,14 @@ export function ParallaxHero({ children }: ParallaxHeroProps) {
       />
 
       <div className="absolute inset-0 z-[2] bg-gradient-to-b from-black/40 via-transparent to-black/60" />
+
+      <FlickeringGrid
+        squareSize={3}
+        gridGap={8}
+        flickerChance={0.25}
+        maxOpacity={0.12}
+        className="z-[3] opacity-60 pointer-events-none"
+      />
 
       <motion.div
         className="relative z-10"

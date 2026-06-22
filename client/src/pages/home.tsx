@@ -1,8 +1,10 @@
 import { useEffect, useState } from "react";
 import { Link, useLocation } from "wouter";
-import { Music, Mic2, Video, ArrowRight, CheckCircle2, Headphones, Phone, Play, Mail, AlertCircle, Gamepad2, UserPlus, X, LogIn, Star } from "lucide-react";
+import { Music, Mic2, Video, ArrowRight, CheckCircle2, Headphones, Phone, Play, AlertCircle, Gamepad2, UserPlus, X, Star } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Alert, AlertDescription } from "@/components/ui/alert";
+import { ShimmerButton } from "@/components/ui/shimmer-button";
+import { WordRotate } from "@/components/ui/word-rotate";
+import { FlickeringGrid } from "@/components/ui/flickering-grid";
 import { useQuery } from "@tanstack/react-query";
 import { useAuth } from "@/hooks/use-auth";
 import { apiRequest } from "@/lib/queryClient";
@@ -17,7 +19,13 @@ import { NewsletterForm } from "@/components/newsletter-form";
 import { ParallaxHero, ParallaxSection, Parallax3DCard } from "@/components/parallax/ParallaxHero";
 
 import type { CmsContent } from "@shared/schema";
-import videoSetupImage from "@assets/generated_images/Video_camera_production_setup_199f7c64.png";
+import studioInteriorImage from "@assets/generated_images/Hero_music_studio_interior_f15ae0f7.png";
+import recordingBoothImage from "@assets/generated_images/Recording_booth_interior_3575d847.png";
+import apolloTwinImage from "@assets/generated_images/Apollo_Twin_X_audio_interface_8905cd94.png";
+import wa47Image from "@assets/generated_images/Warm_Audio_WA-47_microphone_closeup_3054e6fe.png";
+import synthImage from "@assets/generated_images/Synthesizer_keyboard_with_controls_c7b4f573.png";
+import videoSetupImage from "@assets/generated_images/Video_production_setup_1a03de08.png";
+import studioEquipImage from "@assets/generated_images/Studio_equipment_close-up_569bcc0b.png";
 
 function GameAnnouncement() {
   const { data } = useQuery<any>({
@@ -194,7 +202,7 @@ export default function Home() {
         "Finalni fajlovi u WAV i MP3 formatu"
       ],
       imageKey: "service_1_image",
-      imageFallback: "/services/wa47-microphone-service.jpg"
+      imageFallback: recordingBoothImage
     },
     {
       icon: Music,
@@ -207,7 +215,7 @@ export default function Home() {
         "Ekskluzivna i neekskluzivna prava"
       ],
       imageKey: "service_2_image",
-      imageFallback: "/services/midi-keyboard-service.jpg"
+      imageFallback: synthImage
     },
     {
       icon: Video,
@@ -238,10 +246,10 @@ export default function Home() {
     { value: "4K", label: "Video produkcija" },
   ];
 
-  const eq0 = { src: "/equipment/apollo-twin-duo.jpg", alt: "Universal Audio Apollo Twin X Duo", title: "Apollo Twin X Duo", desc: "Thunderbolt audio interface sa Realtime UAD processing-om. Kristalno čist konvertor, ultra niska latencija." };
-  const eq1 = { src: "/equipment/dt990-headphones.jpg", alt: "Beyerdynamic DT 990 PRO", title: "Beyerdynamic DT 990 & 770 PRO", desc: "Studio referentne slušalice za precizno miksovanje i monitoring." };
-  const eq2 = { src: "/equipment/uad-plugins.jpg", alt: "UAD Plugin Collection", title: "UAD Plugin Suite", desc: "Neve 1073, Pultec EQ, 1176, LA-2A — legendarni analog zvuk u digitalnom domenu." };
-  const eq3 = { src: "/equipment/autotune-uad.jpg", alt: "AutoTune RealTime Advanced", title: "AutoTune RealTime", desc: "Live pitch correction bez čujnog kasnjenja — profesionalni zvuk tokom snimanja." };
+  const eq0 = { src: apolloTwinImage, alt: "Universal Audio Apollo Twin X Duo", title: "Apollo Twin X Duo", desc: "Thunderbolt audio interface sa Realtime UAD processing-om. Kristalno čist konvertor, ultra niska latencija." };
+  const eq1 = { src: wa47Image, alt: "Warm Audio WA-47 mikrofon", title: "Warm Audio WA-47", desc: "Kondenzatorski mikrofon sa lampom — topli, prirodni zvuk vokala u svim žanrovima." };
+  const eq2 = { src: studioEquipImage, alt: "Studio oprema", title: "UAD Plugin Suite", desc: "Neve 1073, Pultec EQ, 1176, LA-2A — legendarni analog zvuk u digitalnom domenu." };
+  const eq3 = { src: synthImage, alt: "Synthesizer i MIDI kontroleri", title: "Synthesizeri & MIDI", desc: "Profesionalni synthesizeri i MIDI kontroleri za kreiranje originalnih beatova i produkciju." };
 
   return (
     <div className="min-h-screen relative">
@@ -348,14 +356,12 @@ export default function Home() {
               initial={{ opacity: 0, y: 16 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.7, delay: 0.52 }}
+              className="mb-12"
             >
-              <EditableText
-                page="home"
-                section="hero"
-                contentKey="description"
-                value={getCmsValue("hero", "description", "Mix • Master • Instrumentali • Video Produkcija")}
-                as="p"
-                className="text-base md:text-lg mb-12 text-white/55 max-w-xl mx-auto tracking-widest uppercase text-sm"
+              <WordRotate
+                words={["Snimanje & Mix/Master", "Instrumentali & Produkcija", "Video Spotovi"]}
+                duration={3000}
+                className="text-sm md:text-base text-white/55 tracking-widest uppercase"
               />
             </motion.div>
 
@@ -365,16 +371,12 @@ export default function Home() {
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.8, delay: 0.68 }}
             >
-              <Link href="/kontakt" className="w-full sm:w-auto">
-                <Button
-                  size="lg"
-                  className="w-full sm:w-auto text-base px-8 py-6 font-semibold transition-all hover:scale-105 hover:shadow-2xl hover:shadow-primary/30"
-                  data-testid="button-book-session"
-                >
-                  <Phone className="mr-2 w-5 h-5" />
+              <Link href="/kontakt" className="w-full sm:w-auto" data-testid="button-book-session">
+                <ShimmerButton className="w-full sm:w-auto text-base px-8 py-4 hover:shadow-primary/30">
+                  <Phone className="w-5 h-5" />
                   Zakažite Termin
-                  <ArrowRight className="ml-2 w-5 h-5" />
-                </Button>
+                  <ArrowRight className="w-5 h-5" />
+                </ShimmerButton>
               </Link>
               <Link href="/projekti" className="w-full sm:w-auto">
                 <Button
@@ -562,7 +564,7 @@ export default function Home() {
                       section="equipment"
                       contentKey="equipment_image"
                       currentImageUrl={getCmsValue("equipment", "equipment_image", undefined)}
-                      fallbackSrc="/services/yamaha-hs8-service.jpg"
+                      fallbackSrc={studioInteriorImage}
                       alt="Studio oprema"
                       className="w-full object-cover"
                     />
@@ -813,15 +815,11 @@ export default function Home() {
 
           <FadeInWhenVisible delay={0.3}>
             <div className="flex flex-wrap gap-4 justify-center">
-              <Link href="/kontakt">
-                <Button
-                  size="lg"
-                  className="text-base px-8 py-6 transition-all hover:scale-105 hover:shadow-2xl hover:shadow-primary/30"
-                  data-testid="button-cta-book"
-                >
+              <Link href="/kontakt" data-testid="button-cta-book">
+                <ShimmerButton className="text-base px-8 py-4 hover:shadow-primary/30">
                   Zakažite Termin
-                  <ArrowRight className="ml-2 w-5 h-5" />
-                </Button>
+                  <ArrowRight className="w-5 h-5" />
+                </ShimmerButton>
               </Link>
               <Link href="/tim">
                 <Button
