@@ -100,7 +100,7 @@ There are no automated tests in this project.
 
 **Contract PDFs:**
 - PDFs are **never** read from the local filesystem — Railway's filesystem is ephemeral and files are lost on redeploy.
-- All contract download/email endpoints regenerate the PDF on-the-fly from `contract.contractData` (JSON stored in PostgreSQL) using `generateMixMasterPDF`, `generateCopyrightTransferPDF`, or `generateInstrumentalSalePDF` from `server/pdf-generator.ts`. Match on `contract.contractType`.
+- All contract download/email endpoints regenerate the PDF on-the-fly from `contract.contractData` (JSON stored in PostgreSQL) using `generateMixMasterPDF`, `generateCopyrightTransferPDF`, or `generateInstrumentalSalePDF` from `server/pdf-generators.ts`. Match on `contract.contractType`.
 
 **CMS:**
 - `EditableText` and `EditableImage` components let admins edit content in-place when edit mode is on.
@@ -184,6 +184,22 @@ There are no automated tests in this project.
 
 **FAQ page:**
 - Route `/faq` — accordion component at `client/src/pages/faq.tsx`. Linked from the footer only (was removed from the main nav). Listed in `sitemap.xml`.
+
+**Video Spots:**
+- Table: `video_spots` (title, description, youtubeUrl, createdAt). Route: `/video-spots` → `client/src/pages/video-spots.tsx`.
+- Embeds YouTube videos via extracted video ID (`extractYouTubeVideoId()` handles `watch?v=`, `youtu.be/`, and `/embed/` URL forms).
+- Admin CRUD via Radix `<Dialog>` (not portal-based — no async search buttons so FocusTrap is safe here).
+- Uses `useEditMode()` to conditionally show add/edit/delete controls for admins.
+
+**Parallax components:**
+- `client/src/components/parallax/ParallaxHero.tsx` exports `ParallaxHero`, `ParallaxSection`, and `Parallax3DCard`.
+- Used on the homepage (`home.tsx`) for the hero section and animated sections.
+- Built with `framer-motion`. `ParallaxHero` uses `useScroll` + `useTransform` for scroll-driven parallax. `Parallax3DCard` uses mouse position for tilt effect.
+
+**UI/UX Pro Max skill:**
+- Installed at `.claude/skills/ui-ux-pro-max/`. Provides design system recommendations (67 styles, 96 palettes, 57 font pairings, shadcn/ui stack support).
+- Usage: run the Python search engine before implementing UI: `python .claude/skills/ui-ux-pro-max/scripts/search.py "music studio dark" --design-system`
+- Stack flag for this project: `--stack shadcn` (React + shadcn/ui + Tailwind).
 
 **Navbar architecture (`client/src/components/layout/header.tsx`):**
 - Three nav arrays: `desktopNav` (3 primary links shown inline), `moreNav` (secondary links in a "Još ▾" Radix dropdown), `mobileNav` = `[...desktopNav, ...moreNav]` (all links in the slide-out panel).

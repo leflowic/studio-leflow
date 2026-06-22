@@ -20,9 +20,9 @@ export function ParallaxHero({ children }: ParallaxHeroProps) {
     restDelta: 0.001
   });
 
-  const darkOverlayOpacity = useTransform(smoothProgress, [0, 1], [0.6, 1]);
-  
-  const midLayerOpacity = useTransform(smoothProgress, [0, 0.5], [0.15, 0]);
+  const darkOverlayOpacity = useTransform(smoothProgress, [0, 1], [0.55, 1]);
+
+  const midLayerOpacity = useTransform(smoothProgress, [0, 0.5], [0.08, 0]);
   
   const contentY = useTransform(smoothProgress, [0, 1], ["0%", "20%"]);
   const contentOpacity = useTransform(smoothProgress, [0, 0.8], [1, 0]);
@@ -48,7 +48,7 @@ export function ParallaxHero({ children }: ParallaxHeroProps) {
         <img
           src="/equipment/hero-studio-background.jpg"
           alt="Studio LeFlow Background"
-          className="w-full h-full object-cover blur-sm"
+          className="w-full h-full object-cover"
         />
       </div>
 
