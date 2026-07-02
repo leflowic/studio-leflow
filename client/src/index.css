@@ -404,6 +404,16 @@ html {
   }
 }
 
+/* Heading font — Figtree (geometric, Circular-like) with Inter body */
+@layer base {
+  body {
+    font-family: Inter, "Work Sans", "Open Sans", sans-serif;
+  }
+  h1, h2, h3, h4, h5, h6 {
+    font-family: "Figtree", Inter, sans-serif;
+  }
+}
+
 /* Typography Scale - Consistent heading hierarchy */
 @layer components {
   .heading-xl {

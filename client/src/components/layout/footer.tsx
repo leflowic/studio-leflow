@@ -55,7 +55,7 @@ export function Footer() {
                 onContextMenu={e => e.preventDefault()}
                 className="h-9 w-auto dark:invert select-none"
               />
-              <span className="text-lg font-bold font-[Montserrat]">Studio LeFlow</span>
+              <span className="text-lg font-bold font-[Figtree]">Studio LeFlow</span>
             </div>
             <p className="text-sm text-muted-foreground leading-relaxed mb-6 max-w-xs">
               Profesionalni muzički studio u Beogradu. Snimanje, mix/mastering, instrumentali i video produkcija od 2019.

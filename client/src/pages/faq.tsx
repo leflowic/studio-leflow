@@ -29,7 +29,7 @@ const faqs = [
   {
     question: "Koliko revizija je uključeno?",
     answer:
-      "Za snimanje i mix uključene su 3 besplatne revizije finalne verzije. Za produkciju beata uključena je 1 revizija (izmene u aranžmanu ili zvucima). Za video produkciju uključene su 2 revizije montaže. Sve detalje možeš pronaći u Pravilima i Uslovima.",
+      "Za sve usluge uključene su 2 besplatne revizije. Dodatne revizije se naplaćuju posebno. Sve detalje možeš pronaći u Pravilima i Uslovima.",
   },
   {
     question: "Kako da zakažem termin?",
@@ -59,7 +59,7 @@ export default function FAQPage() {
           <div className="max-w-3xl mx-auto">
             <FadeInWhenVisible>
               <div className="text-center mb-14">
-                <h1 className="text-4xl md:text-5xl font-bold font-[Montserrat] mb-4">
+                <h1 className="text-4xl md:text-5xl font-bold font-[Figtree] mb-4">
                   Česta Pitanja
                 </h1>
                 <p className="text-lg text-muted-foreground">

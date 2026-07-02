@@ -140,12 +140,12 @@ function GuestBanner() {
         </div>
         <div className="flex items-center gap-1.5 flex-shrink-0">
           <Link href="/registracija">
-            <Button size="sm" className="h-8 rounded-xl text-xs px-3 gap-1.5">
+            <Button size="sm" className="h-8 text-xs px-3 gap-1.5">
               Registruj se
             </Button>
           </Link>
           <Link href="/prijava">
-            <Button size="sm" variant="ghost" className="h-8 rounded-xl text-xs px-2.5">
+            <Button size="sm" variant="ghost" className="h-8 text-xs px-2.5">
               Prijava
             </Button>
           </Link>
@@ -336,7 +336,7 @@ export default function Home() {
                 contentKey="title"
                 value={getCmsValue("hero", "title", "Studio LeFlow")}
                 as="h1"
-                className="text-4xl sm:text-5xl md:text-7xl lg:text-8xl font-bold mb-6 text-white tracking-tight font-[Montserrat] drop-shadow-2xl"
+                className="text-4xl sm:text-5xl md:text-7xl lg:text-8xl font-bold mb-6 text-white tracking-tight font-[Figtree] drop-shadow-2xl"
               />
             </motion.div>
             
@@ -428,7 +428,7 @@ export default function Home() {
               animate={{ opacity: 1 }}
               transition={{ duration: 0.8, delay: 1.1 }}
             >
-              Odgovaramo u roku od 24h&ensp;·&ensp;Neograničene revizije&ensp;·&ensp;Od 2019.
+              Odgovaramo u roku od 24h&ensp;·&ensp;2 besplatne revizije&ensp;·&ensp;Od 2019.
             </motion.p>
 
             {/* Upcoming game announcement */}
@@ -580,7 +580,7 @@ export default function Home() {
                   viewport={{ once: true }}
                   transition={{ duration: 0.8, delay: 0.2 }}
                 >
-                  Fleksibilni termini, individualan pristup svakom projektu i neograničen broj revizija miksa — dok ne budete zadovoljni rezultatom.
+                  Fleksibilni termini, individualan pristup svakom projektu i 2 besplatne revizije uključene u svaku uslugu.
                 </motion.p>
                 
                 <motion.div

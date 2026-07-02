@@ -374,7 +374,7 @@ export const pageStructuredData = {
         "name": "Koliko revizija je uključeno?",
         "acceptedAnswer": {
           "@type": "Answer",
-          "text": "Za snimanje i mix uključene su 3 besplatne revizije. Za produkciju beata uključena je 1 revizija. Za video produkciju uključene su 2 revizije montaže."
+          "text": "Za sve usluge uključene su 2 besplatne revizije. Dodatne revizije se naplaćuju posebno."
         }
       },
       {

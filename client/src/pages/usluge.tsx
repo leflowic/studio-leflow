@@ -15,7 +15,7 @@ const services = [
       "Realtime AutoTune i UAD plugin suite",
       "Yamaha HS8 studio monitori",
       "Finalni fajlovi u WAV i MP3 formatu",
-      "Neograničen broj revizija mix-a",
+      "2 besplatne revizije mix-a",
     ],
     slug: "snimanje",
   },

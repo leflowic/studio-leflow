@@ -381,7 +381,7 @@ export default function Giveaway() {
 
       <section className="relative py-20 lg:py-32 bg-background">
         <div className="max-w-7xl mx-auto px-4 md:px-6 text-center">
-          <h1 className="text-5xl md:text-6xl lg:text-7xl font-bold mb-6 tracking-tight font-[Montserrat]" data-testid="text-hero-title">
+          <h1 className="text-5xl md:text-6xl lg:text-7xl font-bold mb-6 tracking-tight font-[Figtree]" data-testid="text-hero-title">
             Mesečni Giveaway
           </h1>
 

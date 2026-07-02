@@ -81,9 +81,9 @@ export default function Terms() {
       icon: Shield,
       title: "Revizije i Garancija Kvaliteta",
       content: [
-        "<strong>Snimanje i Mix/Master:</strong> Uključeno je do <strong>3 besplatne revizije</strong> finalne verzije. Dodatne revizije se naplaćuju po cenovniku.",
-        "<strong>Instrumentali:</strong> Uključena je <strong>1 revizija</strong> beat-a (izmene u aranžmanu, zvucima). Potpuno novi beat se smatra novim projektom.",
-        "<strong>Video produkcija:</strong> Uključene su <strong>2 revizije</strong> montaže (izmene u editingu, boji, efektima). Potpuno nova snimanja naplaćuju se posebno.",
+        "<strong>Snimanje i Mix/Master:</strong> Uključene su do <strong>2 besplatne revizije</strong> finalne verzije. Dodatne revizije se naplaćuju posebno.",
+        "<strong>Instrumentali:</strong> Uključene su do <strong>2 besplatne revizije</strong> beat-a (izmene u aranžmanu, zvucima). Potpuno novi beat se smatra novim projektom.",
+        "<strong>Video produkcija:</strong> Uključene su do <strong>2 besplatne revizije</strong> montaže (izmene u editingu, boji, efektima). Potpuno nova snimanja naplaćuju se posebno.",
         "Garancija kvaliteta: Ako niste zadovoljni finalnim produktom zbog tehničkih grešaka sa naše strane, radićemo bez dodatne naplate dok ne budete zadovoljni.",
         "Revizije moraju biti konkretne i jasno definisane. Redefinisanje celokupnog kreativnog pravca smatra se novim projektom."
       ]

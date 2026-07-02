@@ -88,13 +88,13 @@ export default function NotFound() {
             className="flex flex-col sm:flex-row items-center justify-center gap-3"
           >
             <Link href="/">
-              <Button size="lg" className="gap-2 rounded-xl min-w-[180px]" data-testid="button-home">
+              <Button size="lg" className="gap-2 min-w-[180px]" data-testid="button-home">
                 <Home className="h-4 w-4" />
                 Početna stranica
               </Button>
             </Link>
             <Link href="/kontakt">
-              <Button variant="outline" size="lg" className="gap-2 rounded-xl min-w-[180px]" data-testid="button-contact">
+              <Button variant="outline" size="lg" className="gap-2 min-w-[180px]" data-testid="button-contact">
                 Kontaktiraj nas
               </Button>
             </Link>

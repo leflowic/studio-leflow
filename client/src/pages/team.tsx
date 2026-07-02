@@ -208,7 +208,7 @@ export default function Team() {
       <section className="py-20 lg:py-32">
         <div className="max-w-7xl mx-auto px-4 md:px-6">
           <div className="text-center mb-16">
-            <h1 className="text-4xl md:text-5xl lg:text-6xl font-bold mb-6 tracking-tight font-[Montserrat]" data-testid="text-team-title">
+            <h1 className="text-4xl md:text-5xl lg:text-6xl font-bold mb-6 tracking-tight font-[Figtree]" data-testid="text-team-title">
               Naš Tim
             </h1>
             
@@ -427,7 +427,7 @@ export default function Team() {
                 <div className="flex flex-wrap gap-3 justify-center text-sm">
                   <Badge variant="outline">
                     <Mic2 className="w-3 h-3 mr-1.5" />
-                    Neograničene revizije
+                    2 besplatne revizije
                   </Badge>
                   <Badge variant="outline">
                     <Headphones className="w-3 h-3 mr-1.5" />

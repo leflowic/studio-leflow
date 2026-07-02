@@ -237,7 +237,7 @@ export default function AuthPage() {
             <div className="text-center">
               <div className="inline-flex items-center gap-2 mb-4">
                 <Music className="w-8 h-8 text-primary" />
-                <h1 className="text-3xl font-bold font-[Montserrat]">Studio LeFlow</h1>
+                <h1 className="text-3xl font-bold font-[Figtree]">Studio LeFlow</h1>
               </div>
               <p className="text-muted-foreground">
                 Zaboravili ste lozinku?
@@ -316,7 +316,7 @@ export default function AuthPage() {
               <Mail className="w-24 h-24 mx-auto" />
             </div>
             
-            <h2 className="text-4xl lg:text-5xl font-bold tracking-tight font-[Montserrat] max-w-2xl mx-auto">
+            <h2 className="text-4xl lg:text-5xl font-bold tracking-tight font-[Figtree] max-w-2xl mx-auto">
               Resetovanje Lozinke
             </h2>
             
@@ -338,7 +338,7 @@ export default function AuthPage() {
             <div className="text-center">
               <div className="inline-flex items-center gap-2 mb-4">
                 <Music className="w-8 h-8 text-primary" />
-                <h1 className="text-3xl font-bold font-[Montserrat]">Studio LeFlow</h1>
+                <h1 className="text-3xl font-bold font-[Figtree]">Studio LeFlow</h1>
               </div>
               <p className="text-muted-foreground">
                 Kreirajte novu lozinku
@@ -481,7 +481,7 @@ export default function AuthPage() {
               <Lock className="w-24 h-24 mx-auto" />
             </div>
             
-            <h2 className="text-4xl lg:text-5xl font-bold tracking-tight font-[Montserrat] max-w-2xl mx-auto">
+            <h2 className="text-4xl lg:text-5xl font-bold tracking-tight font-[Figtree] max-w-2xl mx-auto">
               Sigurno Resetovanje
             </h2>
             
@@ -545,7 +545,7 @@ export default function AuthPage() {
           <div className="text-center space-y-1">
             <div className="inline-flex items-center gap-2 mb-3">
               <Music className="w-7 h-7 text-primary" />
-              <h1 className="text-2xl font-bold font-[Montserrat]">Studio LeFlow</h1>
+              <h1 className="text-2xl font-bold font-[Figtree]">Studio LeFlow</h1>
             </div>
             <h2 className="text-2xl font-bold">
               {activeTab === "login" ? "Dobro došli nazad" : "Kreiraj nalog"}
@@ -637,7 +637,7 @@ export default function AuthPage() {
 
                   <Button
                     type="submit"
-                    className="w-full h-11 rounded-xl font-semibold"
+                    className="w-full h-11 font-semibold"
                     disabled={loginMutation.isPending}
                     data-testid="button-login"
                   >
@@ -762,7 +762,7 @@ export default function AuthPage() {
 
                   <Button
                     type="submit"
-                    className="w-full h-11 rounded-xl font-semibold"
+                    className="w-full h-11 font-semibold"
                     disabled={registerMutation.isPending}
                     data-testid="button-register"
                   >
@@ -901,7 +901,7 @@ export default function AuthPage() {
             transition={{ duration: 0.6, delay: 0.5 }}
             className="space-y-4"
           >
-            <h2 className="text-4xl lg:text-5xl font-bold tracking-tight font-[Montserrat] max-w-2xl mx-auto">
+            <h2 className="text-4xl lg:text-5xl font-bold tracking-tight font-[Figtree] max-w-2xl mx-auto">
               Studio LeFlow
             </h2>
             <p className="text-lg text-white/70 font-medium">

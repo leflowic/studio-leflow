@@ -198,7 +198,7 @@ export default function MaintenancePage() {
 
           <Construction className="w-24 h-24 text-primary mx-auto mb-6" />
           
-          <h1 className="text-4xl md:text-5xl font-bold mb-4 font-[Montserrat]">
+          <h1 className="text-4xl md:text-5xl font-bold mb-4 font-[Figtree]">
             Sajt je u pripremi
           </h1>
           

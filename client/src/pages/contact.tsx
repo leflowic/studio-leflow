@@ -239,7 +239,7 @@ export default function Contact() {
                           <Button
                             type="submit"
                             size="lg"
-                            className="w-full h-12 rounded-xl font-semibold"
+                            className="w-full h-12 font-semibold"
                             disabled={mutation.isPending}
                             data-testid="button-submit"
                           >
@@ -301,7 +301,7 @@ export default function Contact() {
               <p className="text-sm text-muted-foreground leading-relaxed">
                 Za hitno zakazivanje ili dodatna pitanja, slobodno nas pozovite direktno.
               </p>
-              <Button className="w-full rounded-xl" asChild data-testid="button-call">
+              <Button className="w-full" asChild data-testid="button-call">
                 <a href="tel:+381637347023">
                   <Phone className="mr-2 w-4 h-4" />
                   Pozovi Sada

@@ -89,7 +89,7 @@ export function Header() {
             {/* Logo */}
             <Link href="/" className="flex items-center gap-2 -ml-2 px-2 py-2 rounded-xl hover:bg-muted/50 transition-colors shrink-0" data-testid="link-logo">
               <img src={leflowLogo} alt="Studio LeFlow" draggable={false} onContextMenu={e => e.preventDefault()} className="h-8 md:h-9 w-auto dark:invert select-none" />
-              <span className="hidden sm:inline text-sm font-bold font-[Montserrat] uppercase tracking-wide">Studio LeFlow</span>
+              <span className="hidden sm:inline text-sm font-bold font-[Figtree] uppercase tracking-wide">Studio LeFlow</span>
             </Link>
 
             {/* Desktop nav */}
