@@ -529,7 +529,7 @@ export default function IgraPage() {
             transition={{ delay: 0.1 }}
             className="text-white/60 text-base md:text-lg"
           >
-            Čuješ 1 sekundu — možeš li da pogodis?
+            Čuješ 1 sekundu — možeš li da pogodiš?
           </motion.p>
         </div>
       </div>
