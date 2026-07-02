@@ -4,7 +4,7 @@ import { useLocation } from "wouter";
 import { useToast } from "@/hooks/use-toast";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { queryClient, apiRequest } from "@/lib/queryClient";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Tabs, TabsContent } from "@/components/ui/tabs";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
@@ -25,7 +25,7 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
-import { Users, Music, Heart, MessageCircle, Trash2, Shield, ShieldOff, Settings, Construction, Send, Mail, Eye, Search, Download, UserPlus, FileText, Crown, Trophy, BadgeCheck } from "lucide-react";
+import { Users, Music, Heart, MessageCircle, Trash2, Shield, ShieldOff, Settings, Construction, Send, Mail, Eye, Search, Download, UserPlus, FileText, Crown, Trophy, BadgeCheck, LayoutDashboard, Radio, MessagesSquare, Receipt, CalendarDays, Archive, Gamepad2, Link2, FolderOpen, type LucideIcon } from "lucide-react";
 import { format } from "date-fns";
 import type { User } from "@shared/schema";
 import { lazy, Suspense } from "react";
@@ -51,6 +51,51 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+
+const ADMIN_NAV: { group: string; items: { value: string; label: string; icon: LucideIcon }[] }[] = [
+  {
+    group: "Pregled",
+    items: [{ value: "dashboard", label: "Dashboard", icon: LayoutDashboard }],
+  },
+  {
+    group: "Klijenti",
+    items: [
+      { value: "users", label: "Korisnici", icon: Users },
+      { value: "messages", label: "Poruke", icon: MessagesSquare },
+      { value: "katastar", label: "Katastar", icon: Archive },
+      { value: "portal", label: "Portal", icon: FolderOpen },
+    ],
+  },
+  {
+    group: "Sadržaj",
+    items: [
+      { value: "projects", label: "Projekti", icon: Music },
+      { value: "comments", label: "Komentari", icon: MessageCircle },
+      { value: "user-songs", label: "Zajednica", icon: Radio },
+      { value: "game", label: "Igra", icon: Gamepad2 },
+      { value: "smart-links", label: "Smart Links", icon: Link2 },
+    ],
+  },
+  {
+    group: "Posao",
+    items: [
+      { value: "contracts", label: "Ugovori", icon: FileText },
+      { value: "invoices", label: "Fakture", icon: Receipt },
+      { value: "calendar", label: "Kalendar", icon: CalendarDays },
+    ],
+  },
+  {
+    group: "Marketing",
+    items: [
+      { value: "newsletter", label: "Newsletter", icon: Mail },
+      { value: "email", label: "Email", icon: Send },
+    ],
+  },
+  {
+    group: "Sistem",
+    items: [{ value: "settings", label: "Podešavanja", icon: Settings }],
+  },
+];
 
 interface AdminStats {
   totalUsers: number;
@@ -213,26 +258,38 @@ export default function AdminPage() {
         </div>
 
         <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full" data-testid="tabs-admin">
-          <div className="mb-6 md:mb-8">
-            <TabsList className="flex flex-wrap gap-1 h-auto p-1 bg-muted/50" data-testid="tabs-list-admin">
-              <TabsTrigger value="dashboard" data-testid="tab-dashboard" className="flex-1 min-w-[100px]">Dashboard</TabsTrigger>
-              <TabsTrigger value="users" data-testid="tab-users" className="flex-1 min-w-[100px]">Korisnici</TabsTrigger>
-              <TabsTrigger value="projects" data-testid="tab-projects" className="flex-1 min-w-[100px]">Projekti</TabsTrigger>
-              <TabsTrigger value="comments" data-testid="tab-comments" className="flex-1 min-w-[100px]">Komentari</TabsTrigger>
-              <TabsTrigger value="user-songs" data-testid="tab-user-songs" className="flex-1 min-w-[100px]">Zajednica</TabsTrigger>
-              <TabsTrigger value="newsletter" data-testid="tab-newsletter" className="flex-1 min-w-[100px]">Newsletter</TabsTrigger>
-              <TabsTrigger value="messages" data-testid="tab-messages" className="flex-1 min-w-[100px]">Poruke</TabsTrigger>
-              <TabsTrigger value="contracts" data-testid="tab-contracts" className="flex-1 min-w-[100px]">Ugovori</TabsTrigger>
-              <TabsTrigger value="invoices" data-testid="tab-invoices" className="flex-1 min-w-[100px]">Fakture</TabsTrigger>
-              <TabsTrigger value="calendar" data-testid="tab-calendar" className="flex-1 min-w-[100px]">Kalendar</TabsTrigger>
-              <TabsTrigger value="katastar" data-testid="tab-katastar" className="flex-1 min-w-[100px]">Katastar</TabsTrigger>
-              <TabsTrigger value="game" data-testid="tab-game" className="flex-1 min-w-[100px]">Igra</TabsTrigger>
-              <TabsTrigger value="smart-links" data-testid="tab-smart-links" className="flex-1 min-w-[100px]">Smart Links</TabsTrigger>
-              <TabsTrigger value="portal" data-testid="tab-portal" className="flex-1 min-w-[100px]">Portal</TabsTrigger>
-              <TabsTrigger value="email" data-testid="tab-email" className="flex-1 min-w-[100px]">Email</TabsTrigger>
-              <TabsTrigger value="settings" data-testid="tab-settings" className="flex-1 min-w-[100px]">Podešavanja</TabsTrigger>
-            </TabsList>
-          </div>
+          <div className="flex flex-col lg:flex-row gap-6 lg:gap-10">
+            <aside className="lg:w-52 shrink-0">
+              <nav
+                className="lg:sticky lg:top-24 flex lg:flex-col gap-1 lg:gap-0 overflow-x-auto lg:overflow-visible pb-2 lg:pb-0 -mx-4 px-4 lg:mx-0 lg:px-0"
+                data-testid="tabs-list-admin"
+              >
+                {ADMIN_NAV.map(({ group, items }) => (
+                  <div key={group} className="flex lg:flex-col gap-1 lg:mb-5 shrink-0">
+                    <p className="hidden lg:block px-3 mb-1.5 text-[11px] font-semibold uppercase tracking-[0.14em] text-muted-foreground/60">
+                      {group}
+                    </p>
+                    {items.map(({ value, label, icon: Icon }) => (
+                      <button
+                        key={value}
+                        onClick={() => setActiveTab(value)}
+                        data-testid={`tab-${value}`}
+                        className={`flex items-center gap-2.5 px-3 py-2 rounded-lg text-sm font-medium whitespace-nowrap transition-colors cursor-pointer shrink-0 lg:w-full text-left ${
+                          activeTab === value
+                            ? "bg-primary/10 text-primary"
+                            : "text-muted-foreground hover:text-foreground hover:bg-muted/60"
+                        }`}
+                      >
+                        <Icon className="w-4 h-4 shrink-0" />
+                        {label}
+                      </button>
+                    ))}
+                  </div>
+                ))}
+              </nav>
+            </aside>
+
+            <div className="flex-1 min-w-0">
 
           <TabsContent value="dashboard">
             <DashboardTab />
@@ -297,6 +354,9 @@ export default function AdminPage() {
           <TabsContent value="settings">
             <SettingsTab />
           </TabsContent>
+
+            </div>
+          </div>
         </Tabs>
       </div>
     </div>
