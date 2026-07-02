@@ -61,7 +61,8 @@ There are no automated tests in this project.
 
 **Admin panel tabs:**
 - Each tab is its own component, either defined inline in `client/src/pages/admin.tsx` or as a separate file in `client/src/components/admin/`.
-- Separate-file tabs: `ContractsTab`, `CalendarTab`, `KatastarTab`, `GameTab`, `SmartLinksTab` — import and add a `<TabsTrigger>` + `<TabsContent>` pair in `admin.tsx`.
+- Separate-file tabs: `ContractsTab`, `CalendarTab`, `KatastarTab`, `GameTab`, `SmartLinksTab`, `EmailTab`, `PortalTab`.
+- **The tab menu is NOT a Radix `TabsList`** — it's a grouped sidebar driven by the `ADMIN_NAV` config array in `admin.tsx` (groups: Pregled / Klijenti / Sadržaj / Posao / Marketing / Sistem). Plain `<button>`s call `setActiveTab(value)`; the Radix `<Tabs value>` + `<TabsContent>` state machine is unchanged. To add a tab: add an entry (value, label, Lucide icon) to `ADMIN_NAV` and a `<TabsContent>` pair. Desktop: sticky vertical sidebar; mobile: horizontally scrollable icon bar (same markup, flex direction switch at `lg`).
 - Admin-only API routes go in `server/routes.ts` under `requireAdmin` middleware. Always use `requireAdmin`, never trust `req.jwtUser?.role` manually in route handlers.
 - `GET /api/admin/katastar/:userId` returns `{ user, projects, contracts, invoices }` for the Katastar (client registry) tab.
 - **Tabs with forms must use `forceMount`** on their `<TabsContent>` to prevent React state loss on tab switch. Radix UI unmounts `TabsContent` by default — any local form state (dates, inputs, uploads) is wiped when the user navigates to another tab and back. `tabs.tsx` has `data-[state=inactive]:hidden` so forceMount content is still visually hidden when inactive. `GameTab` and `SmartLinksTab` both use this.
@@ -203,6 +204,7 @@ There are no automated tests in this project.
 
 **Navbar architecture (`client/src/components/layout/header.tsx`):**
 - Three nav arrays: `desktopNav` (3 primary links shown inline), `moreNav` (secondary links in a "Još ▾" Radix dropdown), `mobileNav` = `[...desktopNav, ...moreNav]` (all links in the slide-out panel).
+- Current composition (business-first, deliberate): `desktopNav` = Usluge (`/usluge`), Projekti, Zajednica; `moreNav` = Giveaway, Tim, Pravila. Usluge is a real link to the `/usluge` page (the old `scrollToServices` homepage-scroll button was removed). Do not promote Zajednica/Giveaway back to the front — acquisition pages come first.
 - The "Još" dropdown uses `DropdownMenu` from Radix and highlights its trigger when any `moreNav` route is active: `moreNav.some(i => isActive(i.href))`.
 - To add a new nav link: decide if it's primary (→ `desktopNav`) or secondary (→ `moreNav`). `mobileNav` is derived automatically.
 - Logo text uses `hidden sm:inline` — visible from 640px up. Desktop nav shows at `lg` (1024px). Keep `desktopNav` to ≤4 items to prevent overflow at 1024px.
@@ -267,6 +269,18 @@ The owner explicitly dislikes these patterns. Never introduce them:
 - **Stat banner rows** — horizontal row of abstract numbers/metrics that don't mean anything concrete
 - **Emoji as icons** — use Lucide icon components, never emoji characters as UI icons
 
+**Design system (2026-07 premium pass):**
+- **Dark theme is the default** (`theme-provider.tsx` `defaultTheme="dark"`); the user's manual toggle choice (localStorage `theme`) still wins. All pages must render correctly dark-first — never hardcode light-only colors (`bg-white`, `text-black`, light grays); use theme tokens.
+- **Fonts:** Figtree for all headings (base-layer rule on `h1–h6` in `index.css` + `font-[Figtree]` arbitrary classes), Inter for body (explicit `body` rule in `index.css` — Tailwind's default `font-sans` does NOT pick up the `--font-sans` var, so without this rule the site renders the OS system font). Both loaded via Google Fonts `<link>` in `client/index.html`. Montserrat was removed — don't reintroduce it.
+- **Buttons are pills** (`rounded-full` in `ui/button.tsx`, semibold, press-scale, primary shadow). Don't add `rounded-md/lg/xl` overrides to `<Button>` on public pages — the pill shape is the brand.
+- **`WaveDivider`** (`client/src/components/WaveDivider.tsx`) — waveform-bar section divider, the audio brand motif. Used above homepage section headings; reuse it rather than inventing new dividers.
+- **GuestBanner** (home.tsx) shows at most once per session (`sessionStorage guest_banner_shown`), only after 20s on page or 60% scroll depth. Keep overlays disciplined: nothing may cover a CTA.
+- Hero copy is CMS-backed (`EditableText`) — changing code fallbacks does not change production text if a CMS value exists in `cms_content`; update via admin edit mode.
+
+**Copy rules (owner decisions — hard constraints):**
+- **Never show prices anywhere.** Pricing questions are answered with "pošaljite upit — tačna ponuda u roku od 24h."
+- **Revision policy is exactly 2 free revisions for every service** — home, usluge, team, FAQ, terms, and the FAQPage structured data in `SEO.tsx` must all agree. Never claim unlimited revisions.
+
 **Auth middleware hierarchy:**
 - `requireAdmin` — JWT valid + `role === "admin"`. Always use this; never check `req.jwtUser?.role` manually in routes.
 - `requireVerifiedEmail` — JWT valid + `emailVerified === true`. Used for community/giveaway/song features.
@@ -310,3 +324,6 @@ The owner explicitly dislikes these patterns. Never introduce them:
 
 **MCP tools available:**
 - **Playwright** — browser automation (navigate, screenshot, click, scroll). Use to visually verify UI changes before reporting done. Configured in local MCP settings (`~/.claude/settings.json`, command: `playwright-mcp`).
+- **Production kills automated browsers:** `disable-devtool` in `main.tsx` (PROD only) false-positives on Playwright's console instrumentation and navigates the page to `about:blank` within ~1–2s. Workaround before any production navigation: `page.addInitScript(() => { ['log','table','clear','warn','info','debug','dir','dirxml'].forEach(k => { console[k] = () => {}; }); })`. Add `localStorage.setItem('maintenance_bypass','1')` in the same init script if maintenance mode is on.
+- **Programmatic `window.scrollTo` breaks the parallax homepage** — sections render blank/displaced. Scroll with `page.mouse.wheel(0, 140)` in small increments and wait ~1s before screenshots so `whileInView` animations fire.
+- Local visual checks without the DB: `npx vite --port 5199 --strictPort` serves the SPA alone (API calls fail gracefully to fallbacks; `import.meta.env.PROD` is false so devtools protection is off).
