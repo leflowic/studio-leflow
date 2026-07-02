@@ -267,5 +267,46 @@ The owner explicitly dislikes these patterns. Never introduce them:
 - **Stat banner rows** — horizontal row of abstract numbers/metrics that don't mean anything concrete
 - **Emoji as icons** — use Lucide icon components, never emoji characters as UI icons
 
+**Auth middleware hierarchy:**
+- `requireAdmin` — JWT valid + `role === "admin"`. Always use this; never check `req.jwtUser?.role` manually in routes.
+- `requireVerifiedEmail` — JWT valid + `emailVerified === true`. Used for community/giveaway/song features.
+- `requireNotBanned` — JWT valid + `isBanned !== true`. Used for game routes (allows unverified but non-banned users).
+- Routes that need no login but check auth optionally: pass `getQueryFn` on the client, which always sends JWT if present.
+
+**Newsletter:**
+- Tables: `newsletter_subscribers` (email, confirmationToken, confirmedAt).
+- Double opt-in: `POST /api/newsletter/subscribe` creates subscriber + sends confirmation email. `GET /api/newsletter/confirm/:token` activates. Page: `/newsletter/potvrda/:token`.
+- Admin sends campaigns via the Emails tab (`EmailTab.tsx`) using `POST /api/admin/send-email` to a manually entered list — there's no bulk-send-to-subscribers endpoint yet.
+
+**Giveaway (Beat Upload):**
+- Tables: `giveaway_projects` (userId, title, genre, audioUrl, voteCount, approved, createdAt), `giveaway_votes` (projectId, userId, UNIQUE).
+- Route: `/giveaway` — protected (`requireVerifiedEmail`). Users upload MP3 beats; admin approves; public votes.
+- Upload: `POST /api/upload/audio` → Cloudinary. Submission: `POST /api/giveaway/projects` (requires `termsAccepted: true` in body).
+- Per-user concurrency lock (`giveawayUploadLocks` Set in routes.ts) prevents bypassing monthly upload limit via concurrent requests.
+- Admin toggles giveaway on/off via `POST /api/admin/giveaway/toggle` (stored as `giveaway_active` setting). Approval: `POST /api/admin/projects/:id/approve`.
+
+**User Songs ("Moje Pesme"):**
+- Tables: `user_songs` (userId, title, audioUrl, approved, voteCount, createdAt), `user_song_votes` (songId, userId, UNIQUE).
+- Route: `/moje-pesme` — protected. Users submit their own songs (not studio beats); admin approves; public can vote.
+- `GET /api/user-songs/public` — approved songs with `hasVoted` for the caller. `POST /api/user-songs/:id/vote` toggles vote.
+- Admin view: `GET /api/user-songs/all` (requireAdmin) — all songs with usernames.
+
+**Site Announcement banner:**
+- `PATCH /api/announcement` (requireAdmin) — upserts `{ isActive, message }` in `site_announcements` table.
+- `GET /api/announcement` — public. Managed via `SiteAnnouncementCard` inline in `admin.tsx`.
+- Client must poll or invalidate this query to pick up live changes.
+
+**Maintenance mode:**
+- Toggled via `POST /api/maintenance` (requireAdmin), stored as `maintenance_mode` setting.
+- API middleware blocks all routes except the allowlist: `/maintenance`, `/auth`, `/admin`, `/portal`, `/l/`, `/messages`, `/ws`.
+- Client (`App.tsx`): if `GET /api/maintenance` returns `{ maintenanceMode: true }` and user is not admin, renders `<MaintenancePage>`. Bypass: `localStorage.setItem("maintenance_bypass", "1")` (admin use only).
+
+**Verify License page:**
+- Route: `/verify-license` — public. Users enter a contract number; `GET /api/contracts/verify/:licenseNumber` returns sanitized contract info (no personal data beyond what's on the license itself).
+
+**Admin panel — PortalTab:**
+- `PortalTab` (`client/src/components/admin/PortalTab.tsx`) is a separate-file tab in the admin panel. Manages client portals: create portal, upload versions (`POST /api/upload/portal-audio`), view comments, mark comments resolved.
+- Uses `forceMount` on its `<TabsContent>` like other stateful tabs.
+
 **MCP tools available:**
-- **Playwright** — browser automation (navigate, screenshot, click, scroll). Use to visually verify UI changes before reporting done. Configured in local MCP settings.
+- **Playwright** — browser automation (navigate, screenshot, click, scroll). Use to visually verify UI changes before reporting done. Configured in local MCP settings (`~/.claude/settings.json`, command: `playwright-mcp`).

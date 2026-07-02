@@ -7,7 +7,7 @@ import { format } from "date-fns";
 import { Link } from "wouter";
 import { motion } from "framer-motion";
 import { FadeInWhenVisible } from "@/components/motion/FadeIn";
-import { Heart, Upload, MessageCircle, Send, Music, Trophy } from "lucide-react";
+import { Heart, Upload, MessageCircle, Send, Music } from "lucide-react";
 import { SEO } from "@/components/SEO";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from "@/components/ui/card";
@@ -379,13 +379,8 @@ export default function Giveaway() {
         </AlertDialogContent>
       </AlertDialog>
 
-      <section className="relative py-20 lg:py-32 bg-gradient-to-b from-primary/5 to-background">
+      <section className="relative py-20 lg:py-32 bg-background">
         <div className="max-w-7xl mx-auto px-4 md:px-6 text-center">
-          <div className="mb-6 inline-flex items-center gap-2 px-4 py-2 rounded-full bg-primary/10 border border-primary/20">
-            <Trophy className="w-4 h-4 text-primary" />
-            <span className="text-sm font-medium" data-testid="text-contest-badge">Mesečni Konkurs</span>
-          </div>
-
           <h1 className="text-5xl md:text-6xl lg:text-7xl font-bold mb-6 tracking-tight font-[Montserrat]" data-testid="text-hero-title">
             Mesečni Giveaway
           </h1>

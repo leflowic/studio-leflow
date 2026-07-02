@@ -175,11 +175,8 @@ export default function VideoSpots() {
         <div className="container px-4 mx-auto">
           <FadeInWhenVisible>
             <div className="flex flex-col items-center text-center mb-12">
-              <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-primary/10 mb-4">
-                <Video className="w-8 h-8 text-primary" />
-              </div>
               <h1 className="text-4xl md:text-5xl font-bold mb-4">
-                Naši <span className="text-primary">Projekti</span>
+                Naši Projekti
               </h1>
               <p className="text-lg text-muted-foreground max-w-2xl">
                 Projekti u kojima je naš tim učestvovao - pogledajte šta smo kreirali
