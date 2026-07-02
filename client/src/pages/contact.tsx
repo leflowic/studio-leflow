@@ -171,7 +171,7 @@ export default function Contact() {
                               name="phone"
                               render={({ field }) => (
                                 <FormItem>
-                                  <FormLabel>Telefon *</FormLabel>
+                                  <FormLabel>Telefon (Opciono)</FormLabel>
                                   <FormControl>
                                     <Input placeholder="+381 XX XXX XXXX" {...field} data-testid="input-phone" />
                                   </FormControl>
@@ -320,6 +320,30 @@ export default function Contact() {
                 <div key={day} className="flex items-center justify-between text-sm">
                   <span className="text-muted-foreground">{day}</span>
                   <span className="font-medium">{time}</span>
+                </div>
+              ))}
+            </div>
+
+            {/* Mini FAQ */}
+            <div className="rounded-2xl border border-border/60 bg-card p-6 space-y-4">
+              <h3 className="font-bold text-sm">Pre nego što pišete</h3>
+              {[
+                {
+                  q: "Koliko traje termin?",
+                  a: "Standardna sesija snimanja traje 2–3 sata, u zavisnosti od pesme i pripreme.",
+                },
+                {
+                  q: "Koliko košta?",
+                  a: "Svaki projekat je različit — pošaljite upit i vraćamo tačnu ponudu u roku od 24h.",
+                },
+                {
+                  q: "Mogu li da dođem samo na razgovor?",
+                  a: "Naravno — prva konsultacija je besplatna i bez obaveze.",
+                },
+              ].map(({ q, a }) => (
+                <div key={q} className="space-y-1">
+                  <p className="text-sm font-medium">{q}</p>
+                  <p className="text-sm text-muted-foreground leading-relaxed">{a}</p>
                 </div>
               ))}
             </div>

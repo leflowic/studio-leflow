@@ -32,7 +32,7 @@ export const insertContactSubmissionSchema = createInsertSchema(contactSubmissio
   createdAt: true,
 }).extend({
   email: z.string().email("Unesite validnu email adresu"),
-  phone: z.string().min(6, "Unesite validan broj telefona"),
+  phone: z.string().trim().refine((v) => v === "" || v.length >= 6, "Unesite validan broj telefona"),
   name: z.string().min(2, "Ime mora imati najmanje 2 karaktera"),
   message: z.string().min(10, "Poruka mora imati najmanje 10 karaktera"),
   service: z.string().min(1, "Izaberite uslugu"),

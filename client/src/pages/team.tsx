@@ -1,4 +1,4 @@
-import { Users, Instagram, Mic2, Headphones, Video, Zap, Plus, Trash2, ImagePlus, Loader2 } from "lucide-react";
+import { Instagram, Mic2, Headphones, Video, Zap, Plus, Trash2, ImagePlus, Loader2 } from "lucide-react";
 import { useState, useRef } from "react";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -208,11 +208,6 @@ export default function Team() {
       <section className="py-20 lg:py-32">
         <div className="max-w-7xl mx-auto px-4 md:px-6">
           <div className="text-center mb-16">
-            <div className="mb-6 inline-flex items-center gap-2 flex-wrap px-4 py-2 rounded-full bg-primary/10 border border-primary/20">
-              <Users className="w-4 h-4 text-primary" />
-              <span className="text-sm font-medium text-primary">Upoznajte Nas</span>
-            </div>
-            
             <h1 className="text-4xl md:text-5xl lg:text-6xl font-bold mb-6 tracking-tight font-[Montserrat]" data-testid="text-team-title">
               Naš Tim
             </h1>
@@ -427,12 +422,12 @@ export default function Team() {
               <CardContent className="p-8">
                 <h2 className="text-2xl font-bold mb-4">Pridružite Se Našoj Kreativnoj Porodici</h2>
                 <p className="text-muted-foreground mb-6">
-                  Radimo sa talentovanim artistima iz cele Srbije i regiona. Vaša vizija, naša ekspertiza.
+                  Radimo sa talentovanim artistima iz cele Srbije i regiona. Dođite u studio i snimimo nešto zajedno.
                 </p>
                 <div className="flex flex-wrap gap-3 justify-center text-sm">
                   <Badge variant="outline">
                     <Mic2 className="w-3 h-3 mr-1.5" />
-                    Profesionalan pristup
+                    Neograničene revizije
                   </Badge>
                   <Badge variant="outline">
                     <Headphones className="w-3 h-3 mr-1.5" />

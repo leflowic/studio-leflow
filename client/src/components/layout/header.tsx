@@ -21,21 +21,22 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import leflowLogo from "@/assets/leflow-logo.png";
 
 const desktopNav = [
-  { name: "Zajednica", href: "/zajednica", icon: Users },
+  { name: "Usluge",    href: "/usluge",    icon: Layers },
   { name: "Projekti",  href: "/projekti",  icon: Video },
-  { name: "Giveaway",  href: "/giveaway",  icon: Gift },
+  { name: "Zajednica", href: "/zajednica", icon: Users },
 ];
 
 // Items that live in the "Još" dropdown on desktop
 const moreNav = [
-  { name: "Tim",     href: "/tim",     icon: Users2 },
-  { name: "Pravila", href: "/pravila", icon: ScrollText },
+  { name: "Giveaway", href: "/giveaway", icon: Gift },
+  { name: "Tim",      href: "/tim",      icon: Users2 },
+  { name: "Pravila",  href: "/pravila",  icon: ScrollText },
 ];
 
 const mobileNav = [...desktopNav, ...moreNav];
 
 export function Header() {
-  const [location, setLocation] = useLocation();
+  const [location] = useLocation();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [scrolled, setScrolled] = useState(false);
   const { user, logoutMutation } = useAuth();
@@ -72,12 +73,6 @@ export function Header() {
   };
 
   const isActive = (href: string) => location === href;
-
-  const scrollToServices = () => {
-    setMobileMenuOpen(false);
-    if (location !== "/") { setLocation("/#usluge"); return; }
-    document.getElementById("usluge")?.scrollIntoView({ behavior: "smooth", block: "start" });
-  };
 
   const initials = user?.username?.slice(0, 2).toUpperCase() ?? "U";
 
@@ -119,15 +114,6 @@ export function Header() {
                   <span className="relative z-10">{item.name}</span>
                 </Link>
               ))}
-
-              <button
-                onClick={scrollToServices}
-                className="relative px-3 py-2 rounded-xl text-sm font-medium text-muted-foreground hover:text-foreground transition-all flex items-center gap-1.5 group"
-                data-testid="link-nav-usluge"
-              >
-                <Layers className="w-3.5 h-3.5 transition-transform group-hover:scale-110" />
-                Usluge
-              </button>
 
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
@@ -335,19 +321,6 @@ export function Header() {
                     </Link>
                   </motion.div>
                 ))}
-
-                <motion.div initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: mobileNav.length * 0.04 }}>
-                  <button
-                    onClick={scrollToServices}
-                    className="w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium text-muted-foreground hover:text-foreground hover:bg-muted/50 transition-all"
-                    data-testid="link-mobile-usluge"
-                  >
-                    <div className="w-8 h-8 rounded-lg bg-muted flex items-center justify-center flex-shrink-0">
-                      <Layers className="w-4 h-4 text-muted-foreground" />
-                    </div>
-                    Usluge
-                  </button>
-                </motion.div>
 
                 {user?.role === "admin" && (
                   <motion.div initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: (mobileNav.length + 1) * 0.04 }}>

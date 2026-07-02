@@ -16,6 +16,7 @@ import { ScrollIndicator } from "@/components/ScrollIndicator";
 import { SEO } from "@/components/SEO";
 import { NewsletterForm } from "@/components/newsletter-form";
 import { ParallaxHero, ParallaxSection, Parallax3DCard } from "@/components/parallax/ParallaxHero";
+import { WaveDivider } from "@/components/WaveDivider";
 
 import type { CmsContent } from "@shared/schema";
 import videoSetupImage from "@assets/generated_images/Video_camera_production_setup_199f7c64.png";
@@ -32,10 +33,10 @@ function GameAnnouncement() {
   useEffect(() => {
     if (!data?.isToday || data?.isOpen) return;
     const tick = () => {
-      const now = new Date();
-      const belgHour = (now.getUTCHours() + 2) % 24;
-      const belgMin = now.getUTCMinutes();
-      const belgSec = now.getUTCSeconds();
+      const belgrade = new Date(new Date().toLocaleString('en-US', { timeZone: 'Europe/Belgrade' }));
+      const belgHour = belgrade.getHours();
+      const belgMin = belgrade.getMinutes();
+      const belgSec = belgrade.getSeconds();
       const nowSecs = belgHour * 3600 + belgMin * 60 + belgSec;
       const openSecs = data.openHour * 3600 + data.openMinute * 60;
       const left = openSecs - nowSecs;
@@ -91,9 +92,26 @@ function GuestBanner() {
 
   useEffect(() => {
     if (dismissed) return;
-    const onScroll = () => { if (window.scrollY > 280) setVisible(true); };
+    // Show at most once per session, and only after real engagement:
+    // 20s on the page or 60% scroll depth — whichever comes first.
+    if (sessionStorage.getItem("guest_banner_shown") === "1") return;
+    let shown = false;
+    const show = () => {
+      if (shown) return;
+      shown = true;
+      sessionStorage.setItem("guest_banner_shown", "1");
+      setVisible(true);
+    };
+    const timer = setTimeout(show, 20000);
+    const onScroll = () => {
+      const depth = (window.scrollY + window.innerHeight) / document.body.scrollHeight;
+      if (depth > 0.6) show();
+    };
     window.addEventListener("scroll", onScroll, { passive: true });
-    return () => window.removeEventListener("scroll", onScroll);
+    return () => {
+      clearTimeout(timer);
+      window.removeEventListener("scroll", onScroll);
+    };
   }, [dismissed]);
 
   const dismiss = () => {
@@ -332,7 +350,7 @@ export default function Home() {
                 page="home"
                 section="hero"
                 contentKey="subtitle"
-                value={getCmsValue("hero", "subtitle", "Profesionalna Muzička Produkcija")}
+                value={getCmsValue("hero", "subtitle", "Tvoja pesma. Radio-ready zvuk.")}
                 as="p"
                 className="text-xl md:text-2xl lg:text-3xl mb-4 text-white/90 max-w-3xl mx-auto font-light"
               />
@@ -349,7 +367,7 @@ export default function Home() {
                 contentKey="description"
                 value={getCmsValue("hero", "description", "Mix • Master • Instrumentali • Video Produkcija")}
                 as="p"
-                className="text-lg md:text-xl mb-12 text-white/70 max-w-2xl mx-auto"
+                className="text-sm md:text-base mb-12 text-white/60 max-w-2xl mx-auto uppercase tracking-[0.3em] font-medium"
               />
             </motion.div>
             
@@ -402,19 +420,16 @@ export default function Home() {
                   </Button>
                 </Link>
               )}
-              {!user && (
-                <Link href="/registracija" className="w-full sm:w-auto">
-                  <Button
-                    size="lg"
-                    variant="outline"
-                    className="w-full sm:w-auto text-lg px-8 py-6 backdrop-blur-md bg-white/10 text-white border-white/30 hover:bg-white/20 transition-all hover:scale-105 hover:shadow-xl font-semibold gap-2"
-                  >
-                    <UserPlus className="w-5 h-5" />
-                    Pridruži se besplatno
-                  </Button>
-                </Link>
-              )}
             </motion.div>
+
+            <motion.p
+              className="mt-8 text-sm text-white/50 tracking-wide"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              transition={{ duration: 0.8, delay: 1.1 }}
+            >
+              Odgovaramo u roku od 24h&ensp;·&ensp;Neograničene revizije&ensp;·&ensp;Od 2019.
+            </motion.p>
 
             {/* Upcoming game announcement */}
             <GameAnnouncement />
@@ -427,8 +442,9 @@ export default function Home() {
         <div className="max-w-7xl mx-auto px-4 md:px-6">
           <ParallaxSection direction="up" intensity={30}>
             <div className="text-center mb-16">
-              <motion.h2 
-                className="heading-lg mb-6" 
+              <WaveDivider className="mb-8" />
+              <motion.h2
+                className="heading-lg mb-6"
                 data-testid="text-services-title"
                 initial={{ opacity: 0, y: 30 }}
                 whileInView={{ opacity: 1, y: 0 }}
@@ -720,6 +736,7 @@ export default function Home() {
       <section className="py-20 bg-background relative z-10">
         <div className="max-w-3xl mx-auto px-4 text-center">
           <FadeInWhenVisible>
+            <WaveDivider className="mb-8" />
             <p className="text-primary text-sm font-semibold uppercase tracking-[0.15em] mb-3">Recenzije</p>
             <h2 className="text-3xl font-bold mb-4">Šta kažu klijenti</h2>
             <p className="text-muted-foreground mb-8 max-w-md mx-auto">
