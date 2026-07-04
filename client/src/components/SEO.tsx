@@ -11,102 +11,19 @@ interface SEOProps {
   noIndex?: boolean;
 }
 
-// Default LocalBusiness structured data for Studio LeFlow
-const defaultStructuredData = {
-  "@context": "https://schema.org",
-  "@type": "MusicRecordingStudio",
-  "@id": "https://studioleflow.com/#organization",
-  "name": "Studio LeFlow",
-  "alternateName": ["LeFlow Studio", "LeFlow", "Studio Le Flow"],
-  "url": "https://studioleflow.com",
-  "logo": "https://studioleflow.com/favicon-512x512.png",
-  "image": "https://studioleflow.com/og-image.png",
-  "description": "Vrhunski muzički studio u Beogradu. Profesionalno snimanje, mix/mastering, instrumentalna produkcija i video spotovi.",
-  "telephone": "+381637347023",
-  "email": "podrska@studioleflow.com",
-  "address": {
-    "@type": "PostalAddress",
-    "addressLocality": "Beograd",
-    "addressRegion": "Beograd",
-    "addressCountry": "RS",
-    "postalCode": "11000"
-  },
-  "geo": {
-    "@type": "GeoCoordinates",
-    "latitude": "44.8176",
-    "longitude": "20.4633"
-  },
-  "areaServed": [
-    {
-      "@type": "City",
-      "name": "Beograd",
-      "sameAs": "https://en.wikipedia.org/wiki/Belgrade"
-    },
-    {
-      "@type": "Country",
-      "name": "Srbija",
-      "sameAs": "https://en.wikipedia.org/wiki/Serbia"
-    }
-  ],
-  "priceRange": "$$",
-  "currenciesAccepted": "RSD, EUR",
-  "paymentAccepted": "Cash, Bank Transfer",
-  "openingHoursSpecification": [
-    {
-      "@type": "OpeningHoursSpecification",
-      "dayOfWeek": ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday"],
-      "opens": "10:00",
-      "closes": "22:00"
-    },
-    {
-      "@type": "OpeningHoursSpecification",
-      "dayOfWeek": ["Saturday", "Sunday"],
-      "opens": "12:00",
-      "closes": "20:00"
-    }
-  ],
-  "sameAs": [
-    "https://www.instagram.com/studioleflow",
-    "https://www.youtube.com/@studioleflow"
-  ],
-  "hasOfferCatalog": {
-    "@type": "OfferCatalog",
-    "name": "Usluge Studio LeFlow",
-    "itemListElement": [
-      {
-        "@type": "Offer",
-        "itemOffered": {
-          "@type": "Service",
-          "name": "Snimanje vokala",
-          "description": "Profesionalno snimanje vokala sa WA-47 mikrofonom i Apollo Twin X interfejsom"
-        }
-      },
-      {
-        "@type": "Offer",
-        "itemOffered": {
-          "@type": "Service",
-          "name": "Mix i Mastering",
-          "description": "Profesionalni miks i mastering sa UAD plugins"
-        }
-      },
-      {
-        "@type": "Offer",
-        "itemOffered": {
-          "@type": "Service",
-          "name": "Instrumentalna produkcija",
-          "description": "Custom bitovi i instrumentali za sve žanrove"
-        }
-      },
-      {
-        "@type": "Offer",
-        "itemOffered": {
-          "@type": "Service",
-          "name": "Video spotovi",
-          "description": "Profesionalna produkcija muzičkih video spotova"
-        }
-      }
-    ]
-  }
+// The organization (MusicRecordingStudio) + WebSite schema is baked statically into
+// client/index.html so crawlers see it without executing JS. This component only manages
+// page-specific schema (FAQ, services, breadcrumbs…) in its own id-scoped <script> tags —
+// it must never touch the static one.
+
+// Visible names for auto-generated BreadcrumbList schema on public subpages
+const BREADCRUMB_NAMES: Record<string, string> = {
+  "/usluge": "Usluge",
+  "/projekti": "Projekti",
+  "/faq": "Česta pitanja",
+  "/kontakt": "Kontakt",
+  "/tim": "Tim",
+  "/pravila": "Pravila i uslovi",
 };
 
 // Get absolute URL for Open Graph images
@@ -138,6 +55,11 @@ export function SEO({
   title = "Studio LeFlow - Profesionalni Muzički Studio u Beogradu | Snimanje, Miks, Mastering",
   description = "Vrhunski muzički studio u Beogradu. Snimanje, mix/mastering, instrumentali, video spotovi. WA-47, Apollo Twin X, UAD plugins. Preko 5 godina iskustva.",
   keywords = [
+    "muzički studio",
+    "muzicki studio",
+    "studio za snimanje",
+    "studio za snimanje pesama",
+    "muzički studio srbija",
     "studio leflow",
     "leflow studio",
     "leflow",
@@ -241,15 +163,36 @@ export function SEO({
     setMetaTag('twitter:image', absoluteOgImage);
     setMetaTag('twitter:image:alt', 'Studio LeFlow - Profesionalni Muzički Studio Beograd');
     
-    // Structured data - use provided or default LocalBusiness
-    const schemaData = structuredData || defaultStructuredData;
-    let script = document.querySelector('script[type="application/ld+json"]');
-    if (!script) {
-      script = document.createElement('script');
-      script.setAttribute('type', 'application/ld+json');
-      document.head.appendChild(script);
-    }
-    script.textContent = JSON.stringify(schemaData);
+    // Page-specific structured data — id-scoped script so the static org schema
+    // in index.html is never touched. Removed when the page has none.
+    const setJsonLd = (id: string, data: object | null) => {
+      let script = document.getElementById(id);
+      if (!data) {
+        script?.remove();
+        return;
+      }
+      if (!script) {
+        script = document.createElement('script');
+        script.setAttribute('type', 'application/ld+json');
+        script.setAttribute('id', id);
+        document.head.appendChild(script);
+      }
+      script.textContent = JSON.stringify(data);
+    };
+
+    setJsonLd('seo-page-schema', structuredData ?? null);
+
+    // Auto BreadcrumbList for known public subpages (rich snippet eligibility)
+    const path = new URL(canonical).pathname;
+    const crumbName = BREADCRUMB_NAMES[path];
+    setJsonLd('seo-breadcrumb', !noIndex && crumbName ? {
+      "@context": "https://schema.org",
+      "@type": "BreadcrumbList",
+      "itemListElement": [
+        { "@type": "ListItem", "position": 1, "name": "Početna", "item": "https://studioleflow.com/" },
+        { "@type": "ListItem", "position": 2, "name": crumbName, "item": canonical },
+      ],
+    } : null);
 
   }, [title, description, keywords, ogImage, ogType, canonicalUrl, structuredData, noIndex]);
   

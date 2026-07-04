@@ -18,6 +18,7 @@ Disallow: /moje-pesme
 Disallow: /moje-pesme/*
 Disallow: /igra
 Disallow: /zajednica
+Disallow: /giveaway
 Disallow: /settings
 Disallow: /settings/*
 Disallow: /u/

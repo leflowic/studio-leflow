@@ -10,7 +10,7 @@
       http-equiv="Content-Security-Policy"
       content="upgrade-insecure-requests"
     />
-    <title>Studio LeFlow (LeFlow Studio) - Profesionalna Muzička Produkcija Beograd</title>
+    <title>Studio LeFlow — Muzički Studio Beograd | Snimanje, Mix i Mastering</title>
     <meta
       name="description"
       content="Vrhunski muzički studio u Beogradu. Snimanje, mix/mastering, instrumentali, video spotovi. WA-47, Apollo Twin X, UAD plugins. Preko 5 godina iskustva."
@@ -40,6 +40,7 @@
     <meta property="og:image:width" content="1200" />
     <meta property="og:image:height" content="630" />
     <meta property="og:image:type" content="image/png" />
+    <meta property="og:image:alt" content="Studio LeFlow - Muzički Studio Beograd" />
     <meta property="og:site_name" content="Studio LeFlow" />
     <meta property="og:locale" content="sr_RS" />
     
@@ -51,6 +52,67 @@
     
     <!-- Canonical URL -->
     <link rel="canonical" href="https://studioleflow.com" />
+
+    <!-- Structured Data — baked into static HTML so crawlers see it without executing JS.
+         The SEO component injects page-specific schema into separate #seo-* scripts; it must NOT touch this one. -->
+    <script type="application/ld+json">
+    {
+      "@context": "https://schema.org",
+      "@graph": [
+        {
+          "@type": "MusicRecordingStudio",
+          "@id": "https://studioleflow.com/#organization",
+          "name": "Studio LeFlow",
+          "alternateName": ["LeFlow Studio", "LeFlow", "Studio Le Flow", "Muzički Studio LeFlow"],
+          "url": "https://studioleflow.com",
+          "logo": "https://studioleflow.com/favicon-512x512.png",
+          "image": "https://studioleflow.com/og-image.png",
+          "description": "Muzički studio u Beogradu. Profesionalno snimanje vokala, mix/mastering, instrumentalna produkcija i video spotovi.",
+          "telephone": "+381637347023",
+          "email": "podrska@studioleflow.com",
+          "address": {
+            "@type": "PostalAddress",
+            "addressLocality": "Beograd",
+            "addressRegion": "Beograd",
+            "addressCountry": "RS",
+            "postalCode": "11000"
+          },
+          "geo": { "@type": "GeoCoordinates", "latitude": "44.8176", "longitude": "20.4633" },
+          "areaServed": [
+            { "@type": "City", "name": "Beograd", "sameAs": "https://en.wikipedia.org/wiki/Belgrade" },
+            { "@type": "Country", "name": "Srbija", "sameAs": "https://en.wikipedia.org/wiki/Serbia" }
+          ],
+          "priceRange": "$$",
+          "openingHoursSpecification": [
+            { "@type": "OpeningHoursSpecification", "dayOfWeek": ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday"], "opens": "10:00", "closes": "22:00" },
+            { "@type": "OpeningHoursSpecification", "dayOfWeek": ["Saturday", "Sunday"], "opens": "12:00", "closes": "20:00" }
+          ],
+          "sameAs": [
+            "https://www.instagram.com/studioleflow",
+            "https://www.youtube.com/@studioleflow"
+          ],
+          "hasOfferCatalog": {
+            "@type": "OfferCatalog",
+            "name": "Usluge Studio LeFlow",
+            "itemListElement": [
+              { "@type": "Offer", "itemOffered": { "@type": "Service", "name": "Snimanje vokala", "description": "Profesionalno snimanje vokala sa WA-47 mikrofonom i Apollo Twin X interfejsom" } },
+              { "@type": "Offer", "itemOffered": { "@type": "Service", "name": "Mix i Mastering", "description": "Profesionalni miks i mastering sa UAD plugins" } },
+              { "@type": "Offer", "itemOffered": { "@type": "Service", "name": "Instrumentalna produkcija", "description": "Custom bitovi i instrumentali za sve žanrove" } },
+              { "@type": "Offer", "itemOffered": { "@type": "Service", "name": "Video spotovi", "description": "Profesionalna produkcija muzičkih video spotova" } }
+            ]
+          }
+        },
+        {
+          "@type": "WebSite",
+          "@id": "https://studioleflow.com/#website",
+          "url": "https://studioleflow.com",
+          "name": "Studio LeFlow",
+          "publisher": { "@id": "https://studioleflow.com/#organization" },
+          "inLanguage": "sr-RS"
+        }
+      ]
+    }
+    </script>
 
     <!-- Favicons for all devices and Google Search -->
     <link rel="icon" type="image/x-icon" href="/favicon.ico" />
