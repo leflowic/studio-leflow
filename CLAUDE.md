@@ -2,6 +2,10 @@
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
+Studio LeFlow is a Serbian-language website and client platform for a music production studio in Belgrade — public marketing pages plus an authenticated dashboard, admin panel, real-time messaging, and a handful of engagement features (community feed, daily game, giveaways). Full-stack TypeScript: React SPA + Express API + PostgreSQL, deployed to Railway.
+
+`README.md`, `DEPLOYMENT_GUIDE.md`, and `replit.md` are stale artifacts from the project's original Replit-hosted version (UploadThing instead of Cloudinary, Replit Deploy instead of Railway, and at least one described feature — the EVLFRQ audio analyzer — no longer exists in the code). Don't treat them as current; this file supersedes them.
+
 ## Commands
 
 ```bash
@@ -167,7 +171,7 @@ There are no automated tests in this project.
 - Railway auto-deploys from GitHub `main` branch.
 - `railway.toml`: build = `npm run build`, deploy = `npx drizzle-kit push --force`, start = `npm run start`.
 - `nixpacks.toml` must use `npm ci --include=dev` so devDependencies (esbuild, tsc, etc.) are available at build time.
-- `APP_URL`, `DATABASE_URL`, `SESSION_SECRET`, `RESEND_API_KEY`, `CLOUDINARY_*` env vars must be set in Railway.
+- `APP_URL`, `DATABASE_URL`, `SESSION_SECRET`, `RESEND_API_KEY`, `CLOUDINARY_*`, `GOOGLE_CLIENT_ID`, `VITE_GOOGLE_CLIENT_ID` env vars must be set in Railway.
 
 **SEO:**
 - `client/src/components/SEO.tsx` — sets `<title>`, meta tags, og/twitter tags, canonical URL, and JSON-LD structured data via `useEffect`. Add `<SEO>` to every public page.
