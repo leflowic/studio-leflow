@@ -1,4 +1,5 @@
-import { lazy, Suspense, Component, ReactNode } from "react";
+import { lazy, Suspense, Component, ReactNode, useEffect } from "react";
+import { trackPageView } from "./lib/analytics";
 import { Switch, Route, useLocation } from "wouter";
 import { queryClient } from "./lib/queryClient";
 import { QueryClientProvider } from "@tanstack/react-query";
@@ -113,7 +114,13 @@ function Router() {
   useScrollToTop();
   usePWARedirect(); // Auto-redirect in PWA standalone mode
 
-  // Smart Link pages — standalone layout (no header/footer)
+  // GA4 page views - SPA navigation doesn't reload the page, so each location
+  // change must be reported manually (initial load included; auto page_view is off)
+  useEffect(() => {
+    trackPageView(location);
+  }, [location]);
+
+  // Smart Link pages - standalone layout (no header/footer)
   if (location.startsWith("/l/")) {
     return (
       <ChunkErrorBoundary>

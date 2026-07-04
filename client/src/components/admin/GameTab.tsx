@@ -164,7 +164,7 @@ export default function GameTab() {
       toast({
         title: "Pobednik određen",
         description: data.winnerUsername
-          ? `Pobednik: ${data.winnerUsername}${data.promoCode ? ` — Kod: ${data.promoCode}` : ''}`
+          ? `Pobednik: ${data.winnerUsername}${data.promoCode ? ` - Kod: ${data.promoCode}` : ''}`
           : "Nema ko je igrao ove sedmice",
       });
       queryClient.invalidateQueries({ queryKey: ["/api/admin/game/prizes"] });
@@ -194,7 +194,7 @@ export default function GameTab() {
             <div className="space-y-1">
               <Label>Datum</Label>
               <Input type="date" value={cDate} onChange={e => setCDate(e.target.value)} disabled={!!editingId} />
-              {editingId && <p className="text-xs text-muted-foreground">Datum se ne može menjati — briši i dodaj novo</p>}
+              {editingId && <p className="text-xs text-muted-foreground">Datum se ne može menjati - briši i dodaj novo</p>}
             </div>
             <div className="space-y-1">
               <Label>Clip pozicija (sekunde od početka)</Label>

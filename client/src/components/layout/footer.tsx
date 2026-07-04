@@ -33,7 +33,7 @@ export function Footer() {
         <div className="border border-border/60 rounded-xl px-6 py-5 mb-14 flex flex-col sm:flex-row items-center justify-between gap-4">
           <div>
             <p className="font-semibold text-sm">Spremni za sledeću produkciju?</p>
-            <p className="text-xs text-muted-foreground">Besplatna konsultacija — odgovaramo u roku od 24h</p>
+            <p className="text-xs text-muted-foreground">Besplatna konsultacija - odgovaramo u roku od 24h</p>
           </div>
           <Link href="/kontakt">
             <Button size="sm" className="gap-2 flex-shrink-0" data-testid="button-footer-cta">
@@ -103,7 +103,7 @@ export function Footer() {
           <div>
             <p className="text-xs font-semibold text-muted-foreground uppercase tracking-widest mb-4">Newsletter</p>
             <p className="text-sm text-muted-foreground mb-4 leading-relaxed">
-              Novi projekti, ekskluzivne ponude i promocije — direktno u vaš inbox.
+              Novi projekti, ekskluzivne ponude i promocije - direktno u vaš inbox.
             </p>
             <NewsletterForm variant="footer" />
           </div>

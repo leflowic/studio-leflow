@@ -58,7 +58,7 @@ export function WebSocketProvider({ children }: { children: ReactNode }) {
   const audioCtxRef = useRef<AudioContext | null>(null);
   const audioBufferRef = useRef<AudioBuffer | null>(null);
 
-  // Load audio via AudioContext — works reliably in background tabs
+  // Load audio via AudioContext - works reliably in background tabs
   useEffect(() => {
     const ctx = new AudioContext();
     audioCtxRef.current = ctx;
@@ -69,7 +69,7 @@ export function WebSocketProvider({ children }: { children: ReactNode }) {
       .then(decoded => { audioBufferRef.current = decoded; })
       .catch(e => console.warn('[Audio] Failed to load sound:', e));
 
-    // AudioContext starts suspended — resume on first user interaction
+    // AudioContext starts suspended - resume on first user interaction
     const unlock = () => {
       ctx.resume().catch(() => {});
       document.removeEventListener('click', unlock);
@@ -152,7 +152,7 @@ export function WebSocketProvider({ children }: { children: ReactNode }) {
                 message.message?.content || "Poslao ti je poruku",
                 senderUsername,
               );
-              document.title = `💬 Nova poruka — Studio LeFlow`;
+              document.title = `💬 Nova poruka - Studio LeFlow`;
             }
           }
         }

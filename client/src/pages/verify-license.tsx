@@ -42,7 +42,7 @@ export default function VerifyLicensePage() {
   return (
     <>
       <SEO
-        title="Verifikacija Licence — Studio LeFlow"
+        title="Verifikacija Licence - Studio LeFlow"
         description="Proverite autentičnost vaše Studio LeFlow licence. Unesite verifikacioni kod sa PDF-a da biste potvrdili da je licenca validna i izdata od Studio LeFlow."
         keywords={["verifikacija licence studio leflow", "provjera licence", "studio leflow licenca", "autentičnost licence"]}
         canonicalUrl="/proveri"
@@ -61,7 +61,7 @@ export default function VerifyLicensePage() {
         {/* Card */}
         <div className="rounded-2xl border bg-card shadow-lg overflow-hidden">
 
-          {/* No hash — show search input */}
+          {/* No hash - show search input */}
           {!hash && (
             <div className="px-6 py-8 space-y-5">
               <div className="text-center space-y-1">
@@ -175,7 +175,7 @@ function Detail({ label, value }: { label: string; value?: string }) {
   return (
     <div className="flex flex-col gap-0.5">
       <span className="text-xs text-muted-foreground uppercase tracking-wide">{label}</span>
-      <span className="font-medium text-sm">{value ?? "—"}</span>
+      <span className="font-medium text-sm">{value ?? "-"}</span>
     </div>
   );
 }

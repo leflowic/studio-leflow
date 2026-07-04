@@ -18,7 +18,7 @@ export default function NotFound() {
       <div className="min-h-[calc(100vh-160px)] w-full flex items-center justify-center px-4 py-16">
         <div className="w-full max-w-lg text-center">
 
-          {/* Waveform decoration — "broken" audio */}
+          {/* Waveform decoration - "broken" audio */}
           <motion.div
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}

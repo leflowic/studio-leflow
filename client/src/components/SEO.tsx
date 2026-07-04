@@ -13,7 +13,7 @@ interface SEOProps {
 
 // The organization (MusicRecordingStudio) + WebSite schema is baked statically into
 // client/index.html so crawlers see it without executing JS. This component only manages
-// page-specific schema (FAQ, services, breadcrumbs…) in its own id-scoped <script> tags —
+// page-specific schema (FAQ, services, breadcrumbs…) in its own id-scoped <script> tags -
 // it must never touch the static one.
 
 // Visible names for auto-generated BreadcrumbList schema on public subpages
@@ -36,7 +36,7 @@ function getAbsoluteUrl(path: string): string {
   return path;
 }
 
-// Get canonical URL — always absolute
+// Get canonical URL - always absolute
 function getCanonicalUrl(customUrl?: string): string {
   const base = 'https://studioleflow.com';
   if (customUrl) {
@@ -163,7 +163,7 @@ export function SEO({
     setMetaTag('twitter:image', absoluteOgImage);
     setMetaTag('twitter:image:alt', 'Studio LeFlow - Profesionalni Muzički Studio Beograd');
     
-    // Page-specific structured data — id-scoped script so the static org schema
+    // Page-specific structured data - id-scoped script so the static org schema
     // in index.html is never touched. Removed when the page has none.
     const setJsonLd = (id: string, data: object | null) => {
       let script = document.getElementById(id);
@@ -286,7 +286,7 @@ export const pageStructuredData = {
   faq: {
     "@context": "https://schema.org",
     "@type": "FAQPage",
-    "name": "Česta Pitanja — Studio LeFlow",
+    "name": "Česta Pitanja - Studio LeFlow",
     "mainEntity": [
       {
         "@type": "Question",
@@ -301,7 +301,7 @@ export const pageStructuredData = {
         "name": "Mogu li da dođem kao potpuni početnik?",
         "acceptedAnswer": {
           "@type": "Answer",
-          "text": "Tehnički da, ali ne preporučujemo. Studio je opremljen vrhunskom profesionalnom opremom. Ako si početnik, stekni iskustvo na pristupačnijoj opremi, pa kad si spreman — vrata su otvorena."
+          "text": "Tehnički da, ali ne preporučujemo. Studio je opremljen vrhunskom profesionalnom opremom. Ako si početnik, stekni iskustvo na pristupačnijoj opremi, pa kad si spreman - vrata su otvorena."
         }
       },
       {
@@ -333,7 +333,7 @@ export const pageStructuredData = {
         "name": "Da li snimate samo vokal ili i instrumente?",
         "acceptedAnswer": {
           "@type": "Answer",
-          "text": "Primarno snimamo vokal. Za instrumentale i produkciju radimo custom bitove — žanrovi uključuju Hip-Hop, Pop, R&B, Trap i Balkan muziku."
+          "text": "Primarno snimamo vokal. Za instrumentale i produkciju radimo custom bitove - žanrovi uključuju Hip-Hop, Pop, R&B, Trap i Balkan muziku."
         }
       }
     ]

@@ -61,7 +61,7 @@ export function EmailTab() {
             <Label htmlFor="email-subject">Naslov</Label>
             <Input
               id="email-subject"
-              placeholder="Studio LeFlow — ..."
+              placeholder="Studio LeFlow - ..."
               value={form.subject}
               onChange={set("subject")}
             />

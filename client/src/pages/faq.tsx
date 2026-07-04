@@ -14,17 +14,17 @@ const faqs = [
   {
     question: "Da li moram da dođem sa gotovim tekstom?",
     answer:
-      "Da, obavezno. Sesija snimanja je tu da snimimo ono što si kreirao, ne da pišemo pesmu. Ako dođeš sa pola teksta i računaš na \"malu pomoć\" — to nije mala pomoć, to je pisanje teksta. Dođi potpuno spreman.",
+      "Da, obavezno. Sesija snimanja je tu da snimimo ono što si kreirao, ne da pišemo pesmu. Ako dođeš sa pola teksta i računaš na \"malu pomoć\" - to nije mala pomoć, to je pisanje teksta. Dođi potpuno spreman.",
   },
   {
     question: "Mogu li da dođem kao potpuni početnik?",
     answer:
-      "Tehnički da, ali iskreno — ne preporučujemo. Studio je opremljen vrhunskom profesionalnom opremom i ne bismo voleli da plaćaš profesionalne cene dok još razvijaš tehniku. Ako si početnik, stekni iskustvo na pristupačnijoj opremi, pa kad si spreman — vrata su otvorena.",
+      "Tehnički da, ali iskreno - ne preporučujemo. Studio je opremljen vrhunskom profesionalnom opremom i ne bismo voleli da plaćaš profesionalne cene dok još razvijaš tehniku. Ako si početnik, stekni iskustvo na pristupačnijoj opremi, pa kad si spreman - vrata su otvorena.",
   },
   {
     question: "Šta dobijam na kraju sesije?",
     answer:
-      "Zavisi od dogovorene usluge. Ako dolaziš samo na snimanje, dobijaš minimalno obrađen demo — autotune, kompresija i EQ po potrebi. Ako dolaziš na snimanje + mix/master, dobijaš demo priblično smixan, spreman za dalju obradu ili distribuciju.",
+      "Zavisi od dogovorene usluge. Ako dolaziš samo na snimanje, dobijaš minimalno obrađen demo - autotune, kompresija i EQ po potrebi. Ako dolaziš na snimanje + mix/master, dobijaš demo priblično smixan, spreman za dalju obradu ili distribuciju.",
   },
   {
     question: "Koliko revizija je uključeno?",
@@ -39,7 +39,7 @@ const faqs = [
   {
     question: "Da li snimate samo vokal ili i instrumente?",
     answer:
-      "Primarno snimamo vokal. Za instrumentale i produkciju radimo custom bitove — žanrovi uključuju Hip-Hop, Pop, R&B, Trap i Balkan muziku.",
+      "Primarno snimamo vokal. Za instrumentale i produkciju radimo custom bitove - žanrovi uključuju Hip-Hop, Pop, R&B, Trap i Balkan muziku.",
   },
 ];
 
@@ -47,7 +47,7 @@ export default function FAQPage() {
   return (
     <>
       <SEO
-        title="Česta Pitanja — Studio LeFlow"
+        title="Česta Pitanja - Studio LeFlow"
         description="Odgovori na najčešća pitanja o snimanju, mix/masteru, instrumentalima i rezervaciji termina u Studio LeFlow Beograd."
         keywords={["studio leflow faq", "pitanja snimanje", "kako zakazati studio", "revizije mix", "početnik studio beograd"]}
         canonicalUrl="/faq"

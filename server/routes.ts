@@ -404,7 +404,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Message image upload (chat attachments — separate from avatar to avoid overwriting it)
+  // Message image upload (chat attachments - separate from avatar to avoid overwriting it)
   app.post("/api/upload/message-image", uploadRateLimiter, requireNotBanned, upload.single("file"), async (req, res) => {
     try {
       if (!req.file) return res.status(400).json({ error: "Fajl nije pronađen" });
@@ -574,7 +574,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       try {
         await sendEmail({
           to: email,
-          subject: 'Novi Verifikacioni Kod — Studio LeFlow',
+          subject: 'Novi Verifikacioni Kod - Studio LeFlow',
           html: resendVerificationEmail(verificationCode),
         });
         return res.json({ success: true, message: "Novi verifikacioni kod je poslat" });
@@ -635,7 +635,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       try {
         await sendEmail({
           to: user.email,
-          subject: 'Admin Prijava — Verifikacioni Kod — Studio LeFlow',
+          subject: 'Admin Prijava - Verifikacioni Kod - Studio LeFlow',
           html: adminLoginEmail(verificationCode),
         });
         
@@ -721,7 +721,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       try {
         await sendEmail({
           to: 'podrska@studioleflow.com',
-          subject: `Novi Upit — ${escapeHtml(validatedData.service)} — Studio LeFlow`,
+          subject: `Novi Upit - ${escapeHtml(validatedData.service)} - Studio LeFlow`,
           html: contactFormEmail({
             service: escapeHtml(validatedData.service),
             name: escapeHtml(validatedData.name),
@@ -783,7 +783,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
             
             await sendEmail({
               to: email,
-              subject: 'Potvrdite Prijavu na Newsletter — Studio LeFlow',
+              subject: 'Potvrdite Prijavu na Newsletter - Studio LeFlow',
               html: newsletterConfirmEmail(confirmUrl),
             });
           } catch (emailError) {
@@ -806,7 +806,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         
         await sendEmail({
           to: email,
-          subject: 'Potvrdite Prijavu na Newsletter — Studio LeFlow',
+          subject: 'Potvrdite Prijavu na Newsletter - Studio LeFlow',
           html: newsletterConfirmEmail(confirmUrl),
         });
       } catch (emailError) {
@@ -2182,7 +2182,7 @@ Sitemap: ${siteUrl}/sitemap.xml
 
   // ===== MESSAGING ENDPOINTS =====
   
-  // Lookup by username — MUST BE BEFORE /api/users/:id
+  // Lookup by username - MUST BE BEFORE /api/users/:id
   app.get("/api/users/by-username/:username", requireNotBanned, async (req, res) => {
     try {
       const { username } = req.params;
@@ -2227,7 +2227,7 @@ Sitemap: ${siteUrl}/sitemap.xml
         return res.status(404).json({ error: "Korisnik nije pronađen" });
       }
       
-      // Only expose public profile fields — never email to other users
+      // Only expose public profile fields - never email to other users
       res.json({
         id: user.id,
         username: user.username,
@@ -2538,7 +2538,7 @@ Sitemap: ${siteUrl}/sitemap.xml
     }
   });
 
-  // Download own contract PDF — regenerated on-the-fly from DB data (Railway filesystem is ephemeral)
+  // Download own contract PDF - regenerated on-the-fly from DB data (Railway filesystem is ephemeral)
   app.get("/api/user/contracts/:id/download", requireVerifiedEmail, async (req, res) => {
     try {
       const contractId = parseInt(req.params.id);
@@ -2853,7 +2853,7 @@ Sitemap: ${siteUrl}/sitemap.xml
           });
           await sendEmail({
             to: contractData.clientEmail,
-            subject: `Studio LeFlow — Licenca ${contract.contractNumber}`,
+            subject: `Studio LeFlow - Licenca ${contract.contractNumber}`,
             html: emailHtml,
             attachments: [{
               filename,
@@ -2865,7 +2865,7 @@ Sitemap: ${siteUrl}/sitemap.xml
           console.log(`[CONTRACTS] License email auto-sent to ${contractData.clientEmail}`);
         } catch (emailError: any) {
           console.error("[CONTRACTS] Auto email failed:", emailError.message);
-          // Don't fail the request if email fails — license is already saved
+          // Don't fail the request if email fails - license is already saved
         }
       }
 
@@ -2895,7 +2895,7 @@ Sitemap: ${siteUrl}/sitemap.xml
     }
   });
 
-  // Download contract PDF — regenerated on-the-fly from DB data (Railway filesystem is ephemeral)
+  // Download contract PDF - regenerated on-the-fly from DB data (Railway filesystem is ephemeral)
   app.get("/api/admin/contracts/:id/download", requireAdmin, async (req, res) => {
     try {
       const contractId = parseInt(req.params.id);
@@ -3049,7 +3049,7 @@ Sitemap: ${siteUrl}/sitemap.xml
             });
             await sendEmail({
               to: user.email,
-              subject: `Studio LeFlow — Licenca ${contract.contractNumber}`,
+              subject: `Studio LeFlow - Licenca ${contract.contractNumber}`,
               html: emailHtml,
               attachments: [{ filename: autoFilename, content: autoPdfBuffer.toString('base64'), encoding: 'base64', contentType: 'application/pdf' }],
             });
@@ -3343,7 +3343,7 @@ Sitemap: ${siteUrl}/sitemap.xml
 
   // ─── Daily Game ─────────────────────────────────────────────────────────────
 
-  // GET /api/game/upcoming — public, returns next scheduled challenge date+time (no song info)
+  // GET /api/game/upcoming - public, returns next scheduled challenge date+time (no song info)
   app.get("/api/game/upcoming", async (_req, res) => {
     try {
       const next = await storage.getNextUpcomingChallenge();
@@ -3365,10 +3365,10 @@ Sitemap: ${siteUrl}/sitemap.xml
   });
 
   // In-memory clip fetch counter (resets on deploy, which is acceptable)
-  // Limits how many times a user can download today's clip — prevents refresh-to-replay abuse
+  // Limits how many times a user can download today's clip - prevents refresh-to-replay abuse
   const clipFetchCounts = new Map<string, number>();
 
-  // GET /api/game/clip — proxy today's audio clip through the server to avoid browser CORS on Cloudinary
+  // GET /api/game/clip - proxy today's audio clip through the server to avoid browser CORS on Cloudinary
   app.get("/api/game/clip", requireNotBanned, async (req, res) => {
     try {
       const userId = req.jwtUser!.id;
@@ -3401,7 +3401,7 @@ Sitemap: ${siteUrl}/sitemap.xml
     }
   });
 
-  // GET /api/game/today — challenge info for current user (no correct answers)
+  // GET /api/game/today - challenge info for current user (no correct answers)
   app.get("/api/game/today", requireNotBanned, async (req, res) => {
     try {
       const today = new Intl.DateTimeFormat('sv', { timeZone: 'Europe/Belgrade' }).format(new Date());
@@ -3510,7 +3510,7 @@ Sitemap: ${siteUrl}/sitemap.xml
     }
   });
 
-  // Admin: DELETE /api/admin/game/reset-my-guess — reset admin's own guess for today (for testing)
+  // Admin: DELETE /api/admin/game/reset-my-guess - reset admin's own guess for today (for testing)
   app.delete("/api/admin/game/reset-my-guess", requireAdmin, async (req, res) => {
     try {
       await storage.adminResetMyGuess(req.jwtUser!.id as number);
@@ -3850,7 +3850,7 @@ Sitemap: ${siteUrl}/sitemap.xml
     }
   });
 
-  // OG meta tag handler for /l/:slug — returns server-rendered HTML to social crawlers
+  // OG meta tag handler for /l/:slug - returns server-rendered HTML to social crawlers
   // so Instagram/WhatsApp/Discord show a rich link preview with cover art.
   // Real users get next() → SPA handles rendering as normal.
   const CRAWLER_UA = /facebookexternalhit|Twitterbot|LinkedInBot|Slackbot|TelegramBot|WhatsApp|Instagram|Pinterest|Googlebot|bingbot|Discordbot|Applebot|vkShare|Iframely|Embedly/i;
@@ -3888,8 +3888,8 @@ Sitemap: ${siteUrl}/sitemap.xml
       if (!link) return next();
       const appUrl = (process.env.APP_URL ?? "https://studioleflow.com").replace(/\/$/, "");
       const pageUrl = `${appUrl}/l/${link.slug}`;
-      const title = escOg(`${link.title} — ${link.artist}`);
-      const desc = escOg(`${platformList(link)} — Studio LeFlow`);
+      const title = escOg(`${link.title} - ${link.artist}`);
+      const desc = escOg(`${platformList(link)} - Studio LeFlow`);
       const img = escOg(ogImageUrl(link.coverUrl, appUrl));
       res.setHeader("Content-Type", "text/html; charset=utf-8");
       res.setHeader("Cache-Control", "public, max-age=3600");

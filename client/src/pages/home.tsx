@@ -79,7 +79,7 @@ function GameAnnouncement() {
         <span className="text-base">🎵</span>
         <span>
           Sledeća igra počinje <strong>{dateLabel}</strong>
-          {countdown && <span className="ml-1.5 font-mono text-white/80">— još {countdown}</span>}
+          {countdown && <span className="ml-1.5 font-mono text-white/80">- još {countdown}</span>}
         </span>
       </div>
     </motion.div>
@@ -93,7 +93,7 @@ function GuestBanner() {
   useEffect(() => {
     if (dismissed) return;
     // Show at most once per session, and only after real engagement:
-    // 20s on the page or 60% scroll depth — whichever comes first.
+    // 20s on the page or 60% scroll depth - whichever comes first.
     if (sessionStorage.getItem("guest_banner_shown") === "1") return;
     let shown = false;
     const show = () => {
@@ -461,7 +461,7 @@ export default function Home() {
                 viewport={{ once: true }}
                 transition={{ duration: 0.8, delay: 0.2 }}
               >
-                Snimanje vokala, mix/mastering, custom instrumentali i muzički spotovi — u akustički tretiranom studiju u Beogradu
+                Snimanje vokala, mix/mastering, custom instrumentali i muzički spotovi - u akustički tretiranom studiju u Beogradu
               </motion.p>
             </div>
           </ParallaxSection>
@@ -504,7 +504,7 @@ export default function Home() {
                       <ul className="space-y-2" style={{ transform: "translateZ(5px)" }}>
                         {service.features.map((feature, fIndex) => (
                           <li key={fIndex} className="flex items-start gap-2 text-sm">
-                            <span className="text-primary mt-0.5 flex-shrink-0">—</span>
+                            <span className="text-primary mt-0.5 flex-shrink-0">-</span>
                             <span>{feature}</span>
                           </li>
                         ))}
@@ -570,7 +570,7 @@ export default function Home() {
                   viewport={{ once: true }}
                   transition={{ duration: 0.8, delay: 0.1 }}
                 >
-                  Warm Audio WA-47, Apollo Twin X sa UAD plugin suiteom i Yamaha HS8 monitori — oprema koja se koristi u komercijalnim studijima. Bez kompromisa u zvuku, bez skrivenih troškova.
+                  Warm Audio WA-47, Apollo Twin X sa UAD plugin suiteom i Yamaha HS8 monitori - oprema koja se koristi u komercijalnim studijima. Bez kompromisa u zvuku, bez skrivenih troškova.
                 </motion.p>
 
                 <motion.p
@@ -613,7 +613,7 @@ export default function Home() {
             <p className="text-primary text-sm font-semibold uppercase tracking-[0.15em] mb-3">Newsletter</p>
             <h2 className="text-2xl md:text-3xl font-bold mb-3">Budite u toku</h2>
             <p className="text-muted-foreground text-sm mb-8 max-w-sm mx-auto leading-relaxed">
-              Novi projekti, promocije i ekskluzivne ponude — direktno na vaš email. Bez spama.
+              Novi projekti, promocije i ekskluzivne ponude - direktno na vaš email. Bez spama.
             </p>
           </FadeInWhenVisible>
           <FadeInWhenVisible delay={0.2}>
@@ -792,7 +792,7 @@ export default function Home() {
               page="home"
               section="cta"
               contentKey="description"
-              value={getCmsValue("cta", "description", "Pozovite ili pišite — besplatna konsultacija, bez obaveze")}
+              value={getCmsValue("cta", "description", "Pozovite ili pišite - besplatna konsultacija, bez obaveze")}
               as="p"
               className="text-lg mb-10 text-muted-foreground max-w-xl mx-auto"
             />

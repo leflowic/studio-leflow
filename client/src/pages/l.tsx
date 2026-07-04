@@ -92,7 +92,7 @@ async function generateStoryBlob(link: SmartLink): Promise<Blob> {
   ctx.fillStyle = "#040007";
   ctx.fillRect(0, 0, W, H);
 
-  // ── 2. Background — two blend passes for vivid saturated color ────────────
+  // ── 2. Background - two blend passes for vivid saturated color ────────────
   if (coverImg) {
     const bgB = blurredCanvas(coverImg, W, H, 90);
     // Primary vivid fill
@@ -101,7 +101,7 @@ async function generateStoryBlob(link: SmartLink): Promise<Blob> {
     ctx.globalAlpha = 0.88;
     ctx.drawImage(bgB, 0, 0, W, H);
     ctx.restore();
-    // Hard-light pass — pops contrast and saturation
+    // Hard-light pass - pops contrast and saturation
     ctx.save();
     ctx.imageSmoothingEnabled = true; ctx.imageSmoothingQuality = "high";
     ctx.globalAlpha = 0.22;
@@ -313,7 +313,7 @@ async function generateStoryBlob(link: SmartLink): Promise<Blob> {
   ctx.fillText(`studioleflow.com/l/${link.slug}`, W / 2, urlY);
   ctx.shadowBlur = 0;
 
-  // ── Logo — dole, uvek prikovano ───────────────────────────────────────────
+  // ── Logo - dole, uvek prikovano ───────────────────────────────────────────
   if (logoImg) {
     const lW = 150;
     ctx.save(); ctx.globalAlpha = 0.38;
@@ -334,11 +334,11 @@ async function shareToStory(link: SmartLink) {
   const blob = await generateStoryBlob(link);
   const file = new File([blob], `${link.slug}-story.png`, { type: "image/png" });
 
-  // Web Share API with files — works on iOS Safari 15+ and Android Chrome
+  // Web Share API with files - works on iOS Safari 15+ and Android Chrome
   if (typeof navigator.share === "function" && navigator.canShare?.({ files: [file] })) {
     await navigator.share({
       files: [file],
-      title: `${link.title} — ${link.artist}`,
+      title: `${link.title} - ${link.artist}`,
     });
     return;
   }
@@ -390,7 +390,7 @@ export default function SmartLinkPage() {
     try {
       await shareToStory(link);
     } catch (e: any) {
-      // User cancelled share sheet — not an error
+      // User cancelled share sheet - not an error
       if (e?.name !== "AbortError") console.error("Story share failed", e);
     } finally {
       setGeneratingStory(false);
@@ -398,7 +398,7 @@ export default function SmartLinkPage() {
   }
 
   useEffect(() => {
-    if (link) document.title = `${link.title} — ${link.artist}`;
+    if (link) document.title = `${link.title} - ${link.artist}`;
   }, [link]);
 
   const activePlatforms = link ? PLATFORMS.filter(p => link[p.key]) : [];
@@ -566,7 +566,7 @@ export default function SmartLinkPage() {
             )}
           </button>
           <p className="text-center text-[10px] mt-2" style={{ color: "rgba(255,255,255,0.18)" }}>
-            {canNativeShare ? "Otvara Instagram — izaberi Stories" : "1080×1920 PNG · spreman za Instagram priču"}
+            {canNativeShare ? "Otvara Instagram - izaberi Stories" : "1080×1920 PNG · spreman za Instagram priču"}
           </p>
         </div>
 

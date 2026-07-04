@@ -50,7 +50,7 @@ function GoogleAuthDivider() {
 }
 
 // useGoogleLogin calls window.google.accounts.oauth2.initTokenClient with the client ID as soon as
-// the GSI script loads, and that call throws synchronously if the ID is empty — crashing the tree
+// the GSI script loads, and that call throws synchronously if the ID is empty - crashing the tree
 // via React's error boundary. So the hook must never be called at all when unconfigured, not just
 // gated behind a click handler. Hence two separate components instead of one conditional branch.
 function GoogleAuthButtonUnconfigured({ label }: { label: string }) {
@@ -625,7 +625,7 @@ export default function AuthPage() {
   return (
     <>
       <SEO
-        title="Prijava i Registracija — Studio LeFlow"
+        title="Prijava i Registracija - Studio LeFlow"
         description="Prijavite se ili kreirajte nalog na Studio LeFlow platformi."
         noIndex={true}
       />

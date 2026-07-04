@@ -304,7 +304,7 @@ export default function IgraPage() {
         <div className="space-y-8">
           {/* Play section */}
           <div className="flex flex-col items-center gap-6 pt-4">
-            {/* Sound bars — bigger and more dramatic */}
+            {/* Sound bars - bigger and more dramatic */}
             <div className="flex items-end justify-center gap-1.5 h-12">
               {SOUND_BAR_DELAYS.map((delay, i) => (
                 <div
@@ -416,7 +416,7 @@ export default function IgraPage() {
               {guessMutation.isPending ? "Proveravam..." : "Potvrdi odgovor →"}
             </Button>
             <p className="text-xs text-center text-muted-foreground">
-              ⚠️ Jedan pokušaj — razmisli pre nego što odgovoriš
+              ⚠️ Jedan pokušaj - razmisli pre nego što odgovoriš
             </p>
           </div>
         </div>
@@ -479,7 +479,7 @@ export default function IgraPage() {
   return (
     <div className="min-h-screen">
       <SEO
-        title="Pogodi Pesmu — Studio LeFlow"
+        title="Pogodi Pesmu - Studio LeFlow"
         description="Dnevna igra: pogodi pesmu iz 1 sekunde!"
         noIndex={false}
       />
@@ -529,7 +529,7 @@ export default function IgraPage() {
             transition={{ delay: 0.1 }}
             className="text-white/60 text-base md:text-lg"
           >
-            Čuješ 1 sekundu — možeš li da pogodiš?
+            Čuješ 1 sekundu - možeš li da pogodiš?
           </motion.p>
         </div>
       </div>
@@ -537,7 +537,7 @@ export default function IgraPage() {
       <div className="container mx-auto px-4 max-w-4xl py-8">
         <div className="grid lg:grid-cols-5 gap-6">
 
-          {/* Left: game — 3/5 */}
+          {/* Left: game - 3/5 */}
           <div className="lg:col-span-3 space-y-4">
 
             {/* Instructions accordion */}
@@ -568,7 +568,7 @@ export default function IgraPage() {
                       <ol className="space-y-0">
                         {[
                           { text: <>Svaki dan nova pesma. Igra se otvara u određeno vreme.</> },
-                          { text: <>Pritisni <strong className="text-foreground">▶ Pusti</strong> — čuješ <strong className="text-foreground">1 sekundu</strong>. Imaš <strong className="text-foreground">3 slušanja</strong>.</> },
+                          { text: <>Pritisni <strong className="text-foreground">▶ Pusti</strong> - čuješ <strong className="text-foreground">1 sekundu</strong>. Imaš <strong className="text-foreground">3 slušanja</strong>.</> },
                           { text: <>Upiši naziv pesme i potvrdi. Imaš samo <strong className="text-foreground">1 pokušaj</strong>.</> },
                           { text: <>Tačno = <strong className="text-foreground">+10 poena</strong>. Nedeljni lider osvaja nagradu!</> },
                         ].map(({ text }, i) => (
@@ -612,7 +612,7 @@ export default function IgraPage() {
             </div>
           </div>
 
-          {/* Right: leaderboard — 2/5, sticky */}
+          {/* Right: leaderboard - 2/5, sticky */}
           <div className="lg:col-span-2">
             <div className="sticky top-20">
               {leaderboardData ? (

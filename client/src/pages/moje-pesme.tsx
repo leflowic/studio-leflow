@@ -152,7 +152,7 @@ export default function MojePesme() {
                 </div>
                 <h1 className="text-3xl md:text-4xl font-bold tracking-tight mb-2">Moje Pesme</h1>
                 <p className="text-muted-foreground text-sm max-w-md">
-                  Podelite vaše omiljene YouTube pesme sa zajednicom — jedna pesma na 36 sati
+                  Podelite vaše omiljene YouTube pesme sa zajednicom - jedna pesma na 36 sati
                 </p>
               </div>
               <Button

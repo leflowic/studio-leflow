@@ -318,7 +318,7 @@ export default function ChatInterface({ selectedUserId, onBack }: ChatInterfaceP
   }, [messageText, DRAFT_KEY]);
 
   // Clear draft key when switching conversations (runs on unmount)
-  useEffect(() => () => { /* draft stays — intentional */ }, [selectedUserId]);
+  useEffect(() => () => { /* draft stays - intentional */ }, [selectedUserId]);
 
   useEffect(() => { scrollToBottom(); }, [messages, scrollToBottom]);
 
@@ -746,7 +746,7 @@ export default function ChatInterface({ selectedUserId, onBack }: ChatInterfaceP
                             : "bg-card border border-border/60 text-foreground rounded-bl-md",
                           message.deleted && "opacity-50"
                         )}>
-                          {/* Reply quote — clickable, jumps to original */}
+                          {/* Reply quote - clickable, jumps to original */}
                           {!message.deleted && message.replyToId && (
                             <button
                               type="button"

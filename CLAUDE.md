@@ -171,13 +171,15 @@ There are no automated tests in this project.
 - Railway auto-deploys from GitHub `main` branch.
 - `railway.toml`: build = `npm run build`, deploy = `npx drizzle-kit push --force`, start = `npm run start`.
 - `nixpacks.toml` must use `npm ci --include=dev` so devDependencies (esbuild, tsc, etc.) are available at build time.
-- `APP_URL`, `DATABASE_URL`, `SESSION_SECRET`, `RESEND_API_KEY`, `CLOUDINARY_*`, `GOOGLE_CLIENT_ID`, `VITE_GOOGLE_CLIENT_ID` env vars must be set in Railway.
+- `APP_URL`, `DATABASE_URL`, `SESSION_SECRET`, `RESEND_API_KEY`, `CLOUDINARY_*`, `GOOGLE_CLIENT_ID`, `VITE_GOOGLE_CLIENT_ID` env vars must be set in Railway. Optional: `VITE_GA_MEASUREMENT_ID` (GA4 — analytics silently disabled without it).
 
 **SEO:**
 - **The org schema (`MusicRecordingStudio` + `WebSite`, `@graph` format) is baked statically into `client/index.html`** so crawlers see it without executing JS — it is NOT injected by React. Keep business facts (phone, address, hours, services) in sync there.
 - `client/src/components/SEO.tsx` — sets `<title>`, meta tags, og/twitter tags, canonical URL via `useEffect`. Add `<SEO>` to every public page. It manages page-specific JSON-LD only, in **id-scoped scripts** (`#seo-page-schema`, `#seo-breadcrumb`) — never query ld+json scripts by `type` alone, that would clobber the static org schema in `index.html`.
 - BreadcrumbList schema is auto-generated for paths listed in `BREADCRUMB_NAMES` in `SEO.tsx` (`/usluge`, `/projekti`, `/faq`, `/kontakt`, `/tim`, `/pravila`) — add new public pages to that map, no per-page code needed.
 - Pre-built page schemas exported as `pageStructuredData`: `services`, `contact`, `portfolio`, `faq` (FAQPage schema — enables Google rich snippets). Pass via `structuredData={pageStructuredData.faq}` etc.
+- **Server-side og/twitter meta (`server/seo-meta.ts`)** — social crawlers don't execute JS, so React-set meta is invisible to them. In production, `registerHtmlMetaRoutes` (called just before `serveStatic` in `server/index.ts`) rewrites title/description/og/twitter/canonical in the served `index.html` for `/l/:slug` (title/cover from the smart link in DB, `og:type music.song`) and the static public pages. `STATIC_PAGE_META` in that file must stay in sync with each page's `<SEO>` props — update both when changing page titles/descriptions. Dev mode is untouched (crawlers only hit production).
+- **Analytics (GA4):** `client/src/lib/analytics.ts` — loads gtag only when `import.meta.env.PROD && VITE_GA_MEASUREMENT_ID`. Auto page_view is disabled (`send_page_view: false`); the Router in `App.tsx` reports page views on every wouter location change instead (SPA navigation doesn't reload the page). CSP allowlists `www.googletagmanager.com` (script-src, connect-src) and `*.google-analytics.com` (connect-src).
 - Business email in structured data is `podrska@studioleflow.com` — never `leflowbusiness@gmail.com`.
 - `canonicalUrl` prop accepts relative paths (e.g. `"/faq"`) — the component converts to absolute automatically. Defaults to `window.location.href` (minus query/hash) if omitted.
 - Pages that must use `<SEO noIndex={true}>`: `/uslovi-koriscenja`, `/prijava`, `/registracija`. Protected/private pages (`/admin`, `/settings`, `/dashboard`, `/inbox`, `/igra`, `/zajednica`, `/moje-pesme`) don't need `noIndex` — they are already Disallowed in `robots.txt` and behind auth.
@@ -277,6 +279,7 @@ The owner explicitly dislikes these patterns. Never introduce them:
 - **Per-element FadeInWhenVisible** — wrapping every individual `<li>` or small element in its own animation. Animate sections, not atoms
 - **Stat banner rows** — horizontal row of abstract numbers/metrics that don't mean anything concrete
 - **Emoji as icons** — use Lucide icon components, never emoji characters as UI icons
+- **Em-dash (—) in user-facing copy** — the owner considers it an AI-slop marker. Use a plain hyphen "-" instead, everywhere: page copy, titles/meta, toasts, server error messages, email templates, PDFs. (A 2026-07 sweep replaced all 123 occurrences — don't reintroduce them.)
 
 **Design system (2026-07 premium pass):**
 - **Dark theme is the default** (`theme-provider.tsx` `defaultTheme="dark"`); the user's manual toggle choice (localStorage `theme`) still wins. All pages must render correctly dark-first — never hardcode light-only colors (`bg-white`, `text-black`, light grays); use theme tokens.

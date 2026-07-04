@@ -204,7 +204,7 @@ export default function UserProfile() {
   return (
     <>
       <SEO
-        title={`${profileUser.username} — Studio LeFlow`}
+        title={`${profileUser.username} - Studio LeFlow`}
         description={`Profil korisnika ${profileUser.username} na Studio LeFlow zajednici.`}
         noIndex={true}
       />

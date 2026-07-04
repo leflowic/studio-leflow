@@ -1,6 +1,6 @@
 import { motion } from "framer-motion";
 
-// Subtle audio-waveform section divider — brand motif for the studio.
+// Subtle audio-waveform section divider - brand motif for the studio.
 // Bars are static heights (symmetric), revealed with a single staggered
 // scale-in when the divider enters the viewport.
 const BARS = [4, 10, 7, 16, 9, 22, 12, 28, 14, 22, 9, 16, 7, 10, 4];

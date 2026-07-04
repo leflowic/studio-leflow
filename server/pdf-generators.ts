@@ -137,7 +137,7 @@ function drawLicenseFooter(doc: PDFKit.PDFDocument, licenseNumber: string, verif
   doc.moveDown(0.5);
 
   doc.fontSize(8).font('DejaVuSans-Bold').fillColor('#222222');
-  doc.text('DIGITALNA LICENCA — Studio LeFlow', leftMargin, doc.y, { width: contentWidth, align: 'center' });
+  doc.text('DIGITALNA LICENCA - Studio LeFlow', leftMargin, doc.y, { width: contentWidth, align: 'center' });
   doc.moveDown(0.4);
   doc.fontSize(8).font('DejaVuSans').fillColor('#444444');
   doc.text(`Broj licence: ${licenseNumber}`, { width: contentWidth, align: 'center' });

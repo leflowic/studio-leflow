@@ -468,7 +468,7 @@ function SettingsTab() {
               </div>
               <div>
                 <p className="font-medium text-sm">podrska@studioleflow.com</p>
-                <p className="text-xs text-muted-foreground">Zoho Mail — Studio LeFlow</p>
+                <p className="text-xs text-muted-foreground">Zoho Mail - Studio LeFlow</p>
               </div>
             </div>
             <Button

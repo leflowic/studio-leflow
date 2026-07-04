@@ -8,7 +8,7 @@ import { SEO, pageStructuredData } from "@/components/SEO";
 const services = [
   {
     title: "Snimanje & Mix/Mastering",
-    description: "Profesionalno snimanje vokala i instrumenata uz kompletan signal chain — od ulaska u booth do finalnog mastered fajla.",
+    description: "Profesionalno snimanje vokala i instrumenata uz kompletan signal chain - od ulaska u booth do finalnog mastered fajla.",
     features: [
       "Warm Audio WA-47 kondenzatorski mikrofon",
       "Universal Audio Apollo Twin X interface",
@@ -21,7 +21,7 @@ const services = [
   },
   {
     title: "Instrumentali & Produkcija",
-    description: "Custom bitovi i kompletna muzička produkcija pesama — od ideje do gotovog backing tracka.",
+    description: "Custom bitovi i kompletna muzička produkcija pesama - od ideje do gotovog backing tracka.",
     features: [
       "Profesionalni synthesizeri i MIDI kontroleri",
       "Žanrovi: Hip-Hop, Pop, R&B, Trap, Balkan",
@@ -34,7 +34,7 @@ const services = [
   },
   {
     title: "Video Produkcija",
-    description: "Snimanje i postprodukcija profesionalnih muzičkih spotova — od koncepta do finalne verzije optimizovane za YouTube.",
+    description: "Snimanje i postprodukcija profesionalnih muzičkih spotova - od koncepta do finalne verzije optimizovane za YouTube.",
     features: [
       "4K video snimanje sa profesionalnom opremom",
       "Kreativni koncept i scenario",
@@ -50,7 +50,7 @@ const services = [
 const extras = [
   { title: "Voice Over & Podcast", description: "Snimanje glasovnih reklama, podkast epizoda i audio knjiga u profesionalnom okruženju." },
   { title: "Demo snimanje", description: "Brzo snimanje demo verzije pesme za audicioniranje, pitch deck ili lični arhiv." },
-  { title: "Aranžman & Orkestracija", description: "Aranžiranje gotove pesme — dodavanje instrumenata, harmonija i produkcijskih elemenata." },
+  { title: "Aranžman & Orkestracija", description: "Aranžiranje gotove pesme - dodavanje instrumenata, harmonija i produkcijskih elemenata." },
 ];
 
 export default function UslugePage() {
@@ -58,7 +58,7 @@ export default function UslugePage() {
     <div className="min-h-screen">
       <SEO
         title="Usluge - Studio LeFlow | Snimanje, Mix/Mastering, Instrumentali, Video Spotovi Beograd"
-        description="Profesionalne usluge muzičke produkcije u Beogradu: snimanje vokala, miks i mastering, custom instrumentali, video spotovi. Studio LeFlow — WA-47, Apollo Twin X, UAD plugins."
+        description="Profesionalne usluge muzičke produkcije u Beogradu: snimanje vokala, miks i mastering, custom instrumentali, video spotovi. Studio LeFlow - WA-47, Apollo Twin X, UAD plugins."
         keywords={[
           "snimanje vokala beograd cena",
           "mix mastering beograd",
@@ -85,7 +85,7 @@ export default function UslugePage() {
           </FadeInWhenVisible>
           <FadeInWhenVisible delay={0.1}>
             <p className="text-lg text-muted-foreground max-w-xl mb-8">
-              Snimanje vokala, mix i mastering, custom instrumentali, video spotovi i više — u jednom studiju u Beogradu.
+              Snimanje vokala, mix i mastering, custom instrumentali, video spotovi i više - u jednom studiju u Beogradu.
             </p>
           </FadeInWhenVisible>
           <FadeInWhenVisible delay={0.2}>
@@ -117,7 +117,7 @@ export default function UslugePage() {
                         <ul className="space-y-3 w-full">
                           {service.features.map((f) => (
                             <li key={f} className="flex items-start gap-3">
-                              <span className="text-muted-foreground mt-0.5 flex-shrink-0">—</span>
+                              <span className="text-muted-foreground mt-0.5 flex-shrink-0">-</span>
                               <span>{f}</span>
                             </li>
                           ))}
@@ -159,7 +159,7 @@ export default function UslugePage() {
           </FadeInWhenVisible>
           <FadeInWhenVisible delay={0.1}>
             <p className="text-muted-foreground mb-8 max-w-lg">
-              Besplatna konsultacija — dođite u studio ili pišite pa dogovorimo šta vam treba.
+              Besplatna konsultacija - dođite u studio ili pišite pa dogovorimo šta vam treba.
             </p>
           </FadeInWhenVisible>
           <FadeInWhenVisible delay={0.2}>

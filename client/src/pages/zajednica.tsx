@@ -156,7 +156,7 @@ export default function Zajednica() {
         <div className="container mx-auto px-4 max-w-6xl py-8">
           <div className="grid lg:grid-cols-5 gap-8">
 
-            {/* Main column — 3/5 width */}
+            {/* Main column - 3/5 width */}
             <div className="lg:col-span-3 space-y-4">
 
               {/* Tab switcher */}
@@ -313,7 +313,7 @@ export default function Zajednica() {
               )}
             </div>
 
-            {/* Sidebar — 2/5 width, sticky */}
+            {/* Sidebar - 2/5 width, sticky */}
             <div className="lg:col-span-2">
               <div className="sticky top-20 space-y-5">
 

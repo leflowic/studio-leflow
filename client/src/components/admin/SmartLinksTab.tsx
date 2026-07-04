@@ -106,7 +106,7 @@ export function SmartLinksTab() {
   const setOpen = (v: boolean) => { ssSet("sl_open", v); setOpenRaw(v); };
 
   useEffect(() => {
-    console.log("[SmartLinks] MOUNTED — open:", ssGet("sl_open", false));
+    console.log("[SmartLinks] MOUNTED - open:", ssGet("sl_open", false));
     return () => console.log("[SmartLinks] UNMOUNTED");
   }, []);
 
@@ -406,7 +406,7 @@ export function SmartLinksTab() {
             </div>
             <div>
               <h2 className="text-lg font-bold leading-tight">Smart Links</h2>
-              <p className="text-[11px] text-muted-foreground leading-none mt-0.5">Jedna pesma — sve platforme</p>
+              <p className="text-[11px] text-muted-foreground leading-none mt-0.5">Jedna pesma - sve platforme</p>
             </div>
           </div>
           <button

@@ -2,11 +2,15 @@ import { createRoot } from "react-dom/client";
 import App from "./App";
 import "./index.css";
 import { registerServiceWorker } from "./lib/registerServiceWorker";
+import { initAnalytics } from "./lib/analytics";
 import { disableReactDevTools } from "@fvilers/disable-react-devtools";
 import DisableDevtool from "disable-devtool";
 
 // Register PWA Service Worker
 registerServiceWorker();
+
+// Google Analytics (production only, requires VITE_GA_MEASUREMENT_ID)
+initAnalytics();
 
 // ===== DEBUG PROTECTION (Production Only) =====
 if (import.meta.env.PROD) {

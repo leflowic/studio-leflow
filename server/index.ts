@@ -3,6 +3,7 @@ import compression from "compression";
 import path from "path";
 import { registerRoutes } from "./routes";
 import { setupVite, serveStatic, log } from "./vite";
+import { registerHtmlMetaRoutes } from "./seo-meta";
 import { seedCmsContent } from "./seed";
 import { WebSocketServer, WebSocket } from "ws";
 import { storage } from "./storage";
@@ -87,7 +88,7 @@ async function runMigrations() {
       ALTER TABLE daily_challenges
         ADD COLUMN IF NOT EXISTS clip_url TEXT;
     `);
-    // Drop legacy youtube_url column (removed from schema — was NOT NULL, causes insert failures)
+    // Drop legacy youtube_url column (removed from schema - was NOT NULL, causes insert failures)
     await client.query(`
       ALTER TABLE daily_challenges
         DROP COLUMN IF EXISTS youtube_url;
@@ -102,7 +103,7 @@ async function runMigrations() {
     log(`[Migrations] Warning on core migrations: ${err.message}`, 'express');
   }
 
-  // Client Portal tables — separate try so they always run even if earlier migrations fail
+  // Client Portal tables - separate try so they always run even if earlier migrations fail
   try {
     await client.query(`
       CREATE TABLE IF NOT EXISTS client_portals (
@@ -143,7 +144,7 @@ async function runMigrations() {
     log(`[Migrations] Warning on portal tables: ${err.message}`, 'express');
   }
 
-  // Messaging feature extensions — separate try so they always run
+  // Messaging feature extensions - separate try so they always run
   try {
     await client.query(`
       ALTER TABLE messages ADD COLUMN IF NOT EXISTS edited_at TIMESTAMP;
@@ -347,12 +348,12 @@ app.use((req, res, next) => {
   res.setHeader(
     'Content-Security-Policy',
     "default-src 'self'; " +
-    "script-src 'self' 'unsafe-eval' 'unsafe-inline' https://accounts.google.com; " +
+    "script-src 'self' 'unsafe-eval' 'unsafe-inline' https://accounts.google.com https://www.googletagmanager.com; " +
     "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; " +
     "font-src 'self' https://fonts.gstatic.com; " +
     "img-src 'self' data: https:; " +
     "media-src 'self' https://res.cloudinary.com; " +
-    "connect-src 'self' https://api.cloudinary.com https://res.cloudinary.com https://accounts.google.com; " +
+    "connect-src 'self' https://api.cloudinary.com https://res.cloudinary.com https://accounts.google.com https://www.googletagmanager.com https://*.google-analytics.com; " +
     "frame-src 'self' https://www.youtube.com https://www.youtube-nocookie.com https://accounts.google.com; " +
     "frame-ancestors 'none';"
   );
@@ -524,6 +525,9 @@ app.use((req, res, next) => {
       await setupVite(app, server);
     } else {
       log('Setting up production static file serving', 'express');
+      // Per-route og/twitter meta for social crawlers - must be registered before
+      // the SPA catch-all in serveStatic.
+      registerHtmlMetaRoutes(app);
       serveStatic(app);
     }
 
@@ -582,14 +586,14 @@ app.use((req, res, next) => {
 
     wss.on('connection', async (ws: WebSocket, _req) => {
       try {
-        // Auth happens via JWT in the initial 'auth' message — no cookie required
+        // Auth happens via JWT in the initial 'auth' message - no cookie required
         let userId: number | null = null;
 
         ws.on('message', async (data) => {
           try {
             const message = JSON.parse(data.toString());
 
-            // Authentication handshake — validate JWT token
+            // Authentication handshake - validate JWT token
             if (message.type === 'auth' && !userId) {
               const { verifyToken } = await import('./jwt-auth');
               const token = message.token;

@@ -269,7 +269,7 @@ export default function Settings() {
           </div>
         </FadeInWhenVisible>
 
-        {/* Profile + Password — side by side on md+ */}
+        {/* Profile + Password - side by side on md+ */}
         <div className="grid md:grid-cols-2 gap-6">
 
           {/* Profile form */}
@@ -400,7 +400,7 @@ export default function Settings() {
           </FadeInWhenVisible>
         )}
 
-        {/* Account info — info pills */}
+        {/* Account info - info pills */}
         <FadeInWhenVisible>
           <PanelCard title="Informacije o nalogu" icon={ShieldCheck} iconBg="bg-muted" iconColor="text-muted-foreground" bodyClassName="pt-2">
             <div className="grid sm:grid-cols-3 gap-3">

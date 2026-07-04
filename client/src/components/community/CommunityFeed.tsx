@@ -482,7 +482,7 @@ function ImageCropModal({ src, onApply, onCancel }: {
         <div className="space-y-1.5">
           <div className="flex justify-between text-xs text-muted-foreground">
             <span>Zum</span>
-            <span>{natural.w > 0 ? `${Math.round(zoom / minZoom * 100)}%` : "—"}</span>
+            <span>{natural.w > 0 ? `${Math.round(zoom / minZoom * 100)}%` : "-"}</span>
           </div>
           <input
             type="range"
@@ -637,7 +637,7 @@ function CreatePost({ userId, onCreated }: { userId: number; onCreated: (post: F
             <div className="text-muted-foreground text-sm">
               <Upload className="w-5 h-5 mx-auto mb-1 opacity-50" />
               <span>Klikni da uploaduješ audio demo</span>
-              <p className="text-xs mt-0.5 opacity-60">MP3, WAV, OGG — max 50MB</p>
+              <p className="text-xs mt-0.5 opacity-60">MP3, WAV, OGG - max 50MB</p>
             </div>
           )}
           <input ref={audioInputRef} type="file" accept="audio/*" className="hidden"

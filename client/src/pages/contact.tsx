@@ -82,7 +82,7 @@ export default function Contact() {
       <div className="container mx-auto px-4 max-w-6xl py-10">
         <div className="grid lg:grid-cols-5 gap-10">
 
-          {/* Form — 3/5 */}
+          {/* Form - 3/5 */}
           <motion.div
             initial={{ opacity: 0, y: 16 }}
             animate={{ opacity: 1, y: 0 }}
@@ -256,7 +256,7 @@ export default function Contact() {
             </div>
           </motion.div>
 
-          {/* Sidebar — 2/5 */}
+          {/* Sidebar - 2/5 */}
           <motion.div
             initial={{ opacity: 0, y: 16 }}
             animate={{ opacity: 1, y: 0 }}
@@ -314,8 +314,8 @@ export default function Contact() {
             <div className="rounded-2xl border border-border/60 bg-card p-6 space-y-3">
               <h3 className="font-bold text-sm">Radno Vreme</h3>
               {[
-                { day: "Ponedeljak — Petak", time: "10:00 — 22:00" },
-                { day: "Subota — Nedjelja", time: "11:00 — 20:00" },
+                { day: "Ponedeljak - Petak", time: "10:00 - 22:00" },
+                { day: "Subota - Nedjelja", time: "11:00 - 20:00" },
               ].map(({ day, time }) => (
                 <div key={day} className="flex items-center justify-between text-sm">
                   <span className="text-muted-foreground">{day}</span>
@@ -334,11 +334,11 @@ export default function Contact() {
                 },
                 {
                   q: "Koliko košta?",
-                  a: "Svaki projekat je različit — pošaljite upit i vraćamo tačnu ponudu u roku od 24h.",
+                  a: "Svaki projekat je različit - pošaljite upit i vraćamo tačnu ponudu u roku od 24h.",
                 },
                 {
                   q: "Mogu li da dođem samo na razgovor?",
-                  a: "Naravno — prva konsultacija je besplatna i bez obaveze.",
+                  a: "Naravno - prva konsultacija je besplatna i bez obaveze.",
                 },
               ].map(({ q, a }) => (
                 <div key={q} className="space-y-1">

@@ -158,14 +158,14 @@ export function passwordResetEmail(code: string): string {
     ${paragraph('Primili smo zahtev za resetovanje Vaše lozinke. Unesite kod ispod da nastavite:')}
     ${codeBlock(code, 'Kod za Reset Lozinke')}
     ${paragraph('Kod važi <strong style="color:#cccccc;">15 minuta</strong>. Nakon toga biće automatski poništen.')}
-    ${notice('Ako niste zatražili resetovanje lozinke, Vaš nalog je bezbedan — ignorišite ovaj email.')}
+    ${notice('Ako niste zatražili resetovanje lozinke, Vaš nalog je bezbedan - ignorišite ovaj email.')}
   `);
 }
 
 // ─── 4. Admin 2FA login email ────────────────────────────────────────────────
 export function adminLoginEmail(code: string): string {
   return wrap(`
-    ${heading('Admin Prijava — Verifikacija')}
+    ${heading('Admin Prijava - Verifikacija')}
     ${paragraph('Detektovana je prijava na admin panel. Unesite kod ispod da potvrdite identitet:')}
     ${codeBlock(code, 'Admin Verifikacioni Kod')}
     ${paragraph('Kod važi <strong style="color:#cccccc;">15 minuta</strong>.')}
@@ -247,7 +247,7 @@ export function licenseDeliveryEmail(data: {
 
   return wrap(`
     ${heading('Vaša Licenca Je Spremna')}
-    ${paragraph('U prilogu se nalazi Vaša digitalna licenca od Studio LeFlow. Čuvajte PDF dokument — on predstavlja zvanični dokaz o izdatoj licenci.')}
+    ${paragraph('U prilogu se nalazi Vaša digitalna licenca od Studio LeFlow. Čuvajte PDF dokument - on predstavlja zvanični dokaz o izdatoj licenci.')}
     <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="background:#1a1a1a;border:1px solid #222;border-radius:10px;padding:4px 16px;margin:24px 0;">
       <tbody>
         ${infoRow('Broj licence', data.contractNumber)}

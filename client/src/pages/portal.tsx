@@ -183,7 +183,7 @@ function WaveformPlayer({ version, comments, onAddComment, addingComment, onSeek
           {!isLoading && duration > 0 && comments.map(c => (
             <button
               key={c.id}
-              title={`${formatTime(c.timestampSeconds)} — ${c.authorName}: ${c.text}`}
+              title={`${formatTime(c.timestampSeconds)} - ${c.authorName}: ${c.text}`}
               onClick={(e) => { e.stopPropagation(); seekToComment(c.timestampSeconds); }}
               className="absolute top-1/2 -translate-y-1/2 -translate-x-1/2 group z-10"
               style={{ left: `${(c.timestampSeconds / duration) * 100}%` }}
