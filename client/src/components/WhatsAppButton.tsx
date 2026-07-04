@@ -61,7 +61,7 @@ export function WhatsAppButton() {
     <>
       {dragging && (
         <div
-          className={`fixed top-0 left-0 right-0 z-50 flex items-center justify-center gap-2 pointer-events-none transition-all duration-150 ${
+          className={`fixed top-0 left-0 right-0 z-[60] flex items-center justify-center gap-2 pointer-events-none transition-all duration-150 ${
             nearDismiss
               ? "h-24 bg-red-500/80 backdrop-blur-sm"
               : "h-24 bg-black/30 backdrop-blur-sm"
@@ -69,7 +69,7 @@ export function WhatsAppButton() {
         >
           <X className={`w-5 h-5 transition-colors ${nearDismiss ? "text-white" : "text-white/60"}`} />
           <span className={`text-sm font-medium transition-colors ${nearDismiss ? "text-white" : "text-white/60"}`}>
-            {nearDismiss ? "Pusti da sklopiš" : "Prevuci ovde da sklopiš"}
+            {nearDismiss ? "Pusti da skloniš" : "Prevuci ovde da skloniš"}
           </span>
         </div>
       )}
@@ -87,8 +87,9 @@ export function WhatsAppButton() {
           cursor: dragging ? "grabbing" : "grab",
           userSelect: "none",
           touchAction: "none",
+          bottom: "calc(1.5rem + env(safe-area-inset-bottom))",
         }}
-        className="fixed bottom-6 right-6 z-40 flex items-center justify-center w-14 h-14 bg-[#25D366] hover:bg-[#22c35e] text-white rounded-full shadow-lg hover:shadow-xl transition-colors active:scale-[0.98] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white focus-visible:ring-offset-2 focus-visible:ring-offset-background"
+        className="fixed right-6 z-40 flex items-center justify-center w-14 h-14 bg-[#25D366] hover:bg-[#22c35e] text-white rounded-full shadow-lg hover:shadow-xl transition-colors active:scale-[0.98] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white focus-visible:ring-offset-2 focus-visible:ring-offset-background"
         aria-label="Kontaktirajte nas na WhatsApp"
       >
         <svg viewBox="0 0 24 24" className="w-7 h-7 fill-current pointer-events-none">

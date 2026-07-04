@@ -34,7 +34,11 @@ export function InstallPrompt() {
   }
 
   return (
-    <div className="fixed bottom-4 left-4 right-4 z-50 animate-in slide-in-from-bottom-5" data-testid="pwa-install-prompt">
+    <div
+      className="fixed left-4 right-4 z-50 animate-in slide-in-from-bottom-5"
+      style={{ bottom: "calc(1rem + env(safe-area-inset-bottom))" }}
+      data-testid="pwa-install-prompt"
+    >
       <Card className="border-primary/20 bg-card/95 backdrop-blur-sm">
         <CardContent className="p-4">
           <div className="flex items-start gap-3">

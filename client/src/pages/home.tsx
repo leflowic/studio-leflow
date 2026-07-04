@@ -429,7 +429,7 @@ export default function Home() {
               animate={{ opacity: 1 }}
               transition={{ duration: 0.8, delay: 1.1 }}
             >
-              Odgovaramo u roku od 24h&ensp;·&ensp;2 besplatne revizije&ensp;·&ensp;Od 2019.
+              Odgovaramo u roku od 24h&ensp;·&ensp;2 besplatne revizije&ensp;·&ensp;Od 2026.
             </motion.p>
 
             {/* Upcoming game announcement */}
@@ -757,7 +757,7 @@ export default function Home() {
             <p className="text-primary text-sm font-semibold uppercase tracking-[0.15em] mb-3">Recenzije</p>
             <h2 className="text-3xl font-bold mb-4">Šta kažu klijenti</h2>
             <p className="text-muted-foreground mb-8 max-w-md mx-auto">
-              Više stotina pesama snimljeno. Pročitajte iskustva klijenata direktno na Google-u.
+              Pročitajte iskustva klijenata direktno na Google-u.
             </p>
             <a
               href="https://www.google.com/search?q=Studio+LeFlow+Beograd"

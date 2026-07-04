@@ -164,7 +164,7 @@ function Router() {
   return (
     <>
       <Header />
-      <main className="min-h-[calc(100vh-200px)] pt-16">
+      <main className="min-h-[calc(100vh-200px)] pt-[calc(4rem+env(safe-area-inset-top))]">
         <ChunkErrorBoundary>
         <Suspense fallback={
           <div className="flex items-center justify-center min-h-[60vh]">

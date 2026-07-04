@@ -78,7 +78,7 @@ export function Header() {
 
   return (
     <>
-      <header className={`fixed top-0 left-0 right-0 z-50 transition-all duration-300 ${
+      <header className={`fixed top-0 left-0 right-0 z-50 pt-[env(safe-area-inset-top)] transition-all duration-300 ${
         scrolled
           ? "bg-background/95 backdrop-blur-xl border-b border-border/80 shadow-sm"
           : "bg-background/70 backdrop-blur-md border-b border-transparent"
@@ -293,7 +293,7 @@ export function Header() {
             <motion.div
               initial={{ x: "100%" }} animate={{ x: 0 }} exit={{ x: "100%" }}
               transition={{ type: "spring", damping: 28, stiffness: 300 }}
-              className="fixed top-0 right-0 bottom-0 z-50 w-[280px] bg-background border-l border-border/60 shadow-2xl lg:hidden flex flex-col"
+              className="fixed top-0 right-0 bottom-0 z-50 w-[280px] bg-background border-l border-border/60 shadow-2xl lg:hidden flex flex-col pt-[env(safe-area-inset-top)] pb-[env(safe-area-inset-bottom)]"
               data-testid="mobile-menu"
             >
               <div className="flex items-center justify-between p-4 border-b border-border/60">

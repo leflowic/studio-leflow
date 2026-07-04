@@ -58,7 +58,7 @@ export function Footer() {
               <span className="text-lg font-bold font-[Figtree]">Studio LeFlow</span>
             </div>
             <p className="text-sm text-muted-foreground leading-relaxed mb-6 max-w-xs">
-              Profesionalni muzički studio u Beogradu. Snimanje, mix/mastering, instrumentali i video produkcija od 2019.
+              Profesionalni muzički studio u Beogradu. Snimanje, mix/mastering, instrumentali i video produkcija od 2026.
             </p>
             <div className="space-y-2.5">
               {contact.map(({ icon: Icon, label, href, external }) => (

@@ -27,7 +27,7 @@ export function CookieConsent() {
   if (!visible) return null;
 
   return (
-    <div className="fixed bottom-0 left-0 right-0 z-50 p-4 bg-card border-t border-border shadow-2xl animate-in slide-in-from-bottom-4 duration-300">
+    <div className="fixed bottom-0 left-0 right-0 z-50 p-4 pb-[calc(1rem+env(safe-area-inset-bottom))] bg-card border-t border-border shadow-2xl animate-in slide-in-from-bottom-4 duration-300">
       <div className="max-w-7xl mx-auto flex flex-col sm:flex-row items-start sm:items-center gap-4">
         <p className="flex-1 text-sm text-muted-foreground">
           Koristimo kolačiće kako bismo poboljšali vaše iskustvo na sajtu. Nastavkom korišćenja sajta prihvatate njihovu upotrebu.{" "}
