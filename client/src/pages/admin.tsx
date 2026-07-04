@@ -1503,10 +1503,17 @@ function DashboardTab() {
 
 function UsersTab() {
   const { toast } = useToast();
+  const [searchQuery, setSearchQuery] = useState("");
 
   const { data: users, isLoading } = useQuery<User[]>({
     queryKey: ["/api/admin/users"],
   });
+
+  const filteredUsers = users?.filter(u => {
+    const q = searchQuery.trim().toLowerCase();
+    if (!q) return true;
+    return u.username.toLowerCase().includes(q) || u.email.toLowerCase().includes(q);
+  }) ?? [];
 
   const banMutation = useMutation({
     mutationFn: async (userId: number) => {
@@ -1637,8 +1644,22 @@ function UsersTab() {
         <CardHeader>
           <CardTitle>Upravljanje Korisnicima</CardTitle>
           <CardDescription>Pregled i upravljanje svim korisnicima</CardDescription>
+          <div className="relative mt-2 max-w-sm">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground pointer-events-none" />
+            <Input
+              type="text"
+              placeholder="Pretraži po imenu ili email-u..."
+              value={searchQuery}
+              onChange={e => setSearchQuery(e.target.value)}
+              className="pl-9"
+              data-testid="input-search-users"
+            />
+          </div>
         </CardHeader>
         <CardContent>
+          {filteredUsers.length === 0 ? (
+            <EmptyState icon={Search} text="Nema korisnika koji odgovaraju pretrazi" compact />
+          ) : (
           <Table data-testid="table-users">
             <TableHeader>
               <TableRow>
@@ -1652,7 +1673,7 @@ function UsersTab() {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {users?.map((user) => (
+              {filteredUsers.map((user) => (
                 <TableRow key={user.id} data-testid={`row-user-${user.id}`}>
                   <TableCell data-testid={`cell-username-${user.id}`}>{user.username}</TableCell>
                   <TableCell data-testid={`cell-email-${user.id}`}>{user.email}</TableCell>
@@ -1802,6 +1823,7 @@ function UsersTab() {
               ))}
             </TableBody>
           </Table>
+          )}
         </CardContent>
       </Card>
     </div>
