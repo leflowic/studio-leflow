@@ -135,6 +135,7 @@ There are no automated tests in this project.
 - Admin: `SmartLinksTab.tsx` — CRUD with the custom portal modal (see Radix Dialog section above). `POST /api/admin/smart-links/fetch-meta` calls the Odesli API (`api.song.link/v1-alpha.1/links`) with an 8s timeout to auto-fill platform URLs from any music link.
 - Cover image upload: `POST /api/upload/smart-link-cover` (requireAdmin) → Cloudinary `studioleflow/smart-links` folder.
 - Maintenance mode allowlist in `server/routes.ts` includes `'/l/'` so smart link pages are accessible during maintenance.
+- Social-share previews for `/l/:slug` (title/artist/cover in og tags) are injected server-side by `server/seo-meta.ts` — see the SEO section. If you add fields that should appear in link previews, update the meta there, not just in `l.tsx`.
 
 **Client Portal:**
 - Tables: `client_portals` (name, clientName, shareToken), `portal_versions` (portalId, versionName, audioUrl, approved), `portal_comments` (versionId, authorName, authorType, timestampSeconds, text, resolved).
