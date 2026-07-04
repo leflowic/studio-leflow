@@ -883,7 +883,7 @@ export default function AuthPage() {
             <motion.img
               src={leflowLogo}
               alt="Studio LeFlow"
-              className="w-32 h-32 relative z-10 dark:invert"
+              className="w-32 h-auto relative z-10 dark:invert object-contain"
               animate={{
                 y: [0, -8, 0],
               }}
