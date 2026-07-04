@@ -65,6 +65,7 @@ There are no automated tests in this project.
 - **The tab menu is NOT a Radix `TabsList`** — it's a grouped sidebar driven by the `ADMIN_NAV` config array in `admin.tsx` (groups: Pregled / Klijenti / Sadržaj / Posao / Marketing / Sistem). Plain `<button>`s call `setActiveTab(value)`; the Radix `<Tabs value>` + `<TabsContent>` state machine is unchanged. To add a tab: add an entry (value, label, Lucide icon) to `ADMIN_NAV` and a `<TabsContent>` pair. Desktop: sticky vertical sidebar; mobile: horizontally scrollable icon bar (same markup, flex direction switch at `lg`).
 - Admin-only API routes go in `server/routes.ts` under `requireAdmin` middleware. Always use `requireAdmin`, never trust `req.jwtUser?.role` manually in route handlers.
 - `GET /api/admin/katastar/:userId` returns `{ user, projects, contracts, invoices }` for the Katastar (client registry) tab.
+- Table search (e.g. `UsersTab`'s username/email filter) is plain client-side `Array.filter` on the already-fetched query data — no server-side search/pagination exists yet for any admin table. Fine at current scale; revisit if a table's dataset grows into the thousands.
 - **Tabs with forms must use `forceMount`** on their `<TabsContent>` to prevent React state loss on tab switch. Radix UI unmounts `TabsContent` by default — any local form state (dates, inputs, uploads) is wiped when the user navigates to another tab and back. `tabs.tsx` has `data-[state=inactive]:hidden` so forceMount content is still visually hidden when inactive. `GameTab` and `SmartLinksTab` both use this.
 
 **Avoiding Radix Dialog FocusTrap bugs:**
@@ -91,17 +92,19 @@ There are no automated tests in this project.
 - Always use `apiRequest()` from `client/src/lib/queryClient.ts` for mutating routes that need auth. Raw `fetch()` with `credentials: "include"` does **not** send the JWT — it only sends cookies, which are not used for auth in this project. This is the most common source of 401 bugs on the frontend.
 - For React Query `useQuery`, the default `queryFn` (via `getQueryFn`) already adds the JWT header — no extra work needed for GET requests.
 
-**Admin file downloads:**
-- Never use `window.open(url)` for admin-only endpoints — it doesn't send `Authorization` headers. Use `fetch()` with `Authorization: Bearer <token>` header, then create a blob URL and trigger download via a temporary `<a>` element.
+**Authenticated file downloads (admin or user-facing):**
+- Never use `window.open(url)` or a plain `<a href>` for any endpoint that requires a JWT — neither sends the `Authorization` header. Use `fetch()` with `Authorization: Bearer <token>` header, then create a blob URL and trigger download via a temporary `<a>` element. See `ContractsTab.tsx`'s `handleDownload` and `dashboard.tsx`'s `handleDownloadContract` for the reference pattern (both hit a PDF-regenerating endpoint, see "Contract PDFs" above).
 
 **Error messages:**
 - All user-facing error messages must be in Serbian and friendly — never expose raw JS errors, stack traces, or English strings like "Unauthorized" / "Forbidden".
 - Server: return `res.status(N).json({ error: "Serbian message" })`. Middleware in `server/jwt-auth.ts` already does this for auth errors.
 - Client: `throwIfResNotOk` in `queryClient.ts` has a `STATUS_MESSAGES` fallback map for common HTTP codes. When the server sends `{ error: "..." }`, that message is used directly.
 
-**Contract PDFs:**
-- PDFs are **never** read from the local filesystem — Railway's filesystem is ephemeral and files are lost on redeploy.
-- All contract download/email endpoints regenerate the PDF on-the-fly from `contract.contractData` (JSON stored in PostgreSQL) using `generateMixMasterPDF`, `generateCopyrightTransferPDF`, or `generateInstrumentalSalePDF` from `server/pdf-generators.ts`. Match on `contract.contractType`.
+**Contract PDFs ("Licence"):**
+- Internally called "contracts" (`contracts` table, `contractType`, `/api/admin/contracts/*` routes, `pdf-generators.ts`) but **every user-facing string must say "Licenca"/"Licence", never "Ugovor"** — this includes toasts, admin labels, server error messages, and the PDF body text itself (`Član 1. Predmet licence`, not `Predmet ugovora`).
+- **Generated license PDFs must never include pricing or payment info** (total amount, advance/remaining payment, payment method, installment schedules) — same "no prices anywhere" rule as the public site, enforced inside the documents themselves. The corresponding fields (`totalAmount`, `advancePayment`, `remainingPayment`, `paymentMethod`, `firstPayment`/`secondPayment`) were removed entirely from the Zod schemas in `shared/schema.ts` and the admin creation forms in `ContractsTab.tsx` — don't re-add them. Revenue-split percentages (`authorPercentage`/`buyerPercentage` on Copyright Transfer / Instrumental Sale) are fine to keep — that's a rights/royalty division, not a price.
+- PDFs are **never** read from the local filesystem — Railway's filesystem is ephemeral and files are lost on redeploy, so `contract.pdfPath` is not a reliable link even though the column exists.
+- **Every** download/email endpoint (admin and user-facing) must regenerate the PDF on-the-fly from `contract.contractData` (JSON stored in PostgreSQL) using `generateMixMasterPDF`, `generateCopyrightTransferPDF`, or `generateInstrumentalSalePDF` from `server/pdf-generators.ts`, matched on `contract.contractType` — never link straight to `pdfPath`. Reference implementations: `GET /api/admin/contracts/:id/download` (requireAdmin) and `GET /api/user/contracts/:id/download` (requireVerifiedEmail, ownership-checked via `contract.userId === req.jwtUser.id`). Client side, both use `fetch()` with the `Authorization` header + blob download (see "Authenticated file downloads" above) — a plain `<a href={pdfPath} download>` will 404/blank-page once the original file is gone.
 
 **CMS:**
 - `EditableText` and `EditableImage` components let admins edit content in-place when edit mode is on.
@@ -274,8 +277,10 @@ The owner explicitly dislikes these patterns. Never introduce them:
 - **Fonts:** Figtree for all headings (base-layer rule on `h1–h6` in `index.css` + `font-[Figtree]` arbitrary classes), Inter for body (explicit `body` rule in `index.css` — Tailwind's default `font-sans` does NOT pick up the `--font-sans` var, so without this rule the site renders the OS system font). Both loaded via Google Fonts `<link>` in `client/index.html`. Montserrat was removed — don't reintroduce it.
 - **Buttons are pills** (`rounded-full` in `ui/button.tsx`, semibold, press-scale, primary shadow). Don't add `rounded-md/lg/xl` overrides to `<Button>` on public pages — the pill shape is the brand.
 - **`WaveDivider`** (`client/src/components/WaveDivider.tsx`) — waveform-bar section divider, the audio brand motif. Used above homepage section headings; reuse it rather than inventing new dividers.
+- **Shared dashboard/admin primitives** (`client/src/components/ui/stat-tile.tsx`, `panel-card.tsx`, `empty-state.tsx`) — `StatTile` (icon badge + big number + label), `PanelCard` (header strip + content), and `EmptyState` (icon + text + optional action). These replaced near-duplicate local components that used to be hand-rolled separately in `dashboard.tsx`, `settings.tsx`, and `admin.tsx`. Reuse these for any new stat grid or bordered content panel instead of re-inlining the `rounded-2xl border border-border/60 bg-card` pattern.
 - **GuestBanner** (home.tsx) shows at most once per session (`sessionStorage guest_banner_shown`), only after 20s on page or 60% scroll depth. Keep overlays disciplined: nothing may cover a CTA.
 - Hero copy is CMS-backed (`EditableText`) — changing code fallbacks does not change production text if a CMS value exists in `cms_content`; update via admin edit mode.
+- **Inline-styled colors don't get dark-mode variants for free** — Tailwind's `dark:` prefix only works on className-based styles, not on inline `style={{ color: ... }}`. `AvatarWithInitials` (`client/src/components/ui/avatar-with-initials.tsx`) picks per-user colors and switches between light/dark HSL pairs by reading `resolvedTheme` from `next-themes`' `useTheme()` — follow this pattern for any other component that sets colors via inline style.
 
 **Copy rules (owner decisions — hard constraints):**
 - **Never show prices anywhere.** Pricing questions are answered with "pošaljite upit — tačna ponuda u roku od 24h."
@@ -286,6 +291,15 @@ The owner explicitly dislikes these patterns. Never introduce them:
 - `requireVerifiedEmail` — JWT valid + `emailVerified === true`. Used for community/giveaway/song features.
 - `requireNotBanned` — JWT valid + `isBanned !== true`. Used for game routes (allows unverified but non-banned users).
 - Routes that need no login but check auth optionally: pass `getQueryFn` on the client, which always sends JWT if present.
+
+**Google OAuth login/register:**
+- `users.googleId` (nullable, unique) links an account to a Google `sub`. Password stays `NOT NULL` for Google-only accounts — `storage.createGoogleUser()` fills it with an unusable scrypt hash of random bytes (same `hash.salt` format as `hashPassword()`, kept local to `storage.ts` to avoid a circular import with `auth.ts`) so the column constraint holds without enabling password login until the user runs "forgot password".
+- Flow: frontend uses `useGoogleLogin` from `@react-oauth/google` (implicit flow, popup) to get a Google `access_token` — **not** the GIS ID-token/credential flow, so the button can be fully custom-styled instead of Google's constrained iframe button. `GoogleAuthButton` in `auth-page.tsx` is the reference implementation (site's pill `Button`, `variant="outline"`, official multi-color G logo SVG).
+- Backend `POST /api/auth/google` (`server/auth.ts`) takes `{ accessToken }` and **must** validate it before trusting it: call `https://oauth2.googleapis.com/tokeninfo?access_token=` and check `aud === process.env.GOOGLE_CLIENT_ID` (prevents an access token minted for a different Google app being replayed against this endpoint), then fetch profile from `https://www.googleapis.com/oauth2/v3/userinfo`. Never skip the `aud` check.
+- Find-or-create order: `getUserByGoogleId(sub)` → if found, log in. Else `getUserByEmail` → if an existing password-based account matches, `linkGoogleAccount()` attaches the `googleId` and sets `emailVerified = true` (Google already verified the email, so this bypasses the normal pending-user verification flow). Else `createGoogleUser()` makes a brand-new user with a username auto-derived from the email local-part (`generateUniqueUsernameFromEmail`, collision-checked via `getUserByUsername`) and `termsAccepted: true` (clicking the Google button during registration is treated as acceptance).
+- Response shape matches `/api/login` exactly (`{ ...userWithoutPassword, token }`) so `use-auth.tsx`'s `googleLoginMutation` reuses the same `setAuthToken` + `queryClient.setQueryData(["/api/user"], user)` pattern as `loginMutation`.
+- Required env vars: `GOOGLE_CLIENT_ID` (server, for the `aud` check) and `VITE_GOOGLE_CLIENT_ID` (client, same value — Google client IDs are public by design) from a Google Cloud Console OAuth 2.0 Web client. No client secret is needed anywhere in this flow since it never exchanges an auth code.
+- `App.tsx` wraps the tree in `GoogleOAuthProvider clientId={import.meta.env.VITE_GOOGLE_CLIENT_ID || ""}`. If that env var is unset, `GoogleAuthButton` shows a Serbian toast instead of calling Google with an empty client ID.
 
 **Newsletter:**
 - Tables: `newsletter_subscribers` (email, confirmationToken, confirmedAt).

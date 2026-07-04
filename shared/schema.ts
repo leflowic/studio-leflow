@@ -47,6 +47,7 @@ export const users = pgTable("users", {
   email: text("email").notNull().unique(),
   password: text("password").notNull(),
   username: text("username").notNull().unique(),
+  googleId: text("google_id").unique(),
   role: text("role").notNull().default("user"), // "user" or "admin"
   rank: userRankEnum("rank").notNull().default("user"), // "user", "vip", "legend", "admin"
   banned: boolean("banned").notNull().default(false),

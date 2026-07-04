@@ -5,6 +5,7 @@ import { QueryClientProvider } from "@tanstack/react-query";
 import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { ThemeProvider } from "@/components/theme-provider";
+import { GoogleOAuthProvider } from "@react-oauth/google";
 import { AuthProvider } from "@/hooks/use-auth";
 import { ProtectedRoute } from "@/lib/protected-route";
 import { EditModeProvider } from "@/contexts/EditModeContext";
@@ -208,26 +209,36 @@ function Router() {
   );
 }
 
+// @react-oauth/google throws synchronously on mount if clientId is empty, which would
+// crash the entire app tree. Only wrap with the real provider when it's configured.
+function MaybeGoogleOAuthProvider({ children }: { children: ReactNode }) {
+  const clientId = import.meta.env.VITE_GOOGLE_CLIENT_ID;
+  if (!clientId) return <>{children}</>;
+  return <GoogleOAuthProvider clientId={clientId}>{children}</GoogleOAuthProvider>;
+}
+
 function App() {
   return (
     <HelmetProvider>
       <QueryClientProvider client={queryClient}>
-        <ThemeProvider>
-          <AuthProvider>
-            <WebSocketProvider>
-              <EditModeProvider>
-                <TooltipProvider>
-                  <Toaster />
-                  <InstallPrompt />
-                  <WhatsAppButton />
-                  <CookieConsent />
-                  <DebugConsole />
-                  <Router />
-                </TooltipProvider>
-              </EditModeProvider>
-            </WebSocketProvider>
-          </AuthProvider>
-        </ThemeProvider>
+        <MaybeGoogleOAuthProvider>
+          <ThemeProvider>
+            <AuthProvider>
+              <WebSocketProvider>
+                <EditModeProvider>
+                  <TooltipProvider>
+                    <Toaster />
+                    <InstallPrompt />
+                    <WhatsAppButton />
+                    <CookieConsent />
+                    <DebugConsole />
+                    <Router />
+                  </TooltipProvider>
+                </EditModeProvider>
+              </WebSocketProvider>
+            </AuthProvider>
+          </ThemeProvider>
+        </MaybeGoogleOAuthProvider>
       </QueryClientProvider>
     </HelmetProvider>
   );

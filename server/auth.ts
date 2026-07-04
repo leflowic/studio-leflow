@@ -19,6 +19,76 @@ const loginRateLimiter = rateLimit({
   legacyHeaders: false,
 });
 
+// Rate limiter za Google login endpoint
+const googleAuthRateLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 20,
+  message: { error: "Previše pokušaja. Pokušajte ponovo za 15 minuta." },
+  standardHeaders: true,
+  legacyHeaders: false,
+});
+
+interface GoogleTokenInfo {
+  aud: string;
+  sub: string;
+  email?: string;
+  email_verified?: string | boolean;
+  exp: string;
+}
+
+interface GoogleUserInfo {
+  sub: string;
+  email: string;
+  email_verified: boolean;
+  name?: string;
+  picture?: string;
+}
+
+async function verifyGoogleAccessToken(accessToken: string): Promise<GoogleUserInfo> {
+  const clientId = process.env.GOOGLE_CLIENT_ID;
+  if (!clientId) {
+    throw new Error("GOOGLE_CLIENT_ID nije podešen na serveru");
+  }
+
+  // Verify the token's audience so a token minted for a different app can't be replayed here
+  const tokenInfoRes = await fetch(`https://oauth2.googleapis.com/tokeninfo?access_token=${encodeURIComponent(accessToken)}`);
+  if (!tokenInfoRes.ok) {
+    throw new Error("Nevažeći Google token");
+  }
+  const tokenInfo = (await tokenInfoRes.json()) as GoogleTokenInfo;
+  if (tokenInfo.aud !== clientId) {
+    throw new Error("Google token nije izdat za ovu aplikaciju");
+  }
+
+  const userInfoRes = await fetch("https://www.googleapis.com/oauth2/v3/userinfo", {
+    headers: { Authorization: `Bearer ${accessToken}` },
+  });
+  if (!userInfoRes.ok) {
+    throw new Error("Nije moguće preuzeti Google profil");
+  }
+  const userInfo = (await userInfoRes.json()) as GoogleUserInfo;
+  if (!userInfo.email || !userInfo.email_verified) {
+    throw new Error("Google email adresa nije verifikovana");
+  }
+  return userInfo;
+}
+
+async function generateUniqueUsernameFromEmail(email: string): Promise<string> {
+  const base = (email.split("@")[0] || "").toLowerCase().replace(/[^a-z0-9_]/g, "").slice(0, 20) || "korisnik";
+  const padded = base.length >= 3 ? base : `${base}user`;
+  let candidate = padded;
+  let attempt = 0;
+  while (await storage.getUserByUsername(candidate)) {
+    attempt += 1;
+    candidate = `${padded}${Math.floor(1000 + Math.random() * 9000)}`;
+    if (attempt > 10) {
+      candidate = `${padded}${Date.now()}`;
+      break;
+    }
+  }
+  return candidate;
+}
+
 declare global {
   namespace Express {
     interface User extends SelectUser {}
@@ -228,6 +298,50 @@ export function setupAuth(app: Express) {
       }
       console.error("[AUTH] Login error:", error);
       res.status(500).json({ error: "Greška na serveru" });
+    }
+  });
+
+  app.post("/api/auth/google", googleAuthRateLimiter, async (req, res) => {
+    try {
+      const { accessToken } = z.object({ accessToken: z.string().min(1) }).parse(req.body);
+
+      const googleUser = await verifyGoogleAccessToken(accessToken);
+      const normalizedEmail = googleUser.email.toLowerCase();
+
+      let user = await storage.getUserByGoogleId(googleUser.sub);
+
+      if (!user) {
+        const existingByEmail = await storage.getUserByEmail(normalizedEmail);
+        if (existingByEmail) {
+          user = await storage.linkGoogleAccount(existingByEmail.id, googleUser.sub, googleUser.picture);
+        } else {
+          const username = await generateUniqueUsernameFromEmail(normalizedEmail);
+          user = await storage.createGoogleUser({
+            email: normalizedEmail,
+            username,
+            googleId: googleUser.sub,
+            avatarUrl: googleUser.picture,
+          });
+        }
+      }
+
+      if (user.banned) {
+        return res.status(401).json({ error: "Vaš nalog je banovan" });
+      }
+
+      const token = generateToken(user.id);
+      const { password: _, ...userWithoutPassword } = user;
+
+      res.status(200).json({
+        ...userWithoutPassword,
+        token,
+      });
+    } catch (error: any) {
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ error: "Nevažeći format podataka" });
+      }
+      console.error("[AUTH] Google login error:", error);
+      res.status(401).json({ error: "Prijava preko Google naloga nije uspela. Pokušajte ponovo." });
     }
   });
 

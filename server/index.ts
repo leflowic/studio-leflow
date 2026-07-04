@@ -262,6 +262,20 @@ async function runMigrations() {
   } finally {
     client5.release();
   }
+
+  // ─── Google OAuth account linking ────────────────────────────────────────
+  const client6 = await pool.connect();
+  try {
+    await client6.query(`
+      ALTER TABLE users
+        ADD COLUMN IF NOT EXISTS google_id TEXT UNIQUE;
+    `);
+    log('[Migrations] Google OAuth column ready', 'express');
+  } catch (err: any) {
+    log(`[Migrations] Warning on google_id column: ${err.message}`, 'express');
+  } finally {
+    client6.release();
+  }
 }
 
 const app = express();

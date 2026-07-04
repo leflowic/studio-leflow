@@ -87,6 +87,17 @@ import { eq, and, or, desc, sql, notInArray, inArray, gte, lte, count } from "dr
 import session from "express-session";
 import connectPg from "connect-pg-simple";
 import type { Store } from "express-session";
+import { randomBytes, scrypt } from "crypto";
+import { promisify } from "util";
+
+const scryptAsync = promisify(scrypt);
+
+// Unusable placeholder hash for Google-only accounts (no password login until "forgot password" sets a real one)
+async function unusablePasswordHash(): Promise<string> {
+  const salt = randomBytes(16).toString("hex");
+  const buf = (await scryptAsync(randomBytes(32).toString("hex"), salt, 64)) as Buffer;
+  return `${buf.toString("hex")}.${salt}`;
+}
 
 const PostgresSessionStore = connectPg(session);
 
@@ -108,7 +119,10 @@ export interface IStorage {
   getUser(id: number): Promise<User | undefined>;
   getUserByEmail(email: string): Promise<User | undefined>;
   getUserByUsername(username: string): Promise<User | undefined>;
+  getUserByGoogleId(googleId: string): Promise<User | undefined>;
   createUser(insertUser: InsertUser): Promise<User>;
+  linkGoogleAccount(userId: number, googleId: string, avatarUrl?: string): Promise<User>;
+  createGoogleUser(data: { email: string; username: string; googleId: string; avatarUrl?: string }): Promise<User>;
   updateUserRole(id: number, role: string): Promise<void>;
   banUser(id: number): Promise<void>;
   unbanUser(id: number): Promise<void>;
@@ -399,6 +413,31 @@ export class DatabaseStorage implements IStorage {
 
   async createUser(insertUser: InsertUser): Promise<User> {
     const [user] = await db.insert(users).values(insertUser).returning();
+    return user!;
+  }
+
+  async getUserByGoogleId(googleId: string): Promise<User | undefined> {
+    const [user] = await db.select().from(users).where(eq(users.googleId, googleId));
+    return user || undefined;
+  }
+
+  async linkGoogleAccount(userId: number, googleId: string, avatarUrl?: string): Promise<User> {
+    const updates: Partial<typeof users.$inferInsert> = { googleId, emailVerified: true };
+    if (avatarUrl) updates.avatarUrl = avatarUrl;
+    const [user] = await db.update(users).set(updates).where(eq(users.id, userId)).returning();
+    return user!;
+  }
+
+  async createGoogleUser(data: { email: string; username: string; googleId: string; avatarUrl?: string }): Promise<User> {
+    const [user] = await db.insert(users).values({
+      email: data.email,
+      username: data.username,
+      password: await unusablePasswordHash(),
+      googleId: data.googleId,
+      avatarUrl: data.avatarUrl,
+      emailVerified: true,
+      termsAccepted: true,
+    }).returning();
     return user!;
   }
 

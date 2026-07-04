@@ -16,6 +16,7 @@ type AuthContextType = {
   loginMutation: UseMutationResult<SelectUser & { token: string }, Error, LoginData>;
   logoutMutation: UseMutationResult<void, Error, void>;
   registerMutation: UseMutationResult<SelectUser, Error, InsertUser>;
+  googleLoginMutation: UseMutationResult<SelectUser & { token: string }, Error, string>;
 };
 
 type LoginData = Pick<InsertUser, "username" | "password"> & { rememberMe?: boolean };
@@ -62,6 +63,29 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       toast({
         title: "Neuspešno logovanje",
         description: error.message || "Pogrešno korisničko ime ili lozinka",
+        variant: "destructive",
+      });
+    },
+  });
+
+  const googleLoginMutation = useMutation({
+    mutationFn: async (accessToken: string) => {
+      const res = await apiRequest("POST", "/api/auth/google", { accessToken });
+      return await res.json();
+    },
+    onSuccess: (data: SelectUser & { token: string }) => {
+      const { token, ...user } = data;
+      setAuthToken(token);
+      queryClient.setQueryData(["/api/user"], user);
+      toast({
+        title: "Uspešno logovanje",
+        description: `Dobrodošli, ${user.username}!`,
+      });
+    },
+    onError: (error: Error) => {
+      toast({
+        title: "Neuspešna Google prijava",
+        description: error.message || "Pokušajte ponovo.",
         variant: "destructive",
       });
     },
@@ -117,6 +141,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         loginMutation,
         logoutMutation,
         registerMutation,
+        googleLoginMutation,
       }}
     >
       {children}

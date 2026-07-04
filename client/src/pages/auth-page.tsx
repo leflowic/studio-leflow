@@ -6,6 +6,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { Music, ArrowLeft, Mail, Lock, CheckCircle2, Zap, Eye, EyeOff } from "lucide-react";
 import { motion } from "framer-motion";
+import { useGoogleLogin } from "@react-oauth/google";
 import leflowLogo from "@/assets/leflow-logo.png";
 import { insertUserSchema } from "@shared/schema";
 import { useAuth } from "@/hooks/use-auth";
@@ -26,6 +27,98 @@ import { useMutation } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import { cn } from "@/lib/utils";
+
+function GoogleIcon({ className }: { className?: string }) {
+  return (
+    <svg className={className} viewBox="0 0 24 24" aria-hidden="true">
+      <path fill="#4285F4" d="M23.52 12.27c0-.85-.08-1.67-.22-2.45H12v4.64h6.47c-.28 1.5-1.13 2.78-2.4 3.63v3.02h3.88c2.27-2.09 3.57-5.17 3.57-8.84Z" />
+      <path fill="#34A853" d="M12 24c3.24 0 5.96-1.07 7.95-2.9l-3.88-3.02c-1.08.72-2.45 1.15-4.07 1.15-3.13 0-5.78-2.11-6.73-4.96H1.27v3.12C3.25 21.3 7.31 24 12 24Z" />
+      <path fill="#FBBC05" d="M5.27 14.27c-.24-.72-.38-1.49-.38-2.27s.14-1.55.38-2.27V6.61H1.27A11.98 11.98 0 0 0 0 12c0 1.94.46 3.77 1.27 5.39l4-3.12Z" />
+      <path fill="#EA4335" d="M12 4.77c1.76 0 3.35.6 4.6 1.8l3.44-3.44C17.95 1.19 15.24 0 12 0 7.31 0 3.25 2.7 1.27 6.61l4 3.12C6.22 6.88 8.87 4.77 12 4.77Z" />
+    </svg>
+  );
+}
+
+function GoogleAuthDivider() {
+  return (
+    <div className="relative flex items-center py-1">
+      <div className="flex-1 border-t border-border/60" />
+      <span className="px-3 text-xs text-muted-foreground uppercase tracking-wide">ili</span>
+      <div className="flex-1 border-t border-border/60" />
+    </div>
+  );
+}
+
+// useGoogleLogin calls window.google.accounts.oauth2.initTokenClient with the client ID as soon as
+// the GSI script loads, and that call throws synchronously if the ID is empty — crashing the tree
+// via React's error boundary. So the hook must never be called at all when unconfigured, not just
+// gated behind a click handler. Hence two separate components instead of one conditional branch.
+function GoogleAuthButtonUnconfigured({ label }: { label: string }) {
+  const { toast } = useToast();
+  return (
+    <>
+      <GoogleAuthDivider />
+      <Button
+        type="button"
+        variant="outline"
+        className="w-full h-11 font-semibold"
+        onClick={() => {
+          toast({
+            title: "Google prijava nedostupna",
+            description: "Google prijava trenutno nije podešena. Pokušajte ponovo kasnije.",
+            variant: "destructive",
+          });
+        }}
+        data-testid="button-google-auth"
+      >
+        <GoogleIcon className="w-4 h-4" />
+        {label}
+      </Button>
+    </>
+  );
+}
+
+function GoogleAuthButtonConfigured({ label }: { label: string }) {
+  const { googleLoginMutation } = useAuth();
+  const { toast } = useToast();
+
+  const login = useGoogleLogin({
+    onSuccess: (tokenResponse) => {
+      googleLoginMutation.mutate(tokenResponse.access_token);
+    },
+    onError: () => {
+      toast({
+        title: "Greška",
+        description: "Google prijava nije uspela. Pokušajte ponovo.",
+        variant: "destructive",
+      });
+    },
+  });
+
+  return (
+    <>
+      <GoogleAuthDivider />
+      <Button
+        type="button"
+        variant="outline"
+        className="w-full h-11 font-semibold"
+        disabled={googleLoginMutation.isPending}
+        onClick={() => login()}
+        data-testid="button-google-auth"
+      >
+        <GoogleIcon className="w-4 h-4" />
+        {googleLoginMutation.isPending ? "Povezivanje..." : label}
+      </Button>
+    </>
+  );
+}
+
+function GoogleAuthButton({ label }: { label: string }) {
+  const clientIdConfigured = Boolean(import.meta.env.VITE_GOOGLE_CLIENT_ID);
+  return clientIdConfigured
+    ? <GoogleAuthButtonConfigured label={label} />
+    : <GoogleAuthButtonUnconfigured label={label} />;
+}
 
 function PasswordInput({ placeholder, autoComplete, disabled, "data-testid": dataTestId, ...props }: React.InputHTMLAttributes<HTMLInputElement> & { "data-testid"?: string }) {
   const [show, setShow] = useState(false);
@@ -643,6 +736,8 @@ export default function AuthPage() {
                   >
                     {loginMutation.isPending ? "Prijavljivanje..." : "Prijavite se"}
                   </Button>
+
+                  <GoogleAuthButton label="Prijavi se preko Google-a" />
                 </form>
               </Form>
             </motion.div>
@@ -768,6 +863,8 @@ export default function AuthPage() {
                   >
                     {registerMutation.isPending ? "Registracija..." : "Kreiraj nalog"}
                   </Button>
+
+                  <GoogleAuthButton label="Registruj se preko Google-a" />
                 </form>
               </Form>
             </motion.div>
