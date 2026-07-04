@@ -1,5 +1,7 @@
+import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { useAuth } from "@/hooks/use-auth";
+import { useToast } from "@/hooks/use-toast";
 import { SEO } from "@/components/SEO";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -99,11 +101,40 @@ const contractTypeLabel: Record<string, string> = {
 
 export default function Dashboard() {
   const { user } = useAuth();
+  const { toast } = useToast();
+  const [downloadingId, setDownloadingId] = useState<number | null>(null);
 
   const { data: overview, isLoading: overviewLoading } = useQuery<DashboardOverview>({ queryKey: ["/api/dashboard/overview"] });
   const { data: projects, isLoading: projectsLoading } = useQuery<Project[]>({ queryKey: ["/api/user/projects"] });
   const { data: contracts, isLoading: contractsLoading } = useQuery<Contract[]>({ queryKey: ["/api/user/contracts"] });
   const { data: invoices, isLoading: invoicesLoading } = useQuery<Invoice[]>({ queryKey: ["/api/user/invoices"] });
+
+  const handleDownloadContract = async (contractId: number, contractNumber: string) => {
+    setDownloadingId(contractId);
+    try {
+      const token = localStorage.getItem("auth_token");
+      const response = await fetch(`/api/user/contracts/${contractId}/download`, {
+        headers: token ? { Authorization: `Bearer ${token}` } : {},
+      });
+      if (!response.ok) throw new Error("Preuzimanje nije uspelo");
+      const disposition = response.headers.get("Content-Disposition") || "";
+      const filenameMatch = disposition.match(/filename="?([^"]+)"?/);
+      const filename = filenameMatch?.[1] || `licenca_${contractNumber.replace(/[\/\\]/g, "_")}.pdf`;
+      const blob = await response.blob();
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = filename;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+    } catch {
+      toast({ variant: "destructive", title: "Greška", description: "Greška pri preuzimanju licence" });
+    } finally {
+      setDownloadingId(null);
+    }
+  };
 
   if (!user) {
     return (
@@ -288,11 +319,19 @@ export default function Dashboard() {
                             </a>
                           </Button>
                         )}
-                        {c.pdfPath && (
-                          <Button variant="ghost" size="icon" className="w-8 h-8" asChild title="Preuzmi PDF">
-                            <a href={c.pdfPath} download><Download className="w-3.5 h-3.5" /></a>
-                          </Button>
-                        )}
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="w-8 h-8"
+                          title="Preuzmi PDF"
+                          disabled={downloadingId === c.id}
+                          onClick={() => handleDownloadContract(c.id, c.contractNumber)}
+                        >
+                          {downloadingId === c.id
+                            ? <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                            : <Download className="w-3.5 h-3.5" />
+                          }
+                        </Button>
                       </div>
                     </div>
                   ))}
