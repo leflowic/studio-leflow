@@ -44,7 +44,7 @@ export default function VerifyLicensePage() {
       <SEO
         title="Verifikacija Licence — Studio LeFlow"
         description="Proverite autentičnost vaše Studio LeFlow licence. Unesite verifikacioni kod sa PDF-a da biste potvrdili da je licenca validna i izdata od Studio LeFlow."
-        keywords={["verifikacija licence studio leflow", "provjera licence", "studio leflow licenca", "autentičnost ugovora"]}
+        keywords={["verifikacija licence studio leflow", "provjera licence", "studio leflow licenca", "autentičnost licence"]}
         canonicalUrl="/proveri"
       />
     <div className="min-h-screen flex items-center justify-center bg-background px-4 py-16">

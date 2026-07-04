@@ -28,13 +28,7 @@ export interface MixMasterContract {
   channelCount: string;
   deliveryFormat: string;
   deliveryDate: string;
-  
-  // Finansije
-  totalAmount: string;
-  advancePayment: string;
-  remainingPayment: string;
-  paymentMethod: string;
-  
+
   // Opciono
   vocalRecording: "yes" | "no";
   vocalRights: "client" | "studio" | "other";
@@ -80,19 +74,11 @@ export interface CopyrightTransferContract {
   };
   territory: string;
   duration: string;
-  
-  // Finansije
-  totalAmount: string;
-  firstPayment: string;
-  firstPaymentDate: string;
-  secondPayment: string;
-  secondPaymentDate: string;
-  paymentMethod: string;
-  
+
   // Streaming podela
   authorPercentage: string;
   buyerPercentage: string;
-  
+
   // Pravno
   jurisdiction: string;
   copies: string;
@@ -126,17 +112,11 @@ export interface InstrumentalSaleContract {
   };
   territory: string;
   durationPeriod: string;
-  
-  // Finansije
-  totalAmount: string;
-  advancePayment: string;
-  remainingPayment: string;
-  paymentMethod: string;
-  
+
   // Streaming podela
   authorPercentage: string;
   buyerPercentage: string;
-  
+
   // Pravno
   jurisdiction: string;
   copies: string;
@@ -162,7 +142,7 @@ function drawLicenseFooter(doc: PDFKit.PDFDocument, licenseNumber: string, verif
   doc.fontSize(8).font('DejaVuSans').fillColor('#444444');
   doc.text(`Broj licence: ${licenseNumber}`, { width: contentWidth, align: 'center' });
   doc.moveDown(0.3);
-  doc.text(`Proverite autenticnost ove licence na:`, { width: contentWidth, align: 'center' });
+  doc.text(`Proverite autentičnost ove licence na:`, { width: contentWidth, align: 'center' });
   doc.text(`studioleflow.com/proveri/${verificationHash}`, { width: contentWidth, align: 'center' });
   doc.fillColor('#000000');
 }
@@ -271,14 +251,14 @@ export function generateMixMasterPDF(data: MixMasterContract, licenseNumber: str
     doc.text(`Matični broj: ${data.clientMaticniBroj}`);
     doc.moveDown();
 
-    doc.fontSize(10).text('(u daljem tekstu zajednički: "Ugovorne strane").');
+    doc.fontSize(10).text('(u daljem tekstu zajednički: "Strane").');
     doc.moveDown(2);
 
     // Član 1
-    doc.fontSize(12).font('DejaVuSans-Bold').text('Član 1. Predmet ugovora', { align: 'center' });
+    doc.fontSize(12).font('DejaVuSans-Bold').text('Član 1. Predmet licence', { align: 'center' });
     doc.moveDown();
     doc.fontSize(10).font('DejaVuSans');
-    doc.text('Predmet ovog ugovora je pružanje usluge profesionalnog miksanja i masteringa sledećeg muzičkog dela:');
+    doc.text('Predmet ove licence je pružanje usluge profesionalnog miksanja i masteringa sledećeg muzičkog dela:');
     doc.moveDown(0.5);
     doc.text(`Naziv pesme / projekta: ${data.projectName}`);
     doc.text(`Broj kanala / stemova: ${data.channelCount}`);
@@ -300,26 +280,11 @@ export function generateMixMasterPDF(data: MixMasterContract, licenseNumber: str
     doc.fontSize(10).font('DejaVuSans');
     doc.text('Naručilac se obavezuje da:');
     doc.text('– dostavi sve potrebne fajlove i informacije potrebne za rad na projektu;');
-    doc.text('– blagovremeno odobri radne verzije ili dostavi primedbe;');
-    doc.text('– isplati ugovorenu naknadu u predviđenom roku.');
+    doc.text('– blagovremeno odobri radne verzije ili dostavi primedbe.');
     doc.moveDown(2);
 
     // Član 4
-    doc.fontSize(12).font('DejaVuSans-Bold').text('Član 4. Naknada i uslovi plaćanja', { align: 'center' });
-    doc.moveDown();
-    doc.fontSize(10).font('DejaVuSans');
-    doc.text(`Ukupna naknada za izvršenje usluge iznosi: ${data.totalAmount} RSD / EUR.`);
-    doc.moveDown(0.5);
-    doc.text('Raspored plaćanja:');
-    doc.text(`– Avans (pre početka rada): ${data.advancePayment} RSD / EUR`);
-    doc.text(`– Ostatak (po završetku usluge, pre isporuke finalnih fajlova): ${data.remainingPayment} RSD / EUR`);
-    doc.text(`Način plaćanja: ${data.paymentMethod}`);
-    doc.moveDown();
-    doc.text('U slučaju neplaćanja u predviđenom roku, Pružalac usluge zadržava pravo da raskine ovaj ugovor i da snimke ponudi trećim licima ili koristi u druge svrhe, bez prava Naručioca na naknadu štete.');
-    doc.moveDown(2);
-
-    // Član 5
-    doc.fontSize(12).font('DejaVuSans-Bold').text('Član 5. Odgovornost i reklamacije', { align: 'center' });
+    doc.fontSize(12).font('DejaVuSans-Bold').text('Član 4. Odgovornost i reklamacije', { align: 'center' });
     doc.moveDown();
     doc.fontSize(10).font('DejaVuSans');
     doc.text('Pružalac usluge garantuje kvalitet obrade prema profesionalnim standardima.');
@@ -328,23 +293,23 @@ export function generateMixMasterPDF(data: MixMasterContract, licenseNumber: str
     doc.text('Reklamacije se prihvataju isključivo u roku od 7 dana od dana isporuke finalnih fajlova.');
     doc.moveDown(2);
 
-    // Član 6
-    doc.fontSize(12).font('DejaVuSans-Bold').text('Član 6. Autorska prava', { align: 'center' });
+    // Član 5
+    doc.fontSize(12).font('DejaVuSans-Bold').text('Član 5. Autorska prava', { align: 'center' });
     doc.moveDown();
     doc.fontSize(10).font('DejaVuSans');
-    doc.text('Ovim ugovorom Pružalac usluge ne stiče nikakva autorska prava na muzičko delo koje je predmet obrade.');
+    doc.text('Ovom licencom Pružalac usluge ne stiče nikakva autorska prava na muzičko delo koje je predmet obrade.');
     doc.text('Sva autorska prava na pesmu i originalne snimke ostaju u vlasništvu Naručioca.');
     doc.moveDown(2);
 
-    // Član 7 - Snimanje vokala
-    doc.fontSize(12).font('DejaVuSans-Bold').text('Član 7. Snimanje vokala i prava na snimke', { align: 'center' });
+    // Član 6 - Snimanje vokala
+    doc.fontSize(12).font('DejaVuSans-Bold').text('Član 6. Snimanje vokala i prava na snimke', { align: 'center' });
     doc.moveDown();
     doc.fontSize(10).font('DejaVuSans');
     doc.text(`Snimanje vokala je izvršeno u studiju LeFlow Studio: ${data.vocalRecording === 'yes' ? 'DA' : 'NE'}`);
     doc.moveDown(0.5);
-    
+
     if (data.vocalRecording === 'yes') {
-      doc.text('Ugovorne strane se slažu da:');
+      doc.text('Strane se slažu da:');
       if (data.vocalRights === 'client') {
         doc.text('☑ Sva prava na vokalne snimke i izvedbu prenose se isključivo na Naručioca.');
       } else if (data.vocalRights === 'studio') {
@@ -355,18 +320,18 @@ export function generateMixMasterPDF(data: MixMasterContract, licenseNumber: str
     }
     doc.moveDown(2);
 
-    // Član 8
-    doc.fontSize(12).font('DejaVuSans-Bold').text('Član 8. Nadležnost', { align: 'center' });
+    // Član 7
+    doc.fontSize(12).font('DejaVuSans-Bold').text('Član 7. Nadležnost', { align: 'center' });
     doc.moveDown();
     doc.fontSize(10).font('DejaVuSans');
     doc.text(`Za rešavanje eventualnih sporova nadležan je sud u: ${data.jurisdiction}`);
     doc.moveDown(2);
 
-    // Član 9
-    doc.fontSize(12).font('DejaVuSans-Bold').text('Član 9. Završne odredbe', { align: 'center' });
+    // Član 8
+    doc.fontSize(12).font('DejaVuSans-Bold').text('Član 8. Završne odredbe', { align: 'center' });
     doc.moveDown();
     doc.fontSize(10).font('DejaVuSans');
-    doc.text(`Ova licenca je izdata dana ${data.finalDate} i stupa na snagu danom plaćanja naknade.`);
+    doc.text(`Ova licenca je izdata dana ${data.finalDate} i stupa na snagu danom njenog izdavanja.`);
     doc.moveDown();
     doc.text('Korišćenjem usluge, Naručilac potvrđuje da prihvata sve uslove navedene u ovoj licenci.');
 
@@ -426,14 +391,14 @@ export function generateCopyrightTransferPDF(data: CopyrightTransferContract, li
     doc.text(`Matični broj: ${data.buyerMaticniBroj}`);
     doc.moveDown();
 
-    doc.fontSize(10).text('(u daljem tekstu zajednički: "Ugovorne strane").');
+    doc.fontSize(10).text('(u daljem tekstu zajednički: "Strane").');
     doc.moveDown(3);
 
     // Član 1
-    doc.fontSize(12).font('DejaVuSans-Bold').text('Član 1. Predmet ugovora', { align: 'center' });
+    doc.fontSize(12).font('DejaVuSans-Bold').text('Član 1. Predmet licence', { align: 'center' });
     doc.moveDown();
     doc.fontSize(10).font('DejaVuSans');
-    doc.text('Predmet ovog ugovora je prenos imovinskih autorskih prava na sledećem autorskom delu:');
+    doc.text('Predmet ove licence je prenos imovinskih autorskih prava na sledećem autorskom delu:');
     doc.moveDown(0.5);
     doc.text(`Naziv pesme: ${data.songTitle}`);
     doc.moveDown();
@@ -475,30 +440,16 @@ export function generateCopyrightTransferPDF(data: CopyrightTransferContract, li
     doc.moveDown(2);
 
     // Član 5
-    doc.fontSize(12).font('DejaVuSans-Bold').text('Član 5. Naknada i uslovi plaćanja', { align: 'center' });
+    doc.fontSize(12).font('DejaVuSans-Bold').text('Član 5. Podela prihoda od korišćenja dela (Streaming servis)', { align: 'center' });
     doc.moveDown();
     doc.fontSize(10).font('DejaVuSans');
-    doc.text(`Kupac se obavezuje da Autor/Prodavcu isplati ukupan iznos naknade u visini od: ${data.totalAmount} RSD / EUR`);
-    doc.moveDown();
-    doc.text('Raspored plaćanja:');
-    doc.text(`– I rata u iznosu od ${data.firstPayment} RSD/EUR, do ${data.firstPaymentDate}`);
-    doc.text(`– II rata u iznosu od ${data.secondPayment} RSD/EUR, do ${data.secondPaymentDate}`);
-    doc.text('(U slučaju neplaćanja u predviđenom roku, Autor zadržava pravo da delo ponudi i proda trećim licima.)');
-    doc.moveDown();
-    doc.text(`Način plaćanja: ${data.paymentMethod}`);
-    doc.moveDown(2);
-
-    // Član 6
-    doc.fontSize(12).font('DejaVuSans-Bold').text('Član 6. Podela prihoda od korišćenja dela (Streaming servis)', { align: 'center' });
-    doc.moveDown();
-    doc.fontSize(10).font('DejaVuSans');
-    doc.text('Ugovorne strane su saglasne da se prihod ostvaren od eksploatacije dela deli na sledeći način:');
-    doc.text(`– Procenat prihoda koji pripada Autor/Prodavcu: ${data.authorPercentage}%`);
+    doc.text('Strane su saglasne da se prihod ostvaren od eksploatacije dela deli na sledeći način:');
+    doc.text(`– Procenat prihoda koji pripada Autoru/Prodavcu: ${data.authorPercentage}%`);
     doc.text(`– Procenat prihoda koji pripada Kupcu: ${data.buyerPercentage}%`);
     doc.moveDown(2);
 
-    // Član 7
-    doc.fontSize(12).font('DejaVuSans-Bold').text('Član 7. Moralna prava', { align: 'center' });
+    // Član 6
+    doc.fontSize(12).font('DejaVuSans-Bold').text('Član 6. Moralna prava', { align: 'center' });
     doc.moveDown();
     doc.fontSize(10).font('DejaVuSans');
     doc.text('Autor zadržava moralna prava na delu, uključujući:');
@@ -506,18 +457,18 @@ export function generateCopyrightTransferPDF(data: CopyrightTransferContract, li
     doc.text('– Pravo da delo ne bude menjano, obrađivano ili prilagođavano bez njegove prethodne pisane saglasnosti.');
     doc.moveDown(2);
 
-    // Član 8
-    doc.fontSize(12).font('DejaVuSans-Bold').text('Član 8. Nadležnost', { align: 'center' });
+    // Član 7
+    doc.fontSize(12).font('DejaVuSans-Bold').text('Član 7. Nadležnost', { align: 'center' });
     doc.moveDown();
     doc.fontSize(10).font('DejaVuSans');
-    doc.text(`Za tumačenje i sprovođenje ovog ugovora nadležan je sud u: ${data.jurisdiction}`);
+    doc.text(`Za tumačenje i sprovođenje ove licence nadležan je sud u: ${data.jurisdiction}`);
     doc.moveDown(2);
 
-    // Član 9
-    doc.fontSize(12).font('DejaVuSans-Bold').text('Član 9. Završne odredbe', { align: 'center' });
+    // Član 8
+    doc.fontSize(12).font('DejaVuSans-Bold').text('Član 8. Završne odredbe', { align: 'center' });
     doc.moveDown();
     doc.fontSize(10).font('DejaVuSans');
-    doc.text(`Ova licenca je izdata dana ${data.finalDate} i stupa na snagu danom plaćanja naknade.`);
+    doc.text(`Ova licenca je izdata dana ${data.finalDate} i stupa na snagu danom njenog izdavanja.`);
     doc.text('Prenosom prava, Kupac potvrđuje da prihvata sve uslove navedene u ovoj licenci.');
 
     drawLicenseFooter(doc, licenseNumber, verificationHash);
@@ -614,22 +565,7 @@ export function generateInstrumentalSalePDF(data: InstrumentalSaleContract, lice
     doc.moveDown(2);
 
     // Član 5
-    doc.fontSize(12).font('DejaVuSans-Bold').text('Član 5. Naknada za licencu', { align: 'center' });
-    doc.moveDown();
-    doc.fontSize(10).font('DejaVuSans');
-    doc.text(`Ukupna naknada za licencu iznosi: ${data.totalAmount} RSD / EUR.`);
-    doc.moveDown();
-    doc.text('Raspored plaćanja:');
-    doc.text(`– Avans: ${data.advancePayment} RSD / EUR`);
-    doc.text(`– Ostatak: ${data.remainingPayment} RSD / EUR`);
-    doc.moveDown();
-    doc.text(`Način plaćanja: ${data.paymentMethod}`);
-    doc.moveDown();
-    doc.text('U slučaju neplaćanja u predviđenom roku, licenca postaje nevažeća.');
-    doc.moveDown(2);
-
-    // Član 6
-    doc.fontSize(12).font('DejaVuSans-Bold').text('Član 6. Podela prihoda od korišćenja', { align: 'center' });
+    doc.fontSize(12).font('DejaVuSans-Bold').text('Član 5. Podela prihoda od korišćenja', { align: 'center' });
     doc.moveDown();
     doc.fontSize(10).font('DejaVuSans');
     doc.text('Prihod od korišćenja instrumentala deli se na sledeći način:');
@@ -637,8 +573,8 @@ export function generateInstrumentalSalePDF(data: InstrumentalSaleContract, lice
     doc.text(`– Procenat prihoda koji pripada Korisniku: ${data.buyerPercentage}%`);
     doc.moveDown(2);
 
-    // Član 7
-    doc.fontSize(12).font('DejaVuSans-Bold').text('Član 7. Autorska prava', { align: 'center' });
+    // Član 6
+    doc.fontSize(12).font('DejaVuSans-Bold').text('Član 6. Autorska prava', { align: 'center' });
     doc.moveDown();
     doc.fontSize(10).font('DejaVuSans');
     doc.text('Izdavač zadržava sva autorska i moralna prava na instrumentalu, uključujući:');
@@ -646,18 +582,18 @@ export function generateInstrumentalSalePDF(data: InstrumentalSaleContract, lice
     doc.text('– Pravo da instrumental ne bude menjan bez prethodne pisane saglasnosti.');
     doc.moveDown(2);
 
-    // Član 8
-    doc.fontSize(12).font('DejaVuSans-Bold').text('Član 8. Nadležnost', { align: 'center' });
+    // Član 7
+    doc.fontSize(12).font('DejaVuSans-Bold').text('Član 7. Nadležnost', { align: 'center' });
     doc.moveDown();
     doc.fontSize(10).font('DejaVuSans');
     doc.text(`Za rešavanje eventualnih sporova nadležan je sud u: ${data.jurisdiction}`);
     doc.moveDown(2);
 
-    // Član 9
-    doc.fontSize(12).font('DejaVuSans-Bold').text('Član 9. Važnost licence', { align: 'center' });
+    // Član 8
+    doc.fontSize(12).font('DejaVuSans-Bold').text('Član 8. Važnost licence', { align: 'center' });
     doc.moveDown();
     doc.fontSize(10).font('DejaVuSans');
-    doc.text(`Ova licenca je izdata u ${data.copies} primerka i stupa na snagu danom plaćanja naknade.`);
+    doc.text(`Ova licenca je izdata u ${data.copies} primerka i stupa na snagu danom njenog izdavanja.`);
     doc.moveDown();
     doc.text('Korišćenjem instrumentala, Korisnik potvrđuje da prihvata sve uslove navedene u ovoj licenci.');
 

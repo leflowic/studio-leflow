@@ -197,7 +197,7 @@ export default function Dashboard() {
                   <span className="text-xs font-medium text-primary uppercase tracking-wider">Dobrodošli</span>
                 </div>
                 <h1 className="text-2xl md:text-3xl font-bold truncate">{user.username}</h1>
-                <p className="text-sm text-muted-foreground mt-1">Pratite projekte, ugovore i fakture sa Studio LeFlow</p>
+                <p className="text-sm text-muted-foreground mt-1">Pratite projekte, licence i fakture sa Studio LeFlow</p>
               </div>
               <div className="flex gap-2 flex-shrink-0 flex-wrap">
                 <Link href="/inbox">

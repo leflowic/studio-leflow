@@ -58,9 +58,9 @@ export default function Terms() {
       title: "Autorska Prava i Vlasništvo",
       content: [
         "<strong>Snimanje i Mix/Master:</strong> Vi zadržavate sva prava na snimljeni materijal i finalni miks. Studio LeFlow ne koristi vaš materijal bez vaše dozvole.",
-        "<strong>Instrumentali (Beatovi):</strong> U zavisnosti od dogovora, možete kupiti ekskluzivna prava (samo vi možete koristiti beat) ili neekskluzivnu licencu (beat može biti prodat i drugima). Uslovi se preciziraju u ugovoru.",
+        "<strong>Instrumentali (Beatovi):</strong> U zavisnosti od dogovora, možete kupiti ekskluzivna prava (samo vi možete koristiti beat) ili neekskluzivnu licencu (beat može biti prodat i drugima). Uslovi se preciziraju u licenci.",
         "<strong>Video produkcija:</strong> Finalni video je vaše vlasništvo. Studio LeFlow zadržava pravo da koristi isečke videa u promotivne svrhe (portfolio, društvene mreže) uz vašu saglasnost.",
-        "Za komercijalne projekte velikih razmera, autorska prava se detaljno definišu pisanim ugovorom."
+        "Za komercijalne projekte velikih razmera, autorska prava se detaljno definišu pisanom licencom."
       ]
     },
     {

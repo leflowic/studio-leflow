@@ -2534,7 +2534,7 @@ Sitemap: ${siteUrl}/sitemap.xml
       res.json(contracts);
     } catch (error: any) {
       console.error("[DASHBOARD] Get user contracts error:", error);
-      res.status(500).json({ error: "Greška pri učitavanju ugovora" });
+      res.status(500).json({ error: "Greška pri učitavanju licenci" });
     }
   });
 
@@ -2738,7 +2738,7 @@ Sitemap: ${siteUrl}/sitemap.xml
             validatedData = instrumentalSaleContractDataSchema.parse(contractData);
             break;
           default:
-            return res.status(400).json({ error: "Nevažeći tip ugovora" });
+            return res.status(400).json({ error: "Nevažeći tip licence" });
         }
       } catch (validationError: any) {
         console.error("[CONTRACTS] Validation error:", validationError);
@@ -2853,7 +2853,7 @@ Sitemap: ${siteUrl}/sitemap.xml
       res.json(contracts);
     } catch (error: any) {
       console.error("[CONTRACTS] Get all error:", error);
-      res.status(500).json({ error: "Greška pri učitavanju ugovora" });
+      res.status(500).json({ error: "Greška pri učitavanju licenci" });
     }
   });
 
@@ -2862,12 +2862,12 @@ Sitemap: ${siteUrl}/sitemap.xml
     try {
       const contractId = parseInt(req.params.id);
       if (isNaN(contractId)) {
-        return res.status(400).json({ error: "Nevažeći ID ugovora" });
+        return res.status(400).json({ error: "Nevažeći ID licence" });
       }
 
       const contract = await storage.getContractById(contractId);
       if (!contract) {
-        return res.status(404).json({ error: "Ugovor nije pronađen" });
+        return res.status(404).json({ error: "Licenca nije pronađena" });
       }
 
       let pdfBuffer: Buffer;
@@ -2882,7 +2882,7 @@ Sitemap: ${siteUrl}/sitemap.xml
           pdfBuffer = await generateInstrumentalSalePDF(contract.contractData as InstrumentalSaleContract, contract.contractNumber, contract.verificationHash || "");
           break;
         default:
-          return res.status(400).json({ error: "Nepoznat tip ugovora" });
+          return res.status(400).json({ error: "Nepoznat tip licence" });
       }
 
       const filename = `licenca_${contract.contractNumber.replace(/[\/\\]/g, '_')}.pdf`;
@@ -2891,7 +2891,7 @@ Sitemap: ${siteUrl}/sitemap.xml
       res.send(pdfBuffer);
     } catch (error: any) {
       console.error("[CONTRACTS] Download error:", error);
-      res.status(500).json({ error: "Greška pri preuzimanju ugovora" });
+      res.status(500).json({ error: "Greška pri preuzimanju licence" });
     }
   });
 
@@ -2902,7 +2902,7 @@ Sitemap: ${siteUrl}/sitemap.xml
       const { email } = req.body;
 
       if (isNaN(contractId)) {
-        return res.status(400).json({ error: "Nevažeći ID ugovora" });
+        return res.status(400).json({ error: "Nevažeći ID licence" });
       }
 
       if (!email || !email.match(/^[^\s@]+@[^\s@]+\.[^\s@]+$/)) {
@@ -2911,7 +2911,7 @@ Sitemap: ${siteUrl}/sitemap.xml
 
       const contract = await storage.getContractById(contractId);
       if (!contract) {
-        return res.status(404).json({ error: "Ugovor nije pronađen" });
+        return res.status(404).json({ error: "Licenca nije pronađena" });
       }
 
       // Regenerate PDF from DB data (filesystem is ephemeral on Railway)
@@ -2927,7 +2927,7 @@ Sitemap: ${siteUrl}/sitemap.xml
           pdfBuffer = await generateInstrumentalSalePDF(contract.contractData as InstrumentalSaleContract, contract.contractNumber, contract.verificationHash || "");
           break;
         default:
-          return res.status(400).json({ error: "Nepoznat tip ugovora" });
+          return res.status(400).json({ error: "Nepoznat tip licence" });
       }
 
       const emailFilename = `licenca_${contract.contractNumber.replace(/[\/\\]/g, '_')}.pdf`;
@@ -2959,7 +2959,7 @@ Sitemap: ${siteUrl}/sitemap.xml
       const { userId } = req.body;
 
       if (isNaN(contractId)) {
-        return res.status(400).json({ error: "Nevažeći ID ugovora" });
+        return res.status(400).json({ error: "Nevažeći ID licence" });
       }
 
       // userId can be null to remove assignment
@@ -3024,13 +3024,13 @@ Sitemap: ${siteUrl}/sitemap.xml
       }
 
       const message = parsedUserId === null
-        ? "Dodela ugovora uspešno uklonjena"
-        : "Ugovor uspešno dodeljen korisniku";
+        ? "Dodela licence uspešno uklonjena"
+        : "Licenca uspešno dodeljena korisniku";
 
       res.json({ success: true, message });
     } catch (error: any) {
       console.error("[CONTRACTS] Assign user error:", error);
-      res.status(500).json({ error: "Greška pri dodeljivanju ugovora" });
+      res.status(500).json({ error: "Greška pri dodeljivanju licence" });
     }
   });
 
@@ -3040,12 +3040,12 @@ Sitemap: ${siteUrl}/sitemap.xml
       const contractId = parseInt(req.params.id);
       
       if (isNaN(contractId)) {
-        return res.status(400).json({ error: "Nevažeći ID ugovora" });
+        return res.status(400).json({ error: "Nevažeći ID licence" });
       }
 
       const contract = await storage.getContractById(contractId);
       if (!contract) {
-        return res.status(404).json({ error: "Ugovor nije pronađen" });
+        return res.status(404).json({ error: "Licenca nije pronađena" });
       }
 
       // Delete PDF file
@@ -3059,10 +3059,10 @@ Sitemap: ${siteUrl}/sitemap.xml
       // Delete from database
       await storage.deleteContract(contractId);
 
-      res.json({ success: true, message: "Ugovor uspešno obrisan" });
+      res.json({ success: true, message: "Licenca uspešno obrisana" });
     } catch (error: any) {
       console.error("[CONTRACTS] Delete error:", error);
-      res.status(500).json({ error: "Greška pri brisanju ugovora" });
+      res.status(500).json({ error: "Greška pri brisanju licence" });
     }
   });
 

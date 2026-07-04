@@ -145,7 +145,7 @@ export function ContractsTab() {
       document.body.removeChild(a);
       URL.revokeObjectURL(url);
     } catch {
-      toast({ variant: "destructive", title: "Greška", description: "Greška pri preuzimanju ugovora" });
+      toast({ variant: "destructive", title: "Greška", description: "Greška pri preuzimanju licence" });
     }
   };
 
@@ -604,10 +604,6 @@ function MixMasterForm({ onSubmit, isSubmitting }: { onSubmit: (data: any) => vo
     channelCount: "",
     deliveryFormat: "WAV 24bit / 44.1 kHz, MP3 320 kbps",
     deliveryDate: "",
-    totalAmount: "",
-    advancePayment: "",
-    remainingPayment: "",
-    paymentMethod: "Uplata na račun",
     vocalRecording: "no" as "yes" | "no",
     vocalRights: "client" as "client" | "studio" | "other",
     vocalRightsOther: "",
@@ -617,18 +613,7 @@ function MixMasterForm({ onSubmit, isSubmitting }: { onSubmit: (data: any) => vo
   });
 
   const handleChange = (field: string, value: any) => {
-    setFormData(prev => {
-      const updated = { ...prev, [field]: value };
-      
-      // Auto-calculate remaining payment
-      if (field === "totalAmount" || field === "advancePayment") {
-        const total = parseFloat(updated.totalAmount || "0");
-        const advance = parseFloat(updated.advancePayment || "0");
-        updated.remainingPayment = (total - advance).toString();
-      }
-      
-      return updated;
-    });
+    setFormData(prev => ({ ...prev, [field]: value }));
   };
 
   return (
@@ -694,28 +679,6 @@ function MixMasterForm({ onSubmit, isSubmitting }: { onSubmit: (data: any) => vo
           <div className="space-y-2">
             <Label>Rok Isporuke</Label>
             <Input value={formData.deliveryDate} onChange={(e) => handleChange("deliveryDate", e.target.value)} placeholder="DD/MM/YYYY" data-testid="input-delivery-date" required />
-          </div>
-        </div>
-      </div>
-
-      <div className="space-y-4">
-        <h3 className="font-semibold">Finansije</h3>
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-          <div className="space-y-2">
-            <Label>Ukupna Naknada (RSD)</Label>
-            <Input type="number" value={formData.totalAmount} onChange={(e) => handleChange("totalAmount", e.target.value)} data-testid="input-total-amount" required />
-          </div>
-          <div className="space-y-2">
-            <Label>Avans (RSD)</Label>
-            <Input type="number" value={formData.advancePayment} onChange={(e) => handleChange("advancePayment", e.target.value)} data-testid="input-advance-payment" required />
-          </div>
-          <div className="space-y-2">
-            <Label>Ostatak (auto)</Label>
-            <Input type="number" value={formData.remainingPayment} readOnly className="bg-muted" data-testid="input-remaining-payment" />
-          </div>
-          <div className="space-y-2">
-            <Label>Način Plaćanja</Label>
-            <Input value={formData.paymentMethod} onChange={(e) => handleChange("paymentMethod", e.target.value)} data-testid="input-payment-method" />
           </div>
         </div>
       </div>
@@ -792,12 +755,6 @@ function CopyrightTransferForm({ onSubmit, isSubmitting }: { onSubmit: (data: an
     },
     territory: "Cela teritorija Srbije",
     duration: "Trajanje zaštite autorskog prava",
-    totalAmount: "",
-    firstPayment: "",
-    firstPaymentDate: "",
-    secondPayment: "",
-    secondPaymentDate: "",
-    paymentMethod: "Uplata na račun",
     authorPercentage: "",
     buyerPercentage: "",
     jurisdiction: "Beograd",
@@ -949,17 +906,6 @@ function CopyrightTransferForm({ onSubmit, isSubmitting }: { onSubmit: (data: an
       </div>
 
       <div className="space-y-4">
-        <h3 className="font-semibold">Finansije</h3>
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-          <div className="space-y-2">
-            <Label>Ukupna Naknada (RSD)</Label>
-            <Input type="number" value={formData.totalAmount} onChange={(e) => handleChange("totalAmount", e.target.value)} data-testid="input-total-amount-copyright" required />
-          </div>
-          <div className="space-y-2">
-            <Label>Način Plaćanja</Label>
-            <Input value={formData.paymentMethod} onChange={(e) => handleChange("paymentMethod", e.target.value)} data-testid="input-payment-method-copyright" />
-          </div>
-        </div>
         <div className="space-y-2">
           <Label>Podela Streaming Prihoda</Label>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
@@ -1006,10 +952,6 @@ function InstrumentalSaleForm({ onSubmit, isSubmitting }: { onSubmit: (data: any
     },
     territory: "Cela teritorija Srbije",
     durationPeriod: "Trajanje zaštite autorskog prava",
-    totalAmount: "",
-    advancePayment: "",
-    remainingPayment: "",
-    paymentMethod: "Uplata na račun",
     authorPercentage: "",
     buyerPercentage: "",
     jurisdiction: "Beograd",
@@ -1020,14 +962,7 @@ function InstrumentalSaleForm({ onSubmit, isSubmitting }: { onSubmit: (data: any
   const handleChange = (field: string, value: any) => {
     setFormData(prev => {
       const updated = { ...prev, [field]: value };
-      
-      // Auto-calculate remaining payment
-      if (field === "totalAmount" || field === "advancePayment") {
-        const total = parseFloat(updated.totalAmount || "0");
-        const advance = parseFloat(updated.advancePayment || "0");
-        updated.remainingPayment = (total - advance).toString();
-      }
-      
+
       // Auto-calculate percentage
       if (field === "authorPercentage") {
         const author = parseFloat(value || "0");
@@ -1037,7 +972,7 @@ function InstrumentalSaleForm({ onSubmit, isSubmitting }: { onSubmit: (data: any
         const buyer = parseFloat(value || "0");
         updated.authorPercentage = (100 - buyer).toString();
       }
-      
+
       return updated;
     });
   };
@@ -1153,25 +1088,6 @@ function InstrumentalSaleForm({ onSubmit, isSubmitting }: { onSubmit: (data: any
       </div>
 
       <div className="space-y-4">
-        <h3 className="font-semibold">Finansije</h3>
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-          <div className="space-y-2">
-            <Label>Ukupna Naknada (RSD)</Label>
-            <Input type="number" value={formData.totalAmount} onChange={(e) => handleChange("totalAmount", e.target.value)} data-testid="input-total-amount-instrumental" required />
-          </div>
-          <div className="space-y-2">
-            <Label>Avans (RSD)</Label>
-            <Input type="number" value={formData.advancePayment} onChange={(e) => handleChange("advancePayment", e.target.value)} data-testid="input-advance-payment-instrumental" required />
-          </div>
-          <div className="space-y-2">
-            <Label>Ostatak (auto)</Label>
-            <Input type="number" value={formData.remainingPayment} readOnly className="bg-muted" data-testid="input-remaining-payment-instrumental" />
-          </div>
-          <div className="space-y-2">
-            <Label>Način Plaćanja</Label>
-            <Input value={formData.paymentMethod} onChange={(e) => handleChange("paymentMethod", e.target.value)} data-testid="input-payment-method-instrumental" />
-          </div>
-        </div>
         <div className="space-y-2">
           <Label>Podela Streaming Prihoda</Label>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">

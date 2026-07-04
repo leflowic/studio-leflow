@@ -169,7 +169,7 @@ function ClientDetail({ userId, onBack }: { userId: number; onBack: () => void }
               </div>
               <div>
                 <div className="text-2xl font-bold text-blue-400">{contracts.length}</div>
-                <div className="text-xs text-muted-foreground">Ugovora</div>
+                <div className="text-xs text-muted-foreground">Licenci</div>
               </div>
               <div>
                 <div className="text-2xl font-bold text-green-400">{totalPaid.toFixed(0)}€</div>
@@ -218,12 +218,12 @@ function ClientDetail({ userId, onBack }: { userId: number; onBack: () => void }
           <CardHeader className="pb-3">
             <CardTitle className="text-base flex items-center gap-2">
               <FileText className="w-4 h-4 text-blue-400" />
-              Ugovori ({contracts.length})
+              Licence ({contracts.length})
             </CardTitle>
           </CardHeader>
           <CardContent className="pt-0">
             {contracts.length === 0 ? (
-              <p className="text-sm text-muted-foreground text-center py-6">Nema ugovora</p>
+              <p className="text-sm text-muted-foreground text-center py-6">Nema licenci</p>
             ) : (
               <ScrollArea className="max-h-64">
                 <div className="space-y-2">
@@ -320,7 +320,7 @@ export function KatastarTab() {
     <div className="space-y-4">
       <div>
         <h2 className="text-xl font-semibold">Katastar klijenata</h2>
-        <p className="text-sm text-muted-foreground">Registar svih klijenata sa istorijom projekata i ugovora</p>
+        <p className="text-sm text-muted-foreground">Registar svih klijenata sa istorijom projekata i licenci</p>
       </div>
 
       {/* Filters */}

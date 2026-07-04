@@ -28,7 +28,7 @@ const services = [
       "Ekskluzivna i neekskluzivna prava",
       "Produkcija od ideje do finalnog miksa",
       "Stem fajlovi dostupni",
-      "Ugovorna zaštita autorskih prava",
+      "Zaštita autorskih prava putem licence",
     ],
     slug: "instrumentali",
   },

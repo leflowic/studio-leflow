@@ -79,7 +79,7 @@ const ADMIN_NAV: { group: string; items: { value: string; label: string; icon: L
   {
     group: "Posao",
     items: [
-      { value: "contracts", label: "Ugovori", icon: FileText },
+      { value: "contracts", label: "Licence", icon: FileText },
       { value: "invoices", label: "Fakture", icon: Receipt },
       { value: "calendar", label: "Kalendar", icon: CalendarDays },
     ],
@@ -1567,7 +1567,7 @@ function DashboardTab() {
 
           <Card data-testid="card-stat-total-contracts">
             <CardHeader className="flex flex-row items-center justify-between gap-2 space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Ukupno Ugovora</CardTitle>
+              <CardTitle className="text-sm font-medium">Ukupno Licenci</CardTitle>
               <FileText className="h-4 w-4 text-muted-foreground" />
             </CardHeader>
             <CardContent>
