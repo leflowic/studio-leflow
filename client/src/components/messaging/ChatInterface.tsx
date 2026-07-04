@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { AvatarWithInitials } from "@/components/ui/avatar-with-initials";
+import { Skeleton } from "@/components/ui/skeleton";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -518,8 +519,20 @@ export default function ChatInterface({ selectedUserId, onBack }: ChatInterfaceP
 
   if (messagesLoading) {
     return (
-      <div className="flex-1 flex items-center justify-center">
-        <Loader2 className="w-8 h-8 animate-spin text-muted-foreground" />
+      <div className="flex-1 flex flex-col h-full">
+        <div className="flex items-center gap-3 px-4 py-3 border-b border-border/60">
+          <Skeleton className="w-9 h-9 rounded-full flex-shrink-0" />
+          <div className="space-y-1.5">
+            <Skeleton className="h-3.5 w-28" />
+            <Skeleton className="h-3 w-16" />
+          </div>
+        </div>
+        <div className="flex-1 p-4 space-y-3">
+          <div className="flex justify-start"><Skeleton className="h-10 w-48 rounded-2xl rounded-bl-md" /></div>
+          <div className="flex justify-end"><Skeleton className="h-10 w-36 rounded-2xl rounded-br-md" /></div>
+          <div className="flex justify-start"><Skeleton className="h-16 w-56 rounded-2xl rounded-bl-md" /></div>
+          <div className="flex justify-end"><Skeleton className="h-10 w-40 rounded-2xl rounded-br-md" /></div>
+        </div>
       </div>
     );
   }

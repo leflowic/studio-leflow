@@ -18,22 +18,7 @@ import { Alert, AlertDescription } from "@/components/ui/alert";
 import { motion } from "framer-motion";
 import { format } from "date-fns";
 import { FadeInWhenVisible } from "@/components/motion/FadeIn";
-
-function SectionCard({ title, icon: Icon, iconBg, iconColor, children }: {
-  title: string; icon: React.ElementType; iconBg: string; iconColor: string; children: React.ReactNode;
-}) {
-  return (
-    <div className="rounded-2xl border border-border/60 bg-card overflow-hidden">
-      <div className="flex items-center gap-3 px-6 py-4 border-b border-border/40 bg-muted/20">
-        <div className={`w-8 h-8 rounded-lg flex items-center justify-center ${iconBg}`}>
-          <Icon className={`w-4 h-4 ${iconColor}`} />
-        </div>
-        <h2 className="font-semibold text-sm">{title}</h2>
-      </div>
-      <div className="p-6">{children}</div>
-    </div>
-  );
-}
+import { PanelCard } from "@/components/ui/panel-card";
 
 function PasswordInput({ id, value, onChange, placeholder, autoComplete, disabled }: {
   id: string; value: string; onChange: (v: string) => void;
@@ -289,7 +274,7 @@ export default function Settings() {
 
           {/* Profile form */}
           <FadeInWhenVisible>
-            <SectionCard title="Podaci o nalogu" icon={User} iconBg="bg-blue-500/10" iconColor="text-blue-500">
+            <PanelCard title="Podaci o nalogu" icon={User} iconBg="bg-blue-500/10" iconColor="text-blue-500">
               <div className="space-y-4">
                 {!canChangeUsername && daysSinceUsernameChange !== null && (
                   <Alert className="border-amber-500/30 bg-amber-500/5">
@@ -339,12 +324,12 @@ export default function Settings() {
                   }
                 </Button>
               </div>
-            </SectionCard>
+            </PanelCard>
           </FadeInWhenVisible>
 
           {/* Password form */}
           <FadeInWhenVisible>
-            <SectionCard title="Promena lozinke" icon={Lock} iconBg="bg-purple-500/10" iconColor="text-purple-500">
+            <PanelCard title="Promena lozinke" icon={Lock} iconBg="bg-purple-500/10" iconColor="text-purple-500">
               <div className="space-y-4">
                 <div className="space-y-1.5">
                   <Label htmlFor="currentPassword" className="text-xs font-medium uppercase tracking-wide text-muted-foreground">Trenutna lozinka</Label>
@@ -404,7 +389,7 @@ export default function Settings() {
                   }
                 </Button>
               </div>
-            </SectionCard>
+            </PanelCard>
           </FadeInWhenVisible>
         </div>
 
@@ -417,10 +402,9 @@ export default function Settings() {
 
         {/* Account info — info pills */}
         <FadeInWhenVisible>
-          <div className="rounded-2xl border border-border/60 bg-card p-6">
-            <h2 className="text-sm font-semibold mb-4 text-muted-foreground uppercase tracking-wide">Informacije o nalogu</h2>
+          <PanelCard title="Informacije o nalogu" icon={ShieldCheck} iconBg="bg-muted" iconColor="text-muted-foreground" bodyClassName="pt-2">
             <div className="grid sm:grid-cols-3 gap-3">
-              <div className="flex flex-col gap-1 p-3 rounded-xl bg-muted/40 border border-border/30">
+              <div className="flex flex-col gap-1 p-3 rounded-xl bg-muted/40 border border-border/30 hover-elevate transition-all">
                 <span className="text-xs text-muted-foreground">Status</span>
                 <span className={`text-sm font-semibold flex items-center gap-1.5 ${user?.emailVerified ? "text-green-500" : "text-red-500"}`}>
                   {user?.emailVerified
@@ -429,13 +413,13 @@ export default function Settings() {
                   }
                 </span>
               </div>
-              <div className="flex flex-col gap-1 p-3 rounded-xl bg-muted/40 border border-border/30">
+              <div className="flex flex-col gap-1 p-3 rounded-xl bg-muted/40 border border-border/30 hover-elevate transition-all">
                 <span className="text-xs text-muted-foreground">Uloga</span>
                 <span className="text-sm font-semibold flex items-center gap-1.5">
                   {isAdmin ? <><Crown className="w-4 h-4 text-amber-500" /> Administrator</> : <><User className="w-4 h-4 text-blue-500" /> Korisnik</>}
                 </span>
               </div>
-              <div className="flex flex-col gap-1 p-3 rounded-xl bg-muted/40 border border-border/30">
+              <div className="flex flex-col gap-1 p-3 rounded-xl bg-muted/40 border border-border/30 hover-elevate transition-all">
                 <span className="text-xs text-muted-foreground">Član od</span>
                 <span className="text-sm font-semibold flex items-center gap-1.5">
                   <Calendar className="w-4 h-4 text-muted-foreground" />
@@ -443,7 +427,7 @@ export default function Settings() {
                 </span>
               </div>
             </div>
-          </div>
+          </PanelCard>
         </FadeInWhenVisible>
 
       </div>

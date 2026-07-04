@@ -4,7 +4,9 @@ import { useAuth } from "@/hooks/use-auth";
 import { useWebSocketContext } from "@/contexts/WebSocketContext";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { AvatarWithInitials } from "@/components/ui/avatar-with-initials";
-import { Loader2, MessageCircle } from "lucide-react";
+import { Skeleton } from "@/components/ui/skeleton";
+import { EmptyState } from "@/components/ui/empty-state";
+import { MessageCircle, SearchX } from "lucide-react";
 import { isToday, isYesterday, format } from "date-fns";
 import { cn } from "@/lib/utils";
 import { useEffect } from "react";
@@ -73,8 +75,19 @@ export default function ConversationList({ selectedUserId, onSelectConversation,
 
   if (isLoading) {
     return (
-      <div className="flex items-center justify-center p-10">
-        <Loader2 className="w-5 h-5 animate-spin text-muted-foreground" />
+      <div className="py-1 space-y-0.5 px-1">
+        {[1, 2, 3, 4, 5].map(i => (
+          <div key={i} className="flex items-center gap-3 px-3 py-3">
+            <Skeleton className="w-11 h-11 rounded-full flex-shrink-0" />
+            <div className="flex-1 min-w-0 space-y-1.5">
+              <div className="flex items-center justify-between gap-2">
+                <Skeleton className="h-3.5 w-24" />
+                <Skeleton className="h-3 w-8" />
+              </div>
+              <Skeleton className="h-3 w-40" />
+            </div>
+          </div>
+        ))}
       </div>
     );
   }
@@ -101,7 +114,7 @@ export default function ConversationList({ selectedUserId, onSelectConversation,
                   key={conv.id}
                   onClick={() => onSelectConversation(conv.otherUser.id)}
                   className={cn(
-                    "w-full flex items-center gap-3 px-4 py-3 text-left transition-all relative",
+                    "w-full flex items-center gap-3 px-4 py-3 text-left transition-all relative active:scale-[0.99]",
                     "hover:bg-muted/50",
                     isSelected && "bg-primary/5"
                   )}
@@ -158,17 +171,9 @@ export default function ConversationList({ selectedUserId, onSelectConversation,
             })}
           </div>
         ) : conversations && conversations.length > 0 ? (
-          <div className="py-10 px-6 text-center text-muted-foreground">
-            <p className="text-sm">Nema rezultata pretrage</p>
-          </div>
+          <EmptyState icon={SearchX} text="Nema rezultata pretrage" compact />
         ) : (
-          <div className="py-10 px-6 text-center">
-            <div className="w-12 h-12 rounded-2xl bg-muted flex items-center justify-center mx-auto mb-3">
-              <MessageCircle className="w-6 h-6 text-muted-foreground/50" />
-            </div>
-            <p className="text-sm font-medium mb-1">Nema konverzacija</p>
-            <p className="text-xs text-muted-foreground">Pretražite korisnika gore da biste započeli</p>
-          </div>
+          <EmptyState icon={MessageCircle} text="Nema konverzacija" sub="Pretražite korisnika gore da biste započeli" />
         )}
       </ScrollArea>
     </div>

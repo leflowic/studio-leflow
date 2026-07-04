@@ -14,6 +14,8 @@ import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Skeleton } from "@/components/ui/skeleton";
+import { StatTile } from "@/components/ui/stat-tile";
+import { EmptyState } from "@/components/ui/empty-state";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -25,7 +27,7 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
-import { Users, Music, Heart, MessageCircle, Trash2, Shield, ShieldOff, Settings, Construction, Send, Mail, Eye, Search, Download, UserPlus, FileText, Crown, Trophy, BadgeCheck, LayoutDashboard, Radio, MessagesSquare, Receipt, CalendarDays, Archive, Gamepad2, Link2, FolderOpen, type LucideIcon } from "lucide-react";
+import { Users, Music, Heart, MessageCircle, Trash2, Shield, ShieldOff, Settings, Construction, Send, Mail, Eye, Search, Download, UserPlus, FileText, Crown, Trophy, BadgeCheck, LayoutDashboard, Radio, MessagesSquare, Receipt, CalendarDays, Archive, Gamepad2, Link2, FolderOpen, CheckCircle2, Clock, type LucideIcon } from "lucide-react";
 import { format } from "date-fns";
 import type { User } from "@shared/schema";
 import { lazy, Suspense } from "react";
@@ -275,12 +277,15 @@ export default function AdminPage() {
                         onClick={() => setActiveTab(value)}
                         data-testid={`tab-${value}`}
                         aria-current={activeTab === value ? "page" : undefined}
-                        className={`relative flex items-center gap-2.5 px-3 py-2 rounded-lg text-sm font-medium whitespace-nowrap transition-all duration-200 cursor-pointer shrink-0 lg:w-full text-left active:scale-[0.98] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background hover-elevate active-elevate-2 ${
+                        className={`relative flex items-center gap-2.5 px-3 py-2 rounded-lg text-sm whitespace-nowrap transition-all duration-200 cursor-pointer shrink-0 lg:w-full text-left active:scale-[0.98] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background hover-elevate active-elevate-2 ${
                           activeTab === value
-                            ? "bg-primary/10 text-primary"
-                            : "text-muted-foreground hover:text-foreground"
+                            ? "bg-primary/10 text-primary font-semibold"
+                            : "text-muted-foreground hover:text-foreground font-medium"
                         }`}
                       >
+                        {activeTab === value && (
+                          <span className="hidden lg:block absolute left-0 top-1/2 -translate-y-1/2 h-4 w-[3px] rounded-full bg-primary" />
+                        )}
                         <Icon className="w-4 h-4 shrink-0" />
                         {label}
                       </button>
@@ -626,44 +631,9 @@ function NewsletterTab() {
   return (
     <div className="space-y-6">
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-        <Card>
-          <CardHeader>
-            <CardTitle className="text-sm font-medium">Ukupno Pretplatnika</CardTitle>
-          </CardHeader>
-          <CardContent>
-            {statsLoading ? (
-              <Skeleton className="h-8 w-16" />
-            ) : (
-              <div className="text-3xl font-bold">{stats?.total || 0}</div>
-            )}
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader>
-            <CardTitle className="text-sm font-medium">Potvrđeno</CardTitle>
-          </CardHeader>
-          <CardContent>
-            {statsLoading ? (
-              <Skeleton className="h-8 w-16" />
-            ) : (
-              <div className="text-3xl font-bold text-green-600">{stats?.confirmed || 0}</div>
-            )}
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader>
-            <CardTitle className="text-sm font-medium">Na čekanju</CardTitle>
-          </CardHeader>
-          <CardContent>
-            {statsLoading ? (
-              <Skeleton className="h-8 w-16" />
-            ) : (
-              <div className="text-3xl font-bold text-orange-600">{stats?.pending || 0}</div>
-            )}
-          </CardContent>
-        </Card>
+        <StatTile icon={Mail} iconBg="bg-primary/10" iconColor="text-primary" label="Ukupno Pretplatnika" value={stats?.total || 0} loading={statsLoading} />
+        <StatTile icon={CheckCircle2} iconBg="bg-green-500/10" iconColor="text-green-500" label="Potvrđeno" value={stats?.confirmed || 0} loading={statsLoading} />
+        <StatTile icon={Clock} iconBg="bg-orange-500/10" iconColor="text-orange-500" label="Na čekanju" value={stats?.pending || 0} loading={statsLoading} />
       </div>
 
       <Card>
@@ -893,61 +863,10 @@ function MessagesTab() {
     <div className="space-y-6">
       {/* Statistics Cards */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between gap-2 space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Ukupno Poruka</CardTitle>
-            <MessageCircle className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            {statsLoading ? (
-              <Skeleton className="h-8 w-20" />
-            ) : (
-              <div className="text-2xl font-bold">{stats?.totalMessages || 0}</div>
-            )}
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between gap-2 space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Ukupno Konverzacija</CardTitle>
-            <Users className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            {statsLoading ? (
-              <Skeleton className="h-8 w-20" />
-            ) : (
-              <div className="text-2xl font-bold">{stats?.totalConversations || 0}</div>
-            )}
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between gap-2 space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Aktivne (30 dana)</CardTitle>
-            <Heart className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            {statsLoading ? (
-              <Skeleton className="h-8 w-20" />
-            ) : (
-              <div className="text-2xl font-bold">{stats?.activeConversations || 0}</div>
-            )}
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between gap-2 space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Obrisane Poruke</CardTitle>
-            <Trash2 className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            {statsLoading ? (
-              <Skeleton className="h-8 w-20" />
-            ) : (
-              <div className="text-2xl font-bold text-destructive">{stats?.deletedMessages || 0}</div>
-            )}
-          </CardContent>
-        </Card>
+        <StatTile icon={MessageCircle} iconBg="bg-blue-500/10" iconColor="text-blue-500" label="Ukupno Poruka" value={stats?.totalMessages || 0} loading={statsLoading} />
+        <StatTile icon={Users} iconBg="bg-purple-500/10" iconColor="text-purple-500" label="Ukupno Konverzacija" value={stats?.totalConversations || 0} loading={statsLoading} />
+        <StatTile icon={Heart} iconBg="bg-green-500/10" iconColor="text-green-500" label="Aktivne (30 dana)" value={stats?.activeConversations || 0} loading={statsLoading} />
+        <StatTile icon={Trash2} iconBg="bg-destructive/10" iconColor="text-destructive" label="Obrisane Poruke" value={stats?.deletedMessages || 0} loading={statsLoading} />
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
@@ -1480,114 +1399,55 @@ function DashboardTab() {
       <div>
         <h3 className="text-lg font-semibold mb-4">Aktivnost</h3>
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-          <Card data-testid="card-stat-active-users">
-            <CardHeader className="flex flex-row items-center justify-between gap-2 space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Aktivni Korisnici</CardTitle>
-              <Users className="h-4 w-4 text-green-600" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold" data-testid="text-active-users">
-                {analytics?.activeUsers || 0}
-              </div>
-              <p className="text-xs text-muted-foreground">Trenutno online</p>
-            </CardContent>
-          </Card>
-
-          <Card data-testid="card-stat-new-users">
-            <CardHeader className="flex flex-row items-center justify-between gap-2 space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Nove Registracije</CardTitle>
-              <UserPlus className="h-4 w-4 text-blue-600" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold" data-testid="text-new-users-today">
-                {analytics?.newUsers.today || 0}
-              </div>
-              <p className="text-xs text-muted-foreground">
-                Danas • {analytics?.newUsers.week || 0} ove nedelje • {analytics?.newUsers.month || 0} ovog meseca
-              </p>
-            </CardContent>
-          </Card>
-
-          <Card data-testid="card-stat-approved-songs">
-            <CardHeader className="flex flex-row items-center justify-between gap-2 space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Odobrene Pesme</CardTitle>
-              <Music className="h-4 w-4 text-purple-600" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold" data-testid="text-approved-songs-today">
-                {analytics?.approvedSongs.today || 0}
-              </div>
-              <p className="text-xs text-muted-foreground">
-                Danas • {analytics?.approvedSongs.week || 0} ove nedelje • {analytics?.approvedSongs.month || 0} ovog meseca
-              </p>
-            </CardContent>
-          </Card>
-
-          <Card data-testid="card-stat-unread-messages">
-            <CardHeader className="flex flex-row items-center justify-between gap-2 space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Nepročitane Poruke</CardTitle>
-              <MessageCircle className="h-4 w-4 text-orange-600" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold" data-testid="text-unread-conversations">
-                {analytics?.unreadConversations || 0}
-              </div>
-              <p className="text-xs text-muted-foreground">Konverzacija sa nepročitanim porukama</p>
-            </CardContent>
-          </Card>
+          <StatTile
+            data-testid="card-stat-active-users"
+            icon={Users} iconBg="bg-green-500/10" iconColor="text-green-500"
+            label="Aktivni Korisnici" value={analytics?.activeUsers || 0} sub="Trenutno online"
+          />
+          <StatTile
+            data-testid="card-stat-new-users"
+            icon={UserPlus} iconBg="bg-blue-500/10" iconColor="text-blue-500"
+            label="Nove Registracije" value={analytics?.newUsers.today || 0}
+            sub={`Danas • ${analytics?.newUsers.week || 0} ove nedelje • ${analytics?.newUsers.month || 0} ovog meseca`}
+          />
+          <StatTile
+            data-testid="card-stat-approved-songs"
+            icon={Music} iconBg="bg-purple-500/10" iconColor="text-purple-500"
+            label="Odobrene Pesme" value={analytics?.approvedSongs.today || 0}
+            sub={`Danas • ${analytics?.approvedSongs.week || 0} ove nedelje • ${analytics?.approvedSongs.month || 0} ovog meseca`}
+          />
+          <StatTile
+            data-testid="card-stat-unread-messages"
+            icon={MessageCircle} iconBg="bg-orange-500/10" iconColor="text-orange-500"
+            label="Nepročitane Poruke" value={analytics?.unreadConversations || 0}
+            sub="Konverzacija sa nepročitanim porukama"
+          />
         </div>
       </div>
 
       <div>
         <h3 className="text-lg font-semibold mb-4">Ukupno</h3>
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-          <Card data-testid="card-stat-total-users">
-            <CardHeader className="flex flex-row items-center justify-between gap-2 space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Ukupno Korisnika</CardTitle>
-              <Users className="h-4 w-4 text-muted-foreground" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold" data-testid="text-total-users">
-                {stats?.totalUsers || 0}
-              </div>
-            </CardContent>
-          </Card>
-
-          <Card data-testid="card-stat-total-projects">
-            <CardHeader className="flex flex-row items-center justify-between gap-2 space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Ukupno Projekata</CardTitle>
-              <Music className="h-4 w-4 text-muted-foreground" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold" data-testid="text-total-projects">
-                {stats?.totalProjects || 0}
-              </div>
-            </CardContent>
-          </Card>
-
-          <Card data-testid="card-stat-total-contracts">
-            <CardHeader className="flex flex-row items-center justify-between gap-2 space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Ukupno Licenci</CardTitle>
-              <FileText className="h-4 w-4 text-muted-foreground" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold" data-testid="text-total-contracts">
-                {analytics?.contracts.total || 0}
-              </div>
-            </CardContent>
-          </Card>
-
-          <Card data-testid="card-stat-total-votes">
-            <CardHeader className="flex flex-row items-center justify-between gap-2 space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Ukupno Glasova</CardTitle>
-              <Heart className="h-4 w-4 text-muted-foreground" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold" data-testid="text-total-votes">
-                {stats?.totalVotes || 0}
-              </div>
-            </CardContent>
-          </Card>
+          <StatTile
+            data-testid="card-stat-total-users"
+            icon={Users} iconBg="bg-cyan-500/10" iconColor="text-cyan-500"
+            label="Ukupno Korisnika" value={stats?.totalUsers || 0} sub="Svi registrovani nalozi"
+          />
+          <StatTile
+            data-testid="card-stat-total-projects"
+            icon={Music} iconBg="bg-pink-500/10" iconColor="text-pink-500"
+            label="Ukupno Projekata" value={stats?.totalProjects || 0} sub="Svi uploadovani projekti"
+          />
+          <StatTile
+            data-testid="card-stat-total-contracts"
+            icon={FileText} iconBg="bg-indigo-500/10" iconColor="text-indigo-500"
+            label="Ukupno Licenci" value={analytics?.contracts.total || 0} sub="Izdate licence"
+          />
+          <StatTile
+            data-testid="card-stat-total-votes"
+            icon={Heart} iconBg="bg-red-500/10" iconColor="text-red-500"
+            label="Ukupno Glasova" value={stats?.totalVotes || 0} sub="Svi glasovi za projekte"
+          />
         </div>
       </div>
 
@@ -1598,32 +1458,35 @@ function DashboardTab() {
         </CardHeader>
         <CardContent>
           {!analytics?.topProjects || analytics.topProjects.length === 0 ? (
-            <p className="text-sm text-muted-foreground" data-testid="text-no-projects">
-              Nema projekata za prikaz
-            </p>
+            <EmptyState icon={Music} text="Nema projekata za prikaz" compact />
           ) : (
-            <div className="space-y-3">
+            <div className="space-y-2">
               {analytics.topProjects.map((project, index) => (
                 <div
                   key={project.id}
-                  className="flex items-center justify-between p-3 rounded-md bg-card hover-elevate"
+                  className="flex items-center justify-between gap-3 p-3 rounded-xl border border-border/40 hover-elevate transition-all"
                   data-testid={`project-${project.id}`}
                 >
-                  <div className="flex items-center gap-3">
-                    <div className="flex items-center justify-center w-8 h-8 rounded-full bg-primary/10 text-primary font-bold">
+                  <div className="flex items-center gap-3 min-w-0">
+                    <div className={`flex items-center justify-center w-8 h-8 rounded-full font-bold text-sm flex-shrink-0 ${
+                      index === 0 ? "bg-amber-500/15 text-amber-500"
+                      : index === 1 ? "bg-slate-400/15 text-slate-400"
+                      : index === 2 ? "bg-orange-600/15 text-orange-600"
+                      : "bg-primary/10 text-primary"
+                    }`}>
                       #{index + 1}
                     </div>
-                    <div>
-                      <p className="font-medium" data-testid={`project-title-${project.id}`}>
+                    <div className="min-w-0">
+                      <p className="font-medium truncate" data-testid={`project-title-${project.id}`}>
                         {project.title}
                       </p>
-                      <p className="text-sm text-muted-foreground" data-testid={`project-username-${project.id}`}>
+                      <p className="text-sm text-muted-foreground truncate" data-testid={`project-username-${project.id}`}>
                         {project.username}
                       </p>
                     </div>
                   </div>
-                  <div className="flex items-center gap-2 text-muted-foreground">
-                    <Heart className="h-4 w-4" />
+                  <div className="flex items-center gap-1.5 text-red-500 flex-shrink-0">
+                    <Heart className="h-4 w-4 fill-current" />
                     <span className="font-semibold" data-testid={`project-votes-${project.id}`}>
                       {project.votesCount}
                     </span>

@@ -1,3 +1,4 @@
+import { useTheme } from "next-themes";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 import { cn } from "@/lib/utils";
 
@@ -10,14 +11,16 @@ interface AvatarWithInitialsProps {
   fallbackClassName?: string;
 }
 
-function generateColorFromId(id?: number): { bg: string; text: string } {
+function generateColorFromId(id?: number): { bg: string; text: string; bgDark: string; textDark: string } {
   if (!id) {
     return {
       bg: "hsl(var(--primary) / 0.1)",
       text: "hsl(var(--primary))",
+      bgDark: "hsl(var(--primary) / 0.15)",
+      textDark: "hsl(var(--primary))",
     };
   }
-  
+
   const colors = [
     { bg: "hsl(220, 85%, 92%)", bgDark: "hsl(220, 70%, 20%)", text: "hsl(220, 90%, 35%)", textDark: "hsl(220, 85%, 85%)" },  // Blue
     { bg: "hsl(280, 85%, 92%)", bgDark: "hsl(280, 70%, 20%)", text: "hsl(280, 90%, 35%)", textDark: "hsl(280, 85%, 85%)" },  // Purple
@@ -28,14 +31,11 @@ function generateColorFromId(id?: number): { bg: string; text: string } {
     { bg: "hsl(50, 85%, 92%)", bgDark: "hsl(50, 70%, 25%)", text: "hsl(50, 90%, 30%)", textDark: "hsl(50, 85%, 85%)" },   // Yellow
     { bg: "hsl(10, 85%, 92%)", bgDark: "hsl(10, 70%, 20%)", text: "hsl(10, 90%, 35%)", textDark: "hsl(10, 85%, 85%)" },   // Red
   ];
-  
+
   const index = id % colors.length;
   const color = colors[index]!;
-  
-  return {
-    bg: color.bg,
-    text: color.text,
-  };
+
+  return color;
 }
 
 function getInitials(name: string): string {
@@ -61,6 +61,8 @@ export function AvatarWithInitials({
 }: AvatarWithInitialsProps) {
   const initials = getInitials(name);
   const colors = generateColorFromId(userId);
+  const { resolvedTheme } = useTheme();
+  const isDark = resolvedTheme !== "light";
 
   return (
     <Avatar className={className}>
@@ -70,8 +72,8 @@ export function AvatarWithInitials({
       <AvatarFallback
         className={cn("font-semibold", fallbackClassName)}
         style={{
-          backgroundColor: colors.bg,
-          color: colors.text,
+          backgroundColor: isDark ? colors.bgDark : colors.bg,
+          color: isDark ? colors.textDark : colors.text,
         }}
       >
         {initials}

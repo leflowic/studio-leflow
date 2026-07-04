@@ -4,6 +4,9 @@ import { SEO } from "@/components/SEO";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
+import { StatTile } from "@/components/ui/stat-tile";
+import { PanelCard } from "@/components/ui/panel-card";
+import { EmptyState } from "@/components/ui/empty-state";
 import { Link } from "wouter";
 import { format } from "date-fns";
 import {
@@ -18,7 +21,6 @@ import {
   AlertCircle,
   Loader2,
   ExternalLink,
-  TrendingUp,
   Sparkles,
   Music2,
   Settings,
@@ -27,6 +29,7 @@ import {
 } from "lucide-react";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 import { FadeInWhenVisible } from "@/components/motion/FadeIn";
+import { WaveDivider } from "@/components/WaveDivider";
 
 type Project = {
   id: number;
@@ -94,62 +97,6 @@ const contractTypeLabel: Record<string, string> = {
   instrumental_sale: "Prodaja instrumentala",
 };
 
-function StatCard({ icon: Icon, iconBg, iconColor, label, value, sub, loading }: {
-  icon: React.ElementType; iconBg: string; iconColor: string;
-  label: string; value: string | number; sub: string; loading?: boolean;
-}) {
-  return (
-    <div className="relative overflow-hidden rounded-2xl border border-border/60 bg-card p-5 hover:shadow-md transition-shadow">
-      <div className="flex items-start justify-between mb-3">
-        <div className={`w-10 h-10 rounded-xl flex items-center justify-center ${iconBg}`}>
-          <Icon className={`w-5 h-5 ${iconColor}`} />
-        </div>
-        <TrendingUp className="w-4 h-4 text-muted-foreground/40" />
-      </div>
-      {loading ? (
-        <>
-          <Skeleton className="h-8 w-12 mb-1" />
-          <Skeleton className="h-3 w-24" />
-        </>
-      ) : (
-        <>
-          <div className="text-3xl font-bold tracking-tight">{value}</div>
-          <p className="text-xs text-muted-foreground mt-1">{sub}</p>
-        </>
-      )}
-      <p className="text-xs font-medium text-muted-foreground/70 mt-3 uppercase tracking-wider">{label}</p>
-    </div>
-  );
-}
-
-function SectionHeader({ icon: Icon, iconBg, iconColor, title, desc }: {
-  icon: React.ElementType; iconBg: string; iconColor: string; title: string; desc?: string;
-}) {
-  return (
-    <div className="flex items-center gap-3 mb-5">
-      <div className={`w-9 h-9 rounded-xl flex items-center justify-center flex-shrink-0 ${iconBg}`}>
-        <Icon className={`w-4 h-4 ${iconColor}`} />
-      </div>
-      <div>
-        <h2 className="text-base font-semibold">{title}</h2>
-        {desc && <p className="text-xs text-muted-foreground">{desc}</p>}
-      </div>
-    </div>
-  );
-}
-
-function EmptyState({ icon: Icon, text, action }: { icon: React.ElementType; text: string; action?: React.ReactNode }) {
-  return (
-    <div className="flex flex-col items-center justify-center py-10 text-center">
-      <div className="w-14 h-14 rounded-2xl bg-muted flex items-center justify-center mb-3">
-        <Icon className="w-7 h-7 text-muted-foreground/50" />
-      </div>
-      <p className="text-sm text-muted-foreground">{text}</p>
-      {action && <div className="mt-4">{action}</div>}
-    </div>
-  );
-}
-
 export default function Dashboard() {
   const { user } = useAuth();
 
@@ -182,8 +129,8 @@ export default function Dashboard() {
 
         {/* Hero banner */}
         <FadeInWhenVisible>
-          <div className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-primary/20 via-primary/10 to-transparent border border-primary/20 p-6 md:p-8">
-            <div className="absolute inset-0 bg-grid-white/5 [mask-image:radial-gradient(ellipse_at_top_left,white,transparent_70%)]" />
+          <div className="relative overflow-hidden rounded-2xl bg-card border border-border/60 p-6 md:p-8">
+            <div className="absolute inset-x-0 top-0 h-1 bg-gradient-to-r from-primary/60 via-primary to-primary/60" />
             <div className="relative flex flex-col sm:flex-row items-start sm:items-center gap-4">
               <Avatar className="w-14 h-14 ring-2 ring-primary/30 shadow-lg flex-shrink-0">
                 {user.avatarUrl
@@ -220,23 +167,25 @@ export default function Dashboard() {
               </div>
             </div>
 
-            {/* Quick actions */}
-            <div className="relative mt-5 pt-5 border-t border-primary/10 flex flex-wrap gap-2">
-              <Link href="/kontakt">
-                <Button size="sm" className="h-8 gap-1.5 text-xs">
-                  <CalendarDays className="w-3.5 h-3.5" /> Zakaži termin
-                </Button>
-              </Link>
-              <Link href="/inbox">
-                <Button variant="outline" size="sm" className="h-8 gap-1.5 text-xs">
-                  <MessageCircle className="w-3.5 h-3.5" /> Pošalji poruku
-                </Button>
-              </Link>
-              <Link href="/giveaway">
-                <Button variant="outline" size="sm" className="h-8 gap-1.5 text-xs">
-                  <FolderOpen className="w-3.5 h-3.5" /> Prijavi projekat
-                </Button>
-              </Link>
+            <div className="relative mt-5 pt-4">
+              <WaveDivider className="opacity-60 mb-4" />
+              <div className="flex flex-wrap gap-2">
+                <Link href="/kontakt">
+                  <Button size="sm" className="h-8 gap-1.5 text-xs">
+                    <CalendarDays className="w-3.5 h-3.5" /> Zakaži termin
+                  </Button>
+                </Link>
+                <Link href="/inbox">
+                  <Button variant="outline" size="sm" className="h-8 gap-1.5 text-xs">
+                    <MessageCircle className="w-3.5 h-3.5" /> Pošalji poruku
+                  </Button>
+                </Link>
+                <Link href="/giveaway">
+                  <Button variant="outline" size="sm" className="h-8 gap-1.5 text-xs">
+                    <FolderOpen className="w-3.5 h-3.5" /> Prijavi projekat
+                  </Button>
+                </Link>
+              </div>
             </div>
           </div>
         </FadeInWhenVisible>
@@ -244,24 +193,24 @@ export default function Dashboard() {
         {/* Stats grid */}
         <FadeInWhenVisible>
           <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
-            <StatCard
+            <StatTile
               icon={FolderOpen} iconBg="bg-blue-500/10" iconColor="text-blue-500"
               label="Projekti" value={overview?.totalProjects ?? 0}
               sub={`${overview?.projectsByStatus?.in_progress ?? 0} u toku`}
               loading={overviewLoading}
             />
-            <StatCard
+            <StatTile
               icon={FileText} iconBg="bg-purple-500/10" iconColor="text-purple-500"
               label="Licence" value={overview?.totalContracts ?? 0}
               sub="Ukupno licenci" loading={overviewLoading}
             />
-            <StatCard
+            <StatTile
               icon={Receipt} iconBg="bg-amber-500/10" iconColor="text-amber-500"
               label="Fakture" value={overview?.totalInvoices ?? 0}
               sub={`${overview?.pendingInvoices ?? 0} na čekanju`}
               loading={overviewLoading}
             />
-            <StatCard
+            <StatTile
               icon={MessageCircle} iconBg="bg-green-500/10" iconColor="text-green-500"
               label="Poruke" value={overview?.unreadMessages ?? 0}
               sub="Nepročitane" loading={overviewLoading}
@@ -271,8 +220,7 @@ export default function Dashboard() {
 
         {/* Projects */}
         <FadeInWhenVisible>
-          <div className="rounded-2xl border border-border/60 bg-card p-5 md:p-6">
-            <SectionHeader icon={FolderOpen} iconBg="bg-blue-500/10" iconColor="text-blue-500" title="Moji Projekti" desc="Status svih vaših projekata" />
+          <PanelCard icon={FolderOpen} iconBg="bg-blue-500/10" iconColor="text-blue-500" title="Moji Projekti" desc="Status svih vaših projekata">
             {projectsLoading ? (
               <div className="space-y-3">
                 {[1, 2, 3].map(i => (
@@ -309,15 +257,14 @@ export default function Dashboard() {
                 <Link href="/giveaway"><Button variant="outline" size="sm">Uploaduj projekat</Button></Link>
               } />
             )}
-          </div>
+          </PanelCard>
         </FadeInWhenVisible>
 
         {/* Contracts + Invoices side by side on large screens */}
         <div className="grid md:grid-cols-2 gap-6">
           {/* Contracts */}
           <FadeInWhenVisible>
-            <div className="rounded-2xl border border-border/60 bg-card p-5 md:p-6 h-full">
-              <SectionHeader icon={FileText} iconBg="bg-purple-500/10" iconColor="text-purple-500" title="Licence" desc="Vaše licence od Studio LeFlow" />
+            <PanelCard icon={FileText} iconBg="bg-purple-500/10" iconColor="text-purple-500" title="Licence" desc="Vaše licence od Studio LeFlow" className="h-full">
               {contractsLoading ? (
                 <div className="space-y-3">
                   {[1, 2].map(i => <div key={i} className="flex items-center gap-3 p-4 rounded-xl border border-border/40"><Skeleton className="w-9 h-9 rounded-xl" /><div className="flex-1"><Skeleton className="h-4 w-32 mb-1.5" /><Skeleton className="h-3 w-24" /></div></div>)}
@@ -351,13 +298,12 @@ export default function Dashboard() {
                   ))}
                 </div>
               ) : <EmptyState icon={FileText} text="Nemate nijednu licencu." />}
-            </div>
+            </PanelCard>
           </FadeInWhenVisible>
 
           {/* Invoices */}
           <FadeInWhenVisible>
-            <div className="rounded-2xl border border-border/60 bg-card p-5 md:p-6 h-full">
-              <SectionHeader icon={Receipt} iconBg="bg-amber-500/10" iconColor="text-amber-500" title="Fakture" desc="Pregled svih faktura" />
+            <PanelCard icon={Receipt} iconBg="bg-amber-500/10" iconColor="text-amber-500" title="Fakture" desc="Pregled svih faktura" className="h-full">
               {invoicesLoading ? (
                 <div className="space-y-3">
                   {[1, 2].map(i => <div key={i} className="flex items-center gap-3 p-4 rounded-xl border border-border/40"><Skeleton className="w-9 h-9 rounded-xl" /><div className="flex-1"><Skeleton className="h-4 w-32 mb-1.5" /><Skeleton className="h-3 w-24" /></div><Skeleton className="h-6 w-16" /></div>)}
@@ -386,7 +332,7 @@ export default function Dashboard() {
                   })}
                 </div>
               ) : <EmptyState icon={Receipt} text="Nemate nijednu fakturu." />}
-            </div>
+            </PanelCard>
           </FadeInWhenVisible>
         </div>
 
