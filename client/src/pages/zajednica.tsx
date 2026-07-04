@@ -144,7 +144,7 @@ export default function Zajednica() {
                   </p>
                 </div>
                 <Link href="/moje-pesme">
-                  <Button className="gap-2 rounded-xl" data-testid="button-my-songs">
+                  <Button className="gap-2" data-testid="button-my-songs">
                     <Plus className="w-4 h-4" /> Dodaj pesmu
                   </Button>
                 </Link>

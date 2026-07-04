@@ -358,14 +358,28 @@ function StoragePanel() {
     <div className="overflow-y-auto h-full">
       <div className="flex items-center justify-between px-2 py-1 border-b border-zinc-800/60">
         <span className="text-[10px] text-zinc-500 font-mono">localStorage ({ls.length})</span>
-        <button onClick={() => { localStorage.clear(); refresh(); }} className="text-[10px] text-zinc-600 hover:text-red-400">Clear all</button>
+        <button
+          onClick={() => {
+            if (window.confirm("Obrisati sav localStorage? Ovo će te odjaviti (auth_token se briše).")) { localStorage.clear(); refresh(); }
+          }}
+          className="text-[10px] text-zinc-600 hover:text-red-400"
+        >
+          Clear all
+        </button>
       </div>
       {ls.map(([k, v]) => <Row key={k} k={k} v={v} onDel={() => del(localStorage, k)} onCopy={() => copyVal(v)} />)}
       {ls.length === 0 && <p className="text-[10px] text-zinc-700 px-2 py-1">Empty</p>}
 
       <div className="flex items-center justify-between px-2 py-1 border-b border-zinc-800/60 mt-1">
         <span className="text-[10px] text-zinc-500 font-mono">sessionStorage ({ss.length})</span>
-        <button onClick={() => { sessionStorage.clear(); refresh(); }} className="text-[10px] text-zinc-600 hover:text-red-400">Clear all</button>
+        <button
+          onClick={() => {
+            if (window.confirm("Obrisati sav sessionStorage?")) { sessionStorage.clear(); refresh(); }
+          }}
+          className="text-[10px] text-zinc-600 hover:text-red-400"
+        >
+          Clear all
+        </button>
       </div>
       {ss.map(([k, v]) => <Row key={k} k={k} v={v} onDel={() => del(sessionStorage, k)} onCopy={() => copyVal(v)} />)}
       {ss.length === 0 && <p className="text-[10px] text-zinc-700 px-2 py-1">Empty</p>}

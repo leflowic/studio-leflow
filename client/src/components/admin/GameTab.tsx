@@ -295,6 +295,7 @@ export default function GameTab() {
                     size="icon"
                     className="text-muted-foreground hover:text-foreground"
                     onClick={() => startEdit(c)}
+                    aria-label="Izmeni izazov"
                   >
                     <Pencil className="w-4 h-4" />
                   </Button>
@@ -303,6 +304,7 @@ export default function GameTab() {
                     size="icon"
                     className="text-destructive hover:text-destructive"
                     onClick={() => deleteChallenge.mutate(c.id)}
+                    aria-label="Obriši izazov"
                   >
                     <Trash2 className="w-4 h-4" />
                   </Button>

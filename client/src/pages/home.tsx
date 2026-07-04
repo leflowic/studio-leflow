@@ -123,38 +123,39 @@ function GuestBanner() {
   if (dismissed || !visible) return null;
 
   return (
-    <motion.div
-      initial={{ y: 80, opacity: 0 }}
-      animate={{ y: 0, opacity: 1 }}
-      exit={{ y: 80, opacity: 0 }}
-      transition={{ type: "spring", damping: 24, stiffness: 280 }}
-      className="fixed bottom-24 left-1/2 -translate-x-1/2 z-40 w-[calc(100%-2rem)] max-w-lg"
-    >
-      <div className="flex items-center gap-3 bg-card border border-border/80 rounded-2xl shadow-2xl px-4 py-3 backdrop-blur-sm">
-        <div className="w-9 h-9 rounded-xl bg-primary/10 flex items-center justify-center flex-shrink-0">
-          <UserPlus className="w-4 h-4 text-primary" />
+    <div className="fixed bottom-24 left-1/2 -translate-x-1/2 z-40 w-[calc(100%-2rem)] max-w-lg">
+      <motion.div
+        initial={{ y: 80, opacity: 0 }}
+        animate={{ y: 0, opacity: 1 }}
+        exit={{ y: 80, opacity: 0 }}
+        transition={{ type: "spring", damping: 24, stiffness: 280 }}
+      >
+        <div className="flex flex-wrap items-center justify-center gap-3 bg-card border border-border/80 rounded-2xl shadow-2xl px-4 py-3 backdrop-blur-sm">
+          <div className="w-9 h-9 rounded-xl bg-primary/10 flex items-center justify-center flex-shrink-0">
+            <UserPlus className="w-4 h-4 text-primary" />
+          </div>
+          <div className="flex-1 min-w-[160px] text-center sm:text-left">
+            <p className="text-sm font-semibold leading-tight">Pridruži se zajednici</p>
+            <p className="text-xs text-muted-foreground">Besplatno · Igre · Feed · Poruke</p>
+          </div>
+          <div className="flex items-center gap-1.5 flex-shrink-0">
+            <Link href="/registracija">
+              <Button size="sm" className="h-8 text-xs px-3 gap-1.5">
+                Registruj se
+              </Button>
+            </Link>
+            <Link href="/prijava">
+              <Button size="sm" variant="ghost" className="h-8 text-xs px-2.5">
+                Prijava
+              </Button>
+            </Link>
+            <button onClick={dismiss} className="text-muted-foreground hover:text-foreground transition-colors ml-0.5" aria-label="Zatvori">
+              <X className="w-4 h-4" />
+            </button>
+          </div>
         </div>
-        <div className="flex-1 min-w-0">
-          <p className="text-sm font-semibold leading-tight">Pridruži se zajednici</p>
-          <p className="text-xs text-muted-foreground">Besplatno · Igre · Feed · Poruke</p>
-        </div>
-        <div className="flex items-center gap-1.5 flex-shrink-0">
-          <Link href="/registracija">
-            <Button size="sm" className="h-8 text-xs px-3 gap-1.5">
-              Registruj se
-            </Button>
-          </Link>
-          <Link href="/prijava">
-            <Button size="sm" variant="ghost" className="h-8 text-xs px-2.5">
-              Prijava
-            </Button>
-          </Link>
-          <button onClick={dismiss} className="text-muted-foreground hover:text-foreground transition-colors ml-0.5">
-            <X className="w-4 h-4" />
-          </button>
-        </div>
-      </div>
-    </motion.div>
+      </motion.div>
+    </div>
   );
 }
 
@@ -636,13 +637,15 @@ export default function Home() {
 
           <div className="grid md:grid-cols-2 gap-8 max-w-6xl mx-auto">
             <FadeInWhenVisible delay={0.1}>
-              <Card className="overflow-hidden hover-elevate transition-all duration-300">
+              <Card className="hover-elevate transition-all duration-300">
                 <CardContent className="p-0">
-                  <OptimizedImage
-                    src="/equipment/apollo-twin-duo.jpg"
-                    alt="Universal Audio Apollo Twin X Duo"
-                    className="w-full h-48 object-cover"
-                  />
+                  <div className="overflow-hidden rounded-t-xl">
+                    <OptimizedImage
+                      src="/equipment/apollo-twin-duo.jpg"
+                      alt="Universal Audio Apollo Twin X Duo"
+                      className="w-full h-48 object-cover"
+                    />
+                  </div>
                   <div className="p-6">
                     <h3 className="text-xl font-bold mb-3 flex items-center gap-2">
                       <Headphones className="w-5 h-5 text-primary" />
@@ -657,13 +660,15 @@ export default function Home() {
             </FadeInWhenVisible>
 
             <FadeInWhenVisible delay={0.2}>
-              <Card className="overflow-hidden hover-elevate transition-all duration-300">
+              <Card className="hover-elevate transition-all duration-300">
                 <CardContent className="p-0">
-                  <OptimizedImage
-                    src="/equipment/dt990-headphones.jpg"
-                    alt="Beyerdynamic DT 990 PRO"
-                    className="w-full h-48 object-cover"
-                  />
+                  <div className="overflow-hidden rounded-t-xl">
+                    <OptimizedImage
+                      src="/equipment/dt990-headphones.jpg"
+                      alt="Beyerdynamic DT 990 PRO"
+                      className="w-full h-48 object-cover"
+                    />
+                  </div>
                   <div className="p-6">
                     <h3 className="text-xl font-bold mb-3 flex items-center gap-2">
                       <Headphones className="w-5 h-5 text-primary" />
@@ -678,13 +683,15 @@ export default function Home() {
             </FadeInWhenVisible>
 
             <FadeInWhenVisible delay={0.3}>
-              <Card className="overflow-hidden hover-elevate transition-all duration-300">
+              <Card className="hover-elevate transition-all duration-300">
                 <CardContent className="p-0">
-                  <OptimizedImage
-                    src="/equipment/uad-plugins.jpg"
-                    alt="UAD Plugin Collection"
-                    className="w-full h-48 object-cover"
-                  />
+                  <div className="overflow-hidden rounded-t-xl">
+                    <OptimizedImage
+                      src="/equipment/uad-plugins.jpg"
+                      alt="UAD Plugin Collection"
+                      className="w-full h-48 object-cover"
+                    />
+                  </div>
                   <div className="p-6">
                     <h3 className="text-xl font-bold mb-3 flex items-center gap-2">
                       <Sliders className="w-5 h-5 text-primary" />
@@ -699,13 +706,15 @@ export default function Home() {
             </FadeInWhenVisible>
 
             <FadeInWhenVisible delay={0.4}>
-              <Card className="overflow-hidden hover-elevate transition-all duration-300">
+              <Card className="hover-elevate transition-all duration-300">
                 <CardContent className="p-0">
-                  <OptimizedImage
-                    src="/equipment/autotune-uad.jpg"
-                    alt="AutoTune RealTime Advanced"
-                    className="w-full h-48 object-cover"
-                  />
+                  <div className="overflow-hidden rounded-t-xl">
+                    <OptimizedImage
+                      src="/equipment/autotune-uad.jpg"
+                      alt="AutoTune RealTime Advanced"
+                      className="w-full h-48 object-cover"
+                    />
+                  </div>
                   <div className="p-6">
                     <h3 className="text-xl font-bold mb-3 flex items-center gap-2">
                       <Zap className="w-5 h-5 text-primary" />

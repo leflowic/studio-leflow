@@ -217,10 +217,8 @@ export function SmartLinksTab() {
           <button
             type="button"
             onClick={closeDialog}
-            className="w-8 h-8 rounded-xl flex items-center justify-center transition-colors"
-            style={{ background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.07)" }}
-            onMouseEnter={e => (e.currentTarget.style.background = "rgba(255,255,255,0.10)")}
-            onMouseLeave={e => (e.currentTarget.style.background = "rgba(255,255,255,0.05)")}
+            aria-label="Zatvori"
+            className="w-8 h-8 rounded-xl flex items-center justify-center transition-all active:scale-90 bg-white/5 hover:bg-white/10 border border-white/[0.07] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#8b73ff] focus-visible:ring-offset-2 focus-visible:ring-offset-black"
           >
             <X className="w-3.5 h-3.5 text-white/50" />
           </button>
@@ -244,16 +242,13 @@ export function SmartLinksTab() {
                   value={autoUrl}
                   onChange={e => setAutoUrl(e.target.value)}
                   onKeyDown={e => { if (e.key === "Enter") { e.preventDefault(); handleAutoFill(); } }}
-                  className="flex-1 h-9 px-3 rounded-xl text-[12px] outline-none text-white placeholder:text-white/20 transition-colors"
-                  style={{ background: "rgba(255,255,255,0.06)", border: "1px solid rgba(255,255,255,0.08)" }}
-                  onFocus={e => (e.currentTarget.style.border = "1px solid rgba(99,82,255,0.5)")}
-                  onBlur={e => (e.currentTarget.style.border = "1px solid rgba(255,255,255,0.08)")}
+                  className="flex-1 h-9 px-3 rounded-xl text-[12px] outline-none text-white placeholder:text-white/20 transition-colors bg-white/[0.06] border border-white/[0.08] focus:border-[#6352ff]/50"
                 />
                 <button
                   type="button"
                   onClick={handleAutoFill}
                   disabled={!autoUrl || autoFillPending}
-                  className="h-9 px-4 rounded-xl text-[12px] font-semibold text-white flex items-center gap-1.5 shrink-0 transition-opacity disabled:opacity-40"
+                  className="h-9 px-4 rounded-xl text-[12px] font-semibold text-white flex items-center gap-1.5 shrink-0 transition-all active:scale-[0.97] disabled:opacity-40 disabled:active:scale-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#8b73ff] focus-visible:ring-offset-2 focus-visible:ring-offset-black"
                   style={{ background: "linear-gradient(135deg, #6352ff, #8b73ff)", boxShadow: "0 4px 16px rgba(99,82,255,0.35)" }}
                 >
                   {autoFillPending ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Sparkles className="w-3.5 h-3.5" />}
@@ -266,9 +261,13 @@ export function SmartLinksTab() {
           {/* Cover + title + artist */}
           <div className="flex gap-4">
             <div
-              className="relative w-[88px] h-[88px] rounded-2xl overflow-hidden flex-shrink-0 cursor-pointer group"
+              role="button"
+              tabIndex={0}
+              aria-label="Promeni cover sliku"
+              className="relative w-[88px] h-[88px] rounded-2xl overflow-hidden flex-shrink-0 cursor-pointer group focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#8b73ff] focus-visible:ring-offset-2 focus-visible:ring-offset-black"
               style={{ background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.07)" }}
               onClick={() => fileRef.current?.click()}
+              onKeyDown={e => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); fileRef.current?.click(); } }}
             >
               {form.coverUrl ? (
                 <>
@@ -279,7 +278,8 @@ export function SmartLinksTab() {
                   <button
                     type="button"
                     onClick={e => { e.stopPropagation(); setForm({ ...form, coverUrl: "" }); }}
-                    className="absolute top-1 right-1 w-5 h-5 rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"
+                    aria-label="Ukloni cover"
+                    className="absolute top-1 right-1 w-5 h-5 rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-all active:scale-90 focus-visible:opacity-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#8b73ff]"
                     style={{ background: "rgba(0,0,0,0.8)" }}
                   >
                     <X className="w-2.5 h-2.5 text-white" />
@@ -378,10 +378,7 @@ export function SmartLinksTab() {
           <button
             type="button"
             onClick={closeDialog}
-            className="h-9 px-5 rounded-xl text-[12px] font-medium transition-colors"
-            style={{ color: "rgba(255,255,255,0.45)", border: "1px solid rgba(255,255,255,0.08)" }}
-            onMouseEnter={e => (e.currentTarget.style.color = "rgba(255,255,255,0.7)")}
-            onMouseLeave={e => (e.currentTarget.style.color = "rgba(255,255,255,0.45)")}
+            className="h-9 px-5 rounded-xl text-[12px] font-medium transition-all active:scale-95 text-white/45 hover:text-white/70 border border-white/[0.08] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#8b73ff] focus-visible:ring-offset-2 focus-visible:ring-offset-black"
           >
             Otkaži
           </button>
@@ -389,7 +386,7 @@ export function SmartLinksTab() {
             type="button"
             onClick={() => saveMutation.mutate(form)}
             disabled={saveMutation.isPending || !form.title || !form.artist || !form.slug}
-            className="h-9 px-6 rounded-xl text-[12px] font-semibold text-white flex items-center gap-2 transition-opacity disabled:opacity-40"
+            className="h-9 px-6 rounded-xl text-[12px] font-semibold text-white flex items-center gap-2 transition-all active:scale-[0.97] disabled:opacity-40 disabled:active:scale-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#8b73ff] focus-visible:ring-offset-2 focus-visible:ring-offset-black"
             style={{ background: "linear-gradient(135deg, #6352ff 0%, #8b73ff 100%)", boxShadow: "0 4px 20px rgba(99,82,255,0.4)" }}
           >
             {saveMutation.isPending && <Loader2 className="w-3.5 h-3.5 animate-spin" />}
@@ -415,10 +412,8 @@ export function SmartLinksTab() {
           <button
             type="button"
             onClick={openCreate}
-            className="flex items-center gap-2 h-9 px-4 rounded-xl text-[12px] font-semibold text-white transition-all"
-            style={{ background: "linear-gradient(135deg, #6352ff 0%, #8b73ff 100%)", boxShadow: "0 4px 16px rgba(99,82,255,0.35)" }}
-            onMouseEnter={e => { e.currentTarget.style.boxShadow = "0 6px 24px rgba(99,82,255,0.5)"; e.currentTarget.style.transform = "translateY(-1px)"; }}
-            onMouseLeave={e => { e.currentTarget.style.boxShadow = "0 4px 16px rgba(99,82,255,0.35)"; e.currentTarget.style.transform = ""; }}
+            className="flex items-center gap-2 h-9 px-4 rounded-xl text-[12px] font-semibold text-white transition-all shadow-[0_4px_16px_rgba(99,82,255,0.35)] hover:shadow-[0_6px_24px_rgba(99,82,255,0.5)] hover:-translate-y-px active:scale-[0.97] active:translate-y-0 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#8b73ff] focus-visible:ring-offset-2 focus-visible:ring-offset-background"
+            style={{ background: "linear-gradient(135deg, #6352ff 0%, #8b73ff 100%)" }}
           >
             <Plus className="w-3.5 h-3.5" />
             Novi link
@@ -460,8 +455,7 @@ export function SmartLinksTab() {
             <button
               type="button"
               onClick={openCreate}
-              className="flex items-center gap-2 h-8 px-4 rounded-xl text-[11px] font-semibold mt-1 transition-colors"
-              style={{ border: "1px solid rgba(99,82,255,0.25)", color: "rgba(160,148,255,0.8)", background: "rgba(99,82,255,0.08)" }}
+              className="flex items-center gap-2 h-8 px-4 rounded-xl text-[11px] font-semibold mt-1 transition-all active:scale-95 border border-[#6352ff]/25 text-[#a094ff] bg-[#6352ff]/10 hover:bg-[#6352ff]/[0.16] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#8b73ff] focus-visible:ring-offset-2 focus-visible:ring-offset-background"
             >
               <Plus className="w-3 h-3" /> Kreiraj prvi
             </button>
@@ -471,10 +465,7 @@ export function SmartLinksTab() {
             {links.map(link => (
               <div
                 key={link.id}
-                className="group rounded-2xl overflow-hidden flex items-stretch transition-all duration-200"
-                style={{ background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.06)" }}
-                onMouseEnter={e => { (e.currentTarget as HTMLElement).style.background = "rgba(255,255,255,0.05)"; (e.currentTarget as HTMLElement).style.border = "1px solid rgba(99,82,255,0.15)"; }}
-                onMouseLeave={e => { (e.currentTarget as HTMLElement).style.background = "rgba(255,255,255,0.03)"; (e.currentTarget as HTMLElement).style.border = "1px solid rgba(255,255,255,0.06)"; }}
+                className="group rounded-2xl overflow-hidden flex items-stretch transition-all duration-200 bg-white/[0.03] border border-white/[0.06] hover:bg-white/5 hover:border-[#6352ff]/[0.15]"
               >
                 {/* Cover */}
                 <div className="w-[88px] h-[88px] flex-shrink-0 relative overflow-hidden" style={{ background: "rgba(255,255,255,0.04)" }}>
@@ -515,21 +506,17 @@ export function SmartLinksTab() {
                   ].map(({ icon: Icon, action, href, title }) => (
                     href ? (
                       <a key={title} href={href} target="_blank" rel="noopener noreferrer"
-                        className="w-7 h-7 rounded-lg flex items-center justify-center transition-colors"
-                        style={{ color: "rgba(255,255,255,0.35)" }}
-                        onMouseEnter={e => (e.currentTarget.style.background = "rgba(255,255,255,0.08)")}
-                        onMouseLeave={e => (e.currentTarget.style.background = "")}
+                        className="w-7 h-7 rounded-lg flex items-center justify-center text-white/35 transition-all hover:bg-white/[0.08] active:scale-90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#8b73ff]"
                         title={title}
+                        aria-label={title}
                       >
                         <Icon className="w-3.5 h-3.5" />
                       </a>
                     ) : (
                       <button key={title} type="button" onClick={action!}
-                        className="w-7 h-7 rounded-lg flex items-center justify-center transition-colors"
-                        style={{ color: "rgba(255,255,255,0.35)" }}
-                        onMouseEnter={e => (e.currentTarget.style.background = "rgba(255,255,255,0.08)")}
-                        onMouseLeave={e => (e.currentTarget.style.background = "")}
+                        className="w-7 h-7 rounded-lg flex items-center justify-center text-white/35 transition-all hover:bg-white/[0.08] active:scale-90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#8b73ff]"
                         title={title}
+                        aria-label={title}
                       >
                         <Icon className="w-3.5 h-3.5" />
                       </button>
@@ -538,11 +525,9 @@ export function SmartLinksTab() {
                   <AlertDialog>
                     <AlertDialogTrigger asChild>
                       <button type="button"
-                        className="w-7 h-7 rounded-lg flex items-center justify-center transition-colors"
-                        style={{ color: "rgba(255,255,255,0.35)" }}
-                        onMouseEnter={e => { e.currentTarget.style.background = "rgba(239,68,68,0.12)"; e.currentTarget.style.color = "rgba(248,113,113,0.9)"; }}
-                        onMouseLeave={e => { e.currentTarget.style.background = ""; e.currentTarget.style.color = "rgba(255,255,255,0.35)"; }}
+                        className="w-7 h-7 rounded-lg flex items-center justify-center text-white/35 transition-all hover:bg-red-500/[0.12] hover:text-red-400/90 active:scale-90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-red-400/80"
                         title="Obriši"
+                        aria-label="Obriši link"
                       >
                         <Trash2 className="w-3.5 h-3.5" />
                       </button>
@@ -554,7 +539,13 @@ export function SmartLinksTab() {
                       </AlertDialogHeader>
                       <AlertDialogFooter>
                         <AlertDialogCancel>Otkaži</AlertDialogCancel>
-                        <AlertDialogAction onClick={() => deleteMutation.mutate(link.id)} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
+                        <AlertDialogAction
+                          onClick={() => {
+                            if (deleteMutation.isPending) return;
+                            deleteMutation.mutate(link.id);
+                          }}
+                          className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                        >
                           Obriši
                         </AlertDialogAction>
                       </AlertDialogFooter>
@@ -589,10 +580,7 @@ function StyledInput({ type = "text", placeholder, value, onChange }: {
       placeholder={placeholder}
       value={value}
       onChange={onChange}
-      className="w-full h-9 px-3 rounded-xl text-[12px] text-white outline-none placeholder:text-white/20 transition-colors"
-      style={{ background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.08)" }}
-      onFocus={e => (e.currentTarget.style.border = "1px solid rgba(99,82,255,0.5)")}
-      onBlur={e => (e.currentTarget.style.border = "1px solid rgba(255,255,255,0.08)")}
+      className="w-full h-9 px-3 rounded-xl text-[12px] text-white outline-none placeholder:text-white/20 transition-colors bg-white/5 border border-white/[0.08] focus:border-[#6352ff]/50"
     />
   );
 }

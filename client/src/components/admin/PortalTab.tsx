@@ -412,9 +412,13 @@ export function PortalTab() {
                 <Input placeholder="npr. Marko Marković" value={newClient} onChange={e => setNewClient(e.target.value)} className="bg-zinc-800 border-zinc-700" />
               </div>
               <Button
-                className="w-full bg-amber-600 hover:bg-amber-500 text-black font-semibold"
-                onClick={() => createMutation.mutate()}
-                disabled={!newName.trim() || !newClient.trim() || createMutation.isPending}
+                className={`w-full bg-amber-600 hover:bg-amber-500 text-black font-semibold${createMutation.isPending ? " opacity-70" : ""}`}
+                onClick={() => {
+                  if (createMutation.isPending) return;
+                  createMutation.mutate();
+                }}
+                disabled={!newName.trim() || !newClient.trim()}
+                aria-busy={createMutation.isPending}
               >
                 {createMutation.isPending ? "Kreiram..." : "Kreiraj portal"}
               </Button>

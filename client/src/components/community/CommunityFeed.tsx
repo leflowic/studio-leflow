@@ -178,7 +178,8 @@ function CommentsSection({ postId, currentUserId, onCountChange }: {
               {currentUserId === c.userId && (
                 <button
                   onClick={() => deleteComment.mutate(c.id)}
-                  className="opacity-0 group-hover:opacity-100 transition-opacity text-muted-foreground hover:text-destructive mt-1"
+                  className="opacity-100 md:opacity-0 md:group-hover:opacity-100 transition-opacity text-muted-foreground hover:text-destructive mt-1"
+                  aria-label="Obriši komentar"
                 >
                   <X className="w-3.5 h-3.5" />
                 </button>
@@ -200,7 +201,7 @@ function CommentsSection({ postId, currentUserId, onCountChange }: {
             maxLength={500}
             className="flex-1 bg-muted/50 border border-border/50 rounded-xl px-3 py-2 text-sm outline-none focus:border-primary/50 transition-colors"
           />
-          <Button type="submit" size="icon" variant="ghost" disabled={!text.trim() || addComment.isPending} className="rounded-xl">
+          <Button type="submit" size="icon" variant="ghost" disabled={!text.trim() || addComment.isPending}>
             <Send className="w-4 h-4" />
           </Button>
         </form>
@@ -268,6 +269,7 @@ function PostCard({ post, currentUserId, onDeleted, onLikeChanged, onCommentCoun
             <button
               onClick={() => deleteMutation.mutate()}
               className="text-muted-foreground hover:text-destructive transition-colors"
+              aria-label="Obriši objavu"
             >
               <Trash2 className="w-4 h-4" />
             </button>
@@ -496,8 +498,8 @@ function ImageCropModal({ src, onApply, onCancel }: {
         <p className="text-xs text-muted-foreground text-center">Prevuci da pozicioniraš · Klizač za zum</p>
 
         <div className="flex gap-2 pt-1">
-          <Button variant="outline" className="flex-1 rounded-xl" onClick={onCancel}>Otkaži</Button>
-          <Button className="flex-1 rounded-xl" onClick={apply}>Primeni</Button>
+          <Button variant="outline" className="flex-1" onClick={onCancel}>Otkaži</Button>
+          <Button className="flex-1" onClick={apply}>Primeni</Button>
         </div>
       </div>
     </div>,

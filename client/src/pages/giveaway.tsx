@@ -5,7 +5,6 @@ import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import { format } from "date-fns";
 import { Link } from "wouter";
-import { motion } from "framer-motion";
 import { FadeInWhenVisible } from "@/components/motion/FadeIn";
 import { Heart, Upload, MessageCircle, Send, Music } from "lucide-react";
 import { SEO } from "@/components/SEO";
@@ -242,12 +241,13 @@ export default function Giveaway() {
     try {
       await startUpload(uploadForm.file);
     } catch (error) {
-      setIsUploading(false);
       toast({
         title: "Greška",
         description: "Došlo je do greške pri upload-u",
         variant: "destructive",
       });
+    } finally {
+      setIsUploading(false);
     }
   };
 
@@ -576,6 +576,8 @@ export default function Giveaway() {
                     commentText={commentTexts[project.id] || ""}
                     onCommentChange={(text) => setCommentTexts({ ...commentTexts, [project.id]: text })}
                     currentUserId={user?.id}
+                    isVoting={voteMutation.isPending}
+                    isCommenting={commentMutation.isPending}
                   />
                 </FadeInWhenVisible>
               ))}
@@ -594,6 +596,8 @@ function ProjectCard({
   commentText,
   onCommentChange,
   currentUserId,
+  isVoting,
+  isCommenting,
 }: {
   project: ProjectWithUser;
   onVote: (id: number) => void;
@@ -601,6 +605,8 @@ function ProjectCard({
   commentText: string;
   onCommentChange: (text: string) => void;
   currentUserId?: number;
+  isVoting?: boolean;
+  isCommenting?: boolean;
 }) {
   const [showComments, setShowComments] = useState(false);
 
@@ -661,22 +667,17 @@ function ProjectCard({
         </div>
 
         <div className="flex items-center gap-4">
-          <motion.div
-            whileHover={{ scale: 1.05 }}
-            whileTap={{ scale: 0.95 }}
-            transition={{ type: "spring", stiffness: 400, damping: 17 }}
+          <Button
+            variant="outline"
+            size="default"
+            onClick={() => onVote(project.id)}
+            disabled={isVoting}
+            className="gap-2"
+            data-testid={`button-vote-${project.id}`}
           >
-            <Button
-              variant="outline"
-              size="default"
-              onClick={() => onVote(project.id)}
-              className="gap-2"
-              data-testid={`button-vote-${project.id}`}
-            >
-              <Heart className="w-4 h-4" />
-              <span data-testid={`text-votes-count-${project.id}`}>{project.votesCount}</span>
-            </Button>
-          </motion.div>
+            <Heart className="w-4 h-4" />
+            <span data-testid={`text-votes-count-${project.id}`}>{project.votesCount}</span>
+          </Button>
 
           <Button
             variant="ghost"
@@ -738,7 +739,7 @@ function ProjectCard({
               <Button
                 size="icon"
                 onClick={() => onComment(project.id)}
-                disabled={!commentText.trim()}
+                disabled={!commentText.trim() || isCommenting}
                 data-testid={`button-submit-comment-${project.id}`}
               >
                 <Send className="w-4 h-4" />

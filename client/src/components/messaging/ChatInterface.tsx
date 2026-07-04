@@ -543,7 +543,7 @@ export default function ChatInterface({ selectedUserId, onBack }: ChatInterfaceP
     <div className="flex-1 flex flex-col h-full relative overflow-hidden">
       {/* Header */}
       <div className="flex items-center gap-3 px-4 py-3 border-b border-border/60 bg-card/80 backdrop-blur-sm flex-shrink-0">
-        <Button variant="ghost" size="icon" onClick={onBack} className="md:hidden -ml-1 rounded-xl">
+        <Button variant="ghost" size="icon" onClick={onBack} className="md:hidden -ml-1">
           <ArrowLeft className="w-5 h-5" />
         </Button>
         <div className="relative">
@@ -576,7 +576,7 @@ export default function ChatInterface({ selectedUserId, onBack }: ChatInterfaceP
         {/* Delete conversation */}
         <AlertDialog>
           <AlertDialogTrigger asChild>
-            <Button variant="ghost" size="icon" className="text-muted-foreground hover:text-destructive flex-shrink-0 rounded-xl" title="Obriši moje poruke">
+            <Button variant="ghost" size="icon" className="text-muted-foreground hover:text-destructive flex-shrink-0" title="Obriši moje poruke">
               <Trash2 className="w-4 h-4" />
             </Button>
           </AlertDialogTrigger>
@@ -673,21 +673,21 @@ export default function ChatInterface({ selectedUserId, onBack }: ChatInterfaceP
                       {/* Action buttons (own, left of bubble) */}
                       {isOwn && !message.deleted && (
                         <div className="flex gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity order-first">
-                          <Button variant="ghost" size="icon" className="h-6 w-6 text-muted-foreground rounded-lg"
-                            onClick={() => { setReplyTo(message); textareaRef.current?.focus(); }} title="Odgovori">
+                          <Button variant="ghost" size="icon" className="h-6 w-6 text-muted-foreground"
+                            onClick={() => { setReplyTo(message); textareaRef.current?.focus(); }} title="Odgovori" aria-label="Odgovori">
                             <CornerUpLeft className="h-3.5 w-3.5" />
                           </Button>
-                          <Button variant="ghost" size="icon" className="h-6 w-6 text-muted-foreground rounded-lg"
-                            onClick={() => startEdit(message)} title="Izmeni">
+                          <Button variant="ghost" size="icon" className="h-6 w-6 text-muted-foreground"
+                            onClick={() => startEdit(message)} title="Izmeni" aria-label="Izmeni poruku">
                             <Pencil className="h-3 w-3" />
                           </Button>
-                          <Button variant="ghost" size="icon" className="h-6 w-6 text-muted-foreground rounded-lg"
-                            onClick={() => setForwardMessage(message)} title="Prosledi">
+                          <Button variant="ghost" size="icon" className="h-6 w-6 text-muted-foreground"
+                            onClick={() => setForwardMessage(message)} title="Prosledi" aria-label="Prosledi poruku">
                             <Forward className="h-3.5 w-3.5" />
                           </Button>
                           <AlertDialog>
                             <AlertDialogTrigger asChild>
-                              <Button variant="ghost" size="icon" className="h-6 w-6 text-muted-foreground hover:text-destructive rounded-lg">
+                              <Button variant="ghost" size="icon" className="h-6 w-6 text-muted-foreground hover:text-destructive" aria-label="Obriši poruku">
                                 <Trash2 className="h-3 w-3" />
                               </Button>
                             </AlertDialogTrigger>
@@ -870,7 +870,7 @@ export default function ChatInterface({ selectedUserId, onBack }: ChatInterfaceP
                 {replyTo.imageUrl && replyTo.content === "📎" ? "📷 Slika" : replyTo.content}
               </p>
             </div>
-            <Button variant="ghost" size="icon" className="h-5 w-5 flex-shrink-0 rounded-md" onClick={() => setReplyTo(null)}>
+            <Button variant="ghost" size="icon" className="h-5 w-5 flex-shrink-0" onClick={() => setReplyTo(null)} aria-label="Otkaži odgovor">
               <X className="h-3 w-3" />
             </Button>
           </div>

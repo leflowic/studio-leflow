@@ -573,8 +573,13 @@ function SendEmailDialog({ contractId, contractNumber }: { contractId: number; c
             Otkaži
           </Button>
           <Button
-            onClick={() => sendEmailMutation.mutate()}
-            disabled={!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email) || sendEmailMutation.isPending}
+            onClick={() => {
+              if (sendEmailMutation.isPending) return;
+              sendEmailMutation.mutate();
+            }}
+            disabled={!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)}
+            aria-busy={sendEmailMutation.isPending}
+            className={sendEmailMutation.isPending ? "opacity-70" : undefined}
             data-testid="button-send-contract-email"
           >
             {sendEmailMutation.isPending ? "Šalje se..." : "Pošalji"}

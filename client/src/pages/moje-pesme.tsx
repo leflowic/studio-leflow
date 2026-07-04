@@ -124,7 +124,7 @@ export default function MojePesme() {
           <h2 className="text-xl font-bold">Prijavite se</h2>
           <p className="text-sm text-muted-foreground">Morate biti prijavljeni da biste postavili pesme.</p>
           <Link href="/prijava">
-            <Button className="rounded-xl" data-testid="button-login">Prijavi se</Button>
+            <Button data-testid="button-login">Prijavi se</Button>
           </Link>
         </div>
       </div>
@@ -275,7 +275,7 @@ export default function MojePesme() {
               {/* Link to community to see songs in voting */}
               <div className="pt-2 text-center">
                 <Link href="/zajednica">
-                  <Button variant="outline" className="gap-2 rounded-xl text-sm">
+                  <Button variant="outline" className="gap-2 text-sm">
                     <Youtube className="w-4 h-4" />
                     Pogledaj glasanje u zajednici
                   </Button>

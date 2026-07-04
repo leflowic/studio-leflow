@@ -132,7 +132,8 @@ export function CalendarTab() {
         <div className="bg-gradient-to-r from-[#130826] via-[#1a1040] to-[#0c1a4a] px-6 py-5 flex items-center justify-between">
           <button
             onClick={prevMonth}
-            className="w-9 h-9 rounded-lg bg-white/5 hover:bg-white/10 border border-white/10 flex items-center justify-center transition-colors"
+            className="w-9 h-9 rounded-lg bg-white/5 hover:bg-white/10 border border-white/10 flex items-center justify-center transition-colors active:scale-[0.96]"
+            aria-label="Prethodni mesec"
           >
             <ChevronLeft className="w-4 h-4 text-white/70" />
           </button>
@@ -146,7 +147,8 @@ export function CalendarTab() {
 
           <button
             onClick={nextMonth}
-            className="w-9 h-9 rounded-lg bg-white/5 hover:bg-white/10 border border-white/10 flex items-center justify-center transition-colors"
+            className="w-9 h-9 rounded-lg bg-white/5 hover:bg-white/10 border border-white/10 flex items-center justify-center transition-colors active:scale-[0.96]"
+            aria-label="Sledeći mesec"
           >
             <ChevronRight className="w-4 h-4 text-white/70" />
           </button>
@@ -243,7 +245,8 @@ export function CalendarTab() {
             </div>
             <button
               onClick={() => setSelected(null)}
-              className="w-8 h-8 rounded-lg bg-white/5 hover:bg-white/10 border border-white/10 flex items-center justify-center transition-colors"
+              className="w-8 h-8 rounded-lg bg-white/5 hover:bg-white/10 border border-white/10 flex items-center justify-center transition-colors active:scale-[0.96]"
+              aria-label="Zatvori"
             >
               <X className="w-4 h-4 text-white/50" />
             </button>

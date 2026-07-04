@@ -232,7 +232,7 @@ export default function UserProfile() {
                 </div>
                 {currentUser && currentUser.id !== profileUser.id && (
                   <Link href={`/inbox?search=${encodeURIComponent(profileUser.username)}`}>
-                    <Button variant="outline" size="sm" className="gap-2 rounded-xl">
+                    <Button variant="outline" size="sm" className="gap-2">
                       <MessageCircle className="w-4 h-4" />
                       Poruka
                     </Button>

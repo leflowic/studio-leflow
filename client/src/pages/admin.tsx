@@ -274,10 +274,11 @@ export default function AdminPage() {
                         key={value}
                         onClick={() => setActiveTab(value)}
                         data-testid={`tab-${value}`}
-                        className={`flex items-center gap-2.5 px-3 py-2 rounded-lg text-sm font-medium whitespace-nowrap transition-colors cursor-pointer shrink-0 lg:w-full text-left ${
+                        aria-current={activeTab === value ? "page" : undefined}
+                        className={`relative flex items-center gap-2.5 px-3 py-2 rounded-lg text-sm font-medium whitespace-nowrap transition-all duration-200 cursor-pointer shrink-0 lg:w-full text-left active:scale-[0.98] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background hover-elevate active-elevate-2 ${
                           activeTab === value
                             ? "bg-primary/10 text-primary"
-                            : "text-muted-foreground hover:text-foreground hover:bg-muted/60"
+                            : "text-muted-foreground hover:text-foreground"
                         }`}
                       >
                         <Icon className="w-4 h-4 shrink-0" />
@@ -776,6 +777,7 @@ function NewsletterTab() {
                                 variant="ghost"
                                 size="sm"
                                 className="text-destructive hover:text-destructive"
+                                aria-label="Obriši pretplatnika"
                               >
                                 <Trash2 className="h-4 w-4" />
                               </Button>
@@ -1158,6 +1160,7 @@ function MessagesTab() {
                                   variant="ghost"
                                   size="sm"
                                   className="text-destructive hover:text-destructive"
+                                  aria-label="Obriši poruku"
                                 >
                                   <Trash2 className="h-4 w-4" />
                                 </Button>
@@ -1864,7 +1867,7 @@ function UsersTab() {
                           disabled={unbanMutation.isPending}
                           data-testid={`button-unban-${user.id}`}
                         >
-                          <ShieldOff className="h-4 w-4 mr-1" />
+                          <Shield className="h-4 w-4 mr-1" />
                           Unban
                         </Button>
                       ) : (

@@ -172,7 +172,7 @@ export function Header() {
                 <Button
                   variant="ghost"
                   size="sm"
-                  className="h-9 w-9 rounded-xl p-0 text-muted-foreground hover:text-emerald-400"
+                  className="h-9 w-9 p-0 text-muted-foreground hover:text-emerald-400"
                   title="Dev console"
                   onClick={() => window.dispatchEvent(new CustomEvent("toggle-debug-console"))}
                 >
@@ -185,7 +185,7 @@ export function Header() {
               {user ? (
                 <DropdownMenu>
                   <DropdownMenuTrigger asChild>
-                    <Button variant="ghost" className="relative h-9 gap-2 px-2.5 rounded-xl" data-testid="button-user-menu">
+                    <Button variant="ghost" className="relative h-9 gap-2 px-2.5" data-testid="button-user-menu">
                       <Avatar className="h-7 w-7">
                         {user.avatarUrl
                           ? <AvatarImage src={user.avatarUrl} alt={user.username} />
@@ -245,12 +245,12 @@ export function Header() {
                 </DropdownMenu>
               ) : (
                 <Link href="/prijava">
-                  <Button variant="ghost" size="sm" className="h-9 rounded-xl px-3">Prijava</Button>
+                  <Button variant="ghost" size="sm" className="h-9 px-3">Prijava</Button>
                 </Link>
               )}
 
               <Link href="/kontakt">
-                <Button size="sm" className="h-9 rounded-xl gap-1.5 font-medium px-4" data-testid="button-header-contact">
+                <Button size="sm" className="h-9 gap-1.5 font-medium px-4" data-testid="button-header-contact">
                   Zakažite Termin <ChevronRight className="w-3.5 h-3.5" />
                 </Button>
               </Link>
@@ -359,12 +359,12 @@ export function Header() {
                     {user.emailVerified && (
                       <div className="grid grid-cols-2 gap-1.5">
                         <Link href="/dashboard">
-                          <Button variant="outline" size="sm" className="w-full gap-1.5 h-9 rounded-xl text-xs" data-testid="link-mobile-dashboard">
+                          <Button variant="outline" size="sm" className="w-full gap-1.5 h-9 text-xs" data-testid="link-mobile-dashboard">
                             <LayoutDashboard className="w-3.5 h-3.5" /> Dashboard
                           </Button>
                         </Link>
                         <Link href="/inbox">
-                          <Button variant="outline" size="sm" className="w-full gap-1.5 h-9 rounded-xl text-xs relative" data-testid="link-mobile-inbox">
+                          <Button variant="outline" size="sm" className="w-full gap-1.5 h-9 text-xs relative" data-testid="link-mobile-inbox">
                             <MessageCircle className="w-3.5 h-3.5" /> Poruke
                             {unreadCount > 0 && <span className="absolute -top-1 -right-1 w-4 h-4 bg-destructive text-destructive-foreground text-[10px] font-bold rounded-full flex items-center justify-center">{unreadCount > 9 ? "9+" : unreadCount}</span>}
                           </Button>
@@ -374,7 +374,7 @@ export function Header() {
 
                     <div className="grid grid-cols-2 gap-1.5">
                       <Link href="/settings">
-                        <Button variant="outline" size="sm" className="w-full gap-1.5 h-9 rounded-xl text-xs">
+                        <Button variant="outline" size="sm" className="w-full gap-1.5 h-9 text-xs">
                           <Settings className="w-3.5 h-3.5" /> Podešavanja
                         </Button>
                       </Link>
@@ -384,7 +384,7 @@ export function Header() {
                       </div>
                     </div>
 
-                    <Button variant="outline" size="sm" className="w-full h-9 rounded-xl text-xs text-destructive border-destructive/30 hover:bg-destructive/10" onClick={handleLogout} disabled={logoutMutation.isPending}>
+                    <Button variant="outline" size="sm" className="w-full h-9 text-xs text-destructive border-destructive/30 hover:bg-destructive/10" onClick={handleLogout} disabled={logoutMutation.isPending}>
                       <LogOut className="w-3.5 h-3.5 mr-1.5" /> Odjavi se
                     </Button>
                   </>
@@ -392,10 +392,10 @@ export function Header() {
                   <div className="space-y-1.5">
                     <div className="grid grid-cols-2 gap-1.5">
                       <Link href="/prijava" className="col-span-1">
-                        <Button variant="outline" size="sm" className="w-full h-9 rounded-xl text-xs">Prijava</Button>
+                        <Button variant="outline" size="sm" className="w-full h-9 text-xs">Prijava</Button>
                       </Link>
                       <Link href="/registracija" className="col-span-1">
-                        <Button size="sm" className="w-full h-9 rounded-xl text-xs">Registracija</Button>
+                        <Button size="sm" className="w-full h-9 text-xs">Registracija</Button>
                       </Link>
                     </div>
                     <div className="flex items-center justify-center gap-2 border rounded-xl h-9 px-3">
@@ -406,7 +406,7 @@ export function Header() {
                 )}
 
                 <Link href="/kontakt" onClick={() => setMobileMenuOpen(false)}>
-                  <Button size="sm" className="w-full h-9 rounded-xl gap-1.5 text-xs font-medium" data-testid="button-mobile-contact">
+                  <Button size="sm" className="w-full h-9 gap-1.5 text-xs font-medium" data-testid="button-mobile-contact">
                     Zakažite Termin <ChevronRight className="w-3.5 h-3.5" />
                   </Button>
                 </Link>

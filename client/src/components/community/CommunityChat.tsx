@@ -355,7 +355,7 @@ export function CommunityChat() {
           {isAdmin && messages.length > 0 && (
             <AlertDialog>
               <AlertDialogTrigger asChild>
-                <Button variant="ghost" size="icon" className="h-7 w-7 text-muted-foreground hover:text-destructive rounded-lg" data-testid="button-clear-all-messages">
+                <Button variant="ghost" size="icon" className="h-7 w-7 text-muted-foreground hover:text-destructive" data-testid="button-clear-all-messages">
                   <Trash2 className="w-3.5 h-3.5" />
                 </Button>
               </AlertDialogTrigger>

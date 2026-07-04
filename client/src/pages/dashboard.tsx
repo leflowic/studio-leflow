@@ -201,7 +201,7 @@ export default function Dashboard() {
               </div>
               <div className="flex gap-2 flex-shrink-0 flex-wrap">
                 <Link href="/inbox">
-                  <Button variant="outline" size="sm" className="gap-2 h-9 rounded-xl">
+                  <Button variant="outline" size="sm" className="gap-2 h-9">
                     <MessageCircle className="w-4 h-4" />
                     {(overview?.unreadMessages ?? 0) > 0 && (
                       <span className="bg-primary text-primary-foreground text-xs rounded-full w-4 h-4 flex items-center justify-center">
@@ -212,7 +212,7 @@ export default function Dashboard() {
                   </Button>
                 </Link>
                 <Link href="/settings">
-                  <Button variant="ghost" size="sm" className="gap-2 h-9 rounded-xl text-muted-foreground hover:text-foreground">
+                  <Button variant="ghost" size="sm" className="gap-2 h-9 text-muted-foreground hover:text-foreground">
                     <Settings className="w-4 h-4" />
                     <span className="hidden sm:inline">Podešavanja</span>
                   </Button>
@@ -223,17 +223,17 @@ export default function Dashboard() {
             {/* Quick actions */}
             <div className="relative mt-5 pt-5 border-t border-primary/10 flex flex-wrap gap-2">
               <Link href="/kontakt">
-                <Button size="sm" className="h-8 rounded-lg gap-1.5 text-xs">
+                <Button size="sm" className="h-8 gap-1.5 text-xs">
                   <CalendarDays className="w-3.5 h-3.5" /> Zakaži termin
                 </Button>
               </Link>
               <Link href="/inbox">
-                <Button variant="outline" size="sm" className="h-8 rounded-lg gap-1.5 text-xs">
+                <Button variant="outline" size="sm" className="h-8 gap-1.5 text-xs">
                   <MessageCircle className="w-3.5 h-3.5" /> Pošalji poruku
                 </Button>
               </Link>
               <Link href="/giveaway">
-                <Button variant="outline" size="sm" className="h-8 rounded-lg gap-1.5 text-xs">
+                <Button variant="outline" size="sm" className="h-8 gap-1.5 text-xs">
                   <FolderOpen className="w-3.5 h-3.5" /> Prijavi projekat
                 </Button>
               </Link>

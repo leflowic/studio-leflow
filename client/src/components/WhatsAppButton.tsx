@@ -41,9 +41,20 @@ export function WhatsAppButton() {
     }
   };
 
+  const openWhatsApp = () => {
+    window.open("https://wa.me/381637347023", "_blank", "noopener,noreferrer");
+  };
+
   const onClick = (e: React.MouseEvent) => {
     if (moved.current) { e.preventDefault(); return; }
-    window.open("https://wa.me/381637347023", "_blank", "noopener,noreferrer");
+    openWhatsApp();
+  };
+
+  const onKeyDown = (e: React.KeyboardEvent) => {
+    if (e.key === "Enter" || e.key === " ") {
+      e.preventDefault();
+      openWhatsApp();
+    }
   };
 
   return (
@@ -68,13 +79,16 @@ export function WhatsAppButton() {
         onPointerMove={onPointerMove}
         onPointerUp={onPointerUp}
         onClick={onClick}
+        onKeyDown={onKeyDown}
+        role="button"
+        tabIndex={0}
         style={{
           transform: `translate(${offset.x}px, ${offset.y}px)`,
           cursor: dragging ? "grabbing" : "grab",
           userSelect: "none",
           touchAction: "none",
         }}
-        className="fixed bottom-6 right-6 z-40 flex items-center justify-center w-14 h-14 bg-[#25D366] hover:bg-[#22c35e] text-white rounded-full shadow-lg hover:shadow-xl transition-colors"
+        className="fixed bottom-6 right-6 z-40 flex items-center justify-center w-14 h-14 bg-[#25D366] hover:bg-[#22c35e] text-white rounded-full shadow-lg hover:shadow-xl transition-colors active:scale-[0.98] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white focus-visible:ring-offset-2 focus-visible:ring-offset-background"
         aria-label="Kontaktirajte nas na WhatsApp"
       >
         <svg viewBox="0 0 24 24" className="w-7 h-7 fill-current pointer-events-none">
