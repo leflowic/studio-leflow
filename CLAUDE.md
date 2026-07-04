@@ -217,7 +217,7 @@ There are no automated tests in this project.
 - The "Još" dropdown uses `DropdownMenu` from Radix and highlights its trigger when any `moreNav` route is active: `moreNav.some(i => isActive(i.href))`.
 - To add a new nav link: decide if it's primary (→ `desktopNav`) or secondary (→ `moreNav`). `mobileNav` is derived automatically.
 - Logo text uses `hidden sm:inline` — visible from 640px up. Desktop nav shows at `lg` (1024px). Keep `desktopNav` to ≤4 items to prevent overflow at 1024px.
-- `WhatsAppButton`: drag to top 96px of viewport → dismiss zone turns red → release hides the button for the session (`sessionStorage`, no persistence across refreshes).
+- `WhatsAppButton`: drag toward the top of the viewport → a full-width drop zone appears under the top edge ("Prevuci ovde da skloniš", turns red within the top 96px) → release hides the button. Hidden state is plain React state (`useState`, no storage) — it survives route changes because the component is mounted at App level, and resets on refresh. The drop-zone overlay is `z-[60]` so it renders above the `z-50` header.
 
 **Community feed (/zajednica):**
 - Tables: `posts` (userId, type, content, audioUrl, imageUrl, collabTag, createdAt), `post_likes` (postId, userId, UNIQUE), `post_comments` (postId, userId, content, createdAt), `notifications` (userId, fromUserId, type, postId, message, read, createdAt).
