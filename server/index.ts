@@ -347,6 +347,43 @@ async function runMigrations() {
   } finally {
     client8.release();
   }
+
+  // ─── Rights Protection (Zaštita prava evidence tool) ─────────────────────
+  const client9 = await pool.connect();
+  try {
+    await client9.query(`
+      CREATE TABLE IF NOT EXISTS rights_protections (
+        id SERIAL PRIMARY KEY,
+        certificate_number VARCHAR(30) NOT NULL UNIQUE,
+        asset_type TEXT NOT NULL,
+        title TEXT NOT NULL,
+        creator_name TEXT NOT NULL,
+        client_name TEXT,
+        notes TEXT,
+        claimed_creation_date TEXT,
+        file_url TEXT NOT NULL,
+        original_filename TEXT NOT NULL,
+        file_size_bytes INTEGER NOT NULL,
+        mime_type TEXT NOT NULL,
+        file_hash VARCHAR(64) NOT NULL,
+        fingerprint TEXT,
+        verification_hash VARCHAR(64) NOT NULL,
+        uploaded_by INTEGER NOT NULL REFERENCES users(id),
+        created_at TIMESTAMP NOT NULL DEFAULT NOW()
+      );
+    `);
+    await client9.query(`
+      CREATE INDEX IF NOT EXISTS rights_protections_asset_type_idx ON rights_protections(asset_type);
+    `);
+    await client9.query(`
+      CREATE INDEX IF NOT EXISTS rights_protections_file_hash_idx ON rights_protections(file_hash);
+    `);
+    log('[Migrations] Rights Protection table ready', 'express');
+  } catch (err: any) {
+    log(`[Migrations] Warning on rights_protections table: ${err.message}`, 'express');
+  } finally {
+    client9.release();
+  }
 }
 
 const app = express();
