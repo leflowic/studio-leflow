@@ -72,6 +72,7 @@ There are no automated tests in this project.
 - `GET /api/admin/katastar/:userId` returns `{ user, projects, contracts, invoices }` for the Katastar (client registry) tab.
 - Table search (e.g. `UsersTab`'s username/email filter) is plain client-side `Array.filter` on the already-fetched query data — no server-side search/pagination exists yet for any admin table. Fine at current scale; revisit if a table's dataset grows into the thousands.
 - **Tabs with forms must use `forceMount`** on their `<TabsContent>` to prevent React state loss on tab switch. Radix UI unmounts `TabsContent` by default — any local form state (dates, inputs, uploads) is wiped when the user navigates to another tab and back. `tabs.tsx` has `data-[state=inactive]:hidden` so forceMount content is still visually hidden when inactive. `GameTab`, `SmartLinksTab`, and `NewsTab` all use this.
+- **Rule for new tabs:** add `forceMount` only if the tab holds local component state that would be lost on unmount and is annoying to lose — an open modal/form with typed input, a multi-step upload, a date picker mid-edit. A tab that's purely a read-only list/table driven by a query (no local draft state) does not need it — React Query's cache means remounting just re-renders the same data instantly.
 
 **Korisnici (Users) tab:**
 - `UsersTab` in `admin.tsx` is a two-level view: a searchable/filterable card grid, and (on clicking a card) `UserDetailPanel` — a profile header plus three Radix tabs: **Pregled** (read-only info), **Dozvole** (rank select, staff-role select, admin toggle, verified-artist toggle), **Bezbednost** (ban/unban, delete account).
@@ -104,8 +105,9 @@ There are no automated tests in this project.
 
 **Avoiding Radix Dialog FocusTrap bugs:**
 - Radix `<Dialog>` closes itself when the focused element becomes `disabled` mid-operation (e.g. a "Search" button that becomes disabled during an async fetch). This is caused by the FocusTrap moving focus to `document.body`, firing `onFocusOutside`.
-- The fix: use `createPortal` from `react-dom` directly instead of Radix Dialog. The custom `Modal` component in `SmartLinksTab.tsx` is the reference implementation — it's a pure React portal with no FocusTrap, so it only closes when you explicitly set state to `false`.
+- The fix: use `createPortal` from `react-dom` directly instead of Radix Dialog. **`Modal` in `client/src/components/admin/AdminModal.tsx`** is the shared, canonical implementation — it's a pure React portal with no FocusTrap, so it only closes when you explicitly call `onClose`. `SmartLinksTab`, `RightsProtectionTab`, and `ContractsTab`'s `AssignUserDialog`/`SendEmailDialog` all import it from there — don't re-declare a local copy, and don't reach for Radix `<Dialog>` in any new admin modal.
 - Additionally, persist any form state that must survive a component remount to `sessionStorage`. `SmartLinksTab` does this for `showForm`, `form`, and `editingId` so that even if a toast dispatch causes `AdminPage` to remount the tab, the form state is restored. Key pattern: `useState(() => ssGet("sl_form", emptyForm))` with a setter that writes to `sessionStorage` before calling the React setter.
+- `PortalTab`'s one remaining Radix `<Dialog>` (create-portal form) is not a FocusTrap risk today because its submit button's `disabled` only depends on form-field validity, never on `mutation.isPending` (it uses `aria-busy` + opacity instead) — if you ever add a `disabled={mutation.isPending}` there, migrate it to `AdminModal`'s `Modal` at the same time.
 
 **Real-time messaging:**
 - `WebSocketContext` is the single shared WS connection (app-level). `ChatInterface` and `ConversationList` subscribe to it via `useWebSocketContext()`. Reconnect uses exponential backoff: 3s → 6s → 12s → 30s max, reset on successful open.
@@ -354,17 +356,17 @@ The owner explicitly dislikes these patterns. Never introduce them:
 - Admin sends campaigns via the Emails tab (`EmailTab.tsx`) using `POST /api/admin/send-email` to a manually entered list — there's no bulk-send-to-subscribers endpoint yet.
 
 **Giveaway (Beat Upload):**
-- Tables: `giveaway_projects` (userId, title, genre, audioUrl, voteCount, approved, createdAt), `giveaway_votes` (projectId, userId, UNIQUE).
-- Route: `/giveaway` — protected (`requireVerifiedEmail`). Users upload MP3 beats; admin approves; public votes.
-- Upload: `POST /api/upload/audio` → Cloudinary. Submission: `POST /api/giveaway/projects` (requires `termsAccepted: true` in body).
+- Despite the feature name, the underlying tables are named generically (pre-date the "giveaway" framing): `projects` (title, description, genre, mp3Url, userId, uploadDate, votesCount, currentMonth, approved, status enum) and `votes` (userId, projectId, ipAddress — unique on both `(userId, projectId)` and `(ipAddress, projectId)`, so voting is rate-limited by account and by IP). `comments` (projectId, userId, text) also hangs off `projects` for per-beat discussion. Don't confuse these with `client_portals`/`portal_versions` or the `/projekti` portfolio page — unrelated features that happen to share the word "project".
+- Route: `/giveaway` — protected (`requireVerifiedEmail`). Users upload MP3 beats; admin approves; public votes and comments.
+- Upload: `POST /api/upload/audio` → Cloudinary. Submission: `POST /api/giveaway/projects` (requires `termsAccepted: true` in body). Voting: `POST /api/giveaway/vote`. Comments: `GET /api/giveaway/projects/:id/comments`, `POST /api/giveaway/comments`.
 - Per-user concurrency lock (`giveawayUploadLocks` Set in routes.ts) prevents bypassing monthly upload limit via concurrent requests.
 - Admin toggles giveaway on/off via `POST /api/admin/giveaway/toggle` (stored as `giveaway_active` setting). Approval: `POST /api/admin/projects/:id/approve`.
 
 **User Songs ("Moje Pesme"):**
-- Tables: `user_songs` (userId, title, audioUrl, approved, voteCount, createdAt), `user_song_votes` (songId, userId, UNIQUE).
-- Route: `/moje-pesme` — protected. Users submit their own songs (not studio beats); admin approves; public can vote.
+- Tables: `user_songs` (userId, `songTitle`, `artistName`, `youtubeUrl` — unique, for duplicate protection — `submittedAt`, `approved`, `votesCount`), `user_song_votes` (userId, songId, UNIQUE). **Not an audio upload feature** — despite living next to the Giveaway (MP3 upload) feature, this is a YouTube link submission: users paste a link to their own already-released song rather than uploading a file.
+- Route: `/moje-pesme` — protected (`requireVerifiedEmail`). `POST /api/user-songs` (rate-limited per user) to submit, `GET /api/user-songs` for the caller's own submissions, `DELETE /api/user-songs/:id` to remove their own; admin approves; public can vote.
 - `GET /api/user-songs/public` — approved songs with `hasVoted` for the caller. `POST /api/user-songs/:id/vote` toggles vote.
-- Admin view: `GET /api/user-songs/all` (requireAdmin) — all songs with usernames.
+- Admin: `GET /api/user-songs/all` and `POST /api/user-songs/:id/approve`, both `requireRole("producer")` — all songs with usernames.
 
 **Site Announcement banner:**
 - `PATCH /api/announcement` (requireAdmin) — upserts `{ isActive, message }` in `site_announcements` table.

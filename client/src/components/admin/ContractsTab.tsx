@@ -12,9 +12,9 @@ import { Textarea } from "@/components/ui/textarea";
 import { Checkbox } from "@/components/ui/checkbox";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
-import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { FileText, Download, Mail, Trash2, Music, Scale, DollarSign, UserPlus, ExternalLink } from "lucide-react";
+import { FileText, Download, Mail, Trash2, Music, Scale, DollarSign, UserPlus, ExternalLink, X, Search } from "lucide-react";
+import { Modal } from "./AdminModal";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { format } from "date-fns";
@@ -39,6 +39,7 @@ export function ContractsTab() {
   const { toast } = useToast();
   const [activeTab, setActiveTab] = useState<"new" | "history">("new");
   const [selectedContractType, setSelectedContractType] = useState<"mix_master" | "copyright_transfer" | "instrumental_sale">("mix_master");
+  const [searchQuery, setSearchQuery] = useState("");
 
   // Users query for assignment
   const { data: users = [] } = useQuery<Array<{ id: number; username: string; email: string }>>({
@@ -125,6 +126,16 @@ export function ContractsTab() {
     }
   };
 
+  const filteredContracts = contracts.filter(contract => {
+    const q = searchQuery.trim().toLowerCase();
+    if (!q) return true;
+    return (
+      contract.contractNumber.toLowerCase().includes(q) ||
+      getContractTypeLabel(contract.contractType).toLowerCase().includes(q) ||
+      (contract.username?.toLowerCase().includes(q) ?? false)
+    );
+  });
+
   const handleDownload = async (contractId: number, contractNumber: string) => {
     try {
       const token = getAuthToken();
@@ -210,6 +221,19 @@ export function ContractsTab() {
               </CardDescription>
             </CardHeader>
             <CardContent>
+              {!contractsLoading && contracts.length > 0 && (
+                <div className="relative mb-4">
+                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground pointer-events-none" />
+                  <Input
+                    type="text"
+                    placeholder="Pretraži po broju licence, korisniku ili tipu..."
+                    value={searchQuery}
+                    onChange={(e) => setSearchQuery(e.target.value)}
+                    className="pl-9"
+                    data-testid="input-search-contracts"
+                  />
+                </div>
+              )}
               {contractsLoading ? (
                 <div className="space-y-2">
                   <Skeleton className="h-12 w-full" />
@@ -221,11 +245,16 @@ export function ContractsTab() {
                   <FileText className="w-12 h-12 mx-auto mb-2 opacity-50" />
                   <p>Još uvek nema kreiranih licenci</p>
                 </div>
+              ) : filteredContracts.length === 0 ? (
+                <div className="text-center py-8 text-muted-foreground">
+                  <Search className="w-12 h-12 mx-auto mb-2 opacity-50" />
+                  <p>Nema licenci koje odgovaraju pretrazi</p>
+                </div>
               ) : (
                 <>
                   {/* Mobile Card Layout */}
                   <div className="space-y-4 md:hidden">
-                    {contracts.map((contract) => (
+                    {filteredContracts.map((contract) => (
                       <div key={contract.id} className="rounded-md border bg-card p-4 space-y-3">
                           <div className="flex items-start justify-between gap-2">
                             <div className="space-y-1 flex-1 min-w-0">
@@ -326,7 +355,7 @@ export function ContractsTab() {
                         </TableRow>
                       </TableHeader>
                       <TableBody>
-                        {contracts.map((contract) => (
+                        {filteredContracts.map((contract) => (
                           <TableRow key={contract.id}>
                             <TableCell className="font-medium">
                               {contract.contractNumber}
@@ -455,25 +484,34 @@ function AssignUserDialog({
   };
 
   return (
-    <Dialog open={open} onOpenChange={setOpen}>
-      <DialogTrigger asChild>
-        <Button
-          variant="ghost"
-          size="sm"
-          data-testid={`button-assign-user-${contractId}`}
-          title={currentUsername ? `Trenutno dodeljen: ${currentUsername}` : "Dodeli korisniku"}
-        >
-          <UserPlus className="w-4 h-4" />
-        </Button>
-      </DialogTrigger>
-      <DialogContent>
-        <DialogHeader>
-          <DialogTitle>Dodeli Licencu Korisniku</DialogTitle>
-          <DialogDescription>
-            Licenca {contractNumber} - Izaberite korisnika koji će videti ovu licencu u svom dashboard-u
-          </DialogDescription>
-        </DialogHeader>
-        <div className="space-y-4 py-4">
+    <>
+      <Button
+        variant="ghost"
+        size="sm"
+        onClick={() => setOpen(true)}
+        data-testid={`button-assign-user-${contractId}`}
+        title={currentUsername ? `Trenutno dodeljen: ${currentUsername}` : "Dodeli korisniku"}
+      >
+        <UserPlus className="w-4 h-4" />
+      </Button>
+      <Modal open={open} onClose={() => setOpen(false)}>
+        <div className="flex items-center justify-between px-6 pt-6 pb-4 border-b shrink-0" style={{ borderColor: "rgba(255,255,255,0.06)" }}>
+          <div>
+            <h2 className="text-[15px] font-bold text-white">Dodeli Licencu Korisniku</h2>
+            <p className="text-[11px] mt-0.5" style={{ color: "rgba(255,255,255,0.35)" }}>
+              Licenca {contractNumber} - Izaberite korisnika koji će videti ovu licencu u svom dashboard-u
+            </p>
+          </div>
+          <button
+            type="button"
+            onClick={() => setOpen(false)}
+            aria-label="Zatvori"
+            className="w-8 h-8 rounded-xl flex items-center justify-center transition-all active:scale-90 bg-white/5 hover:bg-white/10 border border-white/[0.07] shrink-0"
+          >
+            <X className="w-3.5 h-3.5 text-white/50" />
+          </button>
+        </div>
+        <div className="px-6 py-5 space-y-4">
           {currentUsername && (
             <div className="p-3 bg-muted rounded-md text-sm">
               <span className="text-muted-foreground">Trenutno dodeljen: </span>
@@ -497,7 +535,7 @@ function AssignUserDialog({
             </Select>
           </div>
         </div>
-        <DialogFooter>
+        <div className="flex items-center justify-end gap-3 px-6 py-4 shrink-0 border-t" style={{ borderColor: "rgba(255,255,255,0.06)" }}>
           <Button variant="outline" onClick={() => setOpen(false)}>
             Otkaži
           </Button>
@@ -508,9 +546,9 @@ function AssignUserDialog({
           >
             {isAssigning ? "Dodeljuje se..." : "Dodeli"}
           </Button>
-        </DialogFooter>
-      </DialogContent>
-    </Dialog>
+        </div>
+      </Modal>
+    </>
   );
 }
 
@@ -542,20 +580,28 @@ function SendEmailDialog({ contractId, contractNumber }: { contractId: number; c
   });
 
   return (
-    <Dialog open={open} onOpenChange={setOpen}>
-      <DialogTrigger asChild>
-        <Button variant="ghost" size="sm" data-testid={`button-email-contract-${contractId}`}>
-          <Mail className="w-4 h-4" />
-        </Button>
-      </DialogTrigger>
-      <DialogContent>
-        <DialogHeader>
-          <DialogTitle>Pošalji Licencu Email-om</DialogTitle>
-          <DialogDescription>
-            Unesite email adresu klijenta za licencu {contractNumber}
-          </DialogDescription>
-        </DialogHeader>
-        <div className="space-y-4 py-4">
+    <>
+      <Button variant="ghost" size="sm" onClick={() => setOpen(true)} data-testid={`button-email-contract-${contractId}`}>
+        <Mail className="w-4 h-4" />
+      </Button>
+      <Modal open={open} onClose={() => setOpen(false)}>
+        <div className="flex items-center justify-between px-6 pt-6 pb-4 border-b shrink-0" style={{ borderColor: "rgba(255,255,255,0.06)" }}>
+          <div>
+            <h2 className="text-[15px] font-bold text-white">Pošalji Licencu Email-om</h2>
+            <p className="text-[11px] mt-0.5" style={{ color: "rgba(255,255,255,0.35)" }}>
+              Unesite email adresu klijenta za licencu {contractNumber}
+            </p>
+          </div>
+          <button
+            type="button"
+            onClick={() => setOpen(false)}
+            aria-label="Zatvori"
+            className="w-8 h-8 rounded-xl flex items-center justify-center transition-all active:scale-90 bg-white/5 hover:bg-white/10 border border-white/[0.07] shrink-0"
+          >
+            <X className="w-3.5 h-3.5 text-white/50" />
+          </button>
+        </div>
+        <div className="px-6 py-5 space-y-4">
           <div className="space-y-2">
             <Label htmlFor="email">Email Adresa</Label>
             <Input
@@ -568,7 +614,7 @@ function SendEmailDialog({ contractId, contractNumber }: { contractId: number; c
             />
           </div>
         </div>
-        <DialogFooter>
+        <div className="flex items-center justify-end gap-3 px-6 py-4 shrink-0 border-t" style={{ borderColor: "rgba(255,255,255,0.06)" }}>
           <Button variant="outline" onClick={() => setOpen(false)}>
             Otkaži
           </Button>
@@ -584,9 +630,9 @@ function SendEmailDialog({ contractId, contractNumber }: { contractId: number; c
           >
             {sendEmailMutation.isPending ? "Šalje se..." : "Pošalji"}
           </Button>
-        </DialogFooter>
-      </DialogContent>
-    </Dialog>
+        </div>
+      </Modal>
+    </>
   );
 }
 

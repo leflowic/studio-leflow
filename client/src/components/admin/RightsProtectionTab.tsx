@@ -1,5 +1,4 @@
-import { useState, useRef, useEffect } from "react";
-import { createPortal } from "react-dom";
+import { useState, useRef } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { queryClient, apiRequest, getAuthToken } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
@@ -13,6 +12,7 @@ import {
   ShieldCheck, Plus, Trash2, Download, Music2, Image as ImageIcon,
   Upload, X, Loader2, FileSearch, AlertTriangle,
 } from "lucide-react";
+import { Modal } from "./AdminModal";
 import type { RightsProtection } from "@shared/schema";
 
 type RightsProtectionEntry = RightsProtection & { uploadedByUsername: string };
@@ -41,36 +41,6 @@ function ssGet<T>(key: string, fallback: T): T {
   try { const v = sessionStorage.getItem(key); return v !== null ? JSON.parse(v) : fallback; } catch { return fallback; }
 }
 function ssSet(key: string, val: unknown) { try { sessionStorage.setItem(key, JSON.stringify(val)); } catch {} }
-
-function Modal({ open, onClose, children }: { open: boolean; onClose: () => void; children: React.ReactNode }) {
-  useEffect(() => {
-    if (!open) return;
-    const handler = (e: KeyboardEvent) => { if (e.key === "Escape") onClose(); };
-    document.addEventListener("keydown", handler);
-    document.body.style.overflow = "hidden";
-    return () => { document.removeEventListener("keydown", handler); document.body.style.overflow = ""; };
-  }, [open, onClose]);
-
-  if (!open) return null;
-
-  return createPortal(
-    <div className="fixed inset-0 z-[200] flex items-center justify-center p-4">
-      <div className="absolute inset-0" style={{ background: "rgba(0,0,0,0.75)", backdropFilter: "blur(8px)" }} onClick={onClose} />
-      <div
-        className="relative w-full max-w-lg max-h-[90vh] overflow-y-auto rounded-3xl flex flex-col"
-        style={{
-          background: "linear-gradient(135deg, rgba(18,18,22,0.99) 0%, rgba(12,12,16,0.99) 100%)",
-          border: "1px solid rgba(255,255,255,0.07)",
-          boxShadow: "0 0 0 1px rgba(255,255,255,0.04), 0 32px 80px rgba(0,0,0,0.85), 0 8px 32px rgba(0,0,0,0.6)",
-        }}
-        onClick={e => e.stopPropagation()}
-      >
-        {children}
-      </div>
-    </div>,
-    document.body
-  );
-}
 
 function Field({ label, children }: { label: string; children: React.ReactNode }) {
   return (
