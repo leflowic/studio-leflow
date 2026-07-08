@@ -285,7 +285,7 @@ async function generateStoryBlob(link: SmartLink): Promise<Blob> {
   const QR_SIZE = 152;
   const qrPad = 16;
   const qrC = document.createElement("canvas");
-  await QRCode.toCanvas(qrC, `${window.location.origin}/l/${link.slug}`, {
+  await QRCode.toCanvas(qrC, `${window.location.origin}/${link.slug}`, {
     width: QR_SIZE, margin: 2,
     color: { dark: "#000000", light: "#ffffff" },
   });
@@ -310,7 +310,7 @@ async function generateStoryBlob(link: SmartLink): Promise<Blob> {
   ctx.font = `400 24px "Courier New", monospace`;
   ctx.fillStyle = "rgba(255,255,255,0.26)";
   ctx.shadowColor = "rgba(0,0,0,0.9)"; ctx.shadowBlur = 10;
-  ctx.fillText(`studioleflow.com/l/${link.slug}`, W / 2, urlY);
+  ctx.fillText(`music.studioleflow.com/${link.slug}`, W / 2, urlY);
   ctx.shadowBlur = 0;
 
   // ── Logo - dole, uvek prikovano ───────────────────────────────────────────

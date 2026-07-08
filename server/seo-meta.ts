@@ -137,14 +137,18 @@ export function registerHtmlMetaRoutes(app: Express) {
     if (!meta || !sendWithMeta(res, meta)) return next();
   });
 
-  app.get("/l/:slug", async (req, res, next) => {
+  // Smart links now live on the music.studioleflow.com subdomain (no /l/ prefix).
+  // The old /l/:slug path on the main domain is handled by a 301 redirect
+  // registered earlier in server/routes.ts, so it never reaches this handler.
+  app.get("/:slug", async (req, res, next) => {
+    if (req.hostname !== "music.studioleflow.com") return next();
     try {
       const link = await storage.getSmartLinkBySlug(req.params.slug);
       if (!link) return next(); // SPA renders its own not-found state
       const meta: PageMeta = {
         title: `${link.title} - ${link.artist}`,
         description: `Slušaj "${link.title}" od ${link.artist} na Spotify, YouTube, Apple Music i drugim platformama.`,
-        canonical: `${BASE_URL}/l/${link.slug}`,
+        canonical: `https://music.studioleflow.com/${link.slug}`,
         image: link.coverUrl || undefined,
         ogType: "music.song",
       };

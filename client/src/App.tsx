@@ -122,7 +122,24 @@ function Router() {
     trackPageView(location);
   }, [location]);
 
-  // Smart Link pages - standalone layout (no header/footer)
+  // music.studioleflow.com subdomain - every path here is a smart link slug,
+  // standalone layout (no header/footer). Server-side 301s the legacy
+  // studioleflow.com/l/:slug path to this subdomain (see server/routes.ts).
+  if (typeof window !== "undefined" && window.location.hostname === "music.studioleflow.com") {
+    return (
+      <ChunkErrorBoundary>
+        <Suspense fallback={<div className="min-h-screen bg-[#080808] flex items-center justify-center"><div className="w-8 h-8 rounded-full border-2 border-primary/30 border-t-primary animate-spin" /></div>}>
+          <Switch location={location}>
+            <Route path="/:slug"><SmartLinkPage /></Route>
+            <Route><NotFoundPage /></Route>
+          </Switch>
+        </Suspense>
+      </ChunkErrorBoundary>
+    );
+  }
+
+  // Legacy path, kept as a client-side fallback in case a request ever
+  // reaches the SPA without going through the server-side redirect above.
   if (location.startsWith("/l/")) {
     return (
       <ChunkErrorBoundary>

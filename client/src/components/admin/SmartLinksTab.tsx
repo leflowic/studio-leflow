@@ -154,7 +154,7 @@ export function SmartLinksTab() {
   }
 
   function copyLink(slug: string) {
-    navigator.clipboard.writeText(`${window.location.origin}/l/${slug}`);
+    navigator.clipboard.writeText(`https://music.studioleflow.com/${slug}`);
     toast({ title: "Link kopiran!" });
   }
 
@@ -459,7 +459,7 @@ export function SmartLinksTab() {
                 <div className="flex flex-col items-center justify-center gap-0.5 px-2.5 opacity-0 group-hover:opacity-100 transition-opacity border-l" style={{ borderColor: "rgba(255,255,255,0.05)" }}>
                   {[
                     { icon: Copy, action: () => copyLink(link.slug), title: "Kopiraj" },
-                    { icon: ExternalLink, action: null, href: `/l/${link.slug}`, title: "Otvori" },
+                    { icon: ExternalLink, action: null, href: `https://music.studioleflow.com/${link.slug}`, title: "Otvori" },
                     { icon: Edit2, action: () => openEdit(link), title: "Uredi" },
                   ].map(({ icon: Icon, action, href, title }) => (
                     href ? (

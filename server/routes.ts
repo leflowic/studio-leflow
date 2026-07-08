@@ -1,4 +1,4 @@
-import type { Express } from "express";
+import type { Express, Response } from "express";
 import { createServer, type Server } from "http";
 import { storage } from "./storage";
 import { wsHelpers, notifyUser, broadcastToUser, getOnlineUsersSnapshot } from "./websocket-helpers";
@@ -43,6 +43,10 @@ const registrationRateLimiter = rateLimit({
 });
 
 // Configure multer for CMS media uploads (disk storage for images)
+// Filename is fully server-generated (never derived from the client-supplied
+// originalname) to rule out path traversal via a crafted filename; actual
+// image content is verified via magic bytes (fileTypeFromBuffer) in each
+// route handler below, since mimetype/extension here are still client-claimed.
 const multerUpload = multer({
   storage: multer.diskStorage({
     destination: (_req, _file, cb) => {
@@ -51,14 +55,15 @@ const multerUpload = multer({
       cb(null, uploadDir);
     },
     filename: (_req, file, cb) => {
-      cb(null, `${Date.now()}-${file.originalname}`);
+      const ext = path.extname(file.originalname).toLowerCase().replace(/[^a-z0-9.]/g, '');
+      cb(null, `${Date.now()}-${randomBytes(8).toString('hex')}${ext}`);
     },
   }),
   limits: {
     fileSize: 10 * 1024 * 1024, // 10MB max for images
   },
   fileFilter: (_req, file, cb) => {
-    // Only accept image files
+    // Only accept image files (client-claimed MIME - re-verified via magic bytes after upload)
     if (file.mimetype.startsWith('image/')) {
       cb(null, true);
     } else {
@@ -66,6 +71,19 @@ const multerUpload = multer({
     }
   },
 });
+
+const CMS_IMAGE_ALLOWED_MIMES = ["image/jpeg", "image/png", "image/webp"];
+
+async function verifyUploadedImageOrReject(filePath: string, res: Response): Promise<boolean> {
+  const buf = await fs.promises.readFile(filePath);
+  const detectedType = await fileTypeFromBuffer(buf);
+  if (!detectedType || !CMS_IMAGE_ALLOWED_MIMES.includes(detectedType.mime)) {
+    await fs.promises.unlink(filePath).catch(() => {});
+    res.status(400).json({ error: "Dozvoljeni su samo JPG, PNG i WebP fajlovi" });
+    return false;
+  }
+  return true;
+}
 
 // HTML escape funkcija za bezbednost
 function escapeHtml(text: string): string {
@@ -494,6 +512,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
       if (!req.file) {
         return res.status(400).json({ error: "Fajl nije priložen" });
       }
+
+      if (!(await verifyUploadedImageOrReject(req.file.path, res))) return;
 
       // Move file from temp to permanent location
       const tempPath = req.file.path;
@@ -1677,6 +1697,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
       if (!req.file) {
         return res.status(400).json({ error: "Fajl nije priložen" });
       }
+
+      if (!(await verifyUploadedImageOrReject(req.file.path, res))) return;
 
       // Validacija metadata iz req.body
       const metadata = insertCmsMediaSchema.omit({ filePath: true }).parse({
@@ -4101,6 +4123,8 @@ Sitemap: ${siteUrl}/sitemap.xml
       if (!portal) return res.status(404).json({ error: "Portal nije pronađen" });
       const versionId = parseInt(req.params.versionId);
       if (isNaN(versionId)) return res.status(400).json({ error: "Nevažeći ID" });
+      const versions = await storage.getPortalVersions(portal.id);
+      if (!versions.some(v => v.id === versionId)) return res.status(404).json({ error: "Verzija nije pronađena" });
       const comments = await storage.getPortalComments(versionId);
       res.json(comments);
     } catch (e) {
@@ -4115,6 +4139,8 @@ Sitemap: ${siteUrl}/sitemap.xml
       if (!portal) return res.status(404).json({ error: "Portal nije pronađen" });
       const versionId = parseInt(req.params.versionId);
       if (isNaN(versionId)) return res.status(400).json({ error: "Nevažeći ID" });
+      const versions = await storage.getPortalVersions(portal.id);
+      if (!versions.some(v => v.id === versionId)) return res.status(404).json({ error: "Verzija nije pronađena" });
       const { text, timestampSeconds } = req.body;
       if (!text?.trim()) return res.status(400).json({ error: "Komentar ne može biti prazan" });
       const comment = await storage.addPortalComment({
@@ -4260,10 +4286,13 @@ Sitemap: ${siteUrl}/sitemap.xml
     }
   });
 
-  // OG meta tag handler for /l/:slug - returns server-rendered HTML to social crawlers
+  // OG meta tag handler for smart links, served from the music.studioleflow.com
+  // subdomain (no /l/ prefix) - returns server-rendered HTML to social crawlers
   // so Instagram/WhatsApp/Discord show a rich link preview with cover art.
-  // Real users get next() → SPA handles rendering as normal.
+  // Real users get next() → SPA handles rendering as normal (see App.tsx's
+  // hostname-based routing for the music.studioleflow.com subdomain).
   const CRAWLER_UA = /facebookexternalhit|Twitterbot|LinkedInBot|Slackbot|TelegramBot|WhatsApp|Instagram|Pinterest|Googlebot|bingbot|Discordbot|Applebot|vkShare|Iframely|Embedly/i;
+  const LINK_SUBDOMAIN = "music.studioleflow.com";
 
   function escOg(s: string): string {
     return s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
@@ -4291,16 +4320,24 @@ Sitemap: ${siteUrl}/sitemap.xml
     return `Slušaj na ${names.slice(0, -1).join(", ")} i ${names[names.length - 1]}`;
   }
 
-  app.get("/l/:slug", async (req, res, next) => {
+  // Legacy /l/:slug path (main domain) → 301 redirect to the canonical
+  // music.studioleflow.com/:slug subdomain. Keeps old shared links working.
+  app.get("/l/:slug", (req, res, next) => {
+    if (req.hostname === LINK_SUBDOMAIN) return next();
+    res.redirect(301, `https://${LINK_SUBDOMAIN}/${encodeURIComponent(req.params.slug)}`);
+  });
+
+  app.get("/:slug", async (req, res, next) => {
+    if (req.hostname !== LINK_SUBDOMAIN) return next();
     if (!CRAWLER_UA.test(req.headers["user-agent"] ?? "")) return next();
     try {
       const link = await storage.getSmartLinkBySlug(req.params.slug);
       if (!link) return next();
-      const appUrl = (process.env.APP_URL ?? "https://studioleflow.com").replace(/\/$/, "");
-      const pageUrl = `${appUrl}/l/${link.slug}`;
+      const appUrl = `https://${LINK_SUBDOMAIN}`;
+      const pageUrl = `${appUrl}/${link.slug}`;
       const title = escOg(`${link.title} - ${link.artist}`);
       const desc = escOg(`${platformList(link)} - Studio LeFlow`);
-      const img = escOg(ogImageUrl(link.coverUrl, appUrl));
+      const img = escOg(ogImageUrl(link.coverUrl, "https://studioleflow.com"));
       res.setHeader("Content-Type", "text/html; charset=utf-8");
       res.setHeader("Cache-Control", "public, max-age=3600");
       res.send(`<!DOCTYPE html>
