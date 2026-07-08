@@ -869,6 +869,7 @@ export const insertNewsArticleSchema = createInsertSchema(newsArticles).omit({
   id: true,
   createdAt: true,
   updatedAt: true,
+  createdBy: true,
 }).extend({
   title: z.string().min(1, "Naslov je obavezan"),
   slug: z.string().min(1, "Slug je obavezan").regex(/^[a-z0-9-]+$/, "Slug sme sadržati samo mala slova, brojeve i crtice"),
