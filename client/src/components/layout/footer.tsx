@@ -1,5 +1,5 @@
 import { Link } from "wouter";
-import { MapPin, Phone, Mail, Instagram, BadgeCheck, ArrowRight } from "lucide-react";
+import { MapPin, Phone, Mail, Instagram, BadgeCheck, ArrowRight, ShieldCheck } from "lucide-react";
 import { NewsletterForm } from "@/components/newsletter-form";
 import { Button } from "@/components/ui/button";
 import leflowLogo from "@/assets/leflow-logo.png";
@@ -10,8 +10,7 @@ const links = [
   { label: "Zajednica", href: "/zajednica" },
   { label: "Projekti", href: "/projekti" },
   { label: "Tim", href: "/tim" },
-  { label: "Česta Pitanja", href: "/faq" },
-  { label: "Pravila i Uslovi", href: "/pravila" },
+  { label: "Pravila i Česta Pitanja", href: "/pravila" },
   { label: "Kontakt", href: "/kontakt" },
 ];
 
@@ -119,7 +118,10 @@ export function Footer() {
             <Link href="/proveri" className="hover:text-primary transition-colors flex items-center gap-1" data-testid="link-footer-verify">
               <BadgeCheck className="w-3 h-3" /> Proveri Licencu
             </Link>
-            <Link href="/pravila" className="hover:text-primary transition-colors" data-testid="link-footer-privacy">Pravila i Uslovi</Link>
+            <Link href="/zastita-brenda" className="hover:text-primary transition-colors flex items-center gap-1" data-testid="link-footer-brand-protection">
+              <ShieldCheck className="w-3 h-3" /> Zaštita Brenda
+            </Link>
+            <Link href="/pravila" className="hover:text-primary transition-colors" data-testid="link-footer-privacy">Pravila i Česta Pitanja</Link>
             <Link href="/uslovi-koriscenja" className="hover:text-primary transition-colors" data-testid="link-footer-terms">Uslovi Korišćenja</Link>
           </div>
         </div>

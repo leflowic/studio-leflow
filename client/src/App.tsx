@@ -1,6 +1,6 @@
 import { lazy, Suspense, Component, ReactNode, useEffect } from "react";
 import { trackPageView } from "./lib/analytics";
-import { Switch, Route, useLocation } from "wouter";
+import { Switch, Route, Redirect, useLocation } from "wouter";
 import { queryClient } from "./lib/queryClient";
 import { QueryClientProvider } from "@tanstack/react-query";
 import { Toaster } from "@/components/ui/toaster";
@@ -103,12 +103,12 @@ const VerifyLicensePage = lazy(() => import("@/pages/verify-license"));
 const MaintenancePage = lazy(() => import("@/pages/maintenance"));
 const NewsletterConfirmationPage = lazy(() => import("@/pages/newsletter-confirmation"));
 const UslugePage = lazy(() => import("@/pages/usluge"));
-const FAQPage = lazy(() => import("@/pages/faq"));
 const PortalPage = lazy(() => import("@/pages/portal"));
 const SmartLinkPage = lazy(() => import("@/pages/l"));
 const UserProfilePage = lazy(() => import("@/pages/user-profile"));
 const NewsPage = lazy(() => import("@/pages/news"));
 const NewsArticlePage = lazy(() => import("@/pages/news-article"));
+const ZastitaBrendaPage = lazy(() => import("@/pages/zastita-brenda"));
 function Router() {
   const [location] = useLocation();
   const { user } = useAuth();
@@ -197,7 +197,8 @@ function Router() {
                 <Route path="/newsletter/potvrda/:token"><NewsletterConfirmationPage /></Route>
                 <Route path="/uslovi-koriscenja"><TermsOfUsePage /></Route>
                 <Route path="/usluge"><UslugePage /></Route>
-                <Route path="/faq"><FAQPage /></Route>
+                <Route path="/faq"><Redirect to="/pravila" /></Route>
+                <Route path="/zastita-brenda"><ZastitaBrendaPage /></Route>
                 <Route path="/news"><NewsPage /></Route>
                 <Route path="/news/:slug"><NewsArticlePage /></Route>
                 <ProtectedRoute path="/u/:username" component={() => <UserProfilePage />} />

@@ -37,11 +37,6 @@ const STATIC_PAGE_META: Record<string, PageMeta> = {
     description: "Projekti u kojima je naš tim učestvovao - video spotovi, pesme i muzička produkcija. Profesionalni muzički studio u Beogradu.",
     canonical: `${BASE_URL}/projekti`,
   },
-  "/faq": {
-    title: "Česta Pitanja - Studio LeFlow",
-    description: "Odgovori na najčešća pitanja o snimanju, mix/masteru, instrumentalima i rezervaciji termina u Studio LeFlow Beograd.",
-    canonical: `${BASE_URL}/faq`,
-  },
   "/kontakt": {
     title: "Kontakt - Studio LeFlow | Rezervišite Termin za Snimanje",
     description: "Kontaktirajte Studio LeFlow za rezervaciju termina. Snimanje pesama, miks i mastering, voice over, podcast produkcija. Beograd, Srbija.",
@@ -53,14 +48,19 @@ const STATIC_PAGE_META: Record<string, PageMeta> = {
     canonical: `${BASE_URL}/tim`,
   },
   "/pravila": {
-    title: "Pravila i Uslovi - Studio LeFlow | Politika Avansa i Saradnje",
-    description: "Uslovi saradnje Studio LeFlow: politika avansa, otkazivanje termina, prava i obaveze. Transparentna pravila za sve klijente muzičkog studija u Beogradu.",
+    title: "Pravila i Česta Pitanja - Studio LeFlow",
+    description: "Uslovi saradnje Studio LeFlow (politika avansa, otkazivanje termina, autorska prava) i odgovori na najčešća pitanja o snimanju, mix/masteru i rezervaciji termina.",
     canonical: `${BASE_URL}/pravila`,
   },
   "/news": {
     title: "Vesti - Studio LeFlow | Muzičke Novosti iz Beograda",
     description: "Najnovije vesti o izdanjima, saradnjama i dešavanjima u muzičkoj sceni - iz Studio LeFlow-a u Beogradu.",
     canonical: `${BASE_URL}/news`,
+  },
+  "/zastita-brenda": {
+    title: "Zaštita brenda - Studio LeFlow",
+    description: "Javna izjava o vlasništvu i prvoj upotrebi naziva Studio LeFlow, LeFlow i pripadajućeg vizuelnog identiteta (logo).",
+    canonical: `${BASE_URL}/zastita-brenda`,
   },
 };
 

@@ -90,6 +90,10 @@ There are no automated tests in this project.
 - **Server-side SEO for `/news/:slug`** is registered in `server/seo-meta.ts` alongside `/l/:slug` — injects title/description/keywords meta *and* a `NewsArticle` JSON-LD block (`headline`, `image`, `datePublished`, `keywords`, etc.) so an article about a specific artist can rank for that artist's name. `/news` (the list page) has a static entry in `STATIC_PAGE_META`.
 - Routes under `/api/news` (public, published-only) and `/api/admin/news*` (`editor`/`marketing`), plus `POST /api/upload/news-cover` for the cover image.
 
+**`/zastita-brenda` (public brand protection notice):**
+- Static public page (`client/src/pages/zastita-brenda.tsx`, no DB-backed content) — a public, dated notice claiming first use of the "Studio LeFlow"/"LeFlow" name and logo since 2020, distinct from the internal `rights_protections` admin tool above. Explicitly **not** a substitute for formal trademark (žig) registration with Zavod za intelektualnu svojinu — the copy says so directly, don't soften that into implying legal certainty it doesn't have.
+- Linked from the footer bottom bar (`footer.tsx`, next to "Proveri Licencu"), registered in `BREADCRUMB_NAMES` (`SEO.tsx`), `STATIC_PAGE_META` (`server/seo-meta.ts`), and `sitemap.xml` — same 4-place wiring required for any new public page (see the SEO section below).
+
 **Zaštita prava (Rights Protection — internal evidence tool):**
 - Table `rights_protections`: `assetType` (`"audio"` | `"image"`), `title`, `creatorName`, optional `clientName`/`notes`/`claimedCreationDate`, `fileUrl` (Cloudinary), `originalFilename`, `fileSizeBytes`, `mimeType`, `fileHash` (SHA-256 hex of the exact bytes received, computed **before** the Cloudinary upload), `fingerprint` (nullable JSON `number[]`, audio only), `certificateNumber` (`ZP-<year>-00000001`, via `storage.getNextRightsProtectionNumber()`), `verificationHash` (HMAC, same pattern as license `verificationHash`).
 - **This is NOT an official copyright registration (SOKOJ)** — it's an internal, timestamped proof-of-existence tool for producer/admin use when a client doesn't pay and releases a song anyway, or to evidence brand assets (e.g. the logo). `claimedCreationDate` is the uploader's own assertion (e.g. "logo posted to Facebook in 2020") — it is NOT proven by the hash, which only proves the file existed at upload time. This disclaimer must stay on the generated certificate and in the admin UI — never let this feature's copy imply legal certainty it doesn't have.
@@ -221,8 +225,10 @@ There are no automated tests in this project.
 **Chunk loading / error boundary:**
 - `ChunkErrorBoundary` in `App.tsx` wraps all lazy-loaded routes. On a chunk load error it auto-reloads once per pathname using a `sessionStorage` key `chunk-reload-${pathname}` — each route gets its own reload attempt so navigating between pages after a deploy doesn't get stuck showing the error UI.
 
-**FAQ page:**
-- Route `/faq` — accordion component at `client/src/pages/faq.tsx`. Linked from the footer only (was removed from the main nav). Listed in `sitemap.xml`.
+**Pravila i Česta Pitanja (`/pravila`):**
+- `client/src/pages/terms.tsx` is a single merged page: two `Accordion` groups, "Pravila i Uslovi Saradnje" (business policy — avans/cancellation/payment/copyright/licenses/revisions) followed by "Česta Pitanja" (former standalone FAQ). Both accordions share the clean bordered-item style (no `CheckCircle2` lists, no gradient cards, no per-item `FadeInWhenVisible` — see the AI-slop rules below); `FadeInWhenVisible` wraps each of the two accordion sections and the closing CTA as whole units.
+- `/faq` no longer has its own page — it's a `<Redirect to="/pravila" />` in `App.tsx` for old links/bookmarks. `client/src/pages/faq.tsx` was deleted; don't recreate it. `structuredData={pageStructuredData.faq}` (the `FAQPage` JSON-LD block in `SEO.tsx`) is passed on `/pravila` since the FAQ content now lives there.
+- Nav: header `moreNav` only ever linked "Pravila" → `/pravila` (FAQ was footer-only before the merge); footer's link list and bottom bar both say "Pravila i Česta Pitanja" now, one link instead of two.
 
 **Video Spots:**
 - Table: `video_spots` (title, description, youtubeUrl, createdAt). Route: `/video-spots` → `client/src/pages/video-spots.tsx`.

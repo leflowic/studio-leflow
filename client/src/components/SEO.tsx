@@ -20,11 +20,11 @@ interface SEOProps {
 const BREADCRUMB_NAMES: Record<string, string> = {
   "/usluge": "Usluge",
   "/projekti": "Projekti",
-  "/faq": "Česta pitanja",
   "/kontakt": "Kontakt",
   "/tim": "Tim",
-  "/pravila": "Pravila i uslovi",
+  "/pravila": "Pravila i česta pitanja",
   "/news": "Vesti",
+  "/zastita-brenda": "Zaštita brenda",
 };
 
 // Get absolute URL for Open Graph images
