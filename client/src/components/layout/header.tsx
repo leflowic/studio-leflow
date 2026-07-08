@@ -99,7 +99,7 @@ export function Header() {
                 <Link
                   key={item.name}
                   href={item.href}
-                  className={`relative px-3 py-2 rounded-xl text-sm font-medium transition-all flex items-center gap-1.5 group ${
+                  className={`relative px-3 py-2 rounded-xl text-sm font-medium transition-colors flex items-center gap-1.5 group ${
                     isActive(item.href) ? "text-primary" : "text-muted-foreground hover:text-foreground"
                   }`}
                   data-testid={`link-nav-${item.name.toLowerCase()}`}
@@ -108,7 +108,7 @@ export function Header() {
                     <motion.div
                       layoutId="nav-pill"
                       className="absolute inset-0 bg-primary/10 rounded-xl"
-                      transition={{ type: "spring", bounce: 0.2, duration: 0.4 }}
+                      transition={{ type: "spring", bounce: 0, duration: 0.3 }}
                     />
                   )}
                   <item.icon className={`w-3.5 h-3.5 relative z-10 transition-transform group-hover:scale-110 ${isActive(item.href) ? "text-primary" : ""}`} />
@@ -118,11 +118,11 @@ export function Header() {
 
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
-                  <button className={`relative px-3 py-2 rounded-xl text-sm font-medium transition-all flex items-center gap-1 group ${
+                  <button className={`relative px-3 py-2 rounded-xl text-sm font-medium transition-colors flex items-center gap-1 group ${
                     moreNav.some(i => isActive(i.href)) ? "text-primary" : "text-muted-foreground hover:text-foreground"
                   }`}>
                     {moreNav.some(i => isActive(i.href)) && (
-                      <motion.div layoutId="nav-pill" className="absolute inset-0 bg-primary/10 rounded-xl" transition={{ type: "spring", bounce: 0.2, duration: 0.4 }} />
+                      <motion.div layoutId="nav-pill" className="absolute inset-0 bg-primary/10 rounded-xl" transition={{ type: "spring", bounce: 0, duration: 0.3 }} />
                     )}
                     <span className="relative z-10">Još</span>
                     <ChevronDown className="w-3.5 h-3.5 relative z-10 transition-transform group-data-[state=open]:rotate-180" />
@@ -148,13 +148,13 @@ export function Header() {
                 <>
                   <Link
                     href="/admin"
-                    className={`relative px-3 py-2 rounded-xl text-sm font-medium transition-all flex items-center gap-1.5 ${
+                    className={`relative px-3 py-2 rounded-xl text-sm font-medium transition-colors flex items-center gap-1.5 ${
                       isActive("/admin") ? "text-primary" : "text-muted-foreground hover:text-foreground"
                     }`}
                     data-testid="link-nav-admin"
                   >
                     {isActive("/admin") && (
-                      <motion.div layoutId="nav-pill" className="absolute inset-0 bg-primary/10 rounded-xl" transition={{ type: "spring", bounce: 0.2, duration: 0.4 }} />
+                      <motion.div layoutId="nav-pill" className="absolute inset-0 bg-primary/10 rounded-xl" transition={{ type: "spring", bounce: 0, duration: 0.3 }} />
                     )}
                     <span className="relative z-10">Admin</span>
                   </Link>
