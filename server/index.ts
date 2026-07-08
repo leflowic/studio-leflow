@@ -779,29 +779,6 @@ app.use((req, res, next) => {
               });
             }
 
-            // Handle new message notification
-            if (message.type === 'new_message') {
-              const { receiverId, messageData } = message;
-              
-              // Broadcast to receiver
-              broadcastToUser(receiverId, {
-                type: 'new_message',
-                message: messageData,
-              });
-            }
-
-            // Handle message read notification
-            if (message.type === 'message_read') {
-              const { senderId, conversationId } = message;
-              
-              // Notify sender that receiver read the message
-              broadcastToUser(senderId, {
-                type: 'message_read',
-                conversationId,
-                readBy: userId,
-              });
-            }
-
           } catch (error: any) {
             log(`[WebSocket] Message parse error: ${error.message}`);
           }
