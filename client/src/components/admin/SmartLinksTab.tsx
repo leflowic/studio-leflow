@@ -4,7 +4,9 @@ import { queryClient, apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import { Skeleton } from "@/components/ui/skeleton";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import {
   AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
   AlertDialogDescription, AlertDialogFooter, AlertDialogHeader,
@@ -12,7 +14,7 @@ import {
 } from "@/components/ui/alert-dialog";
 import {
   Link2, Plus, Trash2, Edit2, Copy, ExternalLink, Music2,
-  Upload, X, Sparkles, Loader2, MousePointerClick, TrendingUp,
+  Upload, X, Sparkles, Loader2, MousePointerClick, TrendingUp, UserPlus,
 } from "lucide-react";
 import { SiSpotify, SiYoutube, SiApplemusic, SiSoundcloud, SiTidal } from "react-icons/si";
 import { Modal } from "./AdminModal";
@@ -57,6 +59,8 @@ export function SmartLinksTab() {
   const [uploading, setUploading] = useState(false);
   const [autoUrl, setAutoUrl] = useState("");
   const [autoFillPending, setAutoFillPending] = useState(false);
+  const [assigningLink, setAssigningLink] = useState<SmartLinkWithStats | null>(null);
+  const [selectedUserId, setSelectedUserId] = useState<string>("null");
   const fileRef = useRef<HTMLInputElement>(null);
 
   const setForm = (f: typeof emptyForm) => { ssSet("sl_form", f); setFormRaw(f); };
@@ -70,6 +74,26 @@ export function SmartLinksTab() {
 
   const { data: links, isLoading } = useQuery<SmartLinkWithStats[]>({ queryKey: ["/api/admin/smart-links"] });
   const totalClicks = links?.reduce((s, l) => s + l.totalClicks, 0) ?? 0;
+
+  const { data: assignableUsers = [] } = useQuery<Array<{ id: number; username: string }>>({
+    queryKey: ["/api/admin/smart-links/assignable-users"],
+  });
+
+  const assignMutation = useMutation({
+    mutationFn: ({ id, userId }: { id: number; userId: number | null }) =>
+      apiRequest("PATCH", `/api/admin/smart-links/${id}`, { userId }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/admin/smart-links"] });
+      setAssigningLink(null);
+      toast({ title: "Vlasnik ažuriran ✓" });
+    },
+    onError: () => toast({ title: "Greška pri dodeli korisnika", variant: "destructive" }),
+  });
+
+  function openAssign(link: SmartLinkWithStats) {
+    setSelectedUserId(link.userId != null ? String(link.userId) : "null");
+    setAssigningLink(link);
+  }
 
   const saveMutation = useMutation({
     mutationFn: async (data: typeof emptyForm) => {
@@ -353,6 +377,52 @@ export function SmartLinksTab() {
         </div>
       </Modal>
 
+      {/* ── Assign owner modal ──────────────────────────────────────────────── */}
+      <Modal open={!!assigningLink} onClose={() => setAssigningLink(null)}>
+        <div className="flex items-center justify-between px-6 pt-6 pb-4 border-b shrink-0" style={{ borderColor: "rgba(255,255,255,0.06)" }}>
+          <div>
+            <h2 className="text-[15px] font-bold text-white">Dodeli vlasnika</h2>
+            <p className="text-[11px] mt-0.5" style={{ color: "rgba(255,255,255,0.35)" }}>
+              {assigningLink && `"${assigningLink.title}" - izaberi korisnika koji sme da menja cover i platform linkove`}
+            </p>
+          </div>
+          <button
+            type="button"
+            onClick={() => setAssigningLink(null)}
+            aria-label="Zatvori"
+            className="w-8 h-8 rounded-xl flex items-center justify-center transition-all active:scale-90 bg-white/5 hover:bg-white/10 border border-white/[0.07] shrink-0"
+          >
+            <X className="w-3.5 h-3.5 text-white/50" />
+          </button>
+        </div>
+        <div className="px-6 py-5 space-y-2">
+          <Label className="text-white/70">Vlasnik</Label>
+          <Select value={selectedUserId} onValueChange={setSelectedUserId}>
+            <SelectTrigger>
+              <SelectValue placeholder="Izaberi korisnika" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="null">Nijedan (ukloni dodelu)</SelectItem>
+              {assignableUsers.map(u => (
+                <SelectItem key={u.id} value={String(u.id)}>{u.username}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+        <div className="flex items-center justify-end gap-3 px-6 py-4 shrink-0 border-t" style={{ borderColor: "rgba(255,255,255,0.06)" }}>
+          <Button variant="outline" onClick={() => setAssigningLink(null)}>Otkaži</Button>
+          <Button
+            disabled={assignMutation.isPending}
+            onClick={() => {
+              if (!assigningLink) return;
+              assignMutation.mutate({ id: assigningLink.id, userId: selectedUserId === "null" ? null : parseInt(selectedUserId) });
+            }}
+          >
+            {assignMutation.isPending ? "Dodeljuje se..." : "Sačuvaj"}
+          </Button>
+        </div>
+      </Modal>
+
       {/* ── List view ────────────────────────────────────────────────────────── */}
       <div className="space-y-6">
 
@@ -442,7 +512,7 @@ export function SmartLinksTab() {
                   </div>
                   <div className="flex items-center gap-2.5 mt-1.5 flex-wrap">
                     <span className="text-[10px] font-mono px-2 py-0.5 rounded-lg" style={{ color: "rgba(160,148,255,0.7)", background: "rgba(99,82,255,0.10)", border: "1px solid rgba(99,82,255,0.12)" }}>
-                      /l/{link.slug}
+                      music.studioleflow.com/{link.slug}
                     </span>
                     <span className="flex items-center gap-1 text-[10px]" style={{ color: "rgba(255,255,255,0.30)" }}>
                       <TrendingUp className="w-3 h-3" /> {link.totalClicks}
@@ -452,6 +522,11 @@ export function SmartLinksTab() {
                         <div key={p.key} className="w-1.5 h-1.5 rounded-full" style={{ background: p.color }} title={p.label} />
                       ))}
                     </div>
+                    {link.userId != null && (
+                      <span className="flex items-center gap-1 text-[10px] px-2 py-0.5 rounded-lg" style={{ color: "rgba(255,255,255,0.45)", background: "rgba(255,255,255,0.05)" }}>
+                        <UserPlus className="w-3 h-3" /> {assignableUsers.find(u => u.id === link.userId)?.username ?? "korisnik"}
+                      </span>
+                    )}
                   </div>
                 </div>
 
@@ -461,6 +536,7 @@ export function SmartLinksTab() {
                     { icon: Copy, action: () => copyLink(link.slug), title: "Kopiraj" },
                     { icon: ExternalLink, action: null, href: `https://music.studioleflow.com/${link.slug}`, title: "Otvori" },
                     { icon: Edit2, action: () => openEdit(link), title: "Uredi" },
+                    { icon: UserPlus, action: () => openAssign(link), title: "Dodeli vlasnika" },
                   ].map(({ icon: Icon, action, href, title }) => (
                     href ? (
                       <a key={title} href={href} target="_blank" rel="noopener noreferrer"

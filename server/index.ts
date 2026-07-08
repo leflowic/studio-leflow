@@ -190,6 +190,9 @@ async function runMigrations() {
         clicked_at TIMESTAMP NOT NULL DEFAULT NOW()
       );
     `);
+    await client.query(`
+      ALTER TABLE smart_links ADD COLUMN IF NOT EXISTS user_id INTEGER REFERENCES users(id) ON DELETE SET NULL;
+    `);
     log('[Migrations] Smart Links tables ready', 'express');
   } catch (err: any) {
     log(`[Migrations] Warning on smart links tables: ${err.message}`, 'express');

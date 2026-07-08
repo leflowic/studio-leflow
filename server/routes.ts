@@ -4205,6 +4205,18 @@ Sitemap: ${siteUrl}/sitemap.xml
     }
   });
 
+  // Minimal user list for the "Dodeli korisniku" dropdown - gated the same as
+  // the other smart-link routes (producer/marketing), unlike /api/admin/users
+  // (producer-only) which also exposes broader account fields.
+  app.get("/api/admin/smart-links/assignable-users", requireRole("producer", "marketing"), async (_req, res) => {
+    try {
+      const allUsers = await storage.getAllUsers();
+      res.json(allUsers.map(u => ({ id: u.id, username: u.username })));
+    } catch {
+      res.status(500).json({ error: "Greška na serveru" });
+    }
+  });
+
   app.post("/api/admin/smart-links", requireRole("producer", "marketing"), async (req, res) => {
     try {
       const parsed = insertSmartLinkSchema.safeParse(req.body);
@@ -4223,7 +4235,15 @@ Sitemap: ${siteUrl}/sitemap.xml
       if (isNaN(id)) return res.status(400).json({ error: "Nevažeći ID" });
       const parsed = insertSmartLinkSchema.partial().safeParse(req.body);
       if (!parsed.success) return res.status(400).json({ error: parsed.error.errors[0]?.message ?? "Nevažeći podaci" });
+      const before = await storage.getSmartLinkById(id);
       const link = await storage.updateSmartLink(id, parsed.data);
+      if ("userId" in parsed.data && link.userId != null && link.userId !== before?.userId) {
+        notifyUser(
+          link.userId,
+          "Dodeljen vam je smart link! 🎵",
+          `Sada možete da menjate cover i platform linkove za "${link.title}" iz svog dashboard-a.`
+        );
+      }
       res.json(link);
     } catch (e: any) {
       if (e?.code === "23505") return res.status(409).json({ error: "Slug već postoji. Izaberite drugi." });
@@ -4242,8 +4262,11 @@ Sitemap: ${siteUrl}/sitemap.xml
     }
   });
 
-  // Upload cover image to Cloudinary for smart links
-  app.post("/api/upload/smart-link-cover", requireRole("producer", "marketing"), uploadRateLimiter, upload.single("file"), async (req, res) => {
+  // Upload cover image to Cloudinary for smart links. Gated to any verified user
+  // (not just staff) because an assigned smart-link "owner" can also update their
+  // cover from the dashboard - the actual DB write is ownership-checked separately
+  // on PATCH /api/user/smart-links/:id, so a loose gate here is safe.
+  app.post("/api/upload/smart-link-cover", requireVerifiedEmail, uploadRateLimiter, upload.single("file"), async (req, res) => {
     try {
       if (!req.file) return res.status(400).json({ error: "Fajl nije pronađen" });
       const buf = req.file.buffer;
@@ -4253,6 +4276,58 @@ Sitemap: ${siteUrl}/sitemap.xml
       res.json({ url });
     } catch {
       res.status(500).json({ error: "Greška pri uploadu slike" });
+    }
+  });
+
+  // User-facing: smart links the caller has been assigned as "owner" of by an
+  // admin/producer (see PATCH /api/admin/smart-links/:id above, which sets
+  // userId). The owner may edit their own cover/title/artist/platform URLs,
+  // but never the slug (would break already-shared links/QR codes) or userId.
+  app.get("/api/user/smart-links", requireVerifiedEmail, async (req, res) => {
+    try {
+      const links = await storage.getSmartLinksByUserId(req.jwtUser!.id);
+      res.json(links);
+    } catch {
+      res.status(500).json({ error: "Greška na serveru" });
+    }
+  });
+
+  app.patch("/api/user/smart-links/:id", requireVerifiedEmail, async (req, res) => {
+    try {
+      const id = parseInt(req.params.id);
+      if (isNaN(id)) return res.status(400).json({ error: "Nevažeći ID" });
+      const link = await storage.getSmartLinkById(id);
+      if (!link) return res.status(404).json({ error: "Link nije pronađen" });
+      if (link.userId !== req.jwtUser!.id) return res.status(403).json({ error: "Nemate pristup ovom linku" });
+
+      const ownerEditableSchema = insertSmartLinkSchema
+        .pick({ title: true, artist: true, coverUrl: true, spotifyUrl: true, youtubeUrl: true, appleMusicUrl: true, soundcloudUrl: true, tidalUrl: true, deezerUrl: true })
+        .partial()
+        .extend({
+          // Unlike admin (staff, trusted), a regular owner's cover must come from
+          // the upload endpoint (Cloudinary) - not an arbitrary external image URL
+          // on a public brand page.
+          coverUrl: z.string().refine(v => !v || v.includes("res.cloudinary.com"), "Cover mora biti otpremljen kroz upload dugme").optional().nullable(),
+        });
+      const parsed = ownerEditableSchema.safeParse(req.body);
+      if (!parsed.success) return res.status(400).json({ error: parsed.error.errors[0]?.message ?? "Nevažeći podaci" });
+
+      const updated = await storage.updateSmartLink(id, parsed.data);
+      res.json(updated);
+    } catch {
+      res.status(500).json({ error: "Greška na serveru" });
+    }
+  });
+
+  // Public: lightweight list of all smart links, for the music.studioleflow.com
+  // root hub page (no click stats/platform URLs - those are admin-only fields).
+  app.get("/api/smart-links", async (_req, res) => {
+    try {
+      const links = await storage.getAllSmartLinks();
+      res.json(links.map(l => ({ slug: l.slug, title: l.title, artist: l.artist, coverUrl: l.coverUrl })));
+    } catch (e: any) {
+      console.error("[SmartLink] List error:", e?.message);
+      res.status(500).json({ error: "Greška na serveru" });
     }
   });
 

@@ -105,6 +105,7 @@ const NewsletterConfirmationPage = lazy(() => import("@/pages/newsletter-confirm
 const UslugePage = lazy(() => import("@/pages/usluge"));
 const PortalPage = lazy(() => import("@/pages/portal"));
 const SmartLinkPage = lazy(() => import("@/pages/l"));
+const MusicHubPage = lazy(() => import("@/pages/music-hub"));
 const UserProfilePage = lazy(() => import("@/pages/user-profile"));
 const NewsPage = lazy(() => import("@/pages/news"));
 const NewsArticlePage = lazy(() => import("@/pages/news-article"));
@@ -130,6 +131,7 @@ function Router() {
       <ChunkErrorBoundary>
         <Suspense fallback={<div className="min-h-screen bg-[#080808] flex items-center justify-center"><div className="w-8 h-8 rounded-full border-2 border-primary/30 border-t-primary animate-spin" /></div>}>
           <Switch location={location}>
+            <Route path="/"><MusicHubPage /></Route>
             <Route path="/:slug"><SmartLinkPage /></Route>
             <Route><NotFoundPage /></Route>
           </Switch>

@@ -1014,6 +1014,7 @@ export const smartLinks = pgTable("smart_links", {
   soundcloudUrl: text("soundcloud_url"),
   tidalUrl: text("tidal_url"),
   deezerUrl: text("deezer_url"),
+  userId: integer("user_id").references(() => users.id, { onDelete: "set null" }), // "Owner" - assigned user who may edit cover/platform URLs from their dashboard
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });
 
