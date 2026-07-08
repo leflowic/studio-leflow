@@ -2,7 +2,7 @@ import type { Express } from "express";
 import { createServer, type Server } from "http";
 import { storage } from "./storage";
 import { wsHelpers, notifyUser, broadcastToUser, getOnlineUsersSnapshot } from "./websocket-helpers";
-import { insertContactSubmissionSchema, insertCmsContentSchema, insertCmsMediaSchema, insertVideoSpotSchema, insertUserSongSchema, insertNewsletterSubscriberSchema, insertInvoiceSchema, insertCommunityMessageSchema, insertSiteAnnouncementSchema, mixMasterContractDataSchema, copyrightTransferContractDataSchema, instrumentalSaleContractDataSchema, insertSmartLinkSchema, insertStudioJobSchema, JOB_STAGES, insertNewsArticleSchema, type CmsContent, type CmsMedia, type VideoSpot, type UserSong } from "@shared/schema";
+import { insertContactSubmissionSchema, insertCmsContentSchema, insertCmsMediaSchema, insertVideoSpotSchema, insertUserSongSchema, insertNewsletterSubscriberSchema, insertInvoiceSchema, insertCommunityMessageSchema, insertSiteAnnouncementSchema, mixMasterContractDataSchema, copyrightTransferContractDataSchema, instrumentalSaleContractDataSchema, insertSmartLinkSchema, insertStudioJobSchema, JOB_STAGES, insertNewsArticleSchema, insertRightsProtectionSchema, type CmsContent, type CmsMedia, type VideoSpot, type UserSong } from "@shared/schema";
 import { sendEmail, getLastVerificationCode } from "./resend-client";
 import { resendVerificationEmail, adminLoginEmail, contactFormEmail, newsletterConfirmEmail, licenseDeliveryEmail, customEmail } from "./email-templates";
 import { setupAuth, hashPassword, comparePasswords } from "./auth";
@@ -10,9 +10,10 @@ import multer from "multer";
 import fs from "fs";
 import path from "path";
 import { z } from "zod";
-import { randomBytes, createHmac } from "crypto";
+import { randomBytes, createHmac, createHash } from "crypto";
 import { upload, uploadImageToCloudinary, uploadRawImageToCloudinary, uploadAudioToCloudinary } from "./cloudinary";
-import { generateMixMasterPDF, generateCopyrightTransferPDF, generateInstrumentalSalePDF, type MixMasterContract, type CopyrightTransferContract, type InstrumentalSaleContract } from "./pdf-generators";
+import { generateMixMasterPDF, generateCopyrightTransferPDF, generateInstrumentalSalePDF, generateRightsProtectionCertificatePDF, type MixMasterContract, type CopyrightTransferContract, type InstrumentalSaleContract } from "./pdf-generators";
+import { computeFingerprint, compareFingerprint } from "./audio-fingerprint";
 import rateLimit from "express-rate-limit";
 import { fileTypeFromBuffer } from "file-type";
 
@@ -3461,6 +3462,179 @@ Sitemap: ${siteUrl}/sitemap.xml
       res.json({ url });
     } catch {
       res.status(500).json({ error: "Greška pri uploadu slike" });
+    }
+  });
+
+  // ============================================================================
+  // RIGHTS PROTECTION ("Zaštita prava") - internal evidence tool, producer/admin only.
+  // NOT an official copyright registration - see disclaimer text on the generated certificate.
+  // ============================================================================
+
+  function formatBelgradeDateTime(date: Date): string {
+    const parts = new Intl.DateTimeFormat('sv', {
+      timeZone: 'Europe/Belgrade',
+      year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit', hour12: false,
+    }).formatToParts(date).reduce((acc, p) => ({ ...acc, [p.type]: p.value }), {} as Record<string, string>);
+    return `${parts.day}/${parts.month}/${parts.year} ${parts.hour}:${parts.minute}`;
+  }
+
+  app.post("/api/upload/rights-protection-file", uploadRateLimiter, requireRole("producer"), upload.single("file"), async (req, res) => {
+    try {
+      if (!req.file) return res.status(400).json({ error: "Fajl nije pronađen" });
+      if (req.file.size > 25 * 1024 * 1024) return res.status(400).json({ error: "Fajl ne sme biti veći od 25MB" });
+
+      const buf = req.file.buffer;
+      const detectedType = await fileTypeFromBuffer(buf);
+      const isAudio = detectedType?.mime === "audio/mpeg";
+      const isImage = detectedType?.mime === "image/png" || detectedType?.mime === "image/jpeg";
+      if (!isAudio && !isImage) {
+        return res.status(400).json({ error: "Dozvoljeni su samo MP3 audio fajlovi ili PNG/JPG slike" });
+      }
+
+      const fileHash = createHash('sha256').update(buf).digest('hex');
+      const assetType: "audio" | "image" = isAudio ? "audio" : "image";
+      const folder = "studioleflow/rights-protection";
+      const url = isAudio
+        ? await uploadAudioToCloudinary(buf, folder, req.file.originalname)
+        : await uploadRawImageToCloudinary(buf, folder, `zp_${Date.now()}`);
+
+      let fingerprint: number[] | null = null;
+      if (isAudio) {
+        fingerprint = await computeFingerprint(buf);
+      }
+
+      res.json({
+        assetType,
+        url,
+        fileHash,
+        fileSizeBytes: req.file.size,
+        originalFilename: req.file.originalname,
+        mimeType: detectedType!.mime,
+        fingerprint,
+      });
+    } catch (error: any) {
+      console.error("[RIGHTS-PROTECTION] Upload error:", error);
+      res.status(500).json({ error: "Greška pri otpremanju fajla" });
+    }
+  });
+
+  app.post("/api/admin/rights-protection", requireRole("producer"), async (req, res) => {
+    try {
+      const { fingerprint, ...body } = req.body;
+      const data = insertRightsProtectionSchema.parse(body);
+      const certificateNumber = await storage.getNextRightsProtectionNumber();
+      const verificationHash = createHmac('sha256', process.env.SESSION_SECRET || 'leflow-license-secret')
+        .update(`${certificateNumber}|${data.fileHash}|${Date.now()}`)
+        .digest('hex');
+
+      const entry = await storage.createRightsProtection({
+        ...data,
+        certificateNumber,
+        verificationHash,
+        uploadedBy: req.jwtUser!.id,
+        fingerprint: Array.isArray(fingerprint) ? JSON.stringify(fingerprint) : null,
+      });
+      res.json(entry);
+    } catch (error: any) {
+      console.error("[RIGHTS-PROTECTION] Create error:", error);
+      if (error.name === "ZodError") {
+        return res.status(400).json({ error: "Nevažeći podaci", details: error.errors });
+      }
+      if (error?.code === "23505") {
+        return res.status(400).json({ error: "Broj sertifikata je već zauzet - pokušajte ponovo" });
+      }
+      res.status(500).json({ error: "Greška pri kreiranju evidencije" });
+    }
+  });
+
+  app.get("/api/admin/rights-protection", requireRole("producer"), async (_req, res) => {
+    try {
+      const entries = await storage.getAllRightsProtections();
+      res.json(entries);
+    } catch (error: any) {
+      console.error("[RIGHTS-PROTECTION] List error:", error);
+      res.status(500).json({ error: "Greška pri učitavanju evidencije" });
+    }
+  });
+
+  app.delete("/api/admin/rights-protection/:id", requireRole("producer"), async (req, res) => {
+    try {
+      const id = parseInt(req.params.id, 10);
+      if (isNaN(id)) return res.status(400).json({ error: "Nevažeći ID" });
+      await storage.deleteRightsProtection(id);
+      res.json({ success: true });
+    } catch (error: any) {
+      console.error("[RIGHTS-PROTECTION] Delete error:", error);
+      res.status(500).json({ error: "Greška pri brisanju evidencije" });
+    }
+  });
+
+  app.get("/api/admin/rights-protection/:id/certificate", requireRole("producer"), async (req, res) => {
+    try {
+      const id = parseInt(req.params.id, 10);
+      if (isNaN(id)) return res.status(400).json({ error: "Nevažeći ID" });
+      const entry = await storage.getRightsProtectionById(id);
+      if (!entry) return res.status(404).json({ error: "Evidencija nije pronađena" });
+
+      const pdfBuffer = await generateRightsProtectionCertificatePDF({
+        assetType: entry.assetType as "audio" | "image",
+        title: entry.title,
+        creatorName: entry.creatorName,
+        clientName: entry.clientName,
+        notes: entry.notes,
+        claimedCreationDate: entry.claimedCreationDate,
+        originalFilename: entry.originalFilename,
+        fileSizeBytes: entry.fileSizeBytes,
+        fileHash: entry.fileHash,
+        uploadedAt: formatBelgradeDateTime(entry.createdAt),
+      }, entry.certificateNumber, entry.verificationHash);
+
+      const filename = `sertifikat_${entry.certificateNumber.replace(/-/g, '_')}.pdf`;
+      res.setHeader('Content-Type', 'application/pdf');
+      res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
+      res.send(pdfBuffer);
+    } catch (error: any) {
+      console.error("[RIGHTS-PROTECTION] Certificate error:", error);
+      res.status(500).json({ error: "Greška pri generisanju sertifikata" });
+    }
+  });
+
+  app.post("/api/admin/rights-protection/compare", requireRole("producer"), upload.single("file"), async (req, res) => {
+    try {
+      if (!req.file) return res.status(400).json({ error: "Fajl nije pronađen" });
+      const buf = req.file.buffer;
+      const detectedType = await fileTypeFromBuffer(buf);
+      if (detectedType?.mime !== "audio/mpeg") {
+        return res.status(400).json({ error: "Poređenje otiska je dostupno samo za MP3 fajlove" });
+      }
+
+      const suspectHash = createHash('sha256').update(buf).digest('hex');
+      const suspectFingerprint = await computeFingerprint(buf);
+
+      const entries = await storage.getAllRightsProtections();
+      const audioEntries = entries.filter(e => e.assetType === "audio");
+
+      const matches = audioEntries
+        .map(e => {
+          const exactMatch = e.fileHash === suspectHash;
+          let similarity = exactMatch ? 100 : 0;
+          if (!exactMatch && suspectFingerprint && e.fingerprint) {
+            try {
+              const storedFingerprint: number[] = JSON.parse(e.fingerprint);
+              similarity = compareFingerprint(suspectFingerprint, storedFingerprint);
+            } catch {
+              similarity = 0;
+            }
+          }
+          return { id: e.id, title: e.title, creatorName: e.creatorName, exactMatch, similarity };
+        })
+        .filter(m => m.exactMatch || m.similarity > 0)
+        .sort((a, b) => (b.exactMatch ? 1 : 0) - (a.exactMatch ? 1 : 0) || b.similarity - a.similarity);
+
+      res.json({ exactMatch: matches.some(m => m.exactMatch), matches });
+    } catch (error: any) {
+      console.error("[RIGHTS-PROTECTION] Compare error:", error);
+      res.status(500).json({ error: "Greška pri poređenju snimka" });
     }
   });
 

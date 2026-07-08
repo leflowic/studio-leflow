@@ -602,3 +602,83 @@ export function generateInstrumentalSalePDF(data: InstrumentalSaleContract, lice
     doc.end();
   });
 }
+
+export interface RightsProtectionCertificate {
+  assetType: "audio" | "image";
+  title: string;
+  creatorName: string;
+  clientName?: string | null;
+  notes?: string | null;
+  claimedCreationDate?: string | null;
+  originalFilename: string;
+  fileSizeBytes: number;
+  fileHash: string;
+  uploadedAt: string; // "DD/MM/YYYY HH:mm"
+}
+
+/**
+ * Generate PDF certificate for an internal "Zaštita prava" (Rights Protection) evidence entry.
+ * This is NOT an official copyright registration - it certifies that a specific file (identified
+ * by its SHA-256 hash) existed at Studio LeFlow at the recorded upload time. Any claimed earlier
+ * creation date is the uploader's own assertion, not proven by the hash itself.
+ */
+export function generateRightsProtectionCertificatePDF(
+  data: RightsProtectionCertificate,
+  certificateNumber: string,
+  verificationHash: string
+): Promise<Buffer> {
+  return new Promise((resolve, reject) => {
+    const doc = new PDFDocument({
+      size: 'A4',
+      margins: { top: 50, bottom: 50, left: 72, right: 72 }
+    });
+
+    doc.registerFont('DejaVuSans', fontPath('DejaVuSans.ttf'));
+    doc.registerFont('DejaVuSans-Bold', fontPath('DejaVuSans-Bold.ttf'));
+
+    const buffers: Buffer[] = [];
+    doc.on('data', buffers.push.bind(buffers));
+    doc.on('end', () => resolve(Buffer.concat(buffers)));
+    doc.on('error', reject);
+
+    const bodyStartY = drawContractLogo(doc);
+    doc.y = bodyStartY;
+
+    doc.fontSize(14).font('DejaVuSans-Bold').text('SERTIFIKAT O ZAŠTITI PRAVA', { align: 'center' });
+    doc.moveDown(2);
+
+    const assetLabel = data.assetType === 'audio' ? 'muzičko delo' : 'vizuelni materijal (logo/žig)';
+
+    doc.fontSize(10).font('DejaVuSans')
+      .text(`Studio LeFlow ovim potvrđuje da je dole opisani ${assetLabel} primljen i evidentiran kod studija dana ${data.uploadedAt}, sa sledećim podacima:`, { align: 'left' });
+    doc.moveDown();
+
+    doc.fontSize(11).font('DejaVuSans-Bold').text('1. Podaci o delu');
+    doc.fontSize(10).font('DejaVuSans');
+    doc.text(`Naziv: ${data.title}`);
+    doc.text(`Autor / vlasnik: ${data.creatorName}`);
+    if (data.clientName) doc.text(`Strana na koju se evidencija odnosi: ${data.clientName}`);
+    if (data.claimedCreationDate) {
+      doc.text(`Tvrđeni datum nastanka (izjava podnosioca, nije dokazan ovim sertifikatom): ${data.claimedCreationDate}`);
+    }
+    if (data.notes) doc.text(`Napomena: ${data.notes}`);
+    doc.moveDown();
+
+    doc.fontSize(11).font('DejaVuSans-Bold').text('2. Digitalni dokaz');
+    doc.fontSize(10).font('DejaVuSans');
+    doc.text(`Originalni naziv fajla: ${data.originalFilename}`);
+    doc.text(`Veličina fajla: ${(data.fileSizeBytes / 1024).toFixed(1)} KB`);
+    doc.text(`SHA-256 heš originalnog fajla: ${data.fileHash}`);
+    doc.text(`Vreme evidentiranja: ${data.uploadedAt}`);
+    doc.moveDown(2);
+
+    doc.fontSize(11).font('DejaVuSans-Bold').text('3. Napomena o pravnom značaju');
+    doc.fontSize(10).font('DejaVuSans');
+    doc.text('Ovaj sertifikat predstavlja internu evidenciju Studio LeFlow o postojanju navedenog digitalnog fajla u navedenom trenutku, na osnovu njegovog jedinstvenog kriptografskog heša. Ne predstavlja zvaničnu registraciju autorskih prava kod nadležne institucije (SOKOJ ili druga nadležna organizacija) i sam po sebi ne dokazuje datum nastanka dela pre navedenog trenutka evidentiranja.');
+    doc.moveDown(2);
+
+    drawLicenseFooter(doc, certificateNumber, verificationHash);
+
+    doc.end();
+  });
+}

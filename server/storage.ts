@@ -88,6 +88,9 @@ import {
   type NewsArticle,
   type InsertNewsArticle,
   newsArticles,
+  type RightsProtection,
+  type InsertRightsProtection,
+  rightsProtections,
 } from "@shared/schema";
 import { db, pool } from "./db";
 import { eq, and, or, desc, sql, notInArray, inArray, gte, lte, count } from "drizzle-orm";
@@ -292,6 +295,13 @@ export interface IStorage {
   getPublishedArticles(limit: number, offset: number): Promise<Array<NewsArticle & { authorUsername: string }>>;
   updateArticle(id: number, data: Partial<InsertNewsArticle>): Promise<void>;
   deleteArticle(id: number): Promise<void>;
+
+  // Rights Protection ("Zaštita prava")
+  getNextRightsProtectionNumber(): Promise<string>;
+  createRightsProtection(data: InsertRightsProtection & { certificateNumber: string; verificationHash: string; uploadedBy: number; fingerprint: string | null }): Promise<RightsProtection>;
+  getAllRightsProtections(): Promise<Array<RightsProtection & { uploadedByUsername: string }>>;
+  getRightsProtectionById(id: number): Promise<RightsProtection | undefined>;
+  deleteRightsProtection(id: number): Promise<void>;
 
   // Community Chat
   createCommunityMessage(userId: number, message: string): Promise<CommunityMessage>;
@@ -2243,6 +2253,71 @@ export class DatabaseStorage implements IStorage {
 
   async deleteArticle(id: number): Promise<void> {
     await db.delete(newsArticles).where(eq(newsArticles.id, id));
+  }
+
+  async getNextRightsProtectionNumber(): Promise<string> {
+    const currentYear = new Date().getFullYear();
+    const prefix = `ZP-${currentYear}-`;
+
+    const [latest] = await db
+      .select()
+      .from(rightsProtections)
+      .where(sql`${rightsProtections.certificateNumber} LIKE ${prefix + '%'}`)
+      .orderBy(desc(rightsProtections.certificateNumber))
+      .limit(1);
+
+    if (!latest) {
+      return `${prefix}00000001`;
+    }
+
+    const parts = latest.certificateNumber.split('-');
+    const lastNumber = parseInt(parts[2] || '0');
+    const nextNumber = isNaN(lastNumber) ? 1 : lastNumber + 1;
+
+    return `${prefix}${nextNumber.toString().padStart(8, '0')}`;
+  }
+
+  async createRightsProtection(data: InsertRightsProtection & { certificateNumber: string; verificationHash: string; uploadedBy: number; fingerprint: string | null }): Promise<RightsProtection> {
+    const [result] = await db.insert(rightsProtections).values(data).returning();
+    if (!result) throw new Error("Failed to create rights protection entry");
+    return result;
+  }
+
+  async getAllRightsProtections(): Promise<Array<RightsProtection & { uploadedByUsername: string }>> {
+    const results = await db
+      .select({
+        id: rightsProtections.id,
+        certificateNumber: rightsProtections.certificateNumber,
+        assetType: rightsProtections.assetType,
+        title: rightsProtections.title,
+        creatorName: rightsProtections.creatorName,
+        clientName: rightsProtections.clientName,
+        notes: rightsProtections.notes,
+        claimedCreationDate: rightsProtections.claimedCreationDate,
+        fileUrl: rightsProtections.fileUrl,
+        originalFilename: rightsProtections.originalFilename,
+        fileSizeBytes: rightsProtections.fileSizeBytes,
+        mimeType: rightsProtections.mimeType,
+        fileHash: rightsProtections.fileHash,
+        fingerprint: rightsProtections.fingerprint,
+        verificationHash: rightsProtections.verificationHash,
+        uploadedBy: rightsProtections.uploadedBy,
+        createdAt: rightsProtections.createdAt,
+        uploadedByUsername: users.username,
+      })
+      .from(rightsProtections)
+      .innerJoin(users, eq(rightsProtections.uploadedBy, users.id))
+      .orderBy(desc(rightsProtections.createdAt));
+    return results;
+  }
+
+  async getRightsProtectionById(id: number): Promise<RightsProtection | undefined> {
+    const [result] = await db.select().from(rightsProtections).where(eq(rightsProtections.id, id));
+    return result || undefined;
+  }
+
+  async deleteRightsProtection(id: number): Promise<void> {
+    await db.delete(rightsProtections).where(eq(rightsProtections.id, id));
   }
 
   // Dashboard

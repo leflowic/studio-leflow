@@ -887,6 +887,59 @@ export const insertNewsArticleSchema = createInsertSchema(newsArticles).omit({
 export type InsertNewsArticle = z.infer<typeof insertNewsArticleSchema>;
 export type NewsArticle = typeof newsArticles.$inferSelect;
 
+// Rights Protection ("Zaštita prava") - internal evidence tool (producer/admin only),
+// independent from the contracts/licenses system. Records a SHA-256 hash + upload timestamp
+// of a file (song audio or brand asset like a logo) as internal proof-of-existence. For audio,
+// a heuristic spectral fingerprint is also computed so a suspect recording found later (different
+// bitrate/trim) can be compared against the archive. This is NOT an official copyright
+// registration (SOKOJ) - just internal, timestamped evidence. `claimedCreationDate` is a
+// user-asserted date (e.g. "logo posted to Facebook in 2020") - it is NOT proven by the hash,
+// which only proves the file existed at upload time; corroborating evidence (a link, a screenshot
+// reference) belongs in `notes`.
+export const rightsProtections = pgTable("rights_protections", {
+  id: serial("id").primaryKey(),
+  certificateNumber: varchar("certificate_number", { length: 30 }).notNull().unique(),
+  assetType: text("asset_type").notNull(), // "audio" | "image" - controls fingerprinting and certificate wording
+  title: text("title").notNull(),
+  creatorName: text("creator_name").notNull(), // artist/author for a song, or the owning brand/person for a logo
+  clientName: text("client_name"), // informational only, not an FK - the party the evidence may be used against
+  notes: text("notes"),
+  claimedCreationDate: text("claimed_creation_date"), // user-asserted "YYYY-MM-DD", unverified by the hash itself
+  fileUrl: text("file_url").notNull(), // Cloudinary secure_url
+  originalFilename: text("original_filename").notNull(),
+  fileSizeBytes: integer("file_size_bytes").notNull(),
+  mimeType: text("mime_type").notNull(),
+  fileHash: varchar("file_hash", { length: 64 }).notNull(), // SHA-256 hex of the exact bytes received, computed before the Cloudinary upload
+  fingerprint: text("fingerprint"), // JSON-stringified number[] (heuristic spectral fingerprint, audio only), null if not applicable/failed
+  verificationHash: varchar("verification_hash", { length: 64 }).notNull(),
+  uploadedBy: integer("uploaded_by").notNull().references(() => users.id),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+
+export const insertRightsProtectionSchema = createInsertSchema(rightsProtections).omit({
+  id: true,
+  createdAt: true,
+  certificateNumber: true,
+  verificationHash: true,
+  uploadedBy: true,
+  fingerprint: true,
+}).extend({
+  assetType: z.enum(["audio", "image"]),
+  title: z.string().min(1, "Naslov je obavezan"),
+  creatorName: z.string().min(1, "Ime autora/vlasnika je obavezno"),
+  clientName: z.string().optional().nullable(),
+  notes: z.string().optional().nullable(),
+  claimedCreationDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "Format datuma mora biti GGGG-MM-DD").optional().nullable(),
+  fileUrl: z.string().min(1, "Fajl je obavezan"),
+  originalFilename: z.string().min(1),
+  fileSizeBytes: z.number().int().positive(),
+  mimeType: z.string().min(1),
+  fileHash: z.string().length(64, "Neispravan hash fajla"),
+});
+
+export type InsertRightsProtection = z.infer<typeof insertRightsProtectionSchema>;
+export type RightsProtection = typeof rightsProtections.$inferSelect;
+
 // Community Messages - insert schema and types
 export const insertCommunityMessageSchema = createInsertSchema(communityMessages).omit({
   id: true,

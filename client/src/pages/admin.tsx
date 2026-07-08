@@ -27,7 +27,7 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
-import { Users, Music, Heart, MessageCircle, Trash2, Shield, ShieldOff, Settings, Construction, Send, Mail, Eye, Search, Download, UserPlus, FileText, Crown, Trophy, BadgeCheck, LayoutDashboard, Radio, MessagesSquare, Receipt, CalendarDays, Archive, Gamepad2, Link2, FolderOpen, FolderKanban, Newspaper, CheckCircle2, Clock, ArrowLeft, CalendarClock, UserCog, ShieldAlert, IdCard, type LucideIcon } from "lucide-react";
+import { Users, Music, Heart, MessageCircle, Trash2, Shield, ShieldOff, ShieldCheck, Settings, Construction, Send, Mail, Eye, Search, Download, UserPlus, FileText, Crown, Trophy, BadgeCheck, LayoutDashboard, Radio, MessagesSquare, Receipt, CalendarDays, Archive, Gamepad2, Link2, FolderOpen, FolderKanban, Newspaper, CheckCircle2, Clock, ArrowLeft, CalendarClock, UserCog, ShieldAlert, IdCard, type LucideIcon } from "lucide-react";
 import { format, formatDistanceToNow } from "date-fns";
 import { srLatn } from "date-fns/locale";
 import type { User } from "@shared/schema";
@@ -49,6 +49,7 @@ import { EmailTab } from "@/components/admin/EmailTab";
 import { PortalTab } from "@/components/admin/PortalTab";
 import { JobsBoard } from "@/components/admin/JobsBoard";
 import { NewsTab } from "@/components/admin/NewsTab";
+import { RightsProtectionTab } from "@/components/admin/RightsProtectionTab";
 import {
   Select,
   SelectContent,
@@ -90,6 +91,7 @@ const ADMIN_NAV: { group: string; items: { value: string; label: string; icon: L
     items: [
       { value: "jobs", label: "Radna tabla", icon: FolderKanban, roles: ["producer"] },
       { value: "contracts", label: "Licence", icon: FileText, roles: ["producer"] },
+      { value: "rights-protection", label: "Zaštita prava", icon: ShieldCheck, roles: ["producer"] },
       { value: "invoices", label: "Fakture", icon: Receipt, roles: ["producer"] },
       { value: "calendar", label: "Kalendar", icon: CalendarDays, roles: ["producer"] },
     ],
@@ -360,6 +362,10 @@ export default function AdminPage() {
 
           <TabsContent value="contracts">
             <ContractsTab />
+          </TabsContent>
+
+          <TabsContent value="rights-protection" forceMount>
+            <RightsProtectionTab />
           </TabsContent>
 
           <TabsContent value="invoices">
