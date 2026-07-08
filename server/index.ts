@@ -277,6 +277,76 @@ async function runMigrations() {
   } finally {
     client6.release();
   }
+
+  // ─── Studio Jobs (producer pipeline board) ───────────────────────────────
+  const client7 = await pool.connect();
+  try {
+    await client7.query(`
+      CREATE TABLE IF NOT EXISTS studio_jobs (
+        id SERIAL PRIMARY KEY,
+        title TEXT NOT NULL,
+        user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+        stage TEXT NOT NULL DEFAULT 'novi_upit',
+        contract_id INTEGER REFERENCES contracts(id) ON DELETE SET NULL,
+        invoice_id INTEGER REFERENCES invoices(id) ON DELETE SET NULL,
+        portal_id INTEGER REFERENCES client_portals(id) ON DELETE SET NULL,
+        notes TEXT,
+        delivery_date TIMESTAMP,
+        created_at TIMESTAMP NOT NULL DEFAULT NOW(),
+        updated_at TIMESTAMP NOT NULL DEFAULT NOW(),
+        created_by INTEGER NOT NULL REFERENCES users(id)
+      );
+    `);
+    await client7.query(`
+      CREATE INDEX IF NOT EXISTS studio_jobs_user_idx ON studio_jobs(user_id);
+    `);
+    await client7.query(`
+      CREATE INDEX IF NOT EXISTS studio_jobs_stage_idx ON studio_jobs(stage);
+    `);
+    log('[Migrations] Studio Jobs table ready', 'express');
+  } catch (err: any) {
+    log(`[Migrations] Warning on studio_jobs table: ${err.message}`, 'express');
+  } finally {
+    client7.release();
+  }
+
+  // ─── News Articles (/news portal) ────────────────────────────────────────
+  const client8 = await pool.connect();
+  try {
+    await client8.query(`
+      CREATE TABLE IF NOT EXISTS news_articles (
+        id SERIAL PRIMARY KEY,
+        title TEXT NOT NULL,
+        slug VARCHAR(200) NOT NULL UNIQUE,
+        excerpt TEXT NOT NULL,
+        content TEXT NOT NULL,
+        cover_image TEXT,
+        tags TEXT,
+        seo_title TEXT,
+        seo_description TEXT,
+        seo_keywords TEXT,
+        status TEXT NOT NULL DEFAULT 'draft',
+        published_at TIMESTAMP,
+        created_at TIMESTAMP NOT NULL DEFAULT NOW(),
+        updated_at TIMESTAMP NOT NULL DEFAULT NOW(),
+        created_by INTEGER NOT NULL REFERENCES users(id)
+      );
+    `);
+    await client8.query(`
+      CREATE INDEX IF NOT EXISTS news_articles_slug_idx ON news_articles(slug);
+    `);
+    await client8.query(`
+      CREATE INDEX IF NOT EXISTS news_articles_status_idx ON news_articles(status);
+    `);
+    await client8.query(`
+      CREATE INDEX IF NOT EXISTS news_articles_published_at_idx ON news_articles(published_at);
+    `);
+    log('[Migrations] News Articles table ready', 'express');
+  } catch (err: any) {
+    log(`[Migrations] Warning on news_articles table: ${err.message}`, 'express');
+  } finally {
+    client8.release();
+  }
 }
 
 const app = express();

@@ -18,6 +18,8 @@ interface PageMeta {
   canonical: string;
   image?: string;
   ogType?: string;
+  keywords?: string;
+  jsonLd?: Record<string, unknown>;
 }
 
 const BASE_URL = "https://studioleflow.com";
@@ -55,6 +57,11 @@ const STATIC_PAGE_META: Record<string, PageMeta> = {
     description: "Uslovi saradnje Studio LeFlow: politika avansa, otkazivanje termina, prava i obaveze. Transparentna pravila za sve klijente muzičkog studija u Beogradu.",
     canonical: `${BASE_URL}/pravila`,
   },
+  "/news": {
+    title: "Vesti - Studio LeFlow | Muzičke Novosti iz Beograda",
+    description: "Najnovije vesti o izdanjima, saradnjama i dešavanjima u muzičkoj sceni - iz Studio LeFlow-a u Beogradu.",
+    canonical: `${BASE_URL}/news`,
+  },
 };
 
 function escapeHtml(value: string): string {
@@ -91,6 +98,14 @@ function injectMeta(html: string, meta: PageMeta): string {
   out = replaceTag(out, /<meta[^>]*name="twitter:description"[^>]*\/>/, `<meta name="twitter:description" content="${description}" />`);
   out = replaceTag(out, /<meta[^>]*name="twitter:image"[^>]*\/>/, `<meta name="twitter:image" content="${image}" />`);
   out = replaceTag(out, /<link[^>]*rel="canonical"[^>]*\/>/, `<link rel="canonical" href="${canonical}" />`);
+  if (meta.keywords) {
+    out = replaceTag(out, /<meta[^>]*name="keywords"[^>]*\/>/, `<meta name="keywords" content="${escapeHtml(meta.keywords)}" />`);
+  }
+  if (meta.jsonLd) {
+    // Social/search crawlers read this on first parse - appended once per response, never persisted to disk.
+    const script = `<script type="application/ld+json" id="seo-news-article">${JSON.stringify(meta.jsonLd)}</script>\n</head>`;
+    out = out.replace(/<\/head>/, script);
+  }
   return out;
 }
 
@@ -136,6 +151,46 @@ export function registerHtmlMetaRoutes(app: Express) {
       if (!sendWithMeta(res, meta)) return next();
     } catch (err: any) {
       log(`[SEO meta] Smart link lookup failed: ${err.message}`, "express");
+      next();
+    }
+  });
+
+  app.get("/news/:slug", async (req, res, next) => {
+    try {
+      const article = await storage.getArticleBySlugPublic(req.params.slug);
+      if (!article) return next(); // SPA renders its own not-found state
+      const title = article.seoTitle || `${article.title} - Studio LeFlow Vesti`;
+      const description = article.seoDescription || article.excerpt;
+      const canonical = `${BASE_URL}/news/${article.slug}`;
+      const keywords = article.seoKeywords || article.tags || undefined;
+      const meta: PageMeta = {
+        title,
+        description,
+        canonical,
+        image: article.coverImage || undefined,
+        ogType: "article",
+        keywords,
+        jsonLd: {
+          "@context": "https://schema.org",
+          "@type": "NewsArticle",
+          headline: article.title,
+          description,
+          image: article.coverImage ? [article.coverImage] : [DEFAULT_IMAGE],
+          datePublished: article.publishedAt ?? article.createdAt,
+          dateModified: article.updatedAt,
+          keywords: keywords || undefined,
+          mainEntityOfPage: { "@type": "WebPage", "@id": canonical },
+          author: { "@type": "Organization", name: "Studio LeFlow" },
+          publisher: {
+            "@type": "Organization",
+            name: "Studio LeFlow",
+            logo: { "@type": "ImageObject", url: `${BASE_URL}/leflow-logo-white.png` },
+          },
+        },
+      };
+      if (!sendWithMeta(res, meta)) return next();
+    } catch (err: any) {
+      log(`[SEO meta] News article lookup failed: ${err.message}`, "express");
       next();
     }
   });

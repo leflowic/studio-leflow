@@ -81,6 +81,13 @@ import {
   postLikes,
   postComments,
   notifications,
+  type StudioJob,
+  type InsertStudioJob,
+  studioJobs,
+  JOB_STAGES,
+  type NewsArticle,
+  type InsertNewsArticle,
+  newsArticles,
 } from "@shared/schema";
 import { db, pool } from "./db";
 import { eq, and, or, desc, sql, notInArray, inArray, gte, lte, count } from "drizzle-orm";
@@ -269,6 +276,22 @@ export interface IStorage {
   getNextInvoiceNumber(): Promise<string>;
   updateInvoiceStatus(id: number, status: string, paidDate?: Date): Promise<void>;
   deleteInvoice(id: number): Promise<void>;
+
+  // Studio Jobs (producer pipeline board)
+  createJob(data: InsertStudioJob & { createdBy: number }): Promise<StudioJob>;
+  getAllJobs(): Promise<Array<StudioJob & { username: string; avatarUrl: string | null; contractNumber: string | null; invoiceNumber: string | null }>>;
+  updateJobStage(id: number, stage: string): Promise<void>;
+  updateJob(id: number, data: Partial<InsertStudioJob>): Promise<void>;
+  deleteJob(id: number): Promise<void>;
+
+  // News Articles (/news portal)
+  createArticle(data: InsertNewsArticle & { createdBy: number }): Promise<NewsArticle>;
+  getAllArticlesAdmin(): Promise<Array<NewsArticle & { authorUsername: string }>>;
+  getArticleById(id: number): Promise<NewsArticle | undefined>;
+  getArticleBySlugPublic(slug: string): Promise<NewsArticle | undefined>;
+  getPublishedArticles(limit: number, offset: number): Promise<Array<NewsArticle & { authorUsername: string }>>;
+  updateArticle(id: number, data: Partial<InsertNewsArticle>): Promise<void>;
+  deleteArticle(id: number): Promise<void>;
 
   // Community Chat
   createCommunityMessage(userId: number, message: string): Promise<CommunityMessage>;
@@ -2058,6 +2081,168 @@ export class DatabaseStorage implements IStorage {
 
   async deleteInvoice(id: number): Promise<void> {
     await db.delete(invoices).where(eq(invoices.id, id));
+  }
+
+  // Studio Jobs
+  async createJob(data: InsertStudioJob & { createdBy: number }): Promise<StudioJob> {
+    const jobData = {
+      ...data,
+      deliveryDate: data.deliveryDate
+        ? (typeof data.deliveryDate === 'string' ? new Date(data.deliveryDate) : data.deliveryDate)
+        : null,
+    };
+    const [job] = await db.insert(studioJobs).values([jobData]).returning();
+    if (!job) throw new Error("Failed to create job");
+    return job;
+  }
+
+  async getAllJobs(): Promise<Array<StudioJob & { username: string; avatarUrl: string | null; contractNumber: string | null; invoiceNumber: string | null }>> {
+    const results = await db
+      .select({
+        id: studioJobs.id,
+        title: studioJobs.title,
+        userId: studioJobs.userId,
+        stage: studioJobs.stage,
+        contractId: studioJobs.contractId,
+        invoiceId: studioJobs.invoiceId,
+        portalId: studioJobs.portalId,
+        notes: studioJobs.notes,
+        deliveryDate: studioJobs.deliveryDate,
+        createdAt: studioJobs.createdAt,
+        updatedAt: studioJobs.updatedAt,
+        createdBy: studioJobs.createdBy,
+        username: users.username,
+        avatarUrl: users.avatarUrl,
+        contractNumber: contracts.contractNumber,
+        invoiceNumber: invoices.invoiceNumber,
+      })
+      .from(studioJobs)
+      .innerJoin(users, eq(studioJobs.userId, users.id))
+      .leftJoin(contracts, eq(studioJobs.contractId, contracts.id))
+      .leftJoin(invoices, eq(studioJobs.invoiceId, invoices.id))
+      .orderBy(desc(studioJobs.updatedAt));
+    return results;
+  }
+
+  async updateJobStage(id: number, stage: string): Promise<void> {
+    if (!(JOB_STAGES as readonly string[]).includes(stage)) throw new Error("Nevažeća faza posla");
+    await db.update(studioJobs).set({ stage, updatedAt: new Date() }).where(eq(studioJobs.id, id));
+  }
+
+  async updateJob(id: number, data: Partial<InsertStudioJob>): Promise<void> {
+    const { deliveryDate, ...rest } = data;
+    const updateData = {
+      ...rest,
+      ...(deliveryDate !== undefined
+        ? { deliveryDate: deliveryDate ? new Date(deliveryDate) : null }
+        : {}),
+      updatedAt: new Date(),
+    };
+    await db.update(studioJobs).set(updateData).where(eq(studioJobs.id, id));
+  }
+
+  async deleteJob(id: number): Promise<void> {
+    await db.delete(studioJobs).where(eq(studioJobs.id, id));
+  }
+
+  // News Articles
+  async createArticle(data: InsertNewsArticle & { createdBy: number }): Promise<NewsArticle> {
+    const articleData = {
+      ...data,
+      publishedAt: data.status === "published"
+        ? (data.publishedAt ? (typeof data.publishedAt === 'string' ? new Date(data.publishedAt) : data.publishedAt) : new Date())
+        : null,
+    };
+    const [article] = await db.insert(newsArticles).values([articleData]).returning();
+    if (!article) throw new Error("Failed to create article");
+    return article;
+  }
+
+  async getAllArticlesAdmin(): Promise<Array<NewsArticle & { authorUsername: string }>> {
+    const results = await db
+      .select({
+        id: newsArticles.id,
+        title: newsArticles.title,
+        slug: newsArticles.slug,
+        excerpt: newsArticles.excerpt,
+        content: newsArticles.content,
+        coverImage: newsArticles.coverImage,
+        tags: newsArticles.tags,
+        seoTitle: newsArticles.seoTitle,
+        seoDescription: newsArticles.seoDescription,
+        seoKeywords: newsArticles.seoKeywords,
+        status: newsArticles.status,
+        publishedAt: newsArticles.publishedAt,
+        createdAt: newsArticles.createdAt,
+        updatedAt: newsArticles.updatedAt,
+        createdBy: newsArticles.createdBy,
+        authorUsername: users.username,
+      })
+      .from(newsArticles)
+      .innerJoin(users, eq(newsArticles.createdBy, users.id))
+      .orderBy(desc(newsArticles.updatedAt));
+    return results;
+  }
+
+  async getArticleById(id: number): Promise<NewsArticle | undefined> {
+    const [article] = await db.select().from(newsArticles).where(eq(newsArticles.id, id));
+    return article || undefined;
+  }
+
+  async getArticleBySlugPublic(slug: string): Promise<NewsArticle | undefined> {
+    const [article] = await db
+      .select()
+      .from(newsArticles)
+      .where(and(eq(newsArticles.slug, slug), eq(newsArticles.status, "published")));
+    return article || undefined;
+  }
+
+  async getPublishedArticles(limit: number, offset: number): Promise<Array<NewsArticle & { authorUsername: string }>> {
+    const results = await db
+      .select({
+        id: newsArticles.id,
+        title: newsArticles.title,
+        slug: newsArticles.slug,
+        excerpt: newsArticles.excerpt,
+        content: newsArticles.content,
+        coverImage: newsArticles.coverImage,
+        tags: newsArticles.tags,
+        seoTitle: newsArticles.seoTitle,
+        seoDescription: newsArticles.seoDescription,
+        seoKeywords: newsArticles.seoKeywords,
+        status: newsArticles.status,
+        publishedAt: newsArticles.publishedAt,
+        createdAt: newsArticles.createdAt,
+        updatedAt: newsArticles.updatedAt,
+        createdBy: newsArticles.createdBy,
+        authorUsername: users.username,
+      })
+      .from(newsArticles)
+      .innerJoin(users, eq(newsArticles.createdBy, users.id))
+      .where(eq(newsArticles.status, "published"))
+      .orderBy(desc(newsArticles.publishedAt))
+      .limit(limit)
+      .offset(offset);
+    return results;
+  }
+
+  async updateArticle(id: number, data: Partial<InsertNewsArticle>): Promise<void> {
+    const { publishedAt, ...rest } = data;
+    const existing = rest.status === "published" ? await this.getArticleById(id) : undefined;
+    const updateData: Record<string, unknown> = {
+      ...rest,
+      updatedAt: new Date(),
+    };
+    if (publishedAt !== undefined) {
+      updateData.publishedAt = publishedAt ? new Date(publishedAt) : null;
+    } else if (rest.status === "published" && existing && !existing.publishedAt) {
+      updateData.publishedAt = new Date();
+    }
+    await db.update(newsArticles).set(updateData).where(eq(newsArticles.id, id));
+  }
+
+  async deleteArticle(id: number): Promise<void> {
+    await db.delete(newsArticles).where(eq(newsArticles.id, id));
   }
 
   // Dashboard

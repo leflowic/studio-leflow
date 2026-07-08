@@ -24,6 +24,7 @@ const BREADCRUMB_NAMES: Record<string, string> = {
   "/kontakt": "Kontakt",
   "/tim": "Tim",
   "/pravila": "Pravila i uslovi",
+  "/news": "Vesti",
 };
 
 // Get absolute URL for Open Graph images

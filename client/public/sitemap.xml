@@ -60,4 +60,12 @@
     <priority>0.5</priority>
   </url>
 
+  <!-- News Page -->
+  <url>
+    <loc>https://studioleflow.com/news</loc>
+    <lastmod>2026-07-08</lastmod>
+    <changefreq>daily</changefreq>
+    <priority>0.8</priority>
+  </url>
+
 </urlset>

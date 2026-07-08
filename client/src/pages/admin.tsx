@@ -4,7 +4,7 @@ import { useLocation } from "wouter";
 import { useToast } from "@/hooks/use-toast";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { queryClient, apiRequest } from "@/lib/queryClient";
-import { Tabs, TabsContent } from "@/components/ui/tabs";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
@@ -27,8 +27,9 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
-import { Users, Music, Heart, MessageCircle, Trash2, Shield, ShieldOff, Settings, Construction, Send, Mail, Eye, Search, Download, UserPlus, FileText, Crown, Trophy, BadgeCheck, LayoutDashboard, Radio, MessagesSquare, Receipt, CalendarDays, Archive, Gamepad2, Link2, FolderOpen, CheckCircle2, Clock, type LucideIcon } from "lucide-react";
-import { format } from "date-fns";
+import { Users, Music, Heart, MessageCircle, Trash2, Shield, ShieldOff, Settings, Construction, Send, Mail, Eye, Search, Download, UserPlus, FileText, Crown, Trophy, BadgeCheck, LayoutDashboard, Radio, MessagesSquare, Receipt, CalendarDays, Archive, Gamepad2, Link2, FolderOpen, FolderKanban, Newspaper, CheckCircle2, Clock, ArrowLeft, CalendarClock, UserCog, ShieldAlert, IdCard, type LucideIcon } from "lucide-react";
+import { format, formatDistanceToNow } from "date-fns";
+import { srLatn } from "date-fns/locale";
 import type { User } from "@shared/schema";
 import { lazy, Suspense } from "react";
 import { ScrollArea } from "@/components/ui/scroll-area";
@@ -46,6 +47,8 @@ import { KatastarTab } from "@/components/admin/KatastarTab";
 import GameTab from "@/components/admin/GameTab";
 import { EmailTab } from "@/components/admin/EmailTab";
 import { PortalTab } from "@/components/admin/PortalTab";
+import { JobsBoard } from "@/components/admin/JobsBoard";
+import { NewsTab } from "@/components/admin/NewsTab";
 import {
   Select,
   SelectContent,
@@ -54,7 +57,10 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 
-const ADMIN_NAV: { group: string; items: { value: string; label: string; icon: LucideIcon }[] }[] = [
+// Restricted admin roles (producer/editor/marketing) only see the tabs listed in their `roles`
+// array below. "admin" (Super Admin) always sees every tab regardless of this list - keep this
+// mapping in sync with the requireRole(...) calls guarding the matching API routes in server/routes.ts.
+const ADMIN_NAV: { group: string; items: { value: string; label: string; icon: LucideIcon; roles?: string[] }[] }[] = [
   {
     group: "Pregled",
     items: [{ value: "dashboard", label: "Dashboard", icon: LayoutDashboard }],
@@ -62,35 +68,37 @@ const ADMIN_NAV: { group: string; items: { value: string; label: string; icon: L
   {
     group: "Klijenti",
     items: [
-      { value: "users", label: "Korisnici", icon: Users },
-      { value: "messages", label: "Poruke", icon: MessagesSquare },
-      { value: "katastar", label: "Katastar", icon: Archive },
-      { value: "portal", label: "Portal", icon: FolderOpen },
+      { value: "users", label: "Korisnici", icon: Users, roles: ["producer"] },
+      { value: "messages", label: "Poruke", icon: MessagesSquare, roles: ["producer"] },
+      { value: "katastar", label: "Katastar", icon: Archive, roles: ["producer"] },
+      { value: "portal", label: "Portal", icon: FolderOpen, roles: ["producer"] },
     ],
   },
   {
     group: "Sadržaj",
     items: [
-      { value: "projects", label: "Projekti", icon: Music },
-      { value: "comments", label: "Komentari", icon: MessageCircle },
-      { value: "user-songs", label: "Zajednica", icon: Radio },
-      { value: "game", label: "Igra", icon: Gamepad2 },
-      { value: "smart-links", label: "Smart Links", icon: Link2 },
+      { value: "projects", label: "Projekti", icon: Music, roles: ["producer"] },
+      { value: "comments", label: "Komentari", icon: MessageCircle, roles: ["producer"] },
+      { value: "user-songs", label: "Zajednica", icon: Radio, roles: ["producer"] },
+      { value: "game", label: "Igra", icon: Gamepad2, roles: ["producer"] },
+      { value: "smart-links", label: "Smart Links", icon: Link2, roles: ["producer", "marketing"] },
+      { value: "news", label: "Vesti", icon: Newspaper, roles: ["editor", "marketing"] },
     ],
   },
   {
     group: "Posao",
     items: [
-      { value: "contracts", label: "Licence", icon: FileText },
-      { value: "invoices", label: "Fakture", icon: Receipt },
-      { value: "calendar", label: "Kalendar", icon: CalendarDays },
+      { value: "jobs", label: "Radna tabla", icon: FolderKanban, roles: ["producer"] },
+      { value: "contracts", label: "Licence", icon: FileText, roles: ["producer"] },
+      { value: "invoices", label: "Fakture", icon: Receipt, roles: ["producer"] },
+      { value: "calendar", label: "Kalendar", icon: CalendarDays, roles: ["producer"] },
     ],
   },
   {
     group: "Marketing",
     items: [
-      { value: "newsletter", label: "Newsletter", icon: Mail },
-      { value: "email", label: "Email", icon: Send },
+      { value: "newsletter", label: "Newsletter", icon: Mail, roles: ["marketing"] },
+      { value: "email", label: "Email", icon: Send, roles: ["marketing"] },
     ],
   },
   {
@@ -98,6 +106,16 @@ const ADMIN_NAV: { group: string; items: { value: string; label: string; icon: L
     items: [{ value: "settings", label: "Podešavanja", icon: Settings }],
   },
 ];
+
+// Roles allowed to log into /admin at all. "user"/"vip"/"legend" (regular site ranks) are excluded.
+const ADMIN_STAFF_ROLES = ["admin", "producer", "editor", "marketing"];
+
+function getVisibleAdminNav(role: string | undefined) {
+  if (role === "admin") return ADMIN_NAV;
+  return ADMIN_NAV
+    .map(group => ({ ...group, items: group.items.filter(item => item.roles?.includes(role ?? "")) }))
+    .filter(group => group.items.length > 0);
+}
 
 interface AdminStats {
   totalUsers: number;
@@ -219,9 +237,11 @@ export default function AdminPage() {
     sessionStorage.setItem('admin-active-tab', activeTab);
   }, [activeTab]);
 
-  // Redirect non-admin users
+  const visibleNav = getVisibleAdminNav(user?.role);
+
+  // Redirect users without any admin panel access
   useEffect(() => {
-    if (user && user.role !== 'admin') {
+    if (user && !ADMIN_STAFF_ROLES.includes(user.role)) {
       toast({
         title: "Greška",
         description: "Nemate admin privilegije",
@@ -230,6 +250,15 @@ export default function AdminPage() {
       setLocation("/");
     }
   }, [user, setLocation, toast]);
+
+  // Restricted roles land on the first tab they're actually allowed to see, not "dashboard"
+  useEffect(() => {
+    if (!user || user.role === 'admin') return;
+    const allowedValues = visibleNav.flatMap(g => g.items.map(i => i.value));
+    if (!allowedValues.includes(activeTab) && allowedValues.length > 0) {
+      setActiveTab(allowedValues[0]!);
+    }
+  }, [user, visibleNav, activeTab]);
 
   // Show loading state while checking authentication
   if (isLoading) {
@@ -244,8 +273,8 @@ export default function AdminPage() {
     );
   }
 
-  // If not admin, don't render anything (will redirect)
-  if (!user || user.role !== 'admin') {
+  // If not staff, don't render anything (will redirect)
+  if (!user || !ADMIN_STAFF_ROLES.includes(user.role)) {
     return null;
   }
 
@@ -266,7 +295,7 @@ export default function AdminPage() {
                 className="lg:sticky lg:top-24 flex lg:flex-col gap-1 lg:gap-0 overflow-x-auto lg:overflow-visible pb-2 lg:pb-0 -mx-4 px-4 lg:mx-0 lg:px-0"
                 data-testid="tabs-list-admin"
               >
-                {ADMIN_NAV.map(({ group, items }) => (
+                {visibleNav.map(({ group, items }) => (
                   <div key={group} className="flex lg:flex-col gap-1 lg:mb-5 shrink-0">
                     <p className="hidden lg:block px-3 mb-1.5 text-[11px] font-semibold uppercase tracking-[0.14em] text-muted-foreground/60">
                       {group}
@@ -325,6 +354,10 @@ export default function AdminPage() {
             <MessagesTab />
           </TabsContent>
 
+          <TabsContent value="jobs">
+            <JobsBoard />
+          </TabsContent>
+
           <TabsContent value="contracts">
             <ContractsTab />
           </TabsContent>
@@ -347,6 +380,10 @@ export default function AdminPage() {
 
           <TabsContent value="smart-links" forceMount>
             <SmartLinksTab />
+          </TabsContent>
+
+          <TabsContent value="news" forceMount>
+            <NewsTab />
           </TabsContent>
 
           <TabsContent value="portal">
@@ -1501,9 +1538,32 @@ function DashboardTab() {
   );
 }
 
+function rankMeta(rank: string) {
+  const map: Record<string, { label: string; icon: LucideIcon; className: string }> = {
+    user: { label: "User", icon: Users, className: "bg-zinc-500/15 text-zinc-400 border-zinc-500/30" },
+    vip: { label: "VIP", icon: Crown, className: "bg-blue-500/15 text-blue-400 border-blue-500/30" },
+    legend: { label: "Legend", icon: Trophy, className: "bg-yellow-500/15 text-yellow-400 border-yellow-500/30" },
+    admin: { label: "Admin", icon: Shield, className: "bg-red-500/15 text-red-400 border-red-500/30" },
+  };
+  return map[rank] ?? map.user!;
+}
+
+function RankBadge({ rank }: { rank: string }) {
+  const r = rankMeta(rank);
+  const Icon = r.icon;
+  return (
+    <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium border ${r.className}`}>
+      <Icon className="w-3 h-3" />{r.label}
+    </span>
+  );
+}
+
 function UsersTab() {
   const { toast } = useToast();
+  const { user: viewerUser } = useAuth();
   const [searchQuery, setSearchQuery] = useState("");
+  const [rankFilter, setRankFilter] = useState<string>("all");
+  const [selectedUserId, setSelectedUserId] = useState<number | null>(null);
 
   const { data: users, isLoading } = useQuery<User[]>({
     queryKey: ["/api/admin/users"],
@@ -1511,8 +1571,9 @@ function UsersTab() {
 
   const filteredUsers = users?.filter(u => {
     const q = searchQuery.trim().toLowerCase();
-    if (!q) return true;
-    return u.username.toLowerCase().includes(q) || u.email.toLowerCase().includes(q);
+    const matchesSearch = !q || u.username.toLowerCase().includes(q) || u.email.toLowerCase().includes(q);
+    const matchesRank = rankFilter === "all" || u.rank === rankFilter;
+    return matchesSearch && matchesRank;
   }) ?? [];
 
   const banMutation = useMutation({
@@ -1597,7 +1658,7 @@ function UsersTab() {
 
   const verifiedMutation = useMutation({
     mutationFn: async ({ userId, value }: { userId: number; value: boolean }) => {
-      await apiRequest("PATCH", `/api/admin/users/${userId}/verified`, { verified: value });
+      await apiRequest("PATCH", `/api/admin/users/${userId}/verified`, { value });
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/admin/users"] });
@@ -1628,204 +1689,428 @@ function UsersTab() {
     },
   });
 
+  const staffRoleMutation = useMutation({
+    mutationFn: async ({ userId, role }: { userId: number; role: string }) => {
+      await apiRequest("PATCH", `/api/admin/users/${userId}/staff-role`, { role });
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/admin/users"] });
+      toast({ title: "Uspeh", description: "Uloga u admin panelu je ažurirana" });
+    },
+    onError: (error: Error) => {
+      toast({ title: "Greška", description: error.message || "Greška pri ažuriranju uloge", variant: "destructive" });
+    },
+  });
+
   if (isLoading) {
     return (
       <div className="space-y-4">
-        {[1, 2, 3, 4, 5].map((i) => (
-          <Skeleton key={i} className="h-16" data-testid={`skeleton-user-${i}`} />
-        ))}
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+          {[1, 2, 3, 4].map((i) => <Skeleton key={i} className="h-28" />)}
+        </div>
+        <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-3">
+          {[1, 2, 3, 4, 5, 6].map((i) => (
+            <Skeleton key={i} className="h-24" data-testid={`skeleton-user-${i}`} />
+          ))}
+        </div>
       </div>
     );
   }
 
+  const selectedUser = selectedUserId !== null ? users?.find(u => u.id === selectedUserId) ?? null : null;
+
+  if (selectedUser) {
+    return (
+      <UserDetailPanel
+        user={selectedUser}
+        viewerRole={viewerUser?.role}
+        onBack={() => setSelectedUserId(null)}
+        banMutation={banMutation}
+        unbanMutation={unbanMutation}
+        deleteUserMutation={deleteUserMutation}
+        toggleAdminMutation={toggleAdminMutation}
+        verifiedMutation={verifiedMutation}
+        updateRankMutation={updateRankMutation}
+        staffRoleMutation={staffRoleMutation}
+      />
+    );
+  }
+
+  const totalUsers = users?.length ?? 0;
+  const adminCount = users?.filter(u => u.role === 'admin').length ?? 0;
+  const bannedCount = users?.filter(u => u.banned).length ?? 0;
+  const verifiedArtistCount = users?.filter(u => u.isVerifiedArtist).length ?? 0;
+
   return (
-    <div data-testid="content-users">
-      <Card>
-        <CardHeader>
-          <CardTitle>Upravljanje Korisnicima</CardTitle>
-          <CardDescription>Pregled i upravljanje svim korisnicima</CardDescription>
-          <div className="relative mt-2 max-w-sm">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground pointer-events-none" />
-            <Input
-              type="text"
-              placeholder="Pretraži po imenu ili email-u..."
-              value={searchQuery}
-              onChange={e => setSearchQuery(e.target.value)}
-              className="pl-9"
-              data-testid="input-search-users"
-            />
+    <div data-testid="content-users" className="space-y-6">
+      <div>
+        <h2 className="text-xl font-semibold">Upravljanje Korisnicima</h2>
+        <p className="text-sm text-muted-foreground">Pregled i upravljanje svim korisnicima</p>
+      </div>
+
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+        <StatTile icon={Users} iconBg="bg-violet-500/15" iconColor="text-violet-400" label="Ukupno" value={totalUsers} />
+        <StatTile icon={Shield} iconBg="bg-red-500/15" iconColor="text-red-400" label="Admini" value={adminCount} />
+        <StatTile icon={ShieldAlert} iconBg="bg-zinc-500/15" iconColor="text-zinc-400" label="Banovani" value={bannedCount} />
+        <StatTile icon={BadgeCheck} iconBg="bg-blue-500/15" iconColor="text-blue-400" label="Verifikovani Umetnici" value={verifiedArtistCount} />
+      </div>
+
+      <div className="flex gap-2 flex-wrap items-center">
+        <div className="relative flex-1 min-w-[220px]">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground pointer-events-none" />
+          <Input
+            type="text"
+            placeholder="Pretraži po imenu ili email-u..."
+            value={searchQuery}
+            onChange={e => setSearchQuery(e.target.value)}
+            className="pl-9"
+            data-testid="input-search-users"
+          />
+        </div>
+        <div className="flex gap-1 flex-wrap">
+          {["all", "admin", "legend", "vip", "user"].map(r => (
+            <Button
+              key={r}
+              size="sm"
+              variant={rankFilter === r ? "default" : "outline"}
+              onClick={() => setRankFilter(r)}
+              className="capitalize"
+            >
+              {r === "all" ? "Svi" : r}
+            </Button>
+          ))}
+        </div>
+      </div>
+
+      {filteredUsers.length === 0 ? (
+        <EmptyState icon={Search} text="Nema korisnika koji odgovaraju pretrazi" compact />
+      ) : (
+        <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-3" data-testid="table-users">
+          {filteredUsers.map((user) => (
+            <Card
+              key={user.id}
+              className="bg-zinc-900/50 border-zinc-800 hover:border-violet-500/50 hover:bg-zinc-800/50 transition-all cursor-pointer"
+              onClick={() => setSelectedUserId(user.id)}
+              data-testid={`row-user-${user.id}`}
+            >
+              <CardContent className="pt-4 pb-4">
+                <div className="flex items-start gap-3">
+                  <AvatarWithInitials src={user.avatarUrl} name={user.username} className="w-11 h-11 shrink-0" />
+                  <div className="min-w-0 flex-1">
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <span className="font-medium text-sm truncate" data-testid={`cell-username-${user.id}`}>{user.username}</span>
+                      <RankBadge rank={user.rank} />
+                      {user.banned && (
+                        <Badge variant="destructive" className="text-xs" data-testid={`badge-banned-${user.id}`}>Banovan</Badge>
+                      )}
+                    </div>
+                    <p className="text-xs text-muted-foreground truncate mt-0.5" data-testid={`cell-email-${user.id}`}>{user.email}</p>
+                    <p className="text-xs text-muted-foreground/70 mt-1" data-testid={`cell-created-${user.id}`}>
+                      Kreiran {format(new Date(user.createdAt), "dd.MM.yyyy")}
+                    </p>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
+interface UserDetailPanelProps {
+  user: User;
+  viewerRole: string | undefined;
+  onBack: () => void;
+  banMutation: ReturnType<typeof useMutation<void, Error, number>>;
+  unbanMutation: ReturnType<typeof useMutation<void, Error, number>>;
+  deleteUserMutation: ReturnType<typeof useMutation<void, Error, number>>;
+  toggleAdminMutation: ReturnType<typeof useMutation<void, Error, number>>;
+  verifiedMutation: ReturnType<typeof useMutation<void, Error, { userId: number; value: boolean }>>;
+  updateRankMutation: ReturnType<typeof useMutation<void, Error, { userId: number; rank: string }>>;
+  staffRoleMutation: ReturnType<typeof useMutation<void, Error, { userId: number; role: string }>>;
+}
+
+const STAFF_ROLE_LABELS: Record<string, string> = {
+  user: "Korisnik (bez pristupa)",
+  producer: "Producent",
+  editor: "Urednik",
+  marketing: "Marketing",
+};
+
+function UserDetailPanel({
+  user,
+  viewerRole,
+  onBack,
+  banMutation,
+  unbanMutation,
+  deleteUserMutation,
+  toggleAdminMutation,
+  verifiedMutation,
+  updateRankMutation,
+  staffRoleMutation,
+}: UserDetailPanelProps) {
+  return (
+    <div className="space-y-6" data-testid="content-user-detail">
+      <div className="flex items-center gap-3">
+        <Button variant="ghost" size="icon" onClick={onBack} className="shrink-0" data-testid="button-back-users">
+          <ArrowLeft className="w-4 h-4" />
+        </Button>
+        <h2 className="text-xl font-semibold">Profil korisnika</h2>
+      </div>
+
+      <Card className="bg-zinc-900/50 border-zinc-800">
+        <CardContent className="pt-6">
+          <div className="flex items-start gap-4 flex-wrap">
+            <AvatarWithInitials src={user.avatarUrl} name={user.username} className="w-16 h-16 text-xl" />
+            <div className="flex-1 min-w-0">
+              <div className="flex items-center gap-2 flex-wrap">
+                <h3 className="text-lg font-bold">{user.username}</h3>
+                <RankBadge rank={user.rank} />
+                {user.role === 'admin' && (
+                  <Badge className="bg-red-500/15 text-red-400 border-red-500/30 text-xs">
+                    <Shield className="w-3 h-3 mr-1" />Admin nalog
+                  </Badge>
+                )}
+                {user.banned && <Badge variant="destructive" className="text-xs">Banovan</Badge>}
+                {user.isVerifiedArtist && (
+                  <Badge className="bg-blue-500/15 text-blue-400 border-blue-500/30 text-xs">
+                    <BadgeCheck className="w-3 h-3 mr-1" />Verifikovan
+                  </Badge>
+                )}
+              </div>
+              <div className="flex items-center gap-1.5 text-sm text-muted-foreground mt-1">
+                <Mail className="w-3.5 h-3.5" />
+                {user.email}
+                {user.emailVerified && <CheckCircle2 className="w-3.5 h-3.5 text-green-400" />}
+              </div>
+              <div className="flex items-center gap-1.5 text-sm text-muted-foreground mt-0.5">
+                <CalendarDays className="w-3.5 h-3.5" />
+                Registrovan: {format(new Date(user.createdAt), "dd.MM.yyyy")}
+              </div>
+              {user.lastSeen && (
+                <div className="flex items-center gap-1.5 text-sm text-muted-foreground mt-0.5">
+                  <CalendarClock className="w-3.5 h-3.5" />
+                  Poslednji put viđen: {formatDistanceToNow(new Date(user.lastSeen), { addSuffix: true, locale: srLatn })}
+                </div>
+              )}
+            </div>
           </div>
-        </CardHeader>
-        <CardContent>
-          {filteredUsers.length === 0 ? (
-            <EmptyState icon={Search} text="Nema korisnika koji odgovaraju pretrazi" compact />
-          ) : (
-          <Table data-testid="table-users">
-            <TableHeader>
-              <TableRow>
-                <TableHead data-testid="header-username">Korisničko Ime</TableHead>
-                <TableHead data-testid="header-email">Email</TableHead>
-                <TableHead data-testid="header-role">Uloga</TableHead>
-                <TableHead data-testid="header-rank">Rank</TableHead>
-                <TableHead data-testid="header-status">Status</TableHead>
-                <TableHead data-testid="header-created">Kreiran</TableHead>
-                <TableHead data-testid="header-actions">Akcije</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {filteredUsers.map((user) => (
-                <TableRow key={user.id} data-testid={`row-user-${user.id}`}>
-                  <TableCell data-testid={`cell-username-${user.id}`}>{user.username}</TableCell>
-                  <TableCell data-testid={`cell-email-${user.id}`}>{user.email}</TableCell>
-                  <TableCell data-testid={`cell-role-${user.id}`}>
-                    <Badge variant={user.role === 'admin' ? 'default' : 'secondary'} data-testid={`badge-role-${user.id}`}>
-                      {user.role}
-                    </Badge>
-                  </TableCell>
-                  <TableCell data-testid={`cell-rank-${user.id}`}>
+        </CardContent>
+      </Card>
+
+      <Tabs defaultValue="pregled">
+        <TabsList>
+          <TabsTrigger value="pregled" data-testid="tab-user-pregled">
+            <IdCard className="w-4 h-4 mr-1.5" />Pregled
+          </TabsTrigger>
+          <TabsTrigger value="dozvole" data-testid="tab-user-dozvole">
+            <UserCog className="w-4 h-4 mr-1.5" />Dozvole
+          </TabsTrigger>
+          <TabsTrigger value="bezbednost" data-testid="tab-user-bezbednost">
+            <ShieldAlert className="w-4 h-4 mr-1.5" />Bezbednost
+          </TabsTrigger>
+        </TabsList>
+
+        <TabsContent value="pregled">
+          <Card className="bg-zinc-900/50 border-zinc-800">
+            <CardContent className="pt-6 grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div>
+                <p className="text-xs uppercase tracking-wider text-muted-foreground/70">Email verifikovan</p>
+                <p className="text-sm font-medium mt-1">{user.emailVerified ? "Da" : "Ne"}</p>
+              </div>
+              <div>
+                <p className="text-xs uppercase tracking-wider text-muted-foreground/70">Verifikovan umetnik</p>
+                <p className="text-sm font-medium mt-1">{user.isVerifiedArtist ? "Da" : "Ne"}</p>
+              </div>
+              <div>
+                <p className="text-xs uppercase tracking-wider text-muted-foreground/70">Dostupan za saradnju</p>
+                <p className="text-sm font-medium mt-1">{user.availableForCollab ? "Da" : "Ne"}</p>
+              </div>
+              <div>
+                <p className="text-xs uppercase tracking-wider text-muted-foreground/70">Nalog</p>
+                <p className="text-sm font-medium mt-1">{user.googleId ? "Google" : "Email / lozinka"}</p>
+              </div>
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        <TabsContent value="dozvole">
+          <Card className="bg-zinc-900/50 border-zinc-800">
+            <CardContent className="pt-6 space-y-5">
+              <div className="flex items-center justify-between gap-4 flex-wrap">
+                <div>
+                  <p className="text-sm font-medium">Rank</p>
+                  <p className="text-xs text-muted-foreground">Nivo korisnika u zajednici</p>
+                </div>
+                <Select
+                  value={user.rank}
+                  onValueChange={(rank) => updateRankMutation.mutate({ userId: user.id, rank })}
+                  disabled={updateRankMutation.isPending}
+                >
+                  <SelectTrigger className="w-[160px]" data-testid={`select-rank-${user.id}`}>
+                    <SelectValue>
+                      <RankBadge rank={user.rank} />
+                    </SelectValue>
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="user">User</SelectItem>
+                    <SelectItem value="vip">VIP</SelectItem>
+                    <SelectItem value="legend">Legend</SelectItem>
+                    <SelectItem value="admin">Admin</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              {viewerRole === 'admin' && (
+                <>
+                  <Separator />
+                  <div className="flex items-center justify-between gap-4 flex-wrap">
+                    <div>
+                      <p className="text-sm font-medium">Uloga u admin panelu</p>
+                      <p className="text-xs text-muted-foreground">Koje tabove ovaj korisnik vidi kad se uloguje u /admin</p>
+                    </div>
                     <Select
-                      value={user.rank}
-                      onValueChange={(rank) => updateRankMutation.mutate({ userId: user.id, rank })}
-                      disabled={updateRankMutation.isPending}
+                      value={user.role === 'admin' ? 'admin' : user.role}
+                      onValueChange={(role) => {
+                        if (role === 'admin' || user.role === 'admin') return;
+                        staffRoleMutation.mutate({ userId: user.id, role });
+                      }}
+                      disabled={staffRoleMutation.isPending || user.role === 'admin'}
                     >
-                      <SelectTrigger className="w-[140px]" data-testid={`select-rank-${user.id}`}>
+                      <SelectTrigger className="w-[220px]" data-testid={`select-staff-role-${user.id}`}>
                         <SelectValue>
-                          <div className="flex items-center gap-2">
-                            {user.rank === 'legend' && <Trophy className="h-3 w-3 text-yellow-500" />}
-                            {user.rank === 'vip' && <Crown className="h-3 w-3 text-blue-500" />}
-                            {user.rank === 'admin' && <Shield className="h-3 w-3 text-destructive" />}
-                            <span className={
-                              user.rank === 'vip' ? 'text-blue-500' :
-                              user.rank === 'legend' ? 'text-yellow-500' :
-                              user.rank === 'admin' ? 'text-destructive' :
-                              'text-muted-foreground'
-                            }>
-                              {user.rank === 'user' ? 'User' : 
-                               user.rank === 'vip' ? 'VIP' : 
-                               user.rank === 'legend' ? 'Legend' : 
-                               'Admin'}
-                            </span>
-                          </div>
+                          {user.role === 'admin' ? 'Super Admin' : STAFF_ROLE_LABELS[user.role] ?? user.role}
                         </SelectValue>
                       </SelectTrigger>
                       <SelectContent>
-                        <SelectItem value="user">User</SelectItem>
-                        <SelectItem value="vip">
-                          <div className="flex items-center gap-2">
-                            <Crown className="h-3 w-3 text-blue-500" />
-                            <span className="text-blue-500">VIP</span>
-                          </div>
-                        </SelectItem>
-                        <SelectItem value="legend">
-                          <div className="flex items-center gap-2">
-                            <Trophy className="h-3 w-3 text-yellow-500" />
-                            <span className="text-yellow-500">Legend</span>
-                          </div>
-                        </SelectItem>
-                        <SelectItem value="admin">
-                          <div className="flex items-center gap-2">
-                            <Shield className="h-3 w-3 text-destructive" />
-                            <span className="text-destructive">Admin</span>
-                          </div>
-                        </SelectItem>
+                        <SelectItem value="user">Korisnik (bez pristupa)</SelectItem>
+                        <SelectItem value="producer">Producent</SelectItem>
+                        <SelectItem value="editor">Urednik</SelectItem>
+                        <SelectItem value="marketing">Marketing</SelectItem>
                       </SelectContent>
                     </Select>
-                  </TableCell>
-                  <TableCell data-testid={`cell-status-${user.id}`}>
-                    {user.banned && (
-                      <Badge variant="destructive" data-testid={`badge-banned-${user.id}`}>
-                        Banned
-                      </Badge>
-                    )}
-                  </TableCell>
-                  <TableCell data-testid={`cell-created-${user.id}`}>
-                    {format(new Date(user.createdAt), "dd.MM.yyyy")}
-                  </TableCell>
-                  <TableCell data-testid={`cell-actions-${user.id}`}>
-                    <div className="flex items-center gap-2">
-                      {user.banned ? (
-                        <Button
-                          size="sm"
-                          variant="outline"
-                          onClick={() => unbanMutation.mutate(user.id)}
-                          disabled={unbanMutation.isPending}
-                          data-testid={`button-unban-${user.id}`}
-                        >
-                          <Shield className="h-4 w-4 mr-1" />
-                          Unban
-                        </Button>
-                      ) : (
-                        <Button
-                          size="sm"
-                          variant="outline"
-                          onClick={() => banMutation.mutate(user.id)}
-                          disabled={banMutation.isPending}
-                          data-testid={`button-ban-${user.id}`}
-                        >
-                          <ShieldOff className="h-4 w-4 mr-1" />
-                          Ban
-                        </Button>
-                      )}
-                      <Button
-                        size="sm"
-                        variant="outline"
-                        onClick={() => toggleAdminMutation.mutate(user.id)}
-                        disabled={toggleAdminMutation.isPending}
-                        data-testid={`button-toggle-admin-${user.id}`}
-                      >
-                        <Shield className="h-4 w-4 mr-1" />
-                        {user.role === 'admin' ? 'Remove Admin' : 'Make Admin'}
-                      </Button>
-                      <Button
-                        size="sm"
-                        variant={user.isVerifiedArtist ? "default" : "outline"}
-                        onClick={() => verifiedMutation.mutate({ userId: user.id, value: !user.isVerifiedArtist })}
-                        disabled={verifiedMutation.isPending}
-                        title={user.isVerifiedArtist ? "Ukloni verifikaciju" : "Verifikuj"}
-                      >
-                        <BadgeCheck className="h-4 w-4 mr-1" />
-                        {user.isVerifiedArtist ? "Verifikovan" : "Verifikuj"}
-                      </Button>
-                      <AlertDialog>
-                        <AlertDialogTrigger asChild>
-                          <Button
-                            size="sm"
-                            variant="destructive"
-                            data-testid={`button-delete-user-${user.id}`}
-                          >
-                            <Trash2 className="h-4 w-4 mr-1" />
-                            Obriši
-                          </Button>
-                        </AlertDialogTrigger>
-                        <AlertDialogContent data-testid={`dialog-delete-user-${user.id}`}>
-                          <AlertDialogHeader>
-                            <AlertDialogTitle>Da li ste sigurni?</AlertDialogTitle>
-                            <AlertDialogDescription>
-                              Ova akcija ne može biti poništena. Korisnik "{user.username}" i svi njegovi podaci (projekti, glasovi, komentari) će biti trajno obrisani.
-                            </AlertDialogDescription>
-                          </AlertDialogHeader>
-                          <AlertDialogFooter>
-                            <AlertDialogCancel data-testid={`button-cancel-delete-user-${user.id}`}>
-                              Otkaži
-                            </AlertDialogCancel>
-                            <AlertDialogAction
-                              onClick={() => deleteUserMutation.mutate(user.id)}
-                              data-testid={`button-confirm-delete-user-${user.id}`}
-                            >
-                              Obriši
-                            </AlertDialogAction>
-                          </AlertDialogFooter>
-                        </AlertDialogContent>
-                      </AlertDialog>
+                  </div>
+                  {user.role === 'admin' && (
+                    <p className="text-xs text-muted-foreground/70 -mt-3">
+                      Ovo je Super Admin nalog - prvo ukloni admin prava ispod da bi mogao da mu dodeliš ograničenu ulogu.
+                    </p>
+                  )}
+                  <Separator />
+                  <div className="flex items-center justify-between gap-4 flex-wrap">
+                    <div>
+                      <p className="text-sm font-medium">Administratorske privilegije</p>
+                      <p className="text-xs text-muted-foreground">Pristup admin panelu i svim akcijama</p>
                     </div>
-                  </TableCell>
-                </TableRow>
-              ))}
-            </TableBody>
-          </Table>
-          )}
-        </CardContent>
-      </Card>
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={() => toggleAdminMutation.mutate(user.id)}
+                      disabled={toggleAdminMutation.isPending}
+                      data-testid={`button-toggle-admin-${user.id}`}
+                    >
+                      <Shield className="h-4 w-4 mr-1" />
+                      {user.role === 'admin' ? 'Ukloni admin prava' : 'Postavi za admina'}
+                    </Button>
+                  </div>
+                </>
+              )}
+              <Separator />
+              <div className="flex items-center justify-between gap-4 flex-wrap">
+                <div>
+                  <p className="text-sm font-medium">Verifikovan umetnik</p>
+                  <p className="text-xs text-muted-foreground">Prikazuje značku pored korisničkog imena</p>
+                </div>
+                <Button
+                  size="sm"
+                  variant={user.isVerifiedArtist ? "default" : "outline"}
+                  onClick={() => verifiedMutation.mutate({ userId: user.id, value: !user.isVerifiedArtist })}
+                  disabled={verifiedMutation.isPending}
+                  data-testid={`button-toggle-verified-${user.id}`}
+                >
+                  <BadgeCheck className="h-4 w-4 mr-1" />
+                  {user.isVerifiedArtist ? "Verifikovan" : "Verifikuj"}
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        <TabsContent value="bezbednost">
+          <Card className="bg-zinc-900/50 border-zinc-800">
+            <CardContent className="pt-6 space-y-5">
+              <div className="flex items-center justify-between gap-4 flex-wrap">
+                <div>
+                  <p className="text-sm font-medium">Status naloga</p>
+                  <p className="text-xs text-muted-foreground">
+                    {user.banned ? "Korisnik je trenutno banovan i ne može da koristi platformu." : "Korisnik je aktivan."}
+                  </p>
+                </div>
+                {user.banned ? (
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    onClick={() => unbanMutation.mutate(user.id)}
+                    disabled={unbanMutation.isPending}
+                    data-testid={`button-unban-${user.id}`}
+                  >
+                    <Shield className="h-4 w-4 mr-1" />
+                    Odbanuj
+                  </Button>
+                ) : (
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    onClick={() => banMutation.mutate(user.id)}
+                    disabled={banMutation.isPending}
+                    data-testid={`button-ban-${user.id}`}
+                  >
+                    <ShieldOff className="h-4 w-4 mr-1" />
+                    Banuj
+                  </Button>
+                )}
+              </div>
+              <Separator />
+              <div className="flex items-center justify-between gap-4 flex-wrap">
+                <div>
+                  <p className="text-sm font-medium text-destructive">Opasna zona</p>
+                  <p className="text-xs text-muted-foreground">Trajno brisanje naloga i svih povezanih podataka.</p>
+                </div>
+                <AlertDialog>
+                  <AlertDialogTrigger asChild>
+                    <Button size="sm" variant="destructive" data-testid={`button-delete-user-${user.id}`}>
+                      <Trash2 className="h-4 w-4 mr-1" />
+                      Obriši nalog
+                    </Button>
+                  </AlertDialogTrigger>
+                  <AlertDialogContent data-testid={`dialog-delete-user-${user.id}`}>
+                    <AlertDialogHeader>
+                      <AlertDialogTitle>Da li ste sigurni?</AlertDialogTitle>
+                      <AlertDialogDescription>
+                        Ova akcija ne može biti poništena. Korisnik "{user.username}" i svi njegovi podaci (projekti, glasovi, komentari) će biti trajno obrisani.
+                      </AlertDialogDescription>
+                    </AlertDialogHeader>
+                    <AlertDialogFooter>
+                      <AlertDialogCancel data-testid={`button-cancel-delete-user-${user.id}`}>
+                        Otkaži
+                      </AlertDialogCancel>
+                      <AlertDialogAction
+                        onClick={() => {
+                          deleteUserMutation.mutate(user.id);
+                          onBack();
+                        }}
+                        data-testid={`button-confirm-delete-user-${user.id}`}
+                      >
+                        Obriši
+                      </AlertDialogAction>
+                    </AlertDialogFooter>
+                  </AlertDialogContent>
+                </AlertDialog>
+              </div>
+            </CardContent>
+          </Card>
+        </TabsContent>
+      </Tabs>
     </div>
   );
 }

@@ -2,7 +2,7 @@ import { useState, useEffect } from "react";
 import { Link, useLocation } from "wouter";
 import {
   LogOut, Edit3, Save, MessageCircle, LayoutDashboard, Settings,
-  Menu, X, Gift, Users, Video, Users2, ScrollText, Layers, ChevronRight, Terminal, ChevronDown,
+  Menu, X, Gift, Users, Video, Users2, ScrollText, Layers, ChevronRight, Terminal, ChevronDown, Newspaper,
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Button } from "@/components/ui/button";
@@ -29,6 +29,7 @@ const desktopNav = [
 // Items that live in the "Još" dropdown on desktop
 const moreNav = [
   { name: "Giveaway", href: "/giveaway", icon: Gift },
+  { name: "Vesti",    href: "/news",     icon: Newspaper },
   { name: "Tim",      href: "/tim",      icon: Users2 },
   { name: "Pravila",  href: "/pravila",  icon: ScrollText },
 ];

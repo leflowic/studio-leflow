@@ -9,6 +9,11 @@ export const projectStatusEnum = pgEnum("project_status", ["waiting", "in_progre
 export const invoiceStatusEnum = pgEnum("invoice_status", ["pending", "paid", "overdue", "cancelled"]);
 export const userRankEnum = pgEnum("user_rank", ["user", "vip", "legend", "admin"]);
 
+// Studio job pipeline stages (kept as plain strings, not a pg enum, so the table matches its
+// raw-SQL bootstrap migration in server/index.ts without needing a Postgres CREATE TYPE step)
+export const JOB_STAGES = ["novi_upit", "snimanje", "mix", "mastering", "revizija", "isporuceno"] as const;
+export type JobStage = typeof JOB_STAGES[number];
+
 // Session table - managed by connect-pg-simple for express-session
 export const session = pgTable("session", {
   sid: varchar("sid").primaryKey(),
@@ -797,6 +802,89 @@ export const insertInvoiceSchema = createInsertSchema(invoices).omit({
 
 export type InsertInvoice = z.infer<typeof insertInvoiceSchema>;
 export type Invoice = typeof invoices.$inferSelect;
+
+// Studio Jobs - producer-facing pipeline tracker for a client's work (novi upit -> snimanje -> mix -> mastering -> revizija -> isporuceno)
+export const studioJobs = pgTable("studio_jobs", {
+  id: serial("id").primaryKey(),
+  title: text("title").notNull(),
+  userId: integer("user_id").notNull().references(() => users.id, { onDelete: "cascade" }), // Client
+  stage: text("stage").notNull().default("novi_upit"),
+  contractId: integer("contract_id").references(() => contracts.id, { onDelete: "set null" }),
+  invoiceId: integer("invoice_id").references(() => invoices.id, { onDelete: "set null" }),
+  portalId: integer("portal_id").references(() => clientPortals.id, { onDelete: "set null" }),
+  notes: text("notes"),
+  deliveryDate: timestamp("delivery_date"),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+  createdBy: integer("created_by").notNull().references(() => users.id), // Admin who created the job
+}, (table) => ({
+  userIdx: index("studio_jobs_user_idx").on(table.userId),
+  stageIdx: index("studio_jobs_stage_idx").on(table.stage),
+}));
+
+export const insertStudioJobSchema = createInsertSchema(studioJobs).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+}).extend({
+  title: z.string().min(1, "Naziv posla je obavezan"),
+  userId: z.number().int().positive("Klijent je obavezan"),
+  stage: z.enum(JOB_STAGES).default("novi_upit"),
+  contractId: z.number().int().positive().optional().nullable(),
+  invoiceId: z.number().int().positive().optional().nullable(),
+  portalId: z.number().int().positive().optional().nullable(),
+  notes: z.string().optional().nullable(),
+  deliveryDate: z.date().or(z.string()).optional().nullable(),
+});
+
+export type InsertStudioJob = z.infer<typeof insertStudioJobSchema>;
+export type StudioJob = typeof studioJobs.$inferSelect;
+
+// News articles - /news portal (music news, releases, artist coverage), editable by
+// "editor"/"marketing" admin roles. SEO fields are stored per-article so each post can rank
+// on its own for an artist name search, not just the site's homepage keywords.
+export const newsArticles = pgTable("news_articles", {
+  id: serial("id").primaryKey(),
+  title: text("title").notNull(),
+  slug: varchar("slug", { length: 200 }).notNull().unique(),
+  excerpt: text("excerpt").notNull(),
+  content: text("content").notNull(), // rich HTML from the TipTap editor
+  coverImage: text("cover_image"),
+  tags: text("tags"), // comma-separated, shown on the article and folded into keywords if seoKeywords is empty
+  seoTitle: text("seo_title"),
+  seoDescription: text("seo_description"),
+  seoKeywords: text("seo_keywords"), // comma-separated meta keywords / artist names
+  status: text("status").notNull().default("draft"), // "draft" | "published"
+  publishedAt: timestamp("published_at"),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+  createdBy: integer("created_by").notNull().references(() => users.id),
+}, (table) => ({
+  slugIdx: index("news_articles_slug_idx").on(table.slug),
+  statusIdx: index("news_articles_status_idx").on(table.status),
+  publishedAtIdx: index("news_articles_published_at_idx").on(table.publishedAt),
+}));
+
+export const insertNewsArticleSchema = createInsertSchema(newsArticles).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+}).extend({
+  title: z.string().min(1, "Naslov je obavezan"),
+  slug: z.string().min(1, "Slug je obavezan").regex(/^[a-z0-9-]+$/, "Slug sme sadržati samo mala slova, brojeve i crtice"),
+  excerpt: z.string().min(1, "Kratak opis je obavezan"),
+  content: z.string().min(1, "Sadržaj je obavezan"),
+  coverImage: z.string().optional().nullable(),
+  tags: z.string().optional().nullable(),
+  seoTitle: z.string().optional().nullable(),
+  seoDescription: z.string().optional().nullable(),
+  seoKeywords: z.string().optional().nullable(),
+  status: z.enum(["draft", "published"]).default("draft"),
+  publishedAt: z.date().or(z.string()).optional().nullable(),
+});
+
+export type InsertNewsArticle = z.infer<typeof insertNewsArticleSchema>;
+export type NewsArticle = typeof newsArticles.$inferSelect;
 
 // Community Messages - insert schema and types
 export const insertCommunityMessageSchema = createInsertSchema(communityMessages).omit({

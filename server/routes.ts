@@ -2,7 +2,7 @@ import type { Express } from "express";
 import { createServer, type Server } from "http";
 import { storage } from "./storage";
 import { wsHelpers, notifyUser, broadcastToUser, getOnlineUsersSnapshot } from "./websocket-helpers";
-import { insertContactSubmissionSchema, insertCmsContentSchema, insertCmsMediaSchema, insertVideoSpotSchema, insertUserSongSchema, insertNewsletterSubscriberSchema, insertInvoiceSchema, insertCommunityMessageSchema, insertSiteAnnouncementSchema, mixMasterContractDataSchema, copyrightTransferContractDataSchema, instrumentalSaleContractDataSchema, insertSmartLinkSchema, type CmsContent, type CmsMedia, type VideoSpot, type UserSong } from "@shared/schema";
+import { insertContactSubmissionSchema, insertCmsContentSchema, insertCmsMediaSchema, insertVideoSpotSchema, insertUserSongSchema, insertNewsletterSubscriberSchema, insertInvoiceSchema, insertCommunityMessageSchema, insertSiteAnnouncementSchema, mixMasterContractDataSchema, copyrightTransferContractDataSchema, instrumentalSaleContractDataSchema, insertSmartLinkSchema, insertStudioJobSchema, JOB_STAGES, insertNewsArticleSchema, type CmsContent, type CmsMedia, type VideoSpot, type UserSong } from "@shared/schema";
 import { sendEmail, getLastVerificationCode } from "./resend-client";
 import { resendVerificationEmail, adminLoginEmail, contactFormEmail, newsletterConfirmEmail, licenseDeliveryEmail, customEmail } from "./email-templates";
 import { setupAuth, hashPassword, comparePasswords } from "./auth";
@@ -219,8 +219,34 @@ function requireAdmin(req: any, res: any, next: any) {
   if (req.jwtUser.role !== 'admin') {
     return res.status(403).json({ error: "Samo administratori mogu pristupiti ovoj funkcionalnosti" });
   }
-  
+
   next();
+}
+
+// Admin staff roles: "admin" (Super Admin) always has full access.
+// "producer", "editor", "marketing" are restricted admin roles scoped to specific admin panel sections
+// (see ADMIN_NAV groups in client/src/pages/admin.tsx for what each role's tabs map to).
+const ADMIN_STAFF_ROLES = ["admin", "producer", "editor", "marketing"] as const;
+
+// Middleware factory: requires the user's role to be "admin" (always allowed) or one of allowedRoles.
+// Used to scope restricted admin roles (producer/editor/marketing) to only their permitted sections,
+// so hiding a tab in the sidebar is backed by real server-side enforcement, not just UI hiding.
+function requireRole(...allowedRoles: string[]) {
+  return (req: any, res: any, next: any) => {
+    if (!req.jwtUser) {
+      return res.status(401).json({ error: "Niste prijavljeni. Osvežite stranicu i prijavite se ponovo." });
+    }
+    if (req.jwtUser.banned) {
+      return res.status(403).json({
+        error: "Vaš nalog je suspendovan. Kontaktirajte administratora za više informacija.",
+        banned: true
+      });
+    }
+    if (req.jwtUser.role === 'admin' || allowedRoles.includes(req.jwtUser.role)) {
+      return next();
+    }
+    return res.status(403).json({ error: "Nemate dozvolu za ovu funkcionalnost" });
+  };
 }
 
 // Middleware: VIP, Legend, or Admin rank required
@@ -326,7 +352,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Admin custom email via Resend
-  app.post("/api/admin/send-email", requireAdmin, async (req, res) => {
+  app.post("/api/admin/send-email", requireRole("marketing"), async (req, res) => {
     try {
       const { to, subject, body } = req.body;
       if (!to || !subject || !body) {
@@ -440,7 +466,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Game clip upload (admin only, MP3 for daily challenge)
-  app.post("/api/upload/game-clip", uploadRateLimiter, requireAdmin, upload.single("file"), async (req, res) => {
+  app.post("/api/upload/game-clip", uploadRateLimiter, requireRole("producer"), upload.single("file"), async (req, res) => {
     try {
       if (!req.file) return res.status(400).json({ error: "Fajl nije pronađen" });
       if (req.file.size > 5 * 1024 * 1024) return res.status(400).json({ error: "Clip ne sme biti veći od 5MB" });
@@ -865,7 +891,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Get newsletter subscribers list (admin only)
-  app.get("/api/newsletter/subscribers", requireAdmin, async (_req, res) => {
+  app.get("/api/newsletter/subscribers", requireRole("marketing"), async (_req, res) => {
     try {
       const subscribers = await storage.getAllNewsletterSubscribers();
       res.json(subscribers);
@@ -876,7 +902,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Get newsletter statistics (admin only)
-  app.get("/api/newsletter/stats", requireAdmin, async (_req, res) => {
+  app.get("/api/newsletter/stats", requireRole("marketing"), async (_req, res) => {
     try {
       const stats = await storage.getNewsletterStats();
       res.json(stats);
@@ -887,7 +913,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Delete newsletter subscriber (admin only)
-  app.delete("/api/newsletter/subscribers/:id", requireAdmin, async (req, res) => {
+  app.delete("/api/newsletter/subscribers/:id", requireRole("marketing"), async (req, res) => {
     try {
       const id = parseInt(req.params.id);
       
@@ -909,7 +935,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Send newsletter campaign (admin only)
-  app.post("/api/newsletter/send", requireAdmin, async (req, res) => {
+  app.post("/api/newsletter/send", requireRole("marketing"), async (req, res) => {
     try {
       const { subject, htmlContent } = req.body;
 
@@ -1311,7 +1337,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Get all users
-  app.get("/api/admin/users", requireAdmin, async (_req, res) => {
+  app.get("/api/admin/users", requireRole("producer"), async (_req, res) => {
     try {
       const allUsers = await storage.getAllUsers();
       res.json(allUsers.map(({ password, adminLoginToken, adminLoginExpiry, ...safe }) => safe));
@@ -1321,7 +1347,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Search users for admin (used in dropdowns/assignments)
-  app.get("/api/admin/users/search", requireAdmin, async (req, res) => {
+  app.get("/api/admin/users/search", requireRole("producer"), async (req, res) => {
     try {
       const query = req.query.q as string;
       const limit = parseInt(req.query.limit as string) || 20;
@@ -1338,7 +1364,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Ban a user
-  app.post("/api/admin/users/:id/ban", requireAdmin, async (req, res) => {
+  app.post("/api/admin/users/:id/ban", requireRole("producer"), async (req, res) => {
     try {
       const userId = parseInt(req.params.id);
       if (isNaN(userId)) {
@@ -1353,7 +1379,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Unban a user
-  app.post("/api/admin/users/:id/unban", requireAdmin, async (req, res) => {
+  app.post("/api/admin/users/:id/unban", requireRole("producer"), async (req, res) => {
     try {
       const userId = parseInt(req.params.id);
       if (isNaN(userId)) {
@@ -1368,7 +1394,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Delete a user
-  app.delete("/api/admin/users/:id", requireAdmin, async (req, res) => {
+  app.delete("/api/admin/users/:id", requireRole("producer"), async (req, res) => {
     try {
       const userId = parseInt(req.params.id);
       if (isNaN(userId)) {
@@ -1407,8 +1433,31 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Assign a restricted admin-panel staff role (producer/editor/marketing), or revoke back to plain user.
+  // Granting "admin" itself stays on the separate toggle-admin route above. Super-admin only: assigning
+  // panel access is a privilege decision, not a day-to-day action any of the restricted roles should make.
+  app.patch("/api/admin/users/:id/staff-role", requireAdmin, async (req, res) => {
+    try {
+      const userId = parseInt(req.params.id, 10);
+      if (isNaN(userId)) {
+        return res.status(400).json({ error: "Nevažeći ID korisnika" });
+      }
+      const { role } = req.body;
+      if (!["user", "producer", "editor", "marketing"].includes(role)) {
+        return res.status(400).json({ error: "Nevažeća uloga" });
+      }
+      if (userId === req.jwtUser!.id) {
+        return res.status(400).json({ error: "Ne možete promeniti sopstvenu ulogu" });
+      }
+      await storage.updateUserRole(userId, role);
+      res.json({ success: true });
+    } catch (error) {
+      res.status(500).json({ error: "Greška na serveru" });
+    }
+  });
+
   // Update user rank (user, vip, legend, admin)
-  app.patch("/api/users/:userId/rank", requireAdmin, async (req, res) => {
+  app.patch("/api/users/:userId/rank", requireRole("producer"), async (req, res) => {
     try {
       const userId = parseInt(req.params.userId);
       if (isNaN(userId)) {
@@ -1454,7 +1503,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Get all projects (approved and pending) for admin
-  app.get("/api/admin/all-projects", requireAdmin, async (_req, res) => {
+  app.get("/api/admin/all-projects", requireRole("producer"), async (_req, res) => {
     try {
       const projects = await storage.getAllProjectsForAdmin();
       res.json(projects);
@@ -1464,7 +1513,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Get pending (unapproved) projects
-  app.get("/api/admin/pending-projects", requireAdmin, async (_req, res) => {
+  app.get("/api/admin/pending-projects", requireRole("producer"), async (_req, res) => {
     try {
       const projects = await storage.getPendingProjects();
       res.json(projects);
@@ -1474,7 +1523,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Approve a project
-  app.post("/api/admin/projects/:id/approve", requireAdmin, async (req, res) => {
+  app.post("/api/admin/projects/:id/approve", requireRole("producer"), async (req, res) => {
     try {
       const projectId = parseInt(req.params.id);
       if (isNaN(projectId)) {
@@ -1489,7 +1538,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Delete a project
-  app.delete("/api/admin/projects/:id", requireAdmin, async (req, res) => {
+  app.delete("/api/admin/projects/:id", requireRole("producer"), async (req, res) => {
     try {
       const projectId = parseInt(req.params.id);
       if (isNaN(projectId)) {
@@ -1504,7 +1553,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Get all comments
-  app.get("/api/admin/comments", requireAdmin, async (_req, res) => {
+  app.get("/api/admin/comments", requireRole("producer"), async (_req, res) => {
     try {
       const comments = await storage.getAllComments();
       res.json(comments);
@@ -1514,7 +1563,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Delete a comment
-  app.delete("/api/admin/comments/:id", requireAdmin, async (req, res) => {
+  app.delete("/api/admin/comments/:id", requireRole("producer"), async (req, res) => {
     try {
       const commentId = parseInt(req.params.id);
       if (isNaN(commentId)) {
@@ -1529,7 +1578,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Toggle giveaway active status
-  app.post("/api/admin/giveaway/toggle", requireAdmin, async (req, res) => {
+  app.post("/api/admin/giveaway/toggle", requireRole("producer"), async (req, res) => {
     try {
       const { isActive } = req.body;
       
@@ -1825,7 +1874,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // GET /api/user-songs/all - ADMIN (get all user songs with usernames)
-  app.get("/api/user-songs/all", requireAdmin, async (req, res) => {
+  app.get("/api/user-songs/all", requireRole("producer"), async (req, res) => {
     try {
       const songs = await storage.getAllUserSongs();
       res.json(songs);
@@ -1866,7 +1915,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // POST /api/user-songs/:id/approve - ADMIN (approve a song)
-  app.post("/api/user-songs/:id/approve", requireAdmin, async (req, res) => {
+  app.post("/api/user-songs/:id/approve", requireRole("producer"), async (req, res) => {
     try {
       const songId = parseInt(req.params.id);
       
@@ -1997,7 +2046,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   // DELETE /api/community-chat/clear - Clear all community messages (ADMIN only)
   // NOTE: This route MUST come BEFORE /:id to avoid "clear" being matched as an ID
-  app.delete("/api/community-chat/clear", requireAdmin, async (req, res) => {
+  app.delete("/api/community-chat/clear", requireRole("producer"), async (req, res) => {
     try {
       await storage.clearAllCommunityMessages();
       
@@ -2084,7 +2133,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // ==================== CALENDAR API ROUTES ====================
 
   // GET /api/admin/calendar?year=2026&month=6
-  app.get("/api/admin/calendar", requireAdmin, async (req, res) => {
+  app.get("/api/admin/calendar", requireRole("producer"), async (req, res) => {
     try {
       const year = parseInt(req.query.year as string) || new Date().getFullYear();
       const month = parseInt(req.query.month as string) || new Date().getMonth() + 1;
@@ -2098,7 +2147,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // PUT /api/admin/calendar/:date
-  app.put("/api/admin/calendar/:date", requireAdmin, async (req, res) => {
+  app.put("/api/admin/calendar/:date", requireRole("producer"), async (req, res) => {
     try {
       const { date } = req.params;
       if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) return res.status(400).json({ error: "Neispravan format datuma" });
@@ -2588,7 +2637,7 @@ Sitemap: ${siteUrl}/sitemap.xml
   });
 
   // Update project status (admin only)
-  app.put("/api/admin/projects/:id/status", requireAdmin, async (req, res) => {
+  app.put("/api/admin/projects/:id/status", requireRole("producer"), async (req, res) => {
     try {
       const projectId = parseInt(req.params.id);
       const { status } = req.body;
@@ -2624,7 +2673,7 @@ Sitemap: ${siteUrl}/sitemap.xml
   // ===== ADMIN KATASTAR ENDPOINTS =====
 
   // Get full client profile for Katastar (projects + contracts + invoices)
-  app.get("/api/admin/katastar/:userId", requireAdmin, async (req, res) => {
+  app.get("/api/admin/katastar/:userId", requireRole("producer"), async (req, res) => {
     try {
       const userId = parseInt(req.params.userId);
       if (isNaN(userId)) return res.status(400).json({ error: "Nevažeći ID korisnika" });
@@ -2648,7 +2697,7 @@ Sitemap: ${siteUrl}/sitemap.xml
   // ===== ADMIN MESSAGING ENDPOINTS =====
   
   // Get all conversations (admin only)
-  app.get("/api/admin/messages/conversations", requireAdmin, async (req, res) => {
+  app.get("/api/admin/messages/conversations", requireRole("producer"), async (req, res) => {
     try {
       const conversations = await storage.adminGetAllConversations();
       res.json(conversations);
@@ -2659,7 +2708,7 @@ Sitemap: ${siteUrl}/sitemap.xml
   });
 
   // Get messages between two users (admin only)
-  app.get("/api/admin/messages/conversation/:user1Id/:user2Id", requireAdmin, async (req, res) => {
+  app.get("/api/admin/messages/conversation/:user1Id/:user2Id", requireRole("producer"), async (req, res) => {
     try {
       const user1Id = parseInt(req.params.user1Id);
       const user2Id = parseInt(req.params.user2Id);
@@ -2680,7 +2729,7 @@ Sitemap: ${siteUrl}/sitemap.xml
   });
 
   // Delete any message (admin only)
-  app.delete("/api/admin/messages/:id", requireAdmin, async (req, res) => {
+  app.delete("/api/admin/messages/:id", requireRole("producer"), async (req, res) => {
     try {
       const messageId = parseInt(req.params.id);
       
@@ -2697,7 +2746,7 @@ Sitemap: ${siteUrl}/sitemap.xml
   });
 
   // Get admin audit logs
-  app.get("/api/admin/messages/audit-logs", requireAdmin, async (req, res) => {
+  app.get("/api/admin/messages/audit-logs", requireRole("producer"), async (req, res) => {
     try {
       const logs = await storage.adminGetAuditLogs();
       res.json(logs);
@@ -2708,7 +2757,7 @@ Sitemap: ${siteUrl}/sitemap.xml
   });
 
   // Export conversation to TXT file
-  app.get("/api/admin/messages/export/:user1Id/:user2Id", requireAdmin, async (req, res) => {
+  app.get("/api/admin/messages/export/:user1Id/:user2Id", requireRole("producer"), async (req, res) => {
     try {
       const user1Id = parseInt(req.params.user1Id);
       const user2Id = parseInt(req.params.user2Id);
@@ -2733,7 +2782,7 @@ Sitemap: ${siteUrl}/sitemap.xml
   });
 
   // Get messaging statistics
-  app.get("/api/admin/messages/stats", requireAdmin, async (req, res) => {
+  app.get("/api/admin/messages/stats", requireRole("producer"), async (req, res) => {
     try {
       const stats = await storage.adminGetMessagingStats();
       res.json(stats);
@@ -2754,7 +2803,7 @@ Sitemap: ${siteUrl}/sitemap.xml
   }
 
   // Generate contract PDF
-  app.post("/api/admin/contracts/generate", requireAdmin, async (req, res) => {
+  app.post("/api/admin/contracts/generate", requireRole("producer"), async (req, res) => {
     try {
       const { contractType, contractData } = req.body;
 
@@ -2885,7 +2934,7 @@ Sitemap: ${siteUrl}/sitemap.xml
   });
 
   // Get all contracts
-  app.get("/api/admin/contracts", requireAdmin, async (req, res) => {
+  app.get("/api/admin/contracts", requireRole("producer"), async (req, res) => {
     try {
       const contracts = await storage.getAllContracts();
       res.json(contracts);
@@ -2896,7 +2945,7 @@ Sitemap: ${siteUrl}/sitemap.xml
   });
 
   // Download contract PDF - regenerated on-the-fly from DB data (Railway filesystem is ephemeral)
-  app.get("/api/admin/contracts/:id/download", requireAdmin, async (req, res) => {
+  app.get("/api/admin/contracts/:id/download", requireRole("producer"), async (req, res) => {
     try {
       const contractId = parseInt(req.params.id);
       if (isNaN(contractId)) {
@@ -2934,7 +2983,7 @@ Sitemap: ${siteUrl}/sitemap.xml
   });
 
   // Send contract via email
-  app.post("/api/admin/contracts/:id/send-email", requireAdmin, async (req, res) => {
+  app.post("/api/admin/contracts/:id/send-email", requireRole("producer"), async (req, res) => {
     try {
       const contractId = parseInt(req.params.id);
       const { email } = req.body;
@@ -2991,7 +3040,7 @@ Sitemap: ${siteUrl}/sitemap.xml
   });
 
   // Assign contract to user (or remove assignment with null)
-  app.patch("/api/admin/contracts/:id/assign-user", requireAdmin, async (req, res) => {
+  app.patch("/api/admin/contracts/:id/assign-user", requireRole("producer"), async (req, res) => {
     try {
       const contractId = parseInt(req.params.id);
       const { userId } = req.body;
@@ -3073,7 +3122,7 @@ Sitemap: ${siteUrl}/sitemap.xml
   });
 
   // Delete contract
-  app.delete("/api/admin/contracts/:id", requireAdmin, async (req, res) => {
+  app.delete("/api/admin/contracts/:id", requireRole("producer"), async (req, res) => {
     try {
       const contractId = parseInt(req.params.id);
       
@@ -3151,7 +3200,7 @@ Sitemap: ${siteUrl}/sitemap.xml
   // ============================================================================
 
   // Create invoice
-  app.post("/api/admin/invoices", requireAdmin, async (req, res) => {
+  app.post("/api/admin/invoices", requireRole("producer"), async (req, res) => {
     try {
       // Generate invoice number (will be done automatically in storage)
       const invoiceNumber = await storage.getNextInvoiceNumber();
@@ -3177,7 +3226,7 @@ Sitemap: ${siteUrl}/sitemap.xml
   });
 
   // Get all invoices
-  app.get("/api/admin/invoices", requireAdmin, async (req, res) => {
+  app.get("/api/admin/invoices", requireRole("producer"), async (req, res) => {
     try {
       const invoices = await storage.getAllInvoices();
       res.json(invoices);
@@ -3188,7 +3237,7 @@ Sitemap: ${siteUrl}/sitemap.xml
   });
 
   // Update invoice status
-  app.patch("/api/admin/invoices/:id/status", requireAdmin, async (req, res) => {
+  app.patch("/api/admin/invoices/:id/status", requireRole("producer"), async (req, res) => {
     try {
       const invoiceId = parseInt(req.params.id);
       const { status } = req.body;
@@ -3212,7 +3261,7 @@ Sitemap: ${siteUrl}/sitemap.xml
   });
 
   // Delete invoice
-  app.delete("/api/admin/invoices/:id", requireAdmin, async (req, res) => {
+  app.delete("/api/admin/invoices/:id", requireRole("producer"), async (req, res) => {
     try {
       const invoiceId = parseInt(req.params.id);
 
@@ -3225,6 +3274,193 @@ Sitemap: ${siteUrl}/sitemap.xml
     } catch (error: any) {
       console.error("[INVOICES] Delete error:", error);
       res.status(500).json({ error: "Greška pri brisanju fakture" });
+    }
+  });
+
+  // ============================================================================
+  // STUDIO JOBS (producer pipeline board)
+  // ============================================================================
+
+  app.get("/api/admin/jobs", requireRole("producer"), async (_req, res) => {
+    try {
+      const jobs = await storage.getAllJobs();
+      res.json(jobs);
+    } catch (error: any) {
+      console.error("[JOBS] Get all error:", error);
+      res.status(500).json({ error: "Greška pri učitavanju poslova" });
+    }
+  });
+
+  app.post("/api/admin/jobs", requireRole("producer"), async (req, res) => {
+    try {
+      const jobData = insertStudioJobSchema.parse(req.body);
+      const job = await storage.createJob({ ...jobData, createdBy: req.jwtUser!.id });
+      res.json(job);
+    } catch (error: any) {
+      console.error("[JOBS] Create error:", error);
+      if (error.name === "ZodError") {
+        return res.status(400).json({ error: "Nevažeći podaci", details: error.errors });
+      }
+      res.status(500).json({ error: "Greška pri kreiranju posla" });
+    }
+  });
+
+  app.patch("/api/admin/jobs/:id/stage", requireRole("producer"), async (req, res) => {
+    try {
+      const jobId = parseInt(req.params.id, 10);
+      const { stage } = req.body;
+      if (isNaN(jobId)) return res.status(400).json({ error: "Nevažeći ID posla" });
+      if (!stage || !(JOB_STAGES as readonly string[]).includes(stage)) {
+        return res.status(400).json({ error: "Nevažeća faza posla" });
+      }
+      await storage.updateJobStage(jobId, stage);
+      res.json({ success: true });
+    } catch (error: any) {
+      console.error("[JOBS] Update stage error:", error);
+      res.status(500).json({ error: "Greška pri ažuriranju faze posla" });
+    }
+  });
+
+  app.patch("/api/admin/jobs/:id", requireRole("producer"), async (req, res) => {
+    try {
+      const jobId = parseInt(req.params.id, 10);
+      if (isNaN(jobId)) return res.status(400).json({ error: "Nevažeći ID posla" });
+      const jobData = insertStudioJobSchema.partial().parse(req.body);
+      await storage.updateJob(jobId, jobData);
+      res.json({ success: true });
+    } catch (error: any) {
+      console.error("[JOBS] Update error:", error);
+      if (error.name === "ZodError") {
+        return res.status(400).json({ error: "Nevažeći podaci", details: error.errors });
+      }
+      res.status(500).json({ error: "Greška pri ažuriranju posla" });
+    }
+  });
+
+  app.delete("/api/admin/jobs/:id", requireRole("producer"), async (req, res) => {
+    try {
+      const jobId = parseInt(req.params.id, 10);
+      if (isNaN(jobId)) return res.status(400).json({ error: "Nevažeći ID posla" });
+      await storage.deleteJob(jobId);
+      res.json({ success: true });
+    } catch (error: any) {
+      console.error("[JOBS] Delete error:", error);
+      res.status(500).json({ error: "Greška pri brisanju posla" });
+    }
+  });
+
+  // ============================================================================
+  // NEWS ARTICLES (/news portal - editor/marketing/admin manage, public reads)
+  // ============================================================================
+
+  // Public: paginated list of published articles
+  app.get("/api/news", async (req, res) => {
+    try {
+      const limit = Math.min(parseInt(String(req.query.limit ?? "20"), 10) || 20, 50);
+      const offset = Math.max(parseInt(String(req.query.offset ?? "0"), 10) || 0, 0);
+      const articles = await storage.getPublishedArticles(limit, offset);
+      res.json(articles);
+    } catch (error: any) {
+      console.error("[NEWS] Get published error:", error);
+      res.status(500).json({ error: "Greška pri učitavanju vesti" });
+    }
+  });
+
+  // Public: single published article by slug
+  app.get("/api/news/:slug", async (req, res) => {
+    try {
+      const article = await storage.getArticleBySlugPublic(req.params.slug);
+      if (!article) return res.status(404).json({ error: "Vest nije pronađena" });
+      res.json(article);
+    } catch (error: any) {
+      console.error("[NEWS] Get by slug error:", error);
+      res.status(500).json({ error: "Greška pri učitavanju vesti" });
+    }
+  });
+
+  // Admin: list all articles (draft + published)
+  app.get("/api/admin/news", requireRole("editor", "marketing"), async (_req, res) => {
+    try {
+      const articles = await storage.getAllArticlesAdmin();
+      res.json(articles);
+    } catch (error: any) {
+      console.error("[NEWS] Get all error:", error);
+      res.status(500).json({ error: "Greška pri učitavanju vesti" });
+    }
+  });
+
+  // Admin: single article by id (for the edit form)
+  app.get("/api/admin/news/:id", requireRole("editor", "marketing"), async (req, res) => {
+    try {
+      const articleId = parseInt(req.params.id, 10);
+      if (isNaN(articleId)) return res.status(400).json({ error: "Nevažeći ID vesti" });
+      const article = await storage.getArticleById(articleId);
+      if (!article) return res.status(404).json({ error: "Vest nije pronađena" });
+      res.json(article);
+    } catch (error: any) {
+      console.error("[NEWS] Get by id error:", error);
+      res.status(500).json({ error: "Greška pri učitavanju vesti" });
+    }
+  });
+
+  app.post("/api/admin/news", requireRole("editor", "marketing"), async (req, res) => {
+    try {
+      const articleData = insertNewsArticleSchema.parse(req.body);
+      const article = await storage.createArticle({ ...articleData, createdBy: req.jwtUser!.id });
+      res.json(article);
+    } catch (error: any) {
+      console.error("[NEWS] Create error:", error);
+      if (error.name === "ZodError") {
+        return res.status(400).json({ error: "Nevažeći podaci", details: error.errors });
+      }
+      if (error?.code === "23505") {
+        return res.status(400).json({ error: "Ovaj slug je već zauzet - izaberi drugi" });
+      }
+      res.status(500).json({ error: "Greška pri kreiranju vesti" });
+    }
+  });
+
+  app.patch("/api/admin/news/:id", requireRole("editor", "marketing"), async (req, res) => {
+    try {
+      const articleId = parseInt(req.params.id, 10);
+      if (isNaN(articleId)) return res.status(400).json({ error: "Nevažeći ID vesti" });
+      const articleData = insertNewsArticleSchema.partial().parse(req.body);
+      await storage.updateArticle(articleId, articleData);
+      res.json({ success: true });
+    } catch (error: any) {
+      console.error("[NEWS] Update error:", error);
+      if (error.name === "ZodError") {
+        return res.status(400).json({ error: "Nevažeći podaci", details: error.errors });
+      }
+      if (error?.code === "23505") {
+        return res.status(400).json({ error: "Ovaj slug je već zauzet - izaberi drugi" });
+      }
+      res.status(500).json({ error: "Greška pri ažuriranju vesti" });
+    }
+  });
+
+  app.delete("/api/admin/news/:id", requireRole("editor", "marketing"), async (req, res) => {
+    try {
+      const articleId = parseInt(req.params.id, 10);
+      if (isNaN(articleId)) return res.status(400).json({ error: "Nevažeći ID vesti" });
+      await storage.deleteArticle(articleId);
+      res.json({ success: true });
+    } catch (error: any) {
+      console.error("[NEWS] Delete error:", error);
+      res.status(500).json({ error: "Greška pri brisanju vesti" });
+    }
+  });
+
+  app.post("/api/upload/news-cover", requireRole("editor", "marketing"), uploadRateLimiter, upload.single("file"), async (req, res) => {
+    try {
+      if (!req.file) return res.status(400).json({ error: "Fajl nije pronađen" });
+      const buf = req.file.buffer;
+      const type = await fileTypeFromBuffer(buf);
+      if (!type || !type.mime.startsWith("image/")) return res.status(400).json({ error: "Samo slike su dozvoljene" });
+      const url = await uploadImageToCloudinary(buf, "studioleflow/news", `news_${Date.now()}`);
+      res.json({ url });
+    } catch {
+      res.status(500).json({ error: "Greška pri uploadu slike" });
     }
   });
 
@@ -3475,12 +3711,12 @@ Sitemap: ${siteUrl}/sitemap.xml
   });
 
   // Admin: GET /api/admin/game/challenges
-  app.get("/api/admin/game/challenges", requireAdmin, async (_req, res) => {
+  app.get("/api/admin/game/challenges", requireRole("producer"), async (_req, res) => {
     res.json(await storage.adminGetChallenges());
   });
 
   // Admin: POST /api/admin/game/challenges
-  app.post("/api/admin/game/challenges", requireAdmin, async (req, res) => {
+  app.post("/api/admin/game/challenges", requireRole("producer"), async (req, res) => {
     try {
       const { challengeDate, clipUrl, correctAnswers, clipStartSeconds, openHour, openMinute } = req.body;
       if (!challengeDate || !correctAnswers) {
@@ -3501,7 +3737,7 @@ Sitemap: ${siteUrl}/sitemap.xml
   });
 
   // Admin: DELETE /api/admin/game/challenges/:id
-  app.delete("/api/admin/game/challenges/:id", requireAdmin, async (req, res) => {
+  app.delete("/api/admin/game/challenges/:id", requireRole("producer"), async (req, res) => {
     try {
       await storage.adminDeleteChallenge(Number(req.params.id));
       res.json({ success: true });
@@ -3511,7 +3747,7 @@ Sitemap: ${siteUrl}/sitemap.xml
   });
 
   // Admin: DELETE /api/admin/game/reset-my-guess - reset admin's own guess for today (for testing)
-  app.delete("/api/admin/game/reset-my-guess", requireAdmin, async (req, res) => {
+  app.delete("/api/admin/game/reset-my-guess", requireRole("producer"), async (req, res) => {
     try {
       await storage.adminResetMyGuess(req.jwtUser!.id as number);
       res.json({ success: true });
@@ -3521,12 +3757,12 @@ Sitemap: ${siteUrl}/sitemap.xml
   });
 
   // Admin: GET /api/admin/game/prizes
-  app.get("/api/admin/game/prizes", requireAdmin, async (_req, res) => {
+  app.get("/api/admin/game/prizes", requireRole("producer"), async (_req, res) => {
     res.json(await storage.adminGetWeeklyPrizes());
   });
 
   // Admin: POST /api/admin/game/prizes
-  app.post("/api/admin/game/prizes", requireAdmin, async (req, res) => {
+  app.post("/api/admin/game/prizes", requireRole("producer"), async (req, res) => {
     try {
       const { weekStart, discountPct, prizeDescription, promoCode } = req.body;
       if (!weekStart || !discountPct || !prizeDescription) {
@@ -3540,7 +3776,7 @@ Sitemap: ${siteUrl}/sitemap.xml
   });
 
   // Admin: POST /api/admin/game/prizes/:weekStart/set-winner
-  app.post("/api/admin/game/prizes/:weekStart/set-winner", requireAdmin, async (req, res) => {
+  app.post("/api/admin/game/prizes/:weekStart/set-winner", requireRole("producer"), async (req, res) => {
     try {
       const result = await storage.adminSetPrizeWinner(req.params.weekStart);
       res.json(result);
@@ -3556,7 +3792,7 @@ Sitemap: ${siteUrl}/sitemap.xml
 
   // --- Admin Portal Routes ---
 
-  app.get("/api/admin/portals", requireAdmin, async (_req, res) => {
+  app.get("/api/admin/portals", requireRole("producer"), async (_req, res) => {
     try {
       const portals = await storage.getAllPortals();
       res.json(portals);
@@ -3566,7 +3802,7 @@ Sitemap: ${siteUrl}/sitemap.xml
     }
   });
 
-  app.post("/api/admin/portals", requireAdmin, async (req, res) => {
+  app.post("/api/admin/portals", requireRole("producer"), async (req, res) => {
     try {
       const { name, clientName } = req.body;
       if (!name?.trim() || !clientName?.trim()) return res.status(400).json({ error: "Naziv projekta i ime klijenta su obavezni" });
@@ -3580,7 +3816,7 @@ Sitemap: ${siteUrl}/sitemap.xml
     }
   });
 
-  app.delete("/api/admin/portals/:id", requireAdmin, async (req, res) => {
+  app.delete("/api/admin/portals/:id", requireRole("producer"), async (req, res) => {
     try {
       const id = parseInt(req.params.id);
       if (isNaN(id)) return res.status(400).json({ error: "Nevažeći ID" });
@@ -3591,7 +3827,7 @@ Sitemap: ${siteUrl}/sitemap.xml
     }
   });
 
-  app.get("/api/admin/portals/:id/versions", requireAdmin, async (req, res) => {
+  app.get("/api/admin/portals/:id/versions", requireRole("producer"), async (req, res) => {
     try {
       const id = parseInt(req.params.id);
       if (isNaN(id)) return res.status(400).json({ error: "Nevažeći ID" });
@@ -3602,7 +3838,7 @@ Sitemap: ${siteUrl}/sitemap.xml
     }
   });
 
-  app.post("/api/admin/portals/:id/versions", requireAdmin, portalUpload.single("audio"), async (req, res) => {
+  app.post("/api/admin/portals/:id/versions", requireRole("producer"), portalUpload.single("audio"), async (req, res) => {
     try {
       const portalId = parseInt(req.params.id ?? "");
       if (isNaN(portalId)) return res.status(400).json({ error: "Nevažeći ID" });
@@ -3619,7 +3855,7 @@ Sitemap: ${siteUrl}/sitemap.xml
     }
   });
 
-  app.delete("/api/admin/portals/versions/:versionId", requireAdmin, async (req, res) => {
+  app.delete("/api/admin/portals/versions/:versionId", requireRole("producer"), async (req, res) => {
     try {
       const id = parseInt(req.params.versionId);
       if (isNaN(id)) return res.status(400).json({ error: "Nevažeći ID" });
@@ -3630,7 +3866,7 @@ Sitemap: ${siteUrl}/sitemap.xml
     }
   });
 
-  app.patch("/api/admin/portals/comments/:commentId/resolve", requireAdmin, async (req, res) => {
+  app.patch("/api/admin/portals/comments/:commentId/resolve", requireRole("producer"), async (req, res) => {
     try {
       const id = parseInt(req.params.commentId);
       if (isNaN(id)) return res.status(400).json({ error: "Nevažeći ID" });
@@ -3641,7 +3877,7 @@ Sitemap: ${siteUrl}/sitemap.xml
     }
   });
 
-  app.post("/api/admin/portals/versions/:versionId/comment", requireAdmin, async (req, res) => {
+  app.post("/api/admin/portals/versions/:versionId/comment", requireRole("producer"), async (req, res) => {
     try {
       const versionId = parseInt(req.params.versionId);
       if (isNaN(versionId)) return res.status(400).json({ error: "Nevažeći ID" });
@@ -3660,7 +3896,7 @@ Sitemap: ${siteUrl}/sitemap.xml
     }
   });
 
-  app.get("/api/admin/portals/versions/:versionId/comments", requireAdmin, async (req, res) => {
+  app.get("/api/admin/portals/versions/:versionId/comments", requireRole("producer"), async (req, res) => {
     try {
       const id = parseInt(req.params.versionId);
       if (isNaN(id)) return res.status(400).json({ error: "Nevažeći ID" });
@@ -3723,7 +3959,7 @@ Sitemap: ${siteUrl}/sitemap.xml
 
   // --- Smart Links ---
 
-  app.post("/api/admin/smart-links/fetch-meta", requireAdmin, async (req, res) => {
+  app.post("/api/admin/smart-links/fetch-meta", requireRole("producer", "marketing"), async (req, res) => {
     try {
       const { url } = req.body;
       if (!url) return res.status(400).json({ error: "URL je obavezan" });
@@ -3760,7 +3996,7 @@ Sitemap: ${siteUrl}/sitemap.xml
     }
   });
 
-  app.get("/api/admin/smart-links", requireAdmin, async (_req, res) => {
+  app.get("/api/admin/smart-links", requireRole("producer", "marketing"), async (_req, res) => {
     try {
       const links = await storage.getAllSmartLinks();
       res.json(links);
@@ -3769,7 +4005,7 @@ Sitemap: ${siteUrl}/sitemap.xml
     }
   });
 
-  app.post("/api/admin/smart-links", requireAdmin, async (req, res) => {
+  app.post("/api/admin/smart-links", requireRole("producer", "marketing"), async (req, res) => {
     try {
       const parsed = insertSmartLinkSchema.safeParse(req.body);
       if (!parsed.success) return res.status(400).json({ error: parsed.error.errors[0]?.message ?? "Nevažeći podaci" });
@@ -3781,7 +4017,7 @@ Sitemap: ${siteUrl}/sitemap.xml
     }
   });
 
-  app.patch("/api/admin/smart-links/:id", requireAdmin, async (req, res) => {
+  app.patch("/api/admin/smart-links/:id", requireRole("producer", "marketing"), async (req, res) => {
     try {
       const id = parseInt(req.params.id);
       if (isNaN(id)) return res.status(400).json({ error: "Nevažeći ID" });
@@ -3795,7 +4031,7 @@ Sitemap: ${siteUrl}/sitemap.xml
     }
   });
 
-  app.delete("/api/admin/smart-links/:id", requireAdmin, async (req, res) => {
+  app.delete("/api/admin/smart-links/:id", requireRole("producer", "marketing"), async (req, res) => {
     try {
       const id = parseInt(req.params.id);
       if (isNaN(id)) return res.status(400).json({ error: "Nevažeći ID" });
@@ -3807,7 +4043,7 @@ Sitemap: ${siteUrl}/sitemap.xml
   });
 
   // Upload cover image to Cloudinary for smart links
-  app.post("/api/upload/smart-link-cover", requireAdmin, uploadRateLimiter, upload.single("file"), async (req, res) => {
+  app.post("/api/upload/smart-link-cover", requireRole("producer", "marketing"), uploadRateLimiter, upload.single("file"), async (req, res) => {
     try {
       if (!req.file) return res.status(400).json({ error: "Fajl nije pronađen" });
       const buf = req.file.buffer;
@@ -4093,7 +4329,7 @@ Sitemap: ${siteUrl}/sitemap.xml
     }
   });
 
-  app.delete("/api/admin/posts/:id", requireAdmin, async (req, res) => {
+  app.delete("/api/admin/posts/:id", requireRole("producer"), async (req, res) => {
     try {
       const postId = parseInt(req.params.id, 10);
       if (isNaN(postId)) return res.status(400).json({ error: "Nevažeći ID objave" });
@@ -4171,7 +4407,7 @@ Sitemap: ${siteUrl}/sitemap.xml
 
   // ─── Verified artist + collab ─────────────────────────────────────────────
 
-  app.patch("/api/admin/users/:id/verified", requireAdmin, async (req, res) => {
+  app.patch("/api/admin/users/:id/verified", requireRole("producer"), async (req, res) => {
     try {
       const userId = parseInt(req.params.id, 10);
       const { value } = req.body;
