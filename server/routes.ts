@@ -4355,7 +4355,7 @@ Sitemap: ${siteUrl}/sitemap.xml
       const { platform } = req.body;
       const allowed = ["spotify", "youtube", "apple_music", "soundcloud", "tidal", "deezer"];
       if (!platform || !allowed.includes(platform)) return res.status(400).json({ error: "Nevažeća platforma" });
-      await storage.recordSmartLinkClick(link.id, platform);
+      await storage.recordSmartLinkClick(link.id, platform, getClientIp(req));
       res.json({ ok: true });
     } catch {
       res.status(500).json({ error: "Greška na serveru" });

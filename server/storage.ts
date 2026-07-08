@@ -93,7 +93,7 @@ import {
   rightsProtections,
 } from "@shared/schema";
 import { db, pool } from "./db";
-import { eq, and, or, desc, sql, notInArray, inArray, gte, lte, count } from "drizzle-orm";
+import { eq, and, or, desc, sql, notInArray, inArray, gte, lte, count, countDistinct, isNotNull } from "drizzle-orm";
 import session from "express-session";
 import connectPg from "connect-pg-simple";
 import type { Store } from "express-session";
@@ -358,13 +358,13 @@ export interface IStorage {
 
   // Smart Links
   createSmartLink(data: InsertSmartLink): Promise<SmartLink>;
-  getAllSmartLinks(): Promise<Array<SmartLink & { totalClicks: number; clicksByPlatform: Record<string, number> }>>;
+  getAllSmartLinks(): Promise<Array<SmartLink & { totalClicks: number; clicksByPlatform: Record<string, number>; uniqueClicks: number }>>;
   getSmartLinkById(id: number): Promise<SmartLink | undefined>;
   getSmartLinkBySlug(slug: string): Promise<SmartLink | undefined>;
-  getSmartLinksByUserId(userId: number): Promise<SmartLink[]>;
+  getSmartLinksByUserId(userId: number): Promise<Array<SmartLink & { uniqueClicks: number }>>;
   updateSmartLink(id: number, data: Partial<InsertSmartLink>): Promise<SmartLink>;
   deleteSmartLink(id: number): Promise<void>;
-  recordSmartLinkClick(smartLinkId: number, platform: string): Promise<void>;
+  recordSmartLinkClick(smartLinkId: number, platform: string, ipAddress?: string | null): Promise<void>;
 
   // Client Portal
   getAllPortals(): Promise<Array<ClientPortal & { versionsCount: number; unresolvedComments: number }>>;
@@ -3055,13 +3055,14 @@ export class DatabaseStorage implements IStorage {
     return link!;
   }
 
-  async getAllSmartLinks(): Promise<Array<SmartLink & { totalClicks: number; clicksByPlatform: Record<string, number> }>> {
+  async getAllSmartLinks(): Promise<Array<SmartLink & { totalClicks: number; clicksByPlatform: Record<string, number>; uniqueClicks: number }>> {
     const links = await db.select().from(smartLinks).orderBy(desc(smartLinks.createdAt));
     const clicks = await db.select({
       smartLinkId: smartLinkClicks.smartLinkId,
       platform: smartLinkClicks.platform,
       cnt: count(smartLinkClicks.id),
     }).from(smartLinkClicks).groupBy(smartLinkClicks.smartLinkId, smartLinkClicks.platform);
+    const uniqueByLink = await this.getUniqueSmartLinkClickCounts();
 
     return links.map(link => {
       const linkClicks = clicks.filter(c => c.smartLinkId === link.id);
@@ -3071,8 +3072,18 @@ export class DatabaseStorage implements IStorage {
         clicksByPlatform[c.platform] = Number(c.cnt);
         total += Number(c.cnt);
       }
-      return { ...link, totalClicks: total, clicksByPlatform };
+      return { ...link, totalClicks: total, clicksByPlatform, uniqueClicks: uniqueByLink.get(link.id) ?? 0 };
     });
+  }
+
+  // Distinct-IP click counts, keyed by smartLinkId - clicks recorded before the
+  // ip_address column existed are excluded (isNotNull) rather than counted as one.
+  private async getUniqueSmartLinkClickCounts(): Promise<Map<number, number>> {
+    const rows = await db.select({
+      smartLinkId: smartLinkClicks.smartLinkId,
+      uniqueCnt: countDistinct(smartLinkClicks.ipAddress),
+    }).from(smartLinkClicks).where(isNotNull(smartLinkClicks.ipAddress)).groupBy(smartLinkClicks.smartLinkId);
+    return new Map(rows.map(r => [r.smartLinkId, Number(r.uniqueCnt)]));
   }
 
   async getSmartLinkById(id: number): Promise<SmartLink | undefined> {
@@ -3085,8 +3096,10 @@ export class DatabaseStorage implements IStorage {
     return link || undefined;
   }
 
-  async getSmartLinksByUserId(userId: number): Promise<SmartLink[]> {
-    return db.select().from(smartLinks).where(eq(smartLinks.userId, userId)).orderBy(desc(smartLinks.createdAt));
+  async getSmartLinksByUserId(userId: number): Promise<Array<SmartLink & { uniqueClicks: number }>> {
+    const links = await db.select().from(smartLinks).where(eq(smartLinks.userId, userId)).orderBy(desc(smartLinks.createdAt));
+    const uniqueByLink = await this.getUniqueSmartLinkClickCounts();
+    return links.map(link => ({ ...link, uniqueClicks: uniqueByLink.get(link.id) ?? 0 }));
   }
 
   async updateSmartLink(id: number, data: Partial<InsertSmartLink>): Promise<SmartLink> {
@@ -3098,8 +3111,8 @@ export class DatabaseStorage implements IStorage {
     await db.delete(smartLinks).where(eq(smartLinks.id, id));
   }
 
-  async recordSmartLinkClick(smartLinkId: number, platform: string): Promise<void> {
-    await db.insert(smartLinkClicks).values({ smartLinkId, platform });
+  async recordSmartLinkClick(smartLinkId: number, platform: string, ipAddress?: string | null): Promise<void> {
+    await db.insert(smartLinkClicks).values({ smartLinkId, platform, ipAddress: ipAddress ?? null });
   }
 
   async createPost(data: { userId: number; type: string; content?: string; audioUrl?: string; imageUrl?: string; collabTag?: string }): Promise<Post> {

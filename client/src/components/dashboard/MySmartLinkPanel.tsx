@@ -5,11 +5,11 @@ import { useToast } from "@/hooks/use-toast";
 import { PanelCard } from "@/components/ui/panel-card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Modal } from "@/components/admin/AdminModal";
-import { Music2, Edit2, Loader2, Upload, X } from "lucide-react";
+import { Music2, Edit2, Loader2, Upload, X, Users } from "lucide-react";
 import { SiSpotify, SiYoutube, SiApplemusic, SiSoundcloud, SiTidal } from "react-icons/si";
 import type { SmartLink } from "@shared/schema";
 
-type OwnedSmartLink = SmartLink;
+type OwnedSmartLink = SmartLink & { uniqueClicks: number };
 
 const PLATFORMS = [
   { key: "spotifyUrl" as const, label: "Spotify", color: "#1DB954", Icon: SiSpotify },
@@ -102,6 +102,9 @@ export function MySmartLinkPanel() {
               <div className="flex-1 min-w-0">
                 <p className="text-sm font-medium truncate">{link.title}</p>
                 <p className="text-xs text-muted-foreground truncate">{link.artist} · music.studioleflow.com/{link.slug}</p>
+              </div>
+              <div className="flex items-center gap-1 text-xs text-muted-foreground flex-shrink-0" title="Jedinstvenih poseta">
+                <Users className="w-3.5 h-3.5" /> {link.uniqueClicks}
               </div>
               <button
                 type="button"

@@ -1022,6 +1022,7 @@ export const smartLinkClicks = pgTable("smart_link_clicks", {
   id: serial("id").primaryKey(),
   smartLinkId: integer("smart_link_id").notNull().references(() => smartLinks.id, { onDelete: "cascade" }),
   platform: text("platform").notNull(),
+  ipAddress: text("ip_address"), // nullable - only present for clicks recorded after this field was added
   clickedAt: timestamp("clicked_at").defaultNow().notNull(),
 });
 

@@ -14,13 +14,13 @@ import {
 } from "@/components/ui/alert-dialog";
 import {
   Link2, Plus, Trash2, Edit2, Copy, ExternalLink, Music2,
-  Upload, X, Sparkles, Loader2, MousePointerClick, TrendingUp, UserPlus,
+  Upload, X, Sparkles, Loader2, MousePointerClick, TrendingUp, UserPlus, Users,
 } from "lucide-react";
 import { SiSpotify, SiYoutube, SiApplemusic, SiSoundcloud, SiTidal } from "react-icons/si";
 import { Modal } from "./AdminModal";
 import type { SmartLink } from "@shared/schema";
 
-type SmartLinkWithStats = SmartLink & { totalClicks: number; clicksByPlatform: Record<string, number> };
+type SmartLinkWithStats = SmartLink & { totalClicks: number; clicksByPlatform: Record<string, number>; uniqueClicks: number };
 
 const PLATFORMS = [
   { key: "spotifyUrl", label: "Spotify", color: "#1DB954", clickKey: "spotify", Icon: SiSpotify },
@@ -74,6 +74,7 @@ export function SmartLinksTab() {
 
   const { data: links, isLoading } = useQuery<SmartLinkWithStats[]>({ queryKey: ["/api/admin/smart-links"] });
   const totalClicks = links?.reduce((s, l) => s + l.totalClicks, 0) ?? 0;
+  const totalUniqueClicks = links?.reduce((s, l) => s + l.uniqueClicks, 0) ?? 0;
 
   const { data: assignableUsers = [] } = useQuery<Array<{ id: number; username: string }>>({
     queryKey: ["/api/admin/smart-links/assignable-users"],
@@ -450,10 +451,11 @@ export function SmartLinksTab() {
 
         {/* Stats */}
         {!!links?.length && (
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-3 gap-3">
             {[
               { icon: Link2, value: links.length, label: "Smart linkova", color: "rgba(99,82,255,0.12)", iconColor: "rgba(160,148,255,0.9)", borderColor: "rgba(99,82,255,0.15)" },
               { icon: MousePointerClick, value: totalClicks, label: "Ukupno klikova", color: "rgba(34,197,94,0.08)", iconColor: "rgba(74,222,128,0.85)", borderColor: "rgba(34,197,94,0.15)" },
+              { icon: Users, value: totalUniqueClicks, label: "Jedinstvenih poseta", color: "rgba(59,130,246,0.08)", iconColor: "rgba(96,165,250,0.9)", borderColor: "rgba(59,130,246,0.15)" },
             ].map(({ icon: Icon, value, label, color, iconColor, borderColor }) => (
               <div key={label} className="rounded-2xl px-5 py-4 flex items-center gap-3" style={{ background: color, border: `1px solid ${borderColor}` }}>
                 <div className="w-9 h-9 rounded-xl flex items-center justify-center shrink-0" style={{ background: "rgba(0,0,0,0.2)" }}>
@@ -514,8 +516,11 @@ export function SmartLinksTab() {
                     <span className="text-[10px] font-mono px-2 py-0.5 rounded-lg" style={{ color: "rgba(160,148,255,0.7)", background: "rgba(99,82,255,0.10)", border: "1px solid rgba(99,82,255,0.12)" }}>
                       music.studioleflow.com/{link.slug}
                     </span>
-                    <span className="flex items-center gap-1 text-[10px]" style={{ color: "rgba(255,255,255,0.30)" }}>
+                    <span className="flex items-center gap-1 text-[10px]" style={{ color: "rgba(255,255,255,0.30)" }} title="Ukupno klikova">
                       <TrendingUp className="w-3 h-3" /> {link.totalClicks}
+                    </span>
+                    <span className="flex items-center gap-1 text-[10px]" style={{ color: "rgba(255,255,255,0.30)" }} title="Jedinstvenih poseta (po IP adresi)">
+                      <Users className="w-3 h-3" /> {link.uniqueClicks}
                     </span>
                     <div className="flex items-center gap-1">
                       {PLATFORMS.filter(p => link[p.key as keyof SmartLink]).map(p => (
