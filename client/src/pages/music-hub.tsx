@@ -23,11 +23,11 @@ function TrackWave() {
 
 export default function MusicHubPage() {
   const prefersReducedMotion = useReducedMotion();
-  const { data: links, isLoading } = useQuery<SmartLinkSummary[]>({
+  const { data: links, isLoading, isError } = useQuery<SmartLinkSummary[]>({
     queryKey: ["/api/smart-links"],
     queryFn: async () => {
       const r = await fetch("/api/smart-links");
-      if (!r.ok) throw new Error("Failed to load");
+      if (!r.ok) throw new Error(`Failed to load smart links (${r.status})`);
       return r.json();
     },
   });
@@ -66,6 +66,11 @@ export default function MusicHubPage() {
                 </div>
               </div>
             ))}
+          </div>
+        ) : isError ? (
+          <div className="text-center py-16">
+            <p className="text-sm font-medium text-white/50">Nije moguće učitati pesme.</p>
+            <p className="text-xs text-white/25 mt-1.5">Osveži stranicu ili probaj ponovo za par minuta.</p>
           </div>
         ) : !links?.length ? (
           <div className="text-center py-16">

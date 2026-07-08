@@ -325,6 +325,7 @@ async function checkMaintenanceMode(req: any, res: any, next: any) {
     '/admin-login-verify',
     '/portal',    // Public client portal links must work even in maintenance
     '/l/',        // Public smart link pages must work even in maintenance
+    '/smart-links', // Public music.studioleflow.com hub list must work even in maintenance
     '/messages',  // Messaging must work in maintenance
     '/ws',        // WebSocket auth must work in maintenance
   ];
