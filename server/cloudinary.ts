@@ -59,15 +59,21 @@ export async function uploadRawImageToCloudinary(buffer: Buffer, folder: string,
 }
 
 // For arbitrary binaries (installer .exe, zip, etc.) that don't fit
-// Cloudinary's image processing pipeline. resource_type "raw" on this
-// account has a hard ~10MB cap that chunked/upload_large upload does NOT
-// bypass (that mechanism works around HTTP transfer timeouts, not an
-// account-level per-resource-type size restriction - confirmed by two
-// different chunking strategies both still getting rejected at the same
-// ceiling). resource_type "video" is Cloudinary's bucket for large files
-// on this account (already proven up to typical MP3 sizes by
-// uploadAudioToCloudinary below) and allows much larger files - used here
-// even though the file isn't actually video, which Cloudinary permits.
+// Cloudinary's image processing pipeline. This CLOUDINARY ACCOUNT has a
+// hard ~10MB "Maximum file size" restriction configured account-wide
+// (Settings -> Upload -> Media upload restrictions on the Cloudinary
+// dashboard, or a plan-tier cap) - confirmed by ruling out every other
+// explanation: the full file arrives at this server intact (verified via
+// a temporary debug route), and neither chunked upload (upload_chunked_stream)
+// nor file-based upload_large, nor switching resource_type from "raw" to
+// "video", changed the outcome - all rejected at the same cumulative-size
+// checkpoint. Chunked upload only works around HTTP transfer timeouts, not
+// an account-level stored-file-size cap, so no code-side change here can
+// bypass it. upload_large + chunking is kept anyway (harmless, and useful
+// once the account's limit is raised for files that still exceed a single
+// request's practical transfer size). See CLAUDE.md for the fix (raise the
+// limit in the Cloudinary dashboard) before uploading anything over ~10MB
+// through this function.
 export async function uploadRawFileToCloudinary(buffer: Buffer, folder: string, publicId: string): Promise<string> {
   const tmpPath = path.join(os.tmpdir(), `upload_${randomBytes(8).toString("hex")}`);
   await fs.promises.writeFile(tmpPath, buffer);
@@ -75,7 +81,7 @@ export async function uploadRawFileToCloudinary(buffer: Buffer, folder: string, 
     return await new Promise<string>((resolve, reject) => {
       cloudinary.uploader.upload_large(
         tmpPath,
-        { folder, public_id: publicId, resource_type: "video", overwrite: true, chunk_size: 6 * 1024 * 1024 },
+        { folder, public_id: publicId, resource_type: "raw", overwrite: true, chunk_size: 6 * 1024 * 1024 },
         (error, result) => {
           if (error || !result) return reject(error || new Error("Upload failed"));
           resolve(result.secure_url);
