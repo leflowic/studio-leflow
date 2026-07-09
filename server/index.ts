@@ -309,6 +309,9 @@ async function runMigrations() {
     await client7.query(`
       CREATE INDEX IF NOT EXISTS studio_jobs_stage_idx ON studio_jobs(stage);
     `);
+    await client7.query(`
+      ALTER TABLE studio_jobs ADD COLUMN IF NOT EXISTS review_requested_at TIMESTAMP;
+    `);
     log('[Migrations] Studio Jobs table ready', 'express');
   } catch (err: any) {
     log(`[Migrations] Warning on studio_jobs table: ${err.message}`, 'express');
@@ -389,6 +392,32 @@ async function runMigrations() {
     log(`[Migrations] Warning on rights_protections table: ${err.message}`, 'express');
   } finally {
     client9.release();
+  }
+
+  // ─── Testimonials (client-submitted, prompted after job delivery) ────────
+  const client10 = await pool.connect();
+  try {
+    await client10.query(`
+      CREATE TABLE IF NOT EXISTS testimonials (
+        id SERIAL PRIMARY KEY,
+        user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+        job_id INTEGER NOT NULL REFERENCES studio_jobs(id) ON DELETE CASCADE,
+        text TEXT NOT NULL,
+        status TEXT NOT NULL DEFAULT 'pending',
+        created_at TIMESTAMP NOT NULL DEFAULT NOW()
+      );
+    `);
+    await client10.query(`
+      CREATE INDEX IF NOT EXISTS testimonials_job_idx ON testimonials(job_id);
+    `);
+    await client10.query(`
+      CREATE INDEX IF NOT EXISTS testimonials_user_idx ON testimonials(user_id);
+    `);
+    log('[Migrations] Testimonials table ready', 'express');
+  } catch (err: any) {
+    log(`[Migrations] Warning on testimonials table: ${err.message}`, 'express');
+  } finally {
+    client10.release();
   }
 }
 

@@ -259,3 +259,20 @@ export function licenseDeliveryEmail(data: {
     ${notice('Ova poruka je automatski generisana. Za sva pitanja kontaktirajte nas na <a href="mailto:podrska@studioleflow.com" style="color:#6d28d9;text-decoration:none;">podrska@studioleflow.com</a>.')}
   `);
 }
+
+// Same link as the "Pročitaj recenzije na Google-u" CTA on home.tsx's Recenzije
+// section - a generic Google search results page, not a direct "write a
+// review" composer (no Google Place ID is on file yet). Swap both places if
+// a proper search.google.com/local/writereview?placeid=... link is obtained.
+const GOOGLE_REVIEW_URL = 'https://www.google.com/search?q=Studio+LeFlow+Beograd';
+
+export function reviewRequestEmail(data: { jobTitle: string; username: string }): string {
+  return wrap(`
+    ${heading('Vaša pesma je isporučena!')}
+    ${paragraph(`Ćao ${data.username}, obaveštavamo Vas da je posao "${data.jobTitle}" završen i isporučen. Nadamo se da ste zadovoljni rezultatom!`)}
+    ${paragraph('Vaše mišljenje nam puno znači - ako imate minut vremena, ostavite nam recenziju na Google-u. Pomaže drugim izvođačima da nas pronađu.')}
+    ${button('Ostavi recenziju', GOOGLE_REVIEW_URL)}
+    ${paragraph('Takođe možete ostaviti kratak utisak direktno na svom nalogu, na stranici gde pratite status svojih poslova - koristimo ih (uz Vašu dozvolu) kao prave citate na sajtu, umesto izmišljenih.')}
+    ${notice('Ova poruka je automatski generisana. Za sva pitanja kontaktirajte nas na <a href="mailto:podrska@studioleflow.com" style="color:#6d28d9;text-decoration:none;">podrska@studioleflow.com</a>.')}
+  `);
+}

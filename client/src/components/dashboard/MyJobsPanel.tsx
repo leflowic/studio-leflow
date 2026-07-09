@@ -1,8 +1,12 @@
-import { Fragment } from "react";
-import { useQuery } from "@tanstack/react-query";
+import { Fragment, useState } from "react";
+import { useMutation, useQuery } from "@tanstack/react-query";
+import { apiRequest, queryClient } from "@/lib/queryClient";
+import { useToast } from "@/hooks/use-toast";
 import { PanelCard } from "@/components/ui/panel-card";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Check, Music, CalendarClock } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { Textarea } from "@/components/ui/textarea";
+import { Check, Music, CalendarClock, MessageSquareHeart } from "lucide-react";
 import { format } from "date-fns";
 import { JOB_STAGES } from "@/lib/job-stages";
 
@@ -15,6 +19,7 @@ type MyJob = {
   updatedAt: string;
   contractNumber: string | null;
   invoiceNumber: string | null;
+  hasTestimonial: boolean;
 };
 
 function JobStepper({ stage }: { stage: string }) {
@@ -44,6 +49,55 @@ function JobStepper({ stage }: { stage: string }) {
           </Fragment>
         );
       })}
+    </div>
+  );
+}
+
+function TestimonialPrompt({ jobId }: { jobId: number }) {
+  const { toast } = useToast();
+  const [open, setOpen] = useState(false);
+  const [text, setText] = useState("");
+
+  const submitMutation = useMutation({
+    mutationFn: () => apiRequest("POST", "/api/user/testimonials", { jobId, text }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/user/jobs"] });
+      toast({ title: "Hvala na utisku!" });
+    },
+    onError: () => toast({ title: "Greška", description: "Utisak nije poslat, pokušaj ponovo", variant: "destructive" }),
+  });
+
+  if (!open) {
+    return (
+      <button
+        type="button"
+        onClick={() => setOpen(true)}
+        className="flex items-center gap-1.5 text-xs text-primary hover:underline"
+      >
+        <MessageSquareHeart className="w-3.5 h-3.5" />
+        Ostavi utisak o saradnji
+      </button>
+    );
+  }
+
+  return (
+    <div className="space-y-2">
+      <Textarea
+        value={text}
+        onChange={e => setText(e.target.value)}
+        placeholder="Kako je proteklo snimanje, da li si zadovoljan rezultatom..."
+        className="text-sm min-h-20"
+      />
+      <div className="flex items-center gap-2">
+        <Button
+          size="sm"
+          disabled={text.trim().length < 10 || submitMutation.isPending}
+          onClick={() => submitMutation.mutate()}
+        >
+          {submitMutation.isPending ? "Šaljem..." : "Pošalji utisak"}
+        </Button>
+        <Button size="sm" variant="ghost" onClick={() => setOpen(false)}>Otkaži</Button>
+      </div>
     </div>
   );
 }
@@ -89,6 +143,10 @@ export function MyJobsPanel() {
               <p className="text-xs text-muted-foreground">
                 Trenutna faza: <span className="font-medium text-foreground">{currentLabel}</span>
               </p>
+              {job.stage === "isporuceno" && !job.hasTestimonial && <TestimonialPrompt jobId={job.id} />}
+              {job.stage === "isporuceno" && job.hasTestimonial && (
+                <p className="text-xs text-muted-foreground italic">Hvala na utisku!</p>
+              )}
             </div>
           );
         })}

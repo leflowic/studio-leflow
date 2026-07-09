@@ -2,9 +2,9 @@ import type { Express, Response } from "express";
 import { createServer, type Server } from "http";
 import { storage } from "./storage";
 import { wsHelpers, notifyUser, broadcastToUser, getOnlineUsersSnapshot } from "./websocket-helpers";
-import { insertContactSubmissionSchema, insertCmsContentSchema, insertCmsMediaSchema, insertVideoSpotSchema, insertUserSongSchema, insertNewsletterSubscriberSchema, insertInvoiceSchema, insertCommunityMessageSchema, insertSiteAnnouncementSchema, mixMasterContractDataSchema, copyrightTransferContractDataSchema, instrumentalSaleContractDataSchema, insertSmartLinkSchema, insertStudioJobSchema, JOB_STAGES, insertNewsArticleSchema, insertRightsProtectionSchema, type CmsContent, type CmsMedia, type VideoSpot, type UserSong } from "@shared/schema";
+import { insertContactSubmissionSchema, insertCmsContentSchema, insertCmsMediaSchema, insertVideoSpotSchema, insertUserSongSchema, insertNewsletterSubscriberSchema, insertInvoiceSchema, insertCommunityMessageSchema, insertSiteAnnouncementSchema, mixMasterContractDataSchema, copyrightTransferContractDataSchema, instrumentalSaleContractDataSchema, insertSmartLinkSchema, insertStudioJobSchema, JOB_STAGES, insertNewsArticleSchema, insertRightsProtectionSchema, insertTestimonialSchema, type CmsContent, type CmsMedia, type VideoSpot, type UserSong } from "@shared/schema";
 import { sendEmail, getLastVerificationCode } from "./resend-client";
-import { resendVerificationEmail, adminLoginEmail, contactFormEmail, newsletterConfirmEmail, licenseDeliveryEmail, customEmail } from "./email-templates";
+import { resendVerificationEmail, adminLoginEmail, contactFormEmail, newsletterConfirmEmail, licenseDeliveryEmail, customEmail, reviewRequestEmail } from "./email-templates";
 import { setupAuth, hashPassword, comparePasswords } from "./auth";
 import multer from "multer";
 import fs from "fs";
@@ -3342,7 +3342,26 @@ Sitemap: ${siteUrl}/sitemap.xml
       if (!stage || !(JOB_STAGES as readonly string[]).includes(stage)) {
         return res.status(400).json({ error: "Nevažeća faza posla" });
       }
+      const job = await storage.getJob(jobId);
+      if (!job) return res.status(404).json({ error: "Posao nije pronađen" });
       await storage.updateJobStage(jobId, stage);
+
+      // Auto review-request: fires once, the first time a job is delivered -
+      // reviewRequestedAt guards against re-sending if the producer moves it
+      // back out of "isporuceno" and delivers it again later.
+      if (stage === "isporuceno" && job.stage !== "isporuceno" && !job.reviewRequestedAt) {
+        storage.markReviewRequested(jobId).catch(() => {});
+        notifyUser(job.userId, "Posao je isporučen!", "Ostavite nam recenziju ili utisak na Dashboard-u.");
+        storage.getUser(job.userId).then(client => {
+          if (!client) return;
+          return sendEmail({
+            to: client.email,
+            subject: "Vaša pesma je isporučena - Studio LeFlow",
+            html: reviewRequestEmail({ jobTitle: job.title, username: client.username }),
+          });
+        }).catch(error => console.error("[JOBS] Review request email failed:", error));
+      }
+
       res.json({ success: true });
     } catch (error: any) {
       console.error("[JOBS] Update stage error:", error);
@@ -3385,6 +3404,25 @@ Sitemap: ${siteUrl}/sitemap.xml
       const jobs = await storage.getUserJobs(req.jwtUser!.id);
       res.json(jobs);
     } catch {
+      res.status(500).json({ error: "Greška na serveru" });
+    }
+  });
+
+  // Client-submitted testimonial for one of their own jobs - prompted after
+  // delivery (see the review-request email/notification above). One per job.
+  app.post("/api/user/testimonials", requireVerifiedEmail, async (req, res) => {
+    try {
+      const data = insertTestimonialSchema.omit({ userId: true }).parse(req.body);
+      const job = await storage.getJob(data.jobId);
+      if (!job || job.userId !== req.jwtUser!.id) {
+        return res.status(404).json({ error: "Posao nije pronađen" });
+      }
+      const existing = await storage.getTestimonialForJob(data.jobId);
+      if (existing) return res.status(409).json({ error: "Utisak je već poslat za ovaj posao" });
+      const testimonial = await storage.createTestimonial({ ...data, userId: req.jwtUser!.id });
+      res.status(201).json(testimonial);
+    } catch (error: any) {
+      if (error?.issues) return res.status(400).json({ error: "Nevažeći podaci" });
       res.status(500).json({ error: "Greška na serveru" });
     }
   });

@@ -817,6 +817,10 @@ export const studioJobs = pgTable("studio_jobs", {
   createdAt: timestamp("created_at").defaultNow().notNull(),
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
   createdBy: integer("created_by").notNull().references(() => users.id), // Admin who created the job
+  // Set once, the first time a job's stage becomes "isporuceno" - guards the
+  // auto review-request email/notification against firing again if a
+  // producer moves the job back out of "isporuceno" and delivers it again.
+  reviewRequestedAt: timestamp("review_requested_at"),
 }, (table) => ({
   userIdx: index("studio_jobs_user_idx").on(table.userId),
   stageIdx: index("studio_jobs_stage_idx").on(table.stage),
@@ -839,6 +843,35 @@ export const insertStudioJobSchema = createInsertSchema(studioJobs).omit({
 
 export type InsertStudioJob = z.infer<typeof insertStudioJobSchema>;
 export type StudioJob = typeof studioJobs.$inferSelect;
+
+// Client-submitted testimonials, prompted automatically when their job hits
+// "isporuceno" (see the review-request email/notification in routes.ts).
+// status starts "pending" - an admin must approve before it's usable as a
+// real public quote (CLAUDE.md forbids fake hardcoded testimonials; this is
+// the real, sourced replacement for that).
+export const testimonials = pgTable("testimonials", {
+  id: serial("id").primaryKey(),
+  userId: integer("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  jobId: integer("job_id").notNull().references(() => studioJobs.id, { onDelete: "cascade" }),
+  text: text("text").notNull(),
+  status: text("status").notNull().default("pending"), // pending | approved | rejected
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+}, (table) => ({
+  jobIdx: index("testimonials_job_idx").on(table.jobId),
+  userIdx: index("testimonials_user_idx").on(table.userId),
+}));
+
+export const insertTestimonialSchema = createInsertSchema(testimonials).omit({
+  id: true,
+  status: true,
+  createdAt: true,
+}).extend({
+  text: z.string().trim().min(10, "Utisak mora imati bar 10 karaktera").max(1000, "Utisak je predugačak"),
+  jobId: z.number().int().positive(),
+});
+
+export type InsertTestimonial = z.infer<typeof insertTestimonialSchema>;
+export type Testimonial = typeof testimonials.$inferSelect;
 
 // News articles - /news portal (music news, releases, artist coverage), editable by
 // "editor"/"marketing" admin roles. SEO fields are stored per-article so each post can rank

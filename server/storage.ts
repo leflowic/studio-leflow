@@ -85,6 +85,9 @@ import {
   type InsertStudioJob,
   studioJobs,
   JOB_STAGES,
+  type Testimonial,
+  type InsertTestimonial,
+  testimonials,
   type NewsArticle,
   type InsertNewsArticle,
   newsArticles,
@@ -283,10 +286,16 @@ export interface IStorage {
   // Studio Jobs (producer pipeline board)
   createJob(data: InsertStudioJob & { createdBy: number }): Promise<StudioJob>;
   getAllJobs(): Promise<Array<StudioJob & { username: string; avatarUrl: string | null; contractNumber: string | null; invoiceNumber: string | null }>>;
-  getUserJobs(userId: number): Promise<Array<Pick<StudioJob, "id" | "title" | "stage" | "deliveryDate" | "createdAt" | "updatedAt"> & { contractNumber: string | null; invoiceNumber: string | null }>>;
+  getUserJobs(userId: number): Promise<Array<Pick<StudioJob, "id" | "title" | "stage" | "deliveryDate" | "createdAt" | "updatedAt"> & { contractNumber: string | null; invoiceNumber: string | null; hasTestimonial: boolean }>>;
+  getJob(id: number): Promise<StudioJob | undefined>;
   updateJobStage(id: number, stage: string): Promise<void>;
   updateJob(id: number, data: Partial<InsertStudioJob>): Promise<void>;
   deleteJob(id: number): Promise<void>;
+  markReviewRequested(id: number): Promise<void>;
+
+  // Testimonials (client-submitted, prompted after job delivery)
+  createTestimonial(data: InsertTestimonial): Promise<Testimonial>;
+  getTestimonialForJob(jobId: number): Promise<Testimonial | undefined>;
 
   // News Articles (/news portal)
   createArticle(data: InsertNewsArticle & { createdBy: number }): Promise<NewsArticle>;
@@ -2124,6 +2133,7 @@ export class DatabaseStorage implements IStorage {
         createdAt: studioJobs.createdAt,
         updatedAt: studioJobs.updatedAt,
         createdBy: studioJobs.createdBy,
+        reviewRequestedAt: studioJobs.reviewRequestedAt,
         username: users.username,
         avatarUrl: users.avatarUrl,
         contractNumber: contracts.contractNumber,
@@ -2140,7 +2150,7 @@ export class DatabaseStorage implements IStorage {
   // Client-facing "gde mi je pesma" view - deliberately narrower than
   // getAllJobs(): no notes (internal-only per JobsBoard's placeholder copy),
   // no createdBy/username/avatarUrl (the client already knows who they are).
-  async getUserJobs(userId: number): Promise<Array<Pick<StudioJob, "id" | "title" | "stage" | "deliveryDate" | "createdAt" | "updatedAt"> & { contractNumber: string | null; invoiceNumber: string | null }>> {
+  async getUserJobs(userId: number): Promise<Array<Pick<StudioJob, "id" | "title" | "stage" | "deliveryDate" | "createdAt" | "updatedAt"> & { contractNumber: string | null; invoiceNumber: string | null; hasTestimonial: boolean }>> {
     const results = await db
       .select({
         id: studioJobs.id,
@@ -2151,18 +2161,40 @@ export class DatabaseStorage implements IStorage {
         updatedAt: studioJobs.updatedAt,
         contractNumber: contracts.contractNumber,
         invoiceNumber: invoices.invoiceNumber,
+        testimonialId: testimonials.id,
       })
       .from(studioJobs)
       .leftJoin(contracts, eq(studioJobs.contractId, contracts.id))
       .leftJoin(invoices, eq(studioJobs.invoiceId, invoices.id))
+      .leftJoin(testimonials, eq(testimonials.jobId, studioJobs.id))
       .where(eq(studioJobs.userId, userId))
       .orderBy(desc(studioJobs.updatedAt));
-    return results;
+    return results.map(({ testimonialId, ...job }) => ({ ...job, hasTestimonial: testimonialId != null }));
+  }
+
+  async getJob(id: number): Promise<StudioJob | undefined> {
+    const [job] = await db.select().from(studioJobs).where(eq(studioJobs.id, id));
+    return job || undefined;
   }
 
   async updateJobStage(id: number, stage: string): Promise<void> {
     if (!(JOB_STAGES as readonly string[]).includes(stage)) throw new Error("Nevažeća faza posla");
     await db.update(studioJobs).set({ stage, updatedAt: new Date() }).where(eq(studioJobs.id, id));
+  }
+
+  async markReviewRequested(id: number): Promise<void> {
+    await db.update(studioJobs).set({ reviewRequestedAt: new Date() }).where(eq(studioJobs.id, id));
+  }
+
+  async createTestimonial(data: InsertTestimonial): Promise<Testimonial> {
+    const [testimonial] = await db.insert(testimonials).values(data).returning();
+    if (!testimonial) throw new Error("Failed to create testimonial");
+    return testimonial;
+  }
+
+  async getTestimonialForJob(jobId: number): Promise<Testimonial | undefined> {
+    const [testimonial] = await db.select().from(testimonials).where(eq(testimonials.jobId, jobId));
+    return testimonial || undefined;
   }
 
   async updateJob(id: number, data: Partial<InsertStudioJob>): Promise<void> {
