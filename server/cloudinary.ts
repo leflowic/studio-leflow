@@ -1,5 +1,9 @@
 import { v2 as cloudinary } from "cloudinary";
 import multer from "multer";
+import fs from "fs";
+import os from "os";
+import path from "path";
+import { randomBytes } from "crypto";
 
 cloudinary.config({
   cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
@@ -56,22 +60,31 @@ export async function uploadRawImageToCloudinary(buffer: Buffer, folder: string,
 
 // resource_type "raw" - Cloudinary's bucket for arbitrary binaries (installer
 // .exe, zip, etc.) that don't fit its image/video processing pipelines.
-// Uses upload_chunked_stream (chunked upload) instead of upload_stream - this
-// account's plan caps a single synchronous upload request at 10MB ("File
-// size too large. Got X. Maximum is 10485760."), which the desktop app
-// installer (~80MB) blows past. Chunked upload splits it into pieces under
-// that per-request ceiling and Cloudinary reassembles them server-side.
+// This account's plan caps a single synchronous upload request at 10MB
+// ("File size too large. Got X. Maximum is 10485760."), which the desktop
+// app installer (~80MB) blows past. upload_chunked_stream(buffer) doesn't
+// reliably slice a single stream.end(buffer) write into real sub-10MB HTTP
+// requests (still got rejected at 12MB). upload_large() reading from an
+// actual file on disk is Cloudinary's documented, reliable path for this -
+// it manages the chunked/resumable upload itself. Buffer is spilled to a
+// temp file first since multer keeps it in memory.
 export async function uploadRawFileToCloudinary(buffer: Buffer, folder: string, publicId: string): Promise<string> {
-  return new Promise((resolve, reject) => {
-    const stream = cloudinary.uploader.upload_chunked_stream(
-      { folder, public_id: publicId, resource_type: "raw", overwrite: true, chunk_size: 6 * 1024 * 1024 },
-      (error, result) => {
-        if (error || !result) return reject(error || new Error("Upload failed"));
-        resolve(result.secure_url);
-      }
-    );
-    stream.end(buffer);
-  });
+  const tmpPath = path.join(os.tmpdir(), `upload_${randomBytes(8).toString("hex")}`);
+  await fs.promises.writeFile(tmpPath, buffer);
+  try {
+    return await new Promise<string>((resolve, reject) => {
+      cloudinary.uploader.upload_large(
+        tmpPath,
+        { folder, public_id: publicId, resource_type: "raw", overwrite: true, chunk_size: 6 * 1024 * 1024 },
+        (error, result) => {
+          if (error || !result) return reject(error || new Error("Upload failed"));
+          resolve(result.secure_url);
+        }
+      );
+    });
+  } finally {
+    fs.promises.unlink(tmpPath).catch(() => {});
+  }
 }
 
 export async function uploadAudioToCloudinary(buffer: Buffer, folder: string, filename: string): Promise<string> {
