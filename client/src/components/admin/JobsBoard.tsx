@@ -17,10 +17,65 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Plus, Trash2, FileText, Receipt, FolderKanban, CalendarClock } from "lucide-react";
+import { Plus, Trash2, FileText, Receipt, FolderKanban, CalendarClock, TriangleAlert } from "lucide-react";
 import { format } from "date-fns";
 import type { User } from "@shared/schema";
 import { JOB_STAGES as STAGES } from "@/lib/job-stages";
+
+type StageAnalytics = {
+  avgDaysByStage: Array<{ stage: string; avgDays: number; sampleCount: number }>;
+  stuckJobs: Array<{ jobId: number; title: string; stage: string; daysInStage: number }>;
+};
+
+function stageLabel(value: string) {
+  return STAGES.find(s => s.value === value)?.label ?? value;
+}
+
+function BottleneckPanel() {
+  const { data } = useQuery<StageAnalytics>({ queryKey: ["/api/admin/jobs/analytics"] });
+  if (!data) return null;
+
+  // "Isporuceno" is terminal - there's no "next stage" to measure a duration
+  // against, so it never has samples. Not useful in a "where do jobs get
+  // stuck" view.
+  const bars = data.avgDaysByStage.filter(s => s.stage !== "isporuceno" && s.sampleCount > 0);
+  if (bars.length === 0 && data.stuckJobs.length === 0) return null;
+  const maxDays = Math.max(...bars.map(b => b.avgDays), 1);
+
+  return (
+    <Card className="bg-zinc-900/50 border-zinc-800">
+      <CardContent className="pt-6 space-y-5">
+        {bars.length > 0 && (
+          <div className="space-y-2.5">
+            <h3 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Prosečno vreme po fazi</h3>
+            {bars.map(b => (
+              <div key={b.stage} className="flex items-center gap-3">
+                <span className="text-xs text-muted-foreground w-24 shrink-0 truncate">{stageLabel(b.stage)}</span>
+                <div className="flex-1 h-2 rounded-full bg-zinc-800 overflow-hidden">
+                  <div className="h-full rounded-full bg-violet-500" style={{ width: `${(b.avgDays / maxDays) * 100}%` }} />
+                </div>
+                <span className="text-xs font-medium w-16 shrink-0 text-right">{b.avgDays} {b.avgDays === 1 ? "dan" : "dana"}</span>
+              </div>
+            ))}
+          </div>
+        )}
+        {data.stuckJobs.length > 0 && (
+          <div className="space-y-2 pt-1 border-t border-zinc-800/70">
+            <h3 className="text-xs font-semibold text-amber-500 uppercase tracking-wider flex items-center gap-1.5">
+              <TriangleAlert className="w-3.5 h-3.5" /> Duže nego obično u trenutnoj fazi
+            </h3>
+            {data.stuckJobs.map(j => (
+              <div key={j.jobId} className="text-xs text-muted-foreground flex items-center justify-between gap-2">
+                <span className="truncate">{j.title} <span className="text-muted-foreground/60">- {stageLabel(j.stage)}</span></span>
+                <span className="shrink-0 font-medium text-amber-500/90">{j.daysInStage} {j.daysInStage === 1 ? "dan" : "dana"}</span>
+              </div>
+            ))}
+          </div>
+        )}
+      </CardContent>
+    </Card>
+  );
+}
 
 interface Job {
   id: number;
@@ -124,6 +179,8 @@ export function JobsBoard() {
           {showForm ? "Zatvori" : "Dodaj posao"}
         </Button>
       </div>
+
+      <BottleneckPanel />
 
       {showForm && (
         <Card className="bg-zinc-900/50 border-zinc-800">

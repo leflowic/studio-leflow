@@ -419,6 +419,35 @@ async function runMigrations() {
   } finally {
     client10.release();
   }
+
+  // ─── Job Stage History (Radna tabla bottleneck analytics) ────────────────
+  const client11 = await pool.connect();
+  try {
+    await client11.query(`
+      CREATE TABLE IF NOT EXISTS job_stage_history (
+        id SERIAL PRIMARY KEY,
+        job_id INTEGER NOT NULL REFERENCES studio_jobs(id) ON DELETE CASCADE,
+        stage TEXT NOT NULL,
+        entered_at TIMESTAMP NOT NULL DEFAULT NOW()
+      );
+    `);
+    await client11.query(`
+      CREATE INDEX IF NOT EXISTS job_stage_history_job_idx ON job_stage_history(job_id);
+    `);
+    // Backfill: every existing job that has no history row yet gets one
+    // synthesized from its current stage/createdAt, so analytics has a
+    // starting point instead of an empty table after this deploy.
+    await client11.query(`
+      INSERT INTO job_stage_history (job_id, stage, entered_at)
+      SELECT id, stage, created_at FROM studio_jobs
+      WHERE id NOT IN (SELECT DISTINCT job_id FROM job_stage_history);
+    `);
+    log('[Migrations] Job Stage History table ready', 'express');
+  } catch (err: any) {
+    log(`[Migrations] Warning on job_stage_history table: ${err.message}`, 'express');
+  } finally {
+    client11.release();
+  }
 }
 
 const app = express();

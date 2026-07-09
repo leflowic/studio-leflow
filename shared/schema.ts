@@ -844,6 +844,21 @@ export const insertStudioJobSchema = createInsertSchema(studioJobs).omit({
 export type InsertStudioJob = z.infer<typeof insertStudioJobSchema>;
 export type StudioJob = typeof studioJobs.$inferSelect;
 
+// One row per stage a job has ever entered (including its initial stage at
+// creation) - lets us compute how long jobs actually spend in each stage
+// (Radna tabla bottleneck analytics), which a single `stage` column on
+// studio_jobs can't answer since it's overwritten on every transition.
+export const jobStageHistory = pgTable("job_stage_history", {
+  id: serial("id").primaryKey(),
+  jobId: integer("job_id").notNull().references(() => studioJobs.id, { onDelete: "cascade" }),
+  stage: text("stage").notNull(),
+  enteredAt: timestamp("entered_at").defaultNow().notNull(),
+}, (table) => ({
+  jobIdx: index("job_stage_history_job_idx").on(table.jobId),
+}));
+
+export type JobStageHistory = typeof jobStageHistory.$inferSelect;
+
 // Client-submitted testimonials, prompted automatically when their job hits
 // "isporuceno" (see the review-request email/notification in routes.ts).
 // status starts "pending" - an admin must approve before it's usable as a

@@ -3408,6 +3408,16 @@ Sitemap: ${siteUrl}/sitemap.xml
     }
   });
 
+  app.get("/api/admin/jobs/analytics", requireRole("producer"), async (_req, res) => {
+    try {
+      const analytics = await storage.getJobStageAnalytics();
+      res.json(analytics);
+    } catch (error) {
+      console.error("[JOBS] Analytics error:", error);
+      res.status(500).json({ error: "Greška na serveru" });
+    }
+  });
+
   // Admin moderation for client-submitted testimonials - the real, sourced
   // quotes CLAUDE.md's "no fake testimonials" rule points to instead.
   app.get("/api/admin/testimonials", requireRole("producer", "marketing"), async (_req, res) => {

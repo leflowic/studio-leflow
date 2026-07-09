@@ -85,6 +85,7 @@ import {
   type InsertStudioJob,
   studioJobs,
   JOB_STAGES,
+  jobStageHistory,
   type Testimonial,
   type InsertTestimonial,
   testimonials,
@@ -292,6 +293,10 @@ export interface IStorage {
   updateJob(id: number, data: Partial<InsertStudioJob>): Promise<void>;
   deleteJob(id: number): Promise<void>;
   markReviewRequested(id: number): Promise<void>;
+  getJobStageAnalytics(): Promise<{
+    avgDaysByStage: Array<{ stage: string; avgDays: number; sampleCount: number }>;
+    stuckJobs: Array<{ jobId: number; title: string; stage: string; daysInStage: number }>;
+  }>;
 
   // Testimonials (client-submitted, prompted after job delivery)
   createTestimonial(data: InsertTestimonial): Promise<Testimonial>;
@@ -2117,6 +2122,7 @@ export class DatabaseStorage implements IStorage {
     };
     const [job] = await db.insert(studioJobs).values([jobData]).returning();
     if (!job) throw new Error("Failed to create job");
+    await db.insert(jobStageHistory).values({ jobId: job.id, stage: job.stage });
     return job;
   }
 
@@ -2182,6 +2188,79 @@ export class DatabaseStorage implements IStorage {
   async updateJobStage(id: number, stage: string): Promise<void> {
     if (!(JOB_STAGES as readonly string[]).includes(stage)) throw new Error("Nevažeća faza posla");
     await db.update(studioJobs).set({ stage, updatedAt: new Date() }).where(eq(studioJobs.id, id));
+    await db.insert(jobStageHistory).values({ jobId: id, stage });
+  }
+
+  // Radna tabla bottleneck analytics: average time spent per stage (only
+  // counting stage instances a job has since moved on from - an in-progress
+  // stage isn't a "completed" duration yet), plus jobs currently sitting in
+  // their stage longer than that stage's average - the actual "uska grla"
+  // (bottleneck) signal a producer wants to act on today.
+  async getJobStageAnalytics(): Promise<{
+    avgDaysByStage: Array<{ stage: string; avgDays: number; sampleCount: number }>;
+    stuckJobs: Array<{ jobId: number; title: string; stage: string; daysInStage: number }>;
+  }> {
+    const history = await db
+      .select({ jobId: jobStageHistory.jobId, stage: jobStageHistory.stage, enteredAt: jobStageHistory.enteredAt })
+      .from(jobStageHistory)
+      .orderBy(jobStageHistory.jobId, jobStageHistory.enteredAt);
+
+    const byJob = new Map<number, Array<{ stage: string; enteredAt: Date }>>();
+    for (const row of history) {
+      if (!byJob.has(row.jobId)) byJob.set(row.jobId, []);
+      byJob.get(row.jobId)!.push({ stage: row.stage, enteredAt: row.enteredAt });
+    }
+
+    const durationsByStage = new Map<string, number[]>();
+    const now = Date.now();
+    const currentStageEntries: Array<{ jobId: number; stage: string; enteredAt: Date }> = [];
+
+    for (const [jobId, entries] of byJob) {
+      for (let i = 0; i < entries.length; i++) {
+        const entry = entries[i]!;
+        const next = entries[i + 1];
+        if (next) {
+          const days = (next.enteredAt.getTime() - entry.enteredAt.getTime()) / 86_400_000;
+          if (!durationsByStage.has(entry.stage)) durationsByStage.set(entry.stage, []);
+          durationsByStage.get(entry.stage)!.push(days);
+        } else {
+          currentStageEntries.push({ jobId, stage: entry.stage, enteredAt: entry.enteredAt });
+        }
+      }
+    }
+
+    const avgDaysByStage = JOB_STAGES.map(stage => {
+      const durations = durationsByStage.get(stage) ?? [];
+      const avgDays = durations.length ? durations.reduce((a, b) => a + b, 0) / durations.length : 0;
+      return { stage, avgDays: Math.round(avgDays * 10) / 10, sampleCount: durations.length };
+    });
+    const avgByStageMap = new Map<string, number>(avgDaysByStage.map(s => [s.stage, s.avgDays]));
+
+    // "Isporuceno" is a terminal stage, not a bottleneck to flag.
+    const activeJobIds = currentStageEntries
+      .filter(e => e.stage !== "isporuceno")
+      .map(e => ({ ...e, daysInStage: (now - e.enteredAt.getTime()) / 86_400_000 }))
+      .filter(e => e.daysInStage > (avgByStageMap.get(e.stage) ?? 0))
+      .sort((a, b) => b.daysInStage - a.daysInStage)
+      .slice(0, 10);
+
+    if (activeJobIds.length === 0) {
+      return { avgDaysByStage, stuckJobs: [] };
+    }
+    const jobs = await db
+      .select({ id: studioJobs.id, title: studioJobs.title })
+      .from(studioJobs)
+      .where(inArray(studioJobs.id, activeJobIds.map(j => j.jobId)));
+    const titleById = new Map(jobs.map(j => [j.id, j.title]));
+
+    const stuckJobs = activeJobIds.map(e => ({
+      jobId: e.jobId,
+      title: titleById.get(e.jobId) ?? "Nepoznat posao",
+      stage: e.stage,
+      daysInStage: Math.round(e.daysInStage * 10) / 10,
+    }));
+
+    return { avgDaysByStage, stuckJobs };
   }
 
   async markReviewRequested(id: number): Promise<void> {
