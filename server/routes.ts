@@ -3408,6 +3408,32 @@ Sitemap: ${siteUrl}/sitemap.xml
     }
   });
 
+  // Admin moderation for client-submitted testimonials - the real, sourced
+  // quotes CLAUDE.md's "no fake testimonials" rule points to instead.
+  app.get("/api/admin/testimonials", requireRole("producer", "marketing"), async (_req, res) => {
+    try {
+      const list = await storage.getAllTestimonials();
+      res.json(list);
+    } catch {
+      res.status(500).json({ error: "Greška na serveru" });
+    }
+  });
+
+  app.patch("/api/admin/testimonials/:id", requireRole("producer", "marketing"), async (req, res) => {
+    try {
+      const id = parseInt(req.params.id, 10);
+      const { status } = req.body;
+      if (isNaN(id)) return res.status(400).json({ error: "Nevažeći ID" });
+      if (status !== "approved" && status !== "rejected") {
+        return res.status(400).json({ error: "Nevažeći status" });
+      }
+      await storage.updateTestimonialStatus(id, status);
+      res.json({ success: true });
+    } catch {
+      res.status(500).json({ error: "Greška na serveru" });
+    }
+  });
+
   // Client-submitted testimonial for one of their own jobs - prompted after
   // delivery (see the review-request email/notification above). One per job.
   app.post("/api/user/testimonials", requireVerifiedEmail, async (req, res) => {

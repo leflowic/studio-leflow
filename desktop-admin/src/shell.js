@@ -26,6 +26,7 @@ const ADMIN_NAV = [
     group: "Posao",
     items: [
       { value: "jobs", label: "Radna tabla", icon: "kanban", roles: ["producer"] },
+      { value: "testimonials", label: "Utisci", icon: "message-heart", roles: ["producer", "marketing"] },
       { value: "contracts", label: "Licence", icon: "file-text", roles: ["producer"] },
       { value: "rights-protection", label: "Zaštita prava", icon: "shield-check", roles: ["producer"] },
       { value: "invoices", label: "Fakture", icon: "receipt", roles: ["producer"] },
@@ -57,6 +58,7 @@ const ICONS = {
   kanban: '<rect x="3" y="4" width="18" height="17" rx="2"/><line x1="9" y1="8" x2="9" y2="21"/><line x1="15" y1="8" x2="15" y2="14"/>',
   "file-text": '<path d="M14 3H7a2 2 0 00-2 2v14a2 2 0 002 2h10a2 2 0 002-2V8z"/><path d="M14 3v5h5"/><path d="M9 13h6M9 17h6"/>',
   "shield-check": '<path d="M12 2l8 3.5v6c0 5-3.4 8.7-8 10.5-4.6-1.8-8-5.5-8-10.5v-6z"/><path d="M9 12l2 2 4-4"/>',
+  "message-heart": '<path d="M14 9a2 2 0 01-2 2H6l-4 4V4a2 2 0 012-2h8a2 2 0 012 2z"/><path d="M18.5 8.5c-1 0-1.8.6-2 1.4-.2-.8-1-1.4-2-1.4a2 2 0 00-2 2c0 1.8 2.3 3 4 4.6 1.7-1.6 4-2.8 4-4.6a2 2 0 00-2-2z"/>',
   receipt: '<path d="M6 2h12v19l-2.5-1.5L13 21l-2.5-1.5L8 21l-2-1.5z"/><path d="M9 8h6M9 12h6"/>',
   calendar: '<rect x="3" y="4" width="18" height="17" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/>',
   mail: '<rect x="2" y="4" width="20" height="16" rx="2"/><path d="M2 6l10 7 10-7"/>',

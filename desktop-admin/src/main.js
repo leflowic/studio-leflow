@@ -71,7 +71,7 @@ function suppressBrowserShortcuts(webContents) {
 const KNOWN_TABS = new Set([
   "dashboard", "users", "messages", "katastar", "portal",
   "projects", "comments", "user-songs", "game", "smart-links", "news",
-  "jobs", "contracts", "rights-protection", "invoices", "calendar",
+  "jobs", "testimonials", "contracts", "rights-protection", "invoices", "calendar",
   "newsletter", "email", "settings",
 ]);
 

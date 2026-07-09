@@ -296,6 +296,8 @@ export interface IStorage {
   // Testimonials (client-submitted, prompted after job delivery)
   createTestimonial(data: InsertTestimonial): Promise<Testimonial>;
   getTestimonialForJob(jobId: number): Promise<Testimonial | undefined>;
+  getAllTestimonials(): Promise<Array<Testimonial & { username: string; avatarUrl: string | null; jobTitle: string }>>;
+  updateTestimonialStatus(id: number, status: "approved" | "rejected"): Promise<void>;
 
   // News Articles (/news portal)
   createArticle(data: InsertNewsArticle & { createdBy: number }): Promise<NewsArticle>;
@@ -2195,6 +2197,30 @@ export class DatabaseStorage implements IStorage {
   async getTestimonialForJob(jobId: number): Promise<Testimonial | undefined> {
     const [testimonial] = await db.select().from(testimonials).where(eq(testimonials.jobId, jobId));
     return testimonial || undefined;
+  }
+
+  async getAllTestimonials(): Promise<Array<Testimonial & { username: string; avatarUrl: string | null; jobTitle: string }>> {
+    const results = await db
+      .select({
+        id: testimonials.id,
+        userId: testimonials.userId,
+        jobId: testimonials.jobId,
+        text: testimonials.text,
+        status: testimonials.status,
+        createdAt: testimonials.createdAt,
+        username: users.username,
+        avatarUrl: users.avatarUrl,
+        jobTitle: studioJobs.title,
+      })
+      .from(testimonials)
+      .innerJoin(users, eq(testimonials.userId, users.id))
+      .innerJoin(studioJobs, eq(testimonials.jobId, studioJobs.id))
+      .orderBy(desc(testimonials.createdAt));
+    return results;
+  }
+
+  async updateTestimonialStatus(id: number, status: "approved" | "rejected"): Promise<void> {
+    await db.update(testimonials).set({ status }).where(eq(testimonials.id, id));
   }
 
   async updateJob(id: number, data: Partial<InsertStudioJob>): Promise<void> {
