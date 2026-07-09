@@ -1,10 +1,16 @@
-const { app, BrowserWindow, BrowserView, ipcMain, session, shell, screen, Menu } = require("electron");
+const { app, BrowserWindow, BrowserView, ipcMain, session, shell, screen, Menu, Notification, Tray, nativeImage } = require("electron");
 const path = require("path");
 const fs = require("fs");
 const { URL } = require("url");
+const WebSocket = require("ws");
 
 const ADMIN_URL = process.env.LEFLOW_ADMIN_URL || "https://studioleflow.com/admin";
 const ADMIN_ORIGIN = new URL(ADMIN_URL).origin;
+const NOTIFICATION_WS_URL = ADMIN_ORIGIN.replace(/^http/, "ws") + "/api/ws";
+const NOTIFICATION_ICON = path.join(__dirname, "..", "build", "icon.png");
+const TRAY_ICON = path.join(__dirname, "assets", "tray-icon.png");
+const TRAY_ICON_ALERT = path.join(__dirname, "assets", "tray-icon-alert.png");
+const OVERLAY_BADGE_ICON = nativeImage.createFromPath(path.join(__dirname, "assets", "overlay-badge.png"));
 const TOPBAR_HEIGHT = 44;
 const ADMIN_THEME_CSS = fs.readFileSync(path.join(__dirname, "admin-theme.css"), "utf-8");
 
@@ -71,12 +77,165 @@ const KNOWN_TABS = new Set([
 
 let mainWindow;
 let contentView;
+let tray;
 let activeTabPoll;
 let lastKnownTab = null;
 let lastKnownRole = null;
 let lastKnownToken = null;
+let lastKnownUserId = null;
 let roleFetchInFlight = false;
 let atHome = true;
+let isQuitting = false;
+let unreadCount = 0;
+
+let notifSocket = null;
+let notifReconnectTimer = null;
+let notifReconnectDelay = 3000;
+
+function updateTrayState() {
+  if (!tray) return;
+  tray.setImage(unreadCount > 0 ? TRAY_ICON_ALERT : TRAY_ICON);
+  tray.setToolTip(unreadCount > 0 ? `LeFlow Admin - ${unreadCount} novo` : "LeFlow Admin");
+  mainWindow?.setOverlayIcon(
+    unreadCount > 0 ? OVERLAY_BADGE_ICON : null,
+    unreadCount > 0 ? `${unreadCount} novih obaveštenja` : ""
+  );
+}
+
+function markUnread() {
+  unreadCount++;
+  updateTrayState();
+}
+
+function clearUnread() {
+  if (unreadCount === 0) return;
+  unreadCount = 0;
+  updateTrayState();
+}
+
+function showAndFocusWindow() {
+  if (!mainWindow) return;
+  if (mainWindow.isMinimized()) mainWindow.restore();
+  mainWindow.show();
+  mainWindow.focus();
+}
+
+function createTray() {
+  tray = new Tray(nativeImage.createFromPath(TRAY_ICON));
+  tray.setToolTip("LeFlow Admin");
+  tray.setContextMenu(
+    Menu.buildFromTemplate([
+      { label: "Otvori LeFlow Admin", click: showAndFocusWindow },
+      { type: "separator" },
+      {
+        label: "Izađi",
+        click: () => {
+          isQuitting = true;
+          app.quit();
+        },
+      },
+    ])
+  );
+  // Left-click on Windows only opens the context menu by default - make a
+  // plain click also raise the window, same as every other tray-resident app.
+  tray.on("click", showAndFocusWindow);
+}
+
+function gotoTab(tabValue) {
+  if (!contentView || !KNOWN_TABS.has(tabValue)) return;
+  lastKnownTab = tabValue;
+  atHome = false;
+  layoutContentView();
+  contentView.webContents.executeJavaScript(
+    `document.querySelector('[data-testid="tab-${tabValue}"]')?.click();`
+  );
+}
+
+function showNativeNotification({ title, body, onClick }) {
+  markUnread();
+  if (!Notification.isSupported()) return;
+  const n = new Notification({ title, body, icon: NOTIFICATION_ICON });
+  n.on("click", () => {
+    showAndFocusWindow();
+    onClick?.();
+  });
+  n.show();
+}
+
+// The desktop app keeps its OWN WebSocket connection to the same /api/ws
+// endpoint the web page uses (see WebSocketContext.tsx), authenticated with
+// the same JWT read out of the page's localStorage. This is deliberately
+// independent of whatever the BrowserView's page is doing - it doesn't rely
+// on the page's own document.hidden-gated Notification calls (tuned for
+// browser tabs, not a native window that can be minimized/occluded), and it
+// lets a notification click reliably restore + focus our frameless window
+// and jump straight to the relevant tab, not just call the page's
+// `window.focus()`.
+function handleNotificationSocketMessage(msg) {
+  if (mainWindow?.isFocused()) return; // only interrupt when the app isn't already in front
+
+  if (msg.type === "new_message") {
+    const senderId = msg.message?.senderId;
+    if (lastKnownUserId && senderId && senderId !== lastKnownUserId) {
+      showNativeNotification({
+        title: `Nova poruka od ${msg.message?.senderUsername || "korisnika"}`,
+        body: msg.message?.content || "Poslao ti je poruku",
+        onClick: () => gotoTab("messages"),
+      });
+    }
+  } else if (msg.type === "feed_notification") {
+    showNativeNotification({
+      title: "Nova aktivnost",
+      body: msg.notification?.message || "Imaš novo obaveštenje",
+    });
+  } else if (msg.type === "notification" && msg.title) {
+    showNativeNotification({ title: msg.title, body: msg.description || "" });
+  }
+}
+
+function closeNotificationSocket() {
+  if (notifReconnectTimer) {
+    clearTimeout(notifReconnectTimer);
+    notifReconnectTimer = null;
+  }
+  if (notifSocket) {
+    const socket = notifSocket;
+    notifSocket = null;
+    socket.removeAllListeners();
+    socket.close();
+  }
+}
+
+function connectNotificationSocket(token) {
+  closeNotificationSocket();
+  if (!token) return;
+
+  const socket = new WebSocket(NOTIFICATION_WS_URL);
+  notifSocket = socket;
+
+  socket.on("open", () => {
+    notifReconnectDelay = 3000;
+    socket.send(JSON.stringify({ type: "auth", token }));
+  });
+  socket.on("message", (data) => {
+    let msg;
+    try {
+      msg = JSON.parse(data.toString());
+    } catch {
+      return;
+    }
+    handleNotificationSocketMessage(msg);
+  });
+  socket.on("close", () => {
+    if (notifSocket !== socket) return;
+    notifSocket = null;
+    notifReconnectTimer = setTimeout(() => {
+      notifReconnectDelay = Math.min(notifReconnectDelay * 2, 30000);
+      connectNotificationSocket(token);
+    }, notifReconnectDelay);
+  });
+  socket.on("error", () => {}); // "close" fires right after and handles reconnect
+}
 
 function layoutContentView() {
   if (!mainWindow || !contentView) return;
@@ -108,12 +267,13 @@ async function fetchRoleForToken(token) {
     const user = await contentView.webContents.executeJavaScript(
       `fetch("/api/user", { headers: { Authorization: "Bearer " + ${JSON.stringify(token)} } })
         .then(r => (r.ok ? r.json() : null))
-        .then(u => (u ? { role: u.role || null, username: u.username || null } : null))
+        .then(u => (u ? { role: u.role || null, username: u.username || null, id: u.id ?? null } : null))
         .catch(() => null)`,
       true
     );
     if (token === lastKnownToken) {
       applyRole(user?.role ?? null);
+      lastKnownUserId = user?.id ?? null;
       mainWindow?.webContents.send("user-state", user?.username ?? null);
     }
   } finally {
@@ -132,8 +292,11 @@ async function pollPageState() {
       lastKnownToken = token;
       if (token) {
         fetchRoleForToken(token);
+        connectNotificationSocket(token);
       } else {
         applyRole(null);
+        lastKnownUserId = null;
+        closeNotificationSocket();
       }
     }
     if (tab && tab !== lastKnownTab) {
@@ -218,7 +381,10 @@ function createWindow() {
     layoutContentView();
     mainWindow.webContents.send("window-state", false);
   });
-  mainWindow.on("focus", () => mainWindow.webContents.send("window-focus", true));
+  mainWindow.on("focus", () => {
+    mainWindow.webContents.send("window-focus", true);
+    clearUnread();
+  });
   mainWindow.on("blur", () => mainWindow.webContents.send("window-focus", false));
 
   mainWindow.once("ready-to-show", () => {
@@ -226,10 +392,21 @@ function createWindow() {
     mainWindow.show();
   });
 
+  // Minimize to tray instead of quitting - the whole point of the tray icon
+  // is that the producer stays reachable for client messages without the
+  // app cluttering the taskbar. Only the tray's "Izađi" (or a real OS quit)
+  // actually exits; see isQuitting.
+  mainWindow.on("close", (event) => {
+    if (isQuitting) return;
+    event.preventDefault();
+    mainWindow.hide();
+  });
+
   activeTabPoll = setInterval(pollPageState, 700);
 
   mainWindow.on("closed", () => {
     clearInterval(activeTabPoll);
+    closeNotificationSocket();
     contentView = null;
     mainWindow = null;
   });
@@ -246,15 +423,7 @@ ipcMain.on("titlebar:maximize", () => {
 });
 ipcMain.on("titlebar:close", () => mainWindow?.close());
 
-ipcMain.on("shell:goto", (_event, tabValue) => {
-  if (!contentView || !KNOWN_TABS.has(tabValue)) return;
-  lastKnownTab = tabValue;
-  atHome = false;
-  layoutContentView();
-  contentView.webContents.executeJavaScript(
-    `document.querySelector('[data-testid="tab-${tabValue}"]')?.click();`
-  );
-});
+ipcMain.on("shell:goto", (_event, tabValue) => gotoTab(tabValue));
 
 ipcMain.on("shell:home", () => {
   atHome = true;
@@ -266,7 +435,14 @@ Menu.setApplicationMenu(null);
 // app under its own identity in the Windows taskbar/notifications/jump lists
 // instead of falling back to Electron's default "electron.app.Electron".
 app.setAppUserModelId("com.studioleflow.admin");
-app.whenReady().then(createWindow);
+app.whenReady().then(() => {
+  createWindow();
+  createTray();
+});
+
+app.on("before-quit", () => {
+  isQuitting = true;
+});
 
 app.on("window-all-closed", () => {
   if (process.platform !== "darwin") app.quit();
@@ -274,4 +450,5 @@ app.on("window-all-closed", () => {
 
 app.on("activate", () => {
   if (BrowserWindow.getAllWindows().length === 0) createWindow();
+  else showAndFocusWindow();
 });
