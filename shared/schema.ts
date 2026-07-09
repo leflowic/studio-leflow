@@ -859,6 +859,30 @@ export const jobStageHistory = pgTable("job_stage_history", {
 
 export type JobStageHistory = typeof jobStageHistory.$inferSelect;
 
+// Client-submitted "brief" for a job - reference tracks/mood description sent
+// before the session, so the producer has context walking in instead of
+// spending studio time on "what sound are you going for". One per job
+// (upserted - the client can revise it up until the producer starts using
+// it). referenceLinks is a JSON string[] (YouTube/Spotify/SoundCloud URLs
+// etc, no validation on the domain - just free-form reference links).
+export const jobBriefs = pgTable("job_briefs", {
+  id: serial("id").primaryKey(),
+  jobId: integer("job_id").notNull().unique().references(() => studioJobs.id, { onDelete: "cascade" }),
+  userId: integer("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  description: text("description").notNull(),
+  referenceLinks: text("reference_links"), // JSON string[]
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+});
+
+export const upsertJobBriefSchema = z.object({
+  description: z.string().trim().min(10, "Opiši malo detaljnije šta imaš na umu").max(2000, "Opis je predugačak"),
+  referenceLinks: z.array(z.string().trim().url("Neispravan link")).max(10, "Najviše 10 referenci").optional().default([]),
+});
+
+export type InsertJobBrief = z.infer<typeof upsertJobBriefSchema>;
+export type JobBrief = typeof jobBriefs.$inferSelect;
+
 // Client-submitted testimonials, prompted automatically when their job hits
 // "isporuceno" (see the review-request email/notification in routes.ts).
 // status starts "pending" - an admin must approve before it's usable as a

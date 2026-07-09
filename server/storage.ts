@@ -89,6 +89,9 @@ import {
   type Testimonial,
   type InsertTestimonial,
   testimonials,
+  type JobBrief,
+  type InsertJobBrief,
+  jobBriefs,
   type NewsArticle,
   type InsertNewsArticle,
   newsArticles,
@@ -105,6 +108,16 @@ import { randomBytes, scrypt } from "crypto";
 import { promisify } from "util";
 
 const scryptAsync = promisify(scrypt);
+
+function parseReferenceLinks(raw: string | null): string[] {
+  if (!raw) return [];
+  try {
+    const parsed = JSON.parse(raw);
+    return Array.isArray(parsed) ? parsed.filter((x): x is string => typeof x === "string") : [];
+  } catch {
+    return [];
+  }
+}
 
 // Unusable placeholder hash for Google-only accounts (no password login until "forgot password" sets a real one)
 async function unusablePasswordHash(): Promise<string> {
@@ -286,8 +299,8 @@ export interface IStorage {
 
   // Studio Jobs (producer pipeline board)
   createJob(data: InsertStudioJob & { createdBy: number }): Promise<StudioJob>;
-  getAllJobs(): Promise<Array<StudioJob & { username: string; avatarUrl: string | null; contractNumber: string | null; invoiceNumber: string | null }>>;
-  getUserJobs(userId: number): Promise<Array<Pick<StudioJob, "id" | "title" | "stage" | "deliveryDate" | "createdAt" | "updatedAt"> & { contractNumber: string | null; invoiceNumber: string | null; hasTestimonial: boolean }>>;
+  getAllJobs(): Promise<Array<StudioJob & { username: string; avatarUrl: string | null; contractNumber: string | null; invoiceNumber: string | null; brief: { description: string; referenceLinks: string[] } | null }>>;
+  getUserJobs(userId: number): Promise<Array<Pick<StudioJob, "id" | "title" | "stage" | "deliveryDate" | "createdAt" | "updatedAt"> & { contractNumber: string | null; invoiceNumber: string | null; hasTestimonial: boolean; brief: { description: string; referenceLinks: string[] } | null }>>;
   getJob(id: number): Promise<StudioJob | undefined>;
   updateJobStage(id: number, stage: string): Promise<void>;
   updateJob(id: number, data: Partial<InsertStudioJob>): Promise<void>;
@@ -297,6 +310,8 @@ export interface IStorage {
     avgDaysByStage: Array<{ stage: string; avgDays: number; sampleCount: number }>;
     stuckJobs: Array<{ jobId: number; title: string; stage: string; daysInStage: number }>;
   }>;
+  getJobBrief(jobId: number): Promise<JobBrief | undefined>;
+  upsertJobBrief(jobId: number, userId: number, data: InsertJobBrief): Promise<JobBrief>;
 
   // Testimonials (client-submitted, prompted after job delivery)
   createTestimonial(data: InsertTestimonial): Promise<Testimonial>;
@@ -2126,7 +2141,7 @@ export class DatabaseStorage implements IStorage {
     return job;
   }
 
-  async getAllJobs(): Promise<Array<StudioJob & { username: string; avatarUrl: string | null; contractNumber: string | null; invoiceNumber: string | null }>> {
+  async getAllJobs(): Promise<Array<StudioJob & { username: string; avatarUrl: string | null; contractNumber: string | null; invoiceNumber: string | null; brief: { description: string; referenceLinks: string[] } | null }>> {
     const results = await db
       .select({
         id: studioJobs.id,
@@ -2146,19 +2161,27 @@ export class DatabaseStorage implements IStorage {
         avatarUrl: users.avatarUrl,
         contractNumber: contracts.contractNumber,
         invoiceNumber: invoices.invoiceNumber,
+        briefDescription: jobBriefs.description,
+        briefReferenceLinks: jobBriefs.referenceLinks,
       })
       .from(studioJobs)
       .innerJoin(users, eq(studioJobs.userId, users.id))
       .leftJoin(contracts, eq(studioJobs.contractId, contracts.id))
       .leftJoin(invoices, eq(studioJobs.invoiceId, invoices.id))
+      .leftJoin(jobBriefs, eq(jobBriefs.jobId, studioJobs.id))
       .orderBy(desc(studioJobs.updatedAt));
-    return results;
+    return results.map(({ briefDescription, briefReferenceLinks, ...job }) => ({
+      ...job,
+      brief: briefDescription
+        ? { description: briefDescription, referenceLinks: parseReferenceLinks(briefReferenceLinks) }
+        : null,
+    }));
   }
 
   // Client-facing "gde mi je pesma" view - deliberately narrower than
   // getAllJobs(): no notes (internal-only per JobsBoard's placeholder copy),
   // no createdBy/username/avatarUrl (the client already knows who they are).
-  async getUserJobs(userId: number): Promise<Array<Pick<StudioJob, "id" | "title" | "stage" | "deliveryDate" | "createdAt" | "updatedAt"> & { contractNumber: string | null; invoiceNumber: string | null; hasTestimonial: boolean }>> {
+  async getUserJobs(userId: number): Promise<Array<Pick<StudioJob, "id" | "title" | "stage" | "deliveryDate" | "createdAt" | "updatedAt"> & { contractNumber: string | null; invoiceNumber: string | null; hasTestimonial: boolean; brief: { description: string; referenceLinks: string[] } | null }>> {
     const results = await db
       .select({
         id: studioJobs.id,
@@ -2170,19 +2193,46 @@ export class DatabaseStorage implements IStorage {
         contractNumber: contracts.contractNumber,
         invoiceNumber: invoices.invoiceNumber,
         testimonialId: testimonials.id,
+        briefDescription: jobBriefs.description,
+        briefReferenceLinks: jobBriefs.referenceLinks,
       })
       .from(studioJobs)
       .leftJoin(contracts, eq(studioJobs.contractId, contracts.id))
       .leftJoin(invoices, eq(studioJobs.invoiceId, invoices.id))
       .leftJoin(testimonials, eq(testimonials.jobId, studioJobs.id))
+      .leftJoin(jobBriefs, eq(jobBriefs.jobId, studioJobs.id))
       .where(eq(studioJobs.userId, userId))
       .orderBy(desc(studioJobs.updatedAt));
-    return results.map(({ testimonialId, ...job }) => ({ ...job, hasTestimonial: testimonialId != null }));
+    return results.map(({ testimonialId, briefDescription, briefReferenceLinks, ...job }) => ({
+      ...job,
+      hasTestimonial: testimonialId != null,
+      brief: briefDescription
+        ? { description: briefDescription, referenceLinks: parseReferenceLinks(briefReferenceLinks) }
+        : null,
+    }));
   }
 
   async getJob(id: number): Promise<StudioJob | undefined> {
     const [job] = await db.select().from(studioJobs).where(eq(studioJobs.id, id));
     return job || undefined;
+  }
+
+  async getJobBrief(jobId: number): Promise<JobBrief | undefined> {
+    const [brief] = await db.select().from(jobBriefs).where(eq(jobBriefs.jobId, jobId));
+    return brief || undefined;
+  }
+
+  async upsertJobBrief(jobId: number, userId: number, data: InsertJobBrief): Promise<JobBrief> {
+    const [brief] = await db
+      .insert(jobBriefs)
+      .values({ jobId, userId, description: data.description, referenceLinks: JSON.stringify(data.referenceLinks ?? []) })
+      .onConflictDoUpdate({
+        target: jobBriefs.jobId,
+        set: { description: data.description, referenceLinks: JSON.stringify(data.referenceLinks ?? []), updatedAt: new Date() },
+      })
+      .returning();
+    if (!brief) throw new Error("Failed to save brief");
+    return brief;
   }
 
   async updateJobStage(id: number, stage: string): Promise<void> {

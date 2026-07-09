@@ -448,6 +448,27 @@ async function runMigrations() {
   } finally {
     client11.release();
   }
+
+  // ─── Job Briefs (client reference/mood board before a session) ───────────
+  const client12 = await pool.connect();
+  try {
+    await client12.query(`
+      CREATE TABLE IF NOT EXISTS job_briefs (
+        id SERIAL PRIMARY KEY,
+        job_id INTEGER NOT NULL UNIQUE REFERENCES studio_jobs(id) ON DELETE CASCADE,
+        user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+        description TEXT NOT NULL,
+        reference_links TEXT,
+        created_at TIMESTAMP NOT NULL DEFAULT NOW(),
+        updated_at TIMESTAMP NOT NULL DEFAULT NOW()
+      );
+    `);
+    log('[Migrations] Job Briefs table ready', 'express');
+  } catch (err: any) {
+    log(`[Migrations] Warning on job_briefs table: ${err.message}`, 'express');
+  } finally {
+    client12.release();
+  }
 }
 
 const app = express();

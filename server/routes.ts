@@ -2,7 +2,7 @@ import type { Express, Response } from "express";
 import { createServer, type Server } from "http";
 import { storage } from "./storage";
 import { wsHelpers, notifyUser, broadcastToUser, getOnlineUsersSnapshot } from "./websocket-helpers";
-import { insertContactSubmissionSchema, insertCmsContentSchema, insertCmsMediaSchema, insertVideoSpotSchema, insertUserSongSchema, insertNewsletterSubscriberSchema, insertInvoiceSchema, insertCommunityMessageSchema, insertSiteAnnouncementSchema, mixMasterContractDataSchema, copyrightTransferContractDataSchema, instrumentalSaleContractDataSchema, insertSmartLinkSchema, insertStudioJobSchema, JOB_STAGES, insertNewsArticleSchema, insertRightsProtectionSchema, insertTestimonialSchema, type CmsContent, type CmsMedia, type VideoSpot, type UserSong } from "@shared/schema";
+import { insertContactSubmissionSchema, insertCmsContentSchema, insertCmsMediaSchema, insertVideoSpotSchema, insertUserSongSchema, insertNewsletterSubscriberSchema, insertInvoiceSchema, insertCommunityMessageSchema, insertSiteAnnouncementSchema, mixMasterContractDataSchema, copyrightTransferContractDataSchema, instrumentalSaleContractDataSchema, insertSmartLinkSchema, insertStudioJobSchema, JOB_STAGES, insertNewsArticleSchema, insertRightsProtectionSchema, insertTestimonialSchema, upsertJobBriefSchema, type CmsContent, type CmsMedia, type VideoSpot, type UserSong } from "@shared/schema";
 import { sendEmail, getLastVerificationCode } from "./resend-client";
 import { resendVerificationEmail, adminLoginEmail, contactFormEmail, newsletterConfirmEmail, licenseDeliveryEmail, customEmail, reviewRequestEmail } from "./email-templates";
 import { setupAuth, hashPassword, comparePasswords } from "./auth";
@@ -3440,6 +3440,26 @@ Sitemap: ${siteUrl}/sitemap.xml
       await storage.updateTestimonialStatus(id, status);
       res.json({ success: true });
     } catch {
+      res.status(500).json({ error: "Greška na serveru" });
+    }
+  });
+
+  // Client-submitted brief (reference tracks/mood description) for one of
+  // their own jobs, ideally sent before the session starts. Upsert - one per
+  // job, editable until the producer reads/acts on it.
+  app.post("/api/user/jobs/:id/brief", requireVerifiedEmail, async (req, res) => {
+    try {
+      const jobId = parseInt(req.params.id, 10);
+      if (isNaN(jobId)) return res.status(400).json({ error: "Nevažeći ID posla" });
+      const job = await storage.getJob(jobId);
+      if (!job || job.userId !== req.jwtUser!.id) {
+        return res.status(404).json({ error: "Posao nije pronađen" });
+      }
+      const data = upsertJobBriefSchema.parse(req.body);
+      const brief = await storage.upsertJobBrief(jobId, req.jwtUser!.id, data);
+      res.json(brief);
+    } catch (error: any) {
+      if (error?.issues) return res.status(400).json({ error: "Nevažeći podaci" });
       res.status(500).json({ error: "Greška na serveru" });
     }
   });

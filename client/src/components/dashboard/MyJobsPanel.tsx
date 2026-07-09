@@ -6,7 +6,7 @@ import { PanelCard } from "@/components/ui/panel-card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
-import { Check, Music, CalendarClock, MessageSquareHeart } from "lucide-react";
+import { Check, Music, CalendarClock, MessageSquareHeart, Sparkles, Link2, Pencil } from "lucide-react";
 import { format } from "date-fns";
 import { JOB_STAGES } from "@/lib/job-stages";
 
@@ -20,6 +20,7 @@ type MyJob = {
   contractNumber: string | null;
   invoiceNumber: string | null;
   hasTestimonial: boolean;
+  brief: { description: string; referenceLinks: string[] } | null;
 };
 
 function JobStepper({ stage }: { stage: string }) {
@@ -102,6 +103,86 @@ function TestimonialPrompt({ jobId }: { jobId: number }) {
   );
 }
 
+function BriefPrompt({ jobId, brief }: { jobId: number; brief: MyJob["brief"] }) {
+  const { toast } = useToast();
+  const [open, setOpen] = useState(false);
+  const [description, setDescription] = useState(brief?.description ?? "");
+  const [linksText, setLinksText] = useState((brief?.referenceLinks ?? []).join("\n"));
+
+  const submitMutation = useMutation({
+    mutationFn: () => {
+      const referenceLinks = linksText.split("\n").map(l => l.trim()).filter(Boolean);
+      return apiRequest("POST", `/api/user/jobs/${jobId}/brief`, { description, referenceLinks });
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/user/jobs"] });
+      setOpen(false);
+      toast({ title: brief ? "Brief ažuriran" : "Brief poslat producentu" });
+    },
+    onError: (e: any) => toast({ title: "Greška", description: e.message ?? "Brief nije poslat, pokušaj ponovo", variant: "destructive" }),
+  });
+
+  if (!open) {
+    if (brief) {
+      return (
+        <div className="space-y-1.5 pt-1">
+          <div className="flex items-center justify-between">
+            <p className="text-xs font-medium text-foreground flex items-center gap-1.5">
+              <Sparkles className="w-3.5 h-3.5 text-primary" /> Tvoj brief je poslat
+            </p>
+            <button type="button" onClick={() => setOpen(true)} className="text-xs text-primary hover:underline flex items-center gap-1">
+              <Pencil className="w-3 h-3" /> Izmeni
+            </button>
+          </div>
+          <p className="text-xs text-muted-foreground line-clamp-2">{brief.description}</p>
+        </div>
+      );
+    }
+    return (
+      <button
+        type="button"
+        onClick={() => setOpen(true)}
+        className="flex items-center gap-1.5 text-xs text-primary hover:underline"
+      >
+        <Sparkles className="w-3.5 h-3.5" />
+        Pošalji brief pre snimanja
+      </button>
+    );
+  }
+
+  return (
+    <div className="space-y-2">
+      <Textarea
+        value={description}
+        onChange={e => setDescription(e.target.value)}
+        placeholder="Kakav zvuk/vajb tražiš, koje pesme su ti referenca, ideje za aranžman..."
+        className="text-sm min-h-20"
+      />
+      <div className="space-y-1">
+        <p className="text-[10px] font-semibold tracking-[0.08em] uppercase text-muted-foreground flex items-center gap-1">
+          <Link2 className="w-3 h-3" /> Referentni linkovi (po jedan u redu, opciono)
+        </p>
+        <Textarea
+          value={linksText}
+          onChange={e => setLinksText(e.target.value)}
+          placeholder={"https://open.spotify.com/track/...\nhttps://youtube.com/..."}
+          className="text-sm min-h-16"
+        />
+      </div>
+      <div className="flex items-center gap-2">
+        <Button
+          size="sm"
+          disabled={description.trim().length < 10 || submitMutation.isPending}
+          onClick={() => submitMutation.mutate()}
+        >
+          {submitMutation.isPending ? "Šaljem..." : brief ? "Sačuvaj izmene" : "Pošalji brief"}
+        </Button>
+        <Button size="sm" variant="ghost" onClick={() => setOpen(false)}>Otkaži</Button>
+      </div>
+    </div>
+  );
+}
+
 export function MyJobsPanel() {
   const { data: jobs, isLoading } = useQuery<MyJob[]>({ queryKey: ["/api/user/jobs"] });
 
@@ -143,6 +224,7 @@ export function MyJobsPanel() {
               <p className="text-xs text-muted-foreground">
                 Trenutna faza: <span className="font-medium text-foreground">{currentLabel}</span>
               </p>
+              {job.stage !== "isporuceno" && <BriefPrompt jobId={job.id} brief={job.brief} />}
               {job.stage === "isporuceno" && !job.hasTestimonial && <TestimonialPrompt jobId={job.id} />}
               {job.stage === "isporuceno" && job.hasTestimonial && (
                 <p className="text-xs text-muted-foreground italic">Hvala na utisku!</p>

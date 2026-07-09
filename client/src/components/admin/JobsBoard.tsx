@@ -17,7 +17,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Plus, Trash2, FileText, Receipt, FolderKanban, CalendarClock, TriangleAlert } from "lucide-react";
+import { Plus, Trash2, FileText, Receipt, FolderKanban, CalendarClock, TriangleAlert, Sparkles, Link2 } from "lucide-react";
 import { format } from "date-fns";
 import type { User } from "@shared/schema";
 import { JOB_STAGES as STAGES } from "@/lib/job-stages";
@@ -93,6 +93,43 @@ interface Job {
   avatarUrl: string | null;
   contractNumber: string | null;
   invoiceNumber: string | null;
+  brief: { description: string; referenceLinks: string[] } | null;
+}
+
+function JobBriefSection({ brief }: { brief: Job["brief"] }) {
+  const [expanded, setExpanded] = useState(false);
+  if (!brief) return null;
+  return (
+    <div className="pt-2 border-t border-zinc-800/70">
+      <button
+        type="button"
+        onClick={() => setExpanded(e => !e)}
+        className="flex items-center gap-1.5 text-[11px] text-violet-400 hover:text-violet-300"
+      >
+        <Sparkles className="w-3 h-3" /> {expanded ? "Sakrij brief" : "Klijent je poslao brief"}
+      </button>
+      {expanded && (
+        <div className="mt-1.5 space-y-1.5">
+          <p className="text-[11px] text-muted-foreground whitespace-pre-wrap">{brief.description}</p>
+          {brief.referenceLinks.length > 0 && (
+            <div className="space-y-1">
+              {brief.referenceLinks.map((url, i) => (
+                <a
+                  key={i}
+                  href={url}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="flex items-center gap-1 text-[11px] text-violet-400 hover:underline truncate"
+                >
+                  <Link2 className="w-3 h-3 shrink-0" /> <span className="truncate">{url}</span>
+                </a>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
+    </div>
+  );
 }
 
 export function JobsBoard() {
@@ -307,6 +344,7 @@ export function JobsBoard() {
                           )}
                         </div>
                       )}
+                      <JobBriefSection brief={job.brief} />
                       <Select
                         value={job.stage}
                         onValueChange={(stage) => stageMutation.mutate({ id: job.id, stage })}
