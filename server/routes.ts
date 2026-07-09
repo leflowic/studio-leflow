@@ -3378,6 +3378,17 @@ Sitemap: ${siteUrl}/sitemap.xml
     }
   });
 
+  // Client-facing "gde mi je pesma" - read-only stage view for the caller's
+  // own jobs on the Radna tabla, surfaced as a panel on the Dashboard.
+  app.get("/api/user/jobs", requireVerifiedEmail, async (req, res) => {
+    try {
+      const jobs = await storage.getUserJobs(req.jwtUser!.id);
+      res.json(jobs);
+    } catch {
+      res.status(500).json({ error: "Greška na serveru" });
+    }
+  });
+
   // ============================================================================
   // NEWS ARTICLES (/news portal - editor/marketing/admin manage, public reads)
   // ============================================================================

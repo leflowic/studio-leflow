@@ -33,6 +33,7 @@ import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 import { FadeInWhenVisible } from "@/components/motion/FadeIn";
 import { WaveDivider } from "@/components/WaveDivider";
 import { MySmartLinkPanel } from "@/components/dashboard/MySmartLinkPanel";
+import { MyJobsPanel } from "@/components/dashboard/MyJobsPanel";
 
 type Project = {
   id: number;
@@ -375,6 +376,10 @@ export default function Dashboard() {
             </PanelCard>
           </FadeInWhenVisible>
         </div>
+
+        <FadeInWhenVisible>
+          <MyJobsPanel />
+        </FadeInWhenVisible>
 
         <FadeInWhenVisible>
           <MySmartLinkPanel />

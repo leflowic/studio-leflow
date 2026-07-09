@@ -20,15 +20,7 @@ import {
 import { Plus, Trash2, FileText, Receipt, FolderKanban, CalendarClock } from "lucide-react";
 import { format } from "date-fns";
 import type { User } from "@shared/schema";
-
-const STAGES: { value: string; label: string }[] = [
-  { value: "novi_upit", label: "Novi upit" },
-  { value: "snimanje", label: "Snimanje" },
-  { value: "mix", label: "Mix" },
-  { value: "mastering", label: "Mastering" },
-  { value: "revizija", label: "Na reviziji" },
-  { value: "isporuceno", label: "Isporučeno" },
-];
+import { JOB_STAGES as STAGES } from "@/lib/job-stages";
 
 interface Job {
   id: number;

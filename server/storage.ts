@@ -283,6 +283,7 @@ export interface IStorage {
   // Studio Jobs (producer pipeline board)
   createJob(data: InsertStudioJob & { createdBy: number }): Promise<StudioJob>;
   getAllJobs(): Promise<Array<StudioJob & { username: string; avatarUrl: string | null; contractNumber: string | null; invoiceNumber: string | null }>>;
+  getUserJobs(userId: number): Promise<Array<Pick<StudioJob, "id" | "title" | "stage" | "deliveryDate" | "createdAt" | "updatedAt"> & { contractNumber: string | null; invoiceNumber: string | null }>>;
   updateJobStage(id: number, stage: string): Promise<void>;
   updateJob(id: number, data: Partial<InsertStudioJob>): Promise<void>;
   deleteJob(id: number): Promise<void>;
@@ -2132,6 +2133,29 @@ export class DatabaseStorage implements IStorage {
       .innerJoin(users, eq(studioJobs.userId, users.id))
       .leftJoin(contracts, eq(studioJobs.contractId, contracts.id))
       .leftJoin(invoices, eq(studioJobs.invoiceId, invoices.id))
+      .orderBy(desc(studioJobs.updatedAt));
+    return results;
+  }
+
+  // Client-facing "gde mi je pesma" view - deliberately narrower than
+  // getAllJobs(): no notes (internal-only per JobsBoard's placeholder copy),
+  // no createdBy/username/avatarUrl (the client already knows who they are).
+  async getUserJobs(userId: number): Promise<Array<Pick<StudioJob, "id" | "title" | "stage" | "deliveryDate" | "createdAt" | "updatedAt"> & { contractNumber: string | null; invoiceNumber: string | null }>> {
+    const results = await db
+      .select({
+        id: studioJobs.id,
+        title: studioJobs.title,
+        stage: studioJobs.stage,
+        deliveryDate: studioJobs.deliveryDate,
+        createdAt: studioJobs.createdAt,
+        updatedAt: studioJobs.updatedAt,
+        contractNumber: contracts.contractNumber,
+        invoiceNumber: invoices.invoiceNumber,
+      })
+      .from(studioJobs)
+      .leftJoin(contracts, eq(studioJobs.contractId, contracts.id))
+      .leftJoin(invoices, eq(studioJobs.invoiceId, invoices.id))
+      .where(eq(studioJobs.userId, userId))
       .orderBy(desc(studioJobs.updatedAt));
     return results;
   }
