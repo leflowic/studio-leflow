@@ -1,5 +1,5 @@
 import { useAuth } from "@/hooks/use-auth";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useLocation } from "wouter";
 import { useToast } from "@/hooks/use-toast";
 import { useQuery, useMutation } from "@tanstack/react-query";
@@ -545,6 +545,96 @@ function SettingsTab() {
           <GiveawaySettingsSection />
         </CardContent>
       </Card>
+
+      <Card>
+        <CardHeader>
+          <div className="flex items-center gap-2">
+            <Download className="w-5 h-5 text-primary" />
+            <CardTitle>Desktop Aplikacija (Windows)</CardTitle>
+          </div>
+          <CardDescription>
+            LeFlow Admin - native desktop shell za admin panel
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <DesktopAppSection />
+        </CardContent>
+      </Card>
+    </div>
+  );
+}
+
+function DesktopAppSection() {
+  const { toast } = useToast();
+  const fileRef = useRef<HTMLInputElement>(null);
+  const [uploading, setUploading] = useState(false);
+
+  const { data } = useQuery<{ url: string | null; updatedAt: string | null }>({
+    queryKey: ["/api/admin/desktop-app/download-url"],
+  });
+
+  async function handleFile(file: File) {
+    setUploading(true);
+    try {
+      const fd = new FormData();
+      fd.append("file", file);
+      const token = localStorage.getItem("auth_token");
+      const r = await fetch("/api/admin/desktop-app/upload", {
+        method: "POST",
+        headers: { Authorization: `Bearer ${token}` },
+        body: fd,
+      });
+      const result = await r.json();
+      if (!r.ok) throw new Error(result.error);
+      queryClient.invalidateQueries({ queryKey: ["/api/admin/desktop-app/download-url"] });
+      toast({ title: "Uspeh", description: "Nova verzija je otpremljena" });
+    } catch (e: any) {
+      toast({ title: "Greška", description: e.message ?? "Upload nije uspeo", variant: "destructive" });
+    } finally {
+      setUploading(false);
+    }
+  }
+
+  return (
+    <div className="space-y-4">
+      <div className="flex items-center justify-between p-4 rounded-lg border border-border bg-muted/30">
+        <div className="flex items-center gap-3">
+          <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center">
+            <Download className="w-5 h-5 text-primary" />
+          </div>
+          <div>
+            <p className="font-medium text-sm">{data?.url ? "Trenutna verzija je spremna" : "Nijedna verzija još nije otpremljena"}</p>
+            <p className="text-xs text-muted-foreground">
+              {data?.updatedAt ? `Ažurirano ${format(new Date(data.updatedAt), "dd.MM.yyyy HH:mm")}` : "Otpremi Setup .exe da omogućiš preuzimanje"}
+            </p>
+          </div>
+        </div>
+        <Button
+          disabled={!data?.url}
+          onClick={() => data?.url && window.open(data.url, "_blank")}
+          className="gap-2"
+        >
+          <Download className="w-4 h-4" />
+          Preuzmi
+        </Button>
+      </div>
+
+      <input
+        ref={fileRef}
+        type="file"
+        accept=".exe"
+        className="hidden"
+        onChange={e => { const f = e.target.files?.[0]; if (f) handleFile(f); e.target.value = ""; }}
+      />
+      <Button
+        variant="outline"
+        size="sm"
+        disabled={uploading}
+        onClick={() => fileRef.current?.click()}
+        className="gap-2"
+      >
+        {uploading ? "Otpremam..." : "Otpremi novu verziju (Setup .exe)"}
+      </Button>
     </div>
   );
 }

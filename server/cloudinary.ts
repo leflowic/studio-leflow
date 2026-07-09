@@ -13,6 +13,15 @@ export const upload = multer({
   limits: { fileSize: 20 * 1024 * 1024 }, // 20MB
 });
 
+// Separate, much larger limit for arbitrary binary uploads (e.g. the desktop
+// admin app installer, ~80MB) - the shared `upload` above stays at 20MB for
+// every other (image/audio) upload route, so a stray misuse can't silently
+// accept a huge file somewhere it shouldn't.
+export const uploadLargeFile = multer({
+  storage: multer.memoryStorage(),
+  limits: { fileSize: 150 * 1024 * 1024 }, // 150MB
+});
+
 export async function uploadImageToCloudinary(buffer: Buffer, folder: string, publicId?: string): Promise<string> {
   return new Promise((resolve, reject) => {
     const stream = cloudinary.uploader.upload_stream(
@@ -36,6 +45,21 @@ export async function uploadRawImageToCloudinary(buffer: Buffer, folder: string,
   return new Promise((resolve, reject) => {
     const stream = cloudinary.uploader.upload_stream(
       { folder, public_id: publicId, resource_type: "image", overwrite: false },
+      (error, result) => {
+        if (error || !result) return reject(error || new Error("Upload failed"));
+        resolve(result.secure_url);
+      }
+    );
+    stream.end(buffer);
+  });
+}
+
+// resource_type "raw" - Cloudinary's bucket for arbitrary binaries (installer
+// .exe, zip, etc.) that don't fit its image/video processing pipelines.
+export async function uploadRawFileToCloudinary(buffer: Buffer, folder: string, publicId: string): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const stream = cloudinary.uploader.upload_stream(
+      { folder, public_id: publicId, resource_type: "raw", overwrite: true },
       (error, result) => {
         if (error || !result) return reject(error || new Error("Upload failed"));
         resolve(result.secure_url);

@@ -11,7 +11,7 @@ import fs from "fs";
 import path from "path";
 import { z } from "zod";
 import { randomBytes, createHmac, createHash } from "crypto";
-import { upload, uploadImageToCloudinary, uploadRawImageToCloudinary, uploadAudioToCloudinary } from "./cloudinary";
+import { upload, uploadLargeFile, uploadImageToCloudinary, uploadRawImageToCloudinary, uploadRawFileToCloudinary, uploadAudioToCloudinary } from "./cloudinary";
 import { generateMixMasterPDF, generateCopyrightTransferPDF, generateInstrumentalSalePDF, generateRightsProtectionCertificatePDF, type MixMasterContract, type CopyrightTransferContract, type InstrumentalSaleContract } from "./pdf-generators";
 import { computeFingerprint, compareFingerprint } from "./audio-fingerprint";
 import rateLimit from "express-rate-limit";
@@ -414,6 +414,38 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error("Error setting maintenance mode:", error);
       res.status(500).json({ error: "Greška na serveru" });
+    }
+  });
+
+  // Desktop admin app installer (LeFlow Admin.exe / Setup .exe) - Super Admin
+  // uploads the current build once through this route, everyone with the
+  // link downloads from the stored Cloudinary URL. Avoids committing an
+  // ~80MB binary into the git repo or a code redeploy every time a new
+  // desktop app version ships.
+  app.get("/api/admin/desktop-app/download-url", requireAdmin, async (_req, res) => {
+    try {
+      const setting = await storage.getSetting("desktop_app_download_url");
+      res.json({ url: setting?.value ?? null, updatedAt: setting?.updatedAt ?? null });
+    } catch {
+      res.status(500).json({ error: "Greška na serveru" });
+    }
+  });
+
+  app.post("/api/admin/desktop-app/upload", uploadRateLimiter, requireAdmin, uploadLargeFile.single("file"), async (req, res) => {
+    try {
+      if (!req.file) return res.status(400).json({ error: "Fajl nije pronađen" });
+      const name = req.file.originalname.toLowerCase();
+      const isExe = name.endsWith(".exe") && req.file.buffer.subarray(0, 2).toString("ascii") === "MZ";
+      if (!isExe) {
+        return res.status(400).json({ error: "Dozvoljen je samo Windows .exe instalacioni fajl" });
+      }
+      const url = await uploadRawFileToCloudinary(req.file.buffer, "studioleflow/desktop-app", `leflow-admin-setup_${Date.now()}`);
+      await storage.setSetting("desktop_app_download_url", url);
+      console.log(`[ADMIN] Desktop app installer ažuriran od strane ${req.jwtUser!.username}`);
+      res.json({ url });
+    } catch (error) {
+      console.error("[ADMIN] Desktop app upload error:", error);
+      res.status(500).json({ error: "Greška pri otpremanju fajla" });
     }
   });
 
