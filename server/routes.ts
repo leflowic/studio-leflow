@@ -443,9 +443,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
       await storage.setSetting("desktop_app_download_url", url);
       console.log(`[ADMIN] Desktop app installer ažuriran od strane ${req.jwtUser!.username}`);
       res.json({ url });
-    } catch (error) {
+    } catch (error: any) {
       console.error("[ADMIN] Desktop app upload error:", error);
-      res.status(500).json({ error: "Greška pri otpremanju fajla" });
+      const detail = error?.message || error?.error?.message || "";
+      res.status(500).json({ error: detail ? `Greška pri otpremanju fajla: ${detail}` : "Greška pri otpremanju fajla" });
     }
   });
 
