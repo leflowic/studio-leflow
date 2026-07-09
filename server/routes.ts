@@ -434,6 +434,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.post("/api/admin/desktop-app/upload", uploadRateLimiter, requireAdmin, uploadLargeFile.single("file"), async (req, res) => {
     try {
       if (!req.file) return res.status(400).json({ error: "Fajl nije pronađen" });
+      console.log(`[ADMIN] Desktop app upload: received ${req.file.buffer.length} bytes (originalname=${req.file.originalname}, reported size=${req.file.size})`);
+      if (req.query.debug === "1") {
+        return res.json({ receivedBytes: req.file.buffer.length, reportedSize: req.file.size });
+      }
       const name = req.file.originalname.toLowerCase();
       const isExe = name.endsWith(".exe") && req.file.buffer.subarray(0, 2).toString("ascii") === "MZ";
       if (!isExe) {
