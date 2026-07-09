@@ -450,6 +450,24 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Manual override for the download link above - lets a Super Admin point
+  // it at a URL from any host (e.g. a GitHub Release asset) instead of
+  // uploading through Cloudinary, useful since this Cloudinary account has
+  // a ~10MB file size cap that blocks the installer (see cloudinary.ts).
+  app.post("/api/admin/desktop-app/set-url", requireAdmin, async (req, res) => {
+    try {
+      const { url } = req.body;
+      if (typeof url !== "string" || !/^https:\/\/.+/.test(url)) {
+        return res.status(400).json({ error: "Nevažeći link (mora početi sa https://)" });
+      }
+      await storage.setSetting("desktop_app_download_url", url);
+      console.log(`[ADMIN] Desktop app download URL ručno postavljen od strane ${req.jwtUser!.username}`);
+      res.json({ url });
+    } catch {
+      res.status(500).json({ error: "Greška na serveru" });
+    }
+  });
+
   // Development debug endpoint for verification codes (only in development mode)
   app.get("/api/debug/verification-code", (req, res) => {
     if (process.env.NODE_ENV !== 'development') {

@@ -568,9 +568,22 @@ function DesktopAppSection() {
   const { toast } = useToast();
   const fileRef = useRef<HTMLInputElement>(null);
   const [uploading, setUploading] = useState(false);
+  const [showUrlField, setShowUrlField] = useState(false);
+  const [urlInput, setUrlInput] = useState("");
 
   const { data } = useQuery<{ url: string | null; updatedAt: string | null }>({
     queryKey: ["/api/admin/desktop-app/download-url"],
+  });
+
+  const setUrlMutation = useMutation({
+    mutationFn: (url: string) => apiRequest("POST", "/api/admin/desktop-app/set-url", { url }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/admin/desktop-app/download-url"] });
+      setShowUrlField(false);
+      setUrlInput("");
+      toast({ title: "Uspeh", description: "Link je sačuvan" });
+    },
+    onError: (e: any) => toast({ title: "Greška", description: e.message ?? "Link nije sačuvan", variant: "destructive" }),
   });
 
   async function handleFile(file: File) {
@@ -626,15 +639,42 @@ function DesktopAppSection() {
         className="hidden"
         onChange={e => { const f = e.target.files?.[0]; if (f) handleFile(f); e.target.value = ""; }}
       />
-      <Button
-        variant="outline"
-        size="sm"
-        disabled={uploading}
-        onClick={() => fileRef.current?.click()}
-        className="gap-2"
-      >
-        {uploading ? "Otpremam..." : "Otpremi novu verziju (Setup .exe)"}
-      </Button>
+      <div className="flex flex-wrap items-center gap-2">
+        <Button
+          variant="outline"
+          size="sm"
+          disabled={uploading}
+          onClick={() => fileRef.current?.click()}
+          className="gap-2"
+        >
+          {uploading ? "Otpremam..." : "Otpremi novu verziju (Setup .exe)"}
+        </Button>
+        <Button variant="ghost" size="sm" onClick={() => setShowUrlField(v => !v)}>
+          ili nalepi eksterni link
+        </Button>
+      </div>
+
+      {showUrlField && (
+        <div className="flex items-center gap-2">
+          <Input
+            value={urlInput}
+            onChange={e => setUrlInput(e.target.value)}
+            placeholder="https://github.com/.../Setup.exe"
+            className="text-sm"
+          />
+          <Button
+            size="sm"
+            disabled={!urlInput.trim() || setUrlMutation.isPending}
+            onClick={() => setUrlMutation.mutate(urlInput.trim())}
+          >
+            Sačuvaj
+          </Button>
+        </div>
+      )}
+
+      <p className="text-xs text-muted-foreground">
+        Upload ide preko Cloudinary-ja (trenutni limit naloga: ~10MB). Za veće fajlove nalepi link sa GitHub Release-a ili drugog hostinga.
+      </p>
     </div>
   );
 }
