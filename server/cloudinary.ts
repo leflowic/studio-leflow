@@ -58,16 +58,16 @@ export async function uploadRawImageToCloudinary(buffer: Buffer, folder: string,
   });
 }
 
-// resource_type "raw" - Cloudinary's bucket for arbitrary binaries (installer
-// .exe, zip, etc.) that don't fit its image/video processing pipelines.
-// This account's plan caps a single synchronous upload request at 10MB
-// ("File size too large. Got X. Maximum is 10485760."), which the desktop
-// app installer (~80MB) blows past. upload_chunked_stream(buffer) doesn't
-// reliably slice a single stream.end(buffer) write into real sub-10MB HTTP
-// requests (still got rejected at 12MB). upload_large() reading from an
-// actual file on disk is Cloudinary's documented, reliable path for this -
-// it manages the chunked/resumable upload itself. Buffer is spilled to a
-// temp file first since multer keeps it in memory.
+// For arbitrary binaries (installer .exe, zip, etc.) that don't fit
+// Cloudinary's image processing pipeline. resource_type "raw" on this
+// account has a hard ~10MB cap that chunked/upload_large upload does NOT
+// bypass (that mechanism works around HTTP transfer timeouts, not an
+// account-level per-resource-type size restriction - confirmed by two
+// different chunking strategies both still getting rejected at the same
+// ceiling). resource_type "video" is Cloudinary's bucket for large files
+// on this account (already proven up to typical MP3 sizes by
+// uploadAudioToCloudinary below) and allows much larger files - used here
+// even though the file isn't actually video, which Cloudinary permits.
 export async function uploadRawFileToCloudinary(buffer: Buffer, folder: string, publicId: string): Promise<string> {
   const tmpPath = path.join(os.tmpdir(), `upload_${randomBytes(8).toString("hex")}`);
   await fs.promises.writeFile(tmpPath, buffer);
@@ -75,7 +75,7 @@ export async function uploadRawFileToCloudinary(buffer: Buffer, folder: string, 
     return await new Promise<string>((resolve, reject) => {
       cloudinary.uploader.upload_large(
         tmpPath,
-        { folder, public_id: publicId, resource_type: "raw", overwrite: true, chunk_size: 6 * 1024 * 1024 },
+        { folder, public_id: publicId, resource_type: "video", overwrite: true, chunk_size: 6 * 1024 * 1024 },
         (error, result) => {
           if (error || !result) return reject(error || new Error("Upload failed"));
           resolve(result.secure_url);
