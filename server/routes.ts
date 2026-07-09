@@ -151,17 +151,22 @@ const giveawayUploadLocks = new Set<number>();
 const communityMessageRateLimits = new Map<number, number>();
 const COMMUNITY_MESSAGE_COOLDOWN = 10 * 1000; // 10 sekundi u milisekundama
 
-// Funkcija za dobijanje prave IP adrese klijenta (koristi Express req.ip koji je siguran)
+// Funkcija za dobijanje prave IP adrese klijenta
 function getClientIp(req: any): string | null {
-  // req.ip je automatski popunjen od Express-a kada je trust proxy omogućen
-  // Express ispravno parsira X-Forwarded-For i vraća pravu IP adresu
-  const ip = req.ip;
-  
+  // Parsiraj X-Forwarded-For direktno umesto da se oslanjamo samo na Express-ov
+  // req.ip (koji zavisi od tačnog broja "trust proxy" hop-ova). Na Railway-u
+  // req.ip je znao da padne nazad na loopback socket adresu (127.0.0.1/::1),
+  // pa je svaki klik snimao ipAddress: null i "unique clicks" je uvek bio 0.
+  // Prvi IP u X-Forwarded-For listi je pravi klijent.
+  const xff = req.headers?.['x-forwarded-for'];
+  const forwardedIp = typeof xff === 'string' ? (xff.split(',')[0] ?? '').trim() || null : null;
+  const ip = forwardedIp || req.ip || req.socket?.remoteAddress || null;
+
   // Ignoriši localhost adrese
   if (!ip || ip === '::1' || ip === '127.0.0.1' || ip === '::ffff:127.0.0.1') {
     return null;
   }
-  
+
   return ip;
 }
 
@@ -4357,7 +4362,8 @@ Sitemap: ${siteUrl}/sitemap.xml
       if (!platform || !allowed.includes(platform)) return res.status(400).json({ error: "Nevažeća platforma" });
       await storage.recordSmartLinkClick(link.id, platform, getClientIp(req));
       res.json({ ok: true });
-    } catch {
+    } catch (error) {
+      console.error("Greška pri beleženju klika na smart linku:", error);
       res.status(500).json({ error: "Greška na serveru" });
     }
   });
