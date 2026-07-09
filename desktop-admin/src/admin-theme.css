@@ -1,0 +1,194 @@
+/* Injected only inside the LeFlow Admin desktop app's BrowserView.
+   Never touches the real site - this is scoped to the Electron content view only.
+
+   Colors here are matched exactly to the launcher screen (shell.html):
+   body #0a0a0c, topbar/popover #0d0d10, card/panel rgba(16,16,20), borders
+   are white at low opacity (same technique shell.html uses), one violet
+   accent (hsl 248) for anything interactive. */
+
+:root, .dark {
+  --background: 240 9% 4%;
+  --foreground: 0 0% 96%;
+
+  --border: 240 8% 20%;
+
+  --card: 240 11% 7%;
+  --card-foreground: 0 0% 96%;
+  --card-border: 240 8% 20%;
+
+  --sidebar: 240 10% 6%;
+  --sidebar-foreground: 0 0% 95%;
+  --sidebar-border: 240 8% 18%;
+
+  --popover: 240 10% 6%;
+  --popover-foreground: 0 0% 96%;
+  --popover-border: 240 8% 20%;
+
+  /* Apple's System Indigo is ~hue 243 - this brand accent already sits right
+     next to it, so it stays as the one spot of color in the whole UI. */
+  --primary: 248 92% 66%;
+  --primary-foreground: 248 92% 98%;
+
+  --muted: 240 9% 12%;
+  --muted-foreground: 0 0% 65%;
+
+  --accent: 240 8% 14%;
+  --accent-foreground: 0 0% 92%;
+
+  --radius: 1.1rem;
+
+  --elevate-1: rgba(255, 255, 255, 0.035);
+  --elevate-2: rgba(255, 255, 255, 0.07);
+}
+
+html {
+  background: #0a0a0c !important;
+}
+
+body {
+  background: #0a0a0c !important;
+}
+
+/* Restrained glass treatment, same recipe as the launcher panel */
+.bg-card,
+[class*="PanelCard"],
+.rounded-2xl.border {
+  background-color: rgba(16, 16, 20, 0.92) !important;
+  border-color: rgba(255, 255, 255, 0.09) !important;
+}
+
+.bg-popover {
+  background-color: rgba(13, 13, 16, 0.97) !important;
+}
+
+/* Refined shadows - softer, more elevated than the web version */
+.shadow-sm, .shadow, .shadow-md, .shadow-lg, .shadow-xl {
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.3), 0 8px 22px -10px rgba(0, 0, 0, 0.5) !important;
+}
+.shadow-xs {
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.35) !important;
+}
+
+/* Thin, unobtrusive desktop-style scrollbars everywhere */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: rgba(255, 255, 255, 0.16) transparent;
+}
+*::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+*::-webkit-scrollbar-track {
+  background: transparent;
+}
+*::-webkit-scrollbar-thumb {
+  background-color: rgba(255, 255, 255, 0.14);
+  border-radius: 999px;
+  border: 2px solid transparent;
+  background-clip: padding-box;
+}
+*::-webkit-scrollbar-thumb:hover {
+  background-color: rgba(255, 255, 255, 0.22);
+  background-clip: padding-box;
+}
+
+::selection {
+  background: hsla(248, 92%, 66%, 0.35);
+}
+
+/* The desktop app has its own native sidebar (shell.html) that drives these
+   same tabs via data-testid clicks - hide the website's own copy so it isn't
+   duplicated, and let the real tab content use the full window width. */
+aside:has(> nav[data-testid="tabs-list-admin"]) {
+  display: none !important;
+}
+[data-testid="heading-admin-panel"],
+[data-testid="text-admin-description"] {
+  display: none !important;
+}
+.max-w-7xl {
+  max-width: 100% !important;
+}
+.min-h-screen.bg-background {
+  padding-top: 1.5rem !important;
+  padding-bottom: 1.5rem !important;
+}
+
+/* This app never shows anything but the admin panel / login screen - strip every
+   piece of marketing-site chrome that App.tsx wraps around every route (header,
+   footer, WhatsApp bubble, cookie banner, PWA install prompt). Without this the
+   window just looks like the public website in a frame, which is exactly what
+   this desktop app must NOT look like. */
+header,
+footer,
+[class*="25D366"],
+.fixed.bottom-0.left-0.right-0.z-50,
+[class*="z-[60]"] {
+  display: none !important;
+}
+main {
+  padding-top: 0 !important;
+  min-height: 100vh !important;
+}
+
+/* ---------------------------------------------------------------------
+   Match the rest of the admin panel's UI to the desktop shell's language:
+   restrained, near-monochrome, thin borders, accent only on focus/active -
+   not the site's punchier public-page look. Desktop-app only, see header.
+   ------------------------------------------------------------------- */
+
+/* Buttons: keep the pill shape and brand color, drop the glow */
+button.shadow-md.shadow-primary\/20 {
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.35) !important;
+}
+
+/* Native form inputs (shadcn Input/Textarea/Select all render these) */
+input, textarea, select {
+  background-color: rgba(255, 255, 255, 0.035) !important;
+  border-color: rgba(255, 255, 255, 0.1) !important;
+}
+
+/* AdminModal (client/src/components/admin/AdminModal.tsx) - its backdrop/panel
+   colors are inline styles, so !important is required to override them here. */
+.rounded-3xl.flex.flex-col {
+  background: rgba(12, 12, 15, 0.96) !important;
+  border-color: rgba(255, 255, 255, 0.09) !important;
+  box-shadow:
+    0 30px 70px -24px rgba(0, 0, 0, 0.75),
+    inset 0 1px 0 rgba(255, 255, 255, 0.05) !important;
+}
+
+/* Radix Tabs (e.g. UserDetailPanel's Pregled/Dozvole/Bezbednost) */
+[role="tablist"] {
+  background-color: rgba(255, 255, 255, 0.035) !important;
+}
+[role="tab"][data-state="active"] {
+  box-shadow: none !important;
+  background-color: rgba(255, 255, 255, 0.08) !important;
+}
+
+/* Table rows: thinner, quieter borders */
+table tr {
+  border-color: rgba(255, 255, 255, 0.07) !important;
+}
+
+/* ---------------------------------------------------------------------
+   macOS System Settings flavor: softer/bigger rounded corners (see the
+   --radius bump above), more generous card padding and breathing room
+   between stacked cards, bolder card-level headings. Desktop-app only.
+   ------------------------------------------------------------------- */
+.bg-card {
+  padding: 1.75rem !important;
+}
+.bg-card + .bg-card {
+  margin-top: 1.5rem !important;
+}
+.bg-card h2, .bg-card h3 {
+  font-size: 1.15em !important;
+  font-weight: 650 !important;
+  letter-spacing: -0.01em !important;
+  margin-bottom: 0.35rem !important;
+}
+.bg-card p {
+  color: hsl(var(--muted-foreground)) !important;
+}
