@@ -218,6 +218,8 @@ function createWindow() {
     layoutContentView();
     mainWindow.webContents.send("window-state", false);
   });
+  mainWindow.on("focus", () => mainWindow.webContents.send("window-focus", true));
+  mainWindow.on("blur", () => mainWindow.webContents.send("window-focus", false));
 
   mainWindow.once("ready-to-show", () => {
     layoutContentView();
@@ -260,6 +262,10 @@ ipcMain.on("shell:home", () => {
 });
 
 Menu.setApplicationMenu(null);
+// Matches the NSIS installer's appId (package.json build.appId) - groups this
+// app under its own identity in the Windows taskbar/notifications/jump lists
+// instead of falling back to Electron's default "electron.app.Electron".
+app.setAppUserModelId("com.studioleflow.admin");
 app.whenReady().then(createWindow);
 
 app.on("window-all-closed", () => {

@@ -196,9 +196,13 @@ document.getElementById("topbar").addEventListener("dblclick", (e) => {
 });
 
 const maximizeBtn = document.getElementById("maximize");
-const RESTORE_ICON = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="7" y="7" width="12" height="12" rx="1.5"/><path d="M5 15V6a1.5 1.5 0 011.5-1.5H15"/></svg>';
+const RESTORE_ICON = '<svg viewBox="0 0 10 10" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="1.5" width="5.5" height="5.5" rx="0.8"/><path d="M1.5 3.5v4a1 1 0 001 1h4"/></svg>';
 const MAXIMIZE_ICON = maximizeBtn.innerHTML;
 window.shell.onWindowState((isMaximized) => {
   maximizeBtn.innerHTML = isMaximized ? RESTORE_ICON : MAXIMIZE_ICON;
   maximizeBtn.title = isMaximized ? "Vrati" : "Maksimizuj";
+});
+
+window.shell.onWindowFocus((isFocused) => {
+  document.body.classList.toggle("is-blurred", !isFocused);
 });

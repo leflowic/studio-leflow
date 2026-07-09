@@ -18,4 +18,7 @@ contextBridge.exposeInMainWorld("shell", {
   onWindowState: (callback) => {
     ipcRenderer.on("window-state", (_event, isMaximized) => callback(isMaximized));
   },
+  onWindowFocus: (callback) => {
+    ipcRenderer.on("window-focus", (_event, isFocused) => callback(isFocused));
+  },
 });

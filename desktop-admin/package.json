@@ -2,7 +2,7 @@
   "name": "leflow-admin-desktop",
   "productName": "LeFlow Admin",
   "version": "1.0.0",
-  "description": "Desktop shell for the Studio LeFlow admin panel",
+  "description": "Admin Panel for Studio LeFlow - Belgrade Music Production Studio",
   "main": "src/main.js",
   "author": "Studio LeFlow",
   "license": "UNLICENSED",
@@ -19,6 +19,7 @@
   "build": {
     "appId": "com.studioleflow.admin",
     "productName": "LeFlow Admin",
+    "copyright": "Copyright © 2020-2026 Studio LeFlow",
     "directories": {
       "output": "release"
     },
