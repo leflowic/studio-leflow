@@ -60,7 +60,7 @@ There are no automated tests in this project.
 - All pages are lazy-loaded via `React.lazy`. Routes are defined in `client/src/App.tsx` using `wouter`.
 
 **Standalone layouts:**
-- The `music.studioleflow.com` subdomain (Smart Links), legacy `/l/:slug`, and `/portal/:token` (Client Portal) skip the main header/footer entirely. They are matched before the main Router in `App.tsx` (hostname check first, then path prefixes) and rendered in their own `<Suspense>` wrappers.
+- The `music.studioleflow.com` subdomain (Smart Links), legacy `/l/:slug`, `/portal/:token` (Client Portal) and the auth pages (`/prijava`, `/registracija`, `/auth` - `AUTH_PATHS`) skip the main header/footer entirely. They are matched in `App.tsx`'s `Router()` before the main layout (hostname check first, then path prefixes; the auth branch sits after the maintenance check) and rendered in their own `<Suspense>` wrappers.
 - `WhatsAppButton` and similar global UI components must check `useLocation()` and return `null` on these routes.
 
 **Admin panel tabs:**
@@ -116,7 +116,7 @@ There are no automated tests in this project.
 
 **`/zastita-brenda` (public brand protection notice):**
 - Static public page (`client/src/pages/zastita-brenda.tsx`, no DB-backed content) — a public, dated notice claiming first use of the "Studio LeFlow"/"LeFlow" name and logo since 2020, distinct from the internal `rights_protections` admin tool above. Explicitly **not** a substitute for formal trademark (žig) registration with Zavod za intelektualnu svojinu — the copy says so directly, don't soften that into implying legal certainty it doesn't have.
-- Linked from the footer bottom bar (`footer.tsx`, next to "Proveri Licencu"), registered in `BREADCRUMB_NAMES` (`SEO.tsx`), `STATIC_PAGE_META` (`server/seo-meta.ts`), and `sitemap.xml` — same 4-place wiring required for any new public page (see the SEO section below).
+- Linked from the footer bottom bar (`footer.tsx`, next to "Proveri licencu"), registered in `BREADCRUMB_NAMES` (`SEO.tsx`), `STATIC_PAGE_META` (`server/seo-meta.ts`), and `sitemap.xml` — same 4-place wiring required for any new public page (see the SEO section below).
 
 **Zaštita prava (Rights Protection — internal evidence tool):**
 - Table `rights_protections`: `assetType` (`"audio"` | `"image"`), `title`, `creatorName`, optional `clientName`/`notes`/`claimedCreationDate`, `fileUrl` (Cloudinary), `originalFilename`, `fileSizeBytes`, `mimeType`, `fileHash` (SHA-256 hex of the exact bytes received, computed **before** the Cloudinary upload), `fingerprint` (nullable JSON `number[]`, audio only), `certificateNumber` (`ZP-<year>-00000001`, via `storage.getNextRightsProtectionNumber()`), `verificationHash` (HMAC, same pattern as license `verificationHash`).
@@ -270,18 +270,17 @@ There are no automated tests in this project.
 **Pravila i Česta Pitanja (`/pravila`):**
 - `client/src/pages/terms.tsx` is a single merged page: two `Accordion` groups, "Pravila i Uslovi Saradnje" (business policy — avans/cancellation/payment/copyright/licenses/revisions) followed by "Česta Pitanja" (former standalone FAQ). Both accordions share the clean bordered-item style (no `CheckCircle2` lists, no gradient cards, no per-item `FadeInWhenVisible` — see the AI-slop rules below); `FadeInWhenVisible` wraps each of the two accordion sections and the closing CTA as whole units.
 - `/faq` no longer has its own page — it's a `<Redirect to="/pravila" />` in `App.tsx` for old links/bookmarks. `client/src/pages/faq.tsx` was deleted; don't recreate it. `structuredData={pageStructuredData.faq}` (the `FAQPage` JSON-LD block in `SEO.tsx`) is passed on `/pravila` since the FAQ content now lives there.
-- Nav: header `moreNav` only ever linked "Pravila" → `/pravila` (FAQ was footer-only before the merge); footer's link list and bottom bar both say "Pravila i Česta Pitanja" now, one link instead of two.
+- Nav: "Pravila i česta pitanja" lives in the header's Studio mega menu and in the footer (link list + bottom bar), one link each - there is no separate FAQ link.
 
 **Video Spots:**
-- Table: `video_spots` (title, description, youtubeUrl, createdAt). Route: `/video-spots` → `client/src/pages/video-spots.tsx`.
+- Table: `video_spots` (title, description, youtubeUrl, createdAt). Public route is **`/projekti`** (the "Projekti" page) → `client/src/pages/video-spots.tsx`; there is no `/video-spots` route.
 - Embeds YouTube videos via extracted video ID (`extractYouTubeVideoId()` handles `watch?v=`, `youtu.be/`, and `/embed/` URL forms).
 - Admin CRUD via Radix `<Dialog>` (not portal-based — no async search buttons so FocusTrap is safe here).
 - Uses `useEditMode()` to conditionally show add/edit/delete controls for admins.
 
 **Parallax components:**
-- `client/src/components/parallax/ParallaxHero.tsx` exports `ParallaxHero`, `ParallaxSection`, and `Parallax3DCard`.
-- Used on the homepage (`home.tsx`) for the hero section and animated sections.
-- Built with `framer-motion`. `ParallaxHero` uses `useScroll` + `useTransform` for scroll-driven parallax. `Parallax3DCard` uses mouse position for tilt effect.
+- `client/src/components/parallax/ParallaxHero.tsx` exports `ParallaxHero`, `ParallaxSection`, and `Parallax3DCard`. Only `ParallaxHero` is still used (the homepage hero, rendered as an inset rounded card); `ParallaxSection`/`Parallax3DCard` were removed from every page in the 2026-11 de-template pass (3D tilt on content cards is on the AI-slop list) - don't reintroduce them.
+- Built with `framer-motion`; `ParallaxHero` uses `useScroll` + `useTransform` for scroll-driven fade/scale of the hero content.
 
 **UI/UX Pro Max skill:**
 - Installed at `.claude/skills/ui-ux-pro-max/`. Provides design system recommendations (67 styles, 96 palettes, 57 font pairings, shadcn/ui stack support).
@@ -400,7 +399,7 @@ The owner explicitly dislikes these patterns. Never introduce them:
 **Newsletter:**
 - Tables: `newsletter_subscribers` (email, confirmationToken, confirmedAt).
 - Double opt-in: `POST /api/newsletter/subscribe` creates subscriber + sends confirmation email. `GET /api/newsletter/confirm/:token` activates. Page: `/newsletter/potvrda/:token`.
-- Admin sends campaigns via the Emails tab (`EmailTab.tsx`) using `POST /api/admin/send-email` to a manually entered list — there's no bulk-send-to-subscribers endpoint yet.
+- Campaigns to all confirmed subscribers go through the admin Newsletter tab (rich text editor in `admin.tsx`) → `POST /api/newsletter/send` (`requireRole("marketing")`), which wraps each email in `newsletterCampaignEmail()` with a signed per-subscriber unsubscribe link + `List-Unsubscribe` headers (see "Email"). The separate Email tab (`EmailTab.tsx`, `POST /api/admin/send-email`) is for one-off emails to a single typed address.
 
 **Giveaway (Beat Upload):**
 - Despite the feature name, the underlying tables are named generically (pre-date the "giveaway" framing): `projects` (title, description, genre, mp3Url, userId, uploadDate, votesCount, currentMonth, approved, status enum) and `votes` (userId, projectId, ipAddress — unique on both `(userId, projectId)` and `(ipAddress, projectId)`, so voting is rate-limited by account and by IP). `comments` (projectId, userId, text) also hangs off `projects` for per-beat discussion. Don't confuse these with `client_portals`/`portal_versions` or the `/projekti` portfolio page — unrelated features that happen to share the word "project".
