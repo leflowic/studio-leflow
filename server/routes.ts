@@ -2,7 +2,7 @@ import type { Express, Response } from "express";
 import { createServer, type Server } from "http";
 import { storage } from "./storage";
 import { wsHelpers, notifyUser, broadcastToUser, getOnlineUsersSnapshot } from "./websocket-helpers";
-import { getActivityPoints, rankForPoints, RANK_THRESHOLDS, POINT_RULES } from "./activity";
+import { getActivityPoints, rankForPoints, RANK_THRESHOLDS, POINT_RULES, RANK_PERKS, perksFor } from "./activity";
 import { getVapidPublicKey, saveSubscription, removeSubscription, hasSubscription, sendPushToUser, sendPushToUserIfOffline, sendPushToAll } from "./push";
 import { insertContactSubmissionSchema, insertCmsContentSchema, insertCmsMediaSchema, insertVideoSpotSchema, insertUserSongSchema, insertNewsletterSubscriberSchema, insertInvoiceSchema, insertCommunityMessageSchema, insertSiteAnnouncementSchema, mixMasterContractDataSchema, copyrightTransferContractDataSchema, instrumentalSaleContractDataSchema, insertSmartLinkSchema, insertStudioJobSchema, JOB_STAGES, insertNewsArticleSchema, insertRightsProtectionSchema, insertTestimonialSchema, upsertJobBriefSchema, type CmsContent, type CmsMedia, type VideoSpot, type UserSong } from "@shared/schema";
 import { sendEmail, getLastVerificationCode } from "./resend-client";
@@ -1334,9 +1334,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const currentMonth = new Date().toISOString().substring(0, 7);
       const userProjects = await storage.getUserProjectsForMonth(userId, currentMonth);
 
-      if (userProjects.length > 0) {
+      const monthlyLimit = perksFor(req.jwtUser!.rank).giveawayUploads;
+      if (userProjects.length >= monthlyLimit) {
         giveawayUploadLocks.delete(userId);
-        return res.status(400).json({ error: "Već ste uploadovali projekat ovog meseca. Možete uploadovati samo 1 projekat mesečno." });
+        return res.status(400).json({ error: monthlyLimit === 1
+          ? "Već ste uploadovali projekat ovog meseca. Sa vašim rangom možete uploadovati 1 projekat mesečno."
+          : `Iskoristili ste svih ${monthlyLimit} uploada ovog meseca.` });
       }
       
       // Parse and validate project data from request body
@@ -1639,19 +1642,26 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
       
       // Validate rank
+      // "auto" = hand the user back to the earned-rank system: unlock and set
+      // whatever their points earn right now (may be lower than before).
       const rankSchema = z.object({ 
-        rank: z.enum(['user', 'vip', 'legend', 'admin']) 
+        rank: z.enum(['user', 'vip', 'legend', 'admin', 'auto']) 
       });
-      const validated = rankSchema.parse(req.body);
+      const parsed = rankSchema.parse(req.body);
       
       // Get user to notify them
       const user = await storage.getUser(userId);
       if (!user) {
         return res.status(404).json({ error: "Korisnik nije pronađen" });
       }
-      
-      // Update rank
+
+      const validated = parsed.rank === "auto"
+        ? { rank: rankForPoints(await getActivityPoints(userId)) as 'user' | 'vip' | 'legend' }
+        : { rank: parsed.rank };
+
+      // Update rank; a manual pick locks it from the hourly auto-upgrade job
       await storage.updateUserRank(userId, validated.rank);
+      await storage.setRankLocked(userId, parsed.rank !== "auto");
       
       // Notify user about rank change
       const rankNames: Record<string, string> = {
@@ -4487,12 +4497,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
       if (!parsed.success) return res.status(400).json({ error: parsed.error.errors[0]?.message ?? "Nevažeći podaci" });
       const link = await storage.createSmartLink(parsed.data);
       res.json(link);
-      sendPushToAll({
-        title: "Nova pesma iz studija",
-        body: `${link.artist} - ${link.title}`,
-        url: `https://music.studioleflow.com/${link.slug}`,
-        tag: `release-${link.id}`,
-      });
     } catch (e: any) {
       if (e?.code === "23505") return res.status(409).json({ error: "Slug već postoji. Izaberite drugi." });
       res.status(500).json({ error: "Greška na serveru" });
@@ -5032,7 +5036,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const next = rank === "user" ? { rank: "vip", label: "VIP", at: RANK_THRESHOLDS.vip }
         : rank === "vip" ? { rank: "legend", label: "Legenda", at: RANK_THRESHOLDS.legend }
         : null;
-      res.json({ points, rank, earnedRank: rankForPoints(points), next, rules: POINT_RULES });
+      res.json({ points, rank, earnedRank: rankForPoints(points), next, rules: POINT_RULES, perks: RANK_PERKS, rankLocked: req.jwtUser!.rankLocked });
     } catch (e) {
       console.error("[Activity] error:", e);
       res.status(500).json({ error: "Greška na serveru" });

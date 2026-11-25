@@ -11,7 +11,8 @@ import { useToast } from "@/hooks/use-toast";
 type Props = {
   challengeNumber: number;
   correct: boolean;
-  listensUsed: number;   // 1-3
+  listensUsed: number;
+  maxListens?: number;   // 3 by default; VIP 4, Legenda 5
   streak: number;
 };
 
@@ -29,7 +30,7 @@ function loadImage(src: string): Promise<HTMLImageElement | null> {
   });
 }
 
-async function drawCard({ challengeNumber, correct, listensUsed, streak }: Props): Promise<Blob> {
+async function drawCard({ challengeNumber, correct, listensUsed, maxListens = 3, streak }: Props): Promise<Blob> {
   await document.fonts?.ready;
   const logo = await loadImage("/leflow-logo-white.png");
   const W = 1080, H = 1920;
@@ -74,9 +75,9 @@ async function drawCard({ challengeNumber, correct, listensUsed, streak }: Props
 
   // Listens used: filled = used
   const dotR = 34, dotGap = 40;
-  const dotsW = 3 * dotR * 2 + 2 * dotGap;
+  const dotsW = maxListens * dotR * 2 + (maxListens - 1) * dotGap;
   let dx = (W - dotsW) / 2 + dotR;
-  for (let i = 0; i < 3; i++) {
+  for (let i = 0; i < maxListens; i++) {
     ctx.beginPath();
     ctx.arc(dx, 1060, dotR, 0, Math.PI * 2);
     if (i < listensUsed) { ctx.fillStyle = correct ? OAK : "#6b6660"; ctx.fill(); }

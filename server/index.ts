@@ -98,7 +98,8 @@ async function runMigrations() {
       CREATE INDEX IF NOT EXISTS push_subscriptions_user_idx ON push_subscriptions(user_id);
       ALTER TABLE users
         ADD COLUMN IF NOT EXISTS public_profile BOOLEAN NOT NULL DEFAULT FALSE,
-        ADD COLUMN IF NOT EXISTS bio TEXT;
+        ADD COLUMN IF NOT EXISTS bio TEXT,
+        ADD COLUMN IF NOT EXISTS rank_locked BOOLEAN NOT NULL DEFAULT FALSE;
     `);
     // Contact form: optional link to a demo recording
     await client.query(`

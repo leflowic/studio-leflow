@@ -60,6 +60,9 @@ export const users = pgTable("users", {
   googleId: text("google_id").unique(),
   role: text("role").notNull().default("user"), // "user" or "admin"
   rank: userRankEnum("rank").notNull().default("user"), // "user", "vip", "legend", "admin"
+  // Set when staff pick a rank by hand: the hourly earned-rank job then leaves
+  // this user alone (no auto-promotion back after a manual demotion).
+  rankLocked: boolean("rank_locked").notNull().default(false),
   banned: boolean("banned").notNull().default(false),
   termsAccepted: boolean("terms_accepted").notNull().default(false),
   emailVerified: boolean("email_verified").notNull().default(false),

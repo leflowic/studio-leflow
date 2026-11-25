@@ -343,6 +343,7 @@ export interface IStorage {
   clearAllCommunityMessages(): Promise<void>;
   canUserSendMessage(userId: number): Promise<boolean>;
   updateUserRank(userId: number, rank: string): Promise<void>;
+  setRankLocked(userId: number, locked: boolean): Promise<void>;
 
   // Site Announcement
   getSiteAnnouncement(): Promise<SiteAnnouncement>;
@@ -2965,6 +2966,10 @@ export class DatabaseStorage implements IStorage {
       console.error('Error clearing all community messages:', error);
       throw new Error('Failed to clear all community messages');
     }
+  }
+
+  async setRankLocked(userId: number, locked: boolean): Promise<void> {
+    await db.update(users).set({ rankLocked: locked }).where(eq(users.id, userId));
   }
 
   async updateUserRank(userId: number, rank: string): Promise<void> {

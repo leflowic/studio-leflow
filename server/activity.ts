@@ -17,6 +17,19 @@ import { db } from "./db";
 
 export const RANK_THRESHOLDS = { vip: 150, legend: 600 } as const;
 
+// Rank perks - all enforced by the site itself, nothing that commits the
+// studio to anything (and never prices/discounts - see copy rules).
+export const RANK_PERKS = {
+  user:   { gameListens: 3, giveawayUploads: 1 },
+  vip:    { gameListens: 4, giveawayUploads: 2 },
+  legend: { gameListens: 5, giveawayUploads: 3 },
+  admin:  { gameListens: 5, giveawayUploads: 3 },
+} as const;
+
+export function perksFor(rank: string) {
+  return RANK_PERKS[rank as keyof typeof RANK_PERKS] ?? RANK_PERKS.user;
+}
+
 export const POINT_RULES = [
   { label: "Tačan odgovor u igri Pogodi Pesmu", points: 10 },
   { label: "Dan kad si objavio nešto u zajednici", points: 3 },
@@ -27,7 +40,7 @@ export const POINT_RULES = [
 ];
 
 const POINTS_SQL = sql`
-  SELECT u.id AS user_id, u.rank AS rank,
+  SELECT u.id AS user_id, u.rank AS rank, u.rank_locked AS rank_locked,
     COALESCE(g.correct, 0) * 10
     + COALESCE(p.days, 0) * 3
     + COALESCE(c.days, 0) * 1
@@ -71,6 +84,7 @@ export async function findRankUpgrades(): Promise<Array<{ userId: number; from: 
     const points = Number(r.points);
     const earned = rankForPoints(points);
     const current = String(r.rank);
+    if (r.rank_locked) continue; // staff set this rank by hand
     if (earned !== "user" && (ORDER[earned] ?? 0) > (ORDER[current] ?? 0)) {
       out.push({ userId: Number(r.user_id), from: current, to: earned, points });
     }

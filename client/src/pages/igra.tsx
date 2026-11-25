@@ -46,6 +46,8 @@ const SOUND_BAR_HEIGHTS = [14, 28, 20, 36, 22, 32, 16, 26, 18];
 
 export default function IgraPage() {
   const { user } = useAuth();
+  // Rank perk: VIP 4, Legenda 5 listens (mirrors RANK_PERKS in server/activity.ts)
+  const maxPlays = user?.rank === "legend" || user?.rank === "admin" ? 5 : user?.rank === "vip" ? 4 : 3;
   const queryClient = useQueryClient();
   const { toast } = useToast();
 
@@ -55,7 +57,7 @@ export default function IgraPage() {
   const [audioError, setAudioError] = useState(false);
   const [noClip, setNoClip] = useState(false);
   const [playing, setPlaying] = useState(false);
-  const [playsLeft, setPlaysLeft] = useState(3);
+  const [playsLeft, setPlaysLeft] = useState(maxPlays);
   const [answer, setAnswer] = useState("");
   const [submitted, setSubmitted] = useState(false);
   const [result, setResult] = useState<{ correct: boolean; points: number } | null>(null);
@@ -89,8 +91,8 @@ export default function IgraPage() {
     const date = challenge?.challengeDate;
     if (!date || !user?.id) return;
     const stored = localStorage.getItem(`igra_plays_${user.id}_${date}`);
-    setPlaysLeft(stored !== null ? Math.max(0, parseInt(stored, 10)) : 3);
-  }, [challenge?.challengeDate, user?.id]);
+    setPlaysLeft(stored !== null ? Math.max(0, parseInt(stored, 10)) : maxPlays);
+  }, [challenge?.challengeDate, user?.id, maxPlays]);
 
   useEffect(() => {
     if (!data?.available || !challenge?.challengeDate) return;
@@ -302,7 +304,8 @@ export default function IgraPage() {
                 <ShareResultButton
                   challengeNumber={data?.streak?.challengeNumber ?? 1}
                   correct={!!finalResult?.correct}
-                  listensUsed={Math.min(3, Math.max(1, 3 - playsLeft))}
+                  listensUsed={Math.min(maxPlays, Math.max(1, maxPlays - playsLeft))}
+                  maxListens={maxPlays}
                   streak={data?.streak?.current ?? 0}
                 />
               </div>
@@ -388,12 +391,12 @@ export default function IgraPage() {
                 ? "Učitavanje..."
                 : playsLeft <= 0
                 ? "Iskoristio si sva slušanja"
-                : `Preostalo ${playsLeft} od 3 slušanja`}
+                : `Preostalo ${playsLeft} od ${maxPlays} slušanja`}
             </p>
 
             {/* Play dots */}
             <div className="flex gap-3">
-              {[0, 1, 2].map(i => (
+              {Array.from({ length: maxPlays }, (_, i) => i).map(i => (
                 <motion.div
                   key={i}
                   animate={{ scale: i < playsLeft ? 1 : 0.8, opacity: i < playsLeft ? 1 : 0.25 }}
@@ -586,7 +589,7 @@ export default function IgraPage() {
                       <ol className="space-y-0">
                         {[
                           { text: <>Svaki dan nova pesma. Igra se otvara u određeno vreme.</> },
-                          { text: <>Pritisni <strong className="text-foreground">▶ Pusti</strong> - čuješ <strong className="text-foreground">1 sekundu</strong>. Imaš <strong className="text-foreground">3 slušanja</strong>.</> },
+                          { text: <>Pritisni <strong className="text-foreground">▶ Pusti</strong> - čuješ <strong className="text-foreground">1 sekundu</strong>. Imaš <strong className="text-foreground">{maxPlays} slušanja</strong>{maxPlays > 3 ? " (prednost ranga)" : ""}.</> },
                           { text: <>Upiši naziv pesme i potvrdi. Imaš samo <strong className="text-foreground">1 pokušaj</strong>.</> },
                           { text: <>Tačno = <strong className="text-foreground">+10 poena</strong>. Nedeljni lider osvaja nagradu!</> },
                         ].map(({ text }, i) => (

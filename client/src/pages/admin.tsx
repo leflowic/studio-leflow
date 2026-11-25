@@ -2141,7 +2141,11 @@ function UserDetailPanel({
               <div className="flex items-center justify-between gap-4 flex-wrap">
                 <div>
                   <p className="text-sm font-medium">Rank</p>
-                  <p className="text-xs text-muted-foreground">Nivo korisnika u zajednici</p>
+                  <p className="text-xs text-muted-foreground">
+                    {(user as any).rankLocked
+                      ? "Ručno postavljen - sistem ga ne menja. Izaberi \"Automatski\" da ga opet računaju bodovi."
+                      : "Računa se automatski po bodovima aktivnosti. Ručni izbor ga zaključava."}
+                  </p>
                 </div>
                 <Select
                   value={user.rank}
@@ -2158,6 +2162,7 @@ function UserDetailPanel({
                     <SelectItem value="vip">VIP</SelectItem>
                     <SelectItem value="legend">Legend</SelectItem>
                     <SelectItem value="admin">Admin</SelectItem>
+                    <SelectItem value="auto">Automatski (po bodovima)</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
