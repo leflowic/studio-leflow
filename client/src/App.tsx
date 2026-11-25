@@ -87,6 +87,7 @@ const TermsPage = lazy(() => import("@/pages/terms"));
 const TeamPage = lazy(() => import("@/pages/team"));
 const ContactPage = lazy(() => import("@/pages/contact"));
 const AuthPageComponent = lazy(() => import("@/pages/auth-page"));
+const AUTH_PATHS = ["/prijava", "/registracija", "/auth"];
 const VerifyEmailPageComponent = lazy(() => import("@/pages/verify-email"));
 const GiveawayPage = lazy(() => import("@/pages/giveaway"));
 const DashboardPage = lazy(() => import("@/pages/dashboard"));
@@ -188,6 +189,18 @@ function Router() {
       }>
         <MaintenancePage />
       </Suspense>
+    );
+  }
+
+  // Sign-in / sign-up: standalone, distraction-free layout (own minimal top
+  // bar inside AuthPage, no site header/footer) - same idea as /portal.
+  if (AUTH_PATHS.includes(location)) {
+    return (
+      <ChunkErrorBoundary>
+        <Suspense fallback={<div className="min-h-screen bg-background" />}>
+          <AuthPageComponent />
+        </Suspense>
+      </ChunkErrorBoundary>
     );
   }
 

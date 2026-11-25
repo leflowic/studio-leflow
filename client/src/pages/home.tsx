@@ -291,7 +291,7 @@ export default function Home() {
       />
 
       <ParallaxHero>
-        <div className="flex items-center justify-center min-h-screen">
+        <div className="flex items-center justify-center min-h-[calc(100svh-4rem-1rem)]">
           <div className="max-w-7xl mx-auto px-4 md:px-6 py-20 text-center">
             {announcement?.isActive && announcement.message && (
               <motion.div
@@ -372,7 +372,7 @@ export default function Home() {
                 <Button
                   size="lg"
                   variant="outline"
-                  className="w-full sm:w-auto text-lg px-8 py-6 bg-transparent text-white border-white/30 hover:bg-white/10 font-semibold"
+                  className="w-full sm:w-auto text-lg px-8 py-6 bg-transparent text-white [border-color:rgba(255,255,255,0.3)] hover:bg-white/10 font-semibold"
                   data-testid="button-view-projects"
                 >
                   <Play className="mr-2 w-5 h-5" />
@@ -384,7 +384,7 @@ export default function Home() {
                   <Button
                     size="lg"
                     variant="outline"
-                    className="w-full sm:w-auto text-lg px-8 py-6 bg-transparent text-white border-white/30 hover:bg-white/10 font-semibold relative"
+                    className="w-full sm:w-auto text-lg px-8 py-6 bg-transparent text-white [border-color:rgba(255,255,255,0.3)] hover:bg-white/10 font-semibold relative"
                   >
                     <Gamepad2 className="mr-2 w-5 h-5" />
                     Pogodi Pesmu

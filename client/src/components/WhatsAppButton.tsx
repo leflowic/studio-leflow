@@ -12,6 +12,8 @@ export function WhatsAppButton() {
   const moved = useRef(false);
 
   if (location.startsWith("/l/") || location.startsWith("/portal/")) return null;
+  // Sign-in / sign-up pages are kept distraction-free
+  if (location === "/prijava" || location === "/registracija" || location === "/auth") return null;
   if (hidden) return null;
 
   const DISMISS_ZONE_HEIGHT = 96;

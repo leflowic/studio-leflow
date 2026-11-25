@@ -99,7 +99,7 @@ export default function UslugePage() {
           <div className="space-y-12">
             {services.map((service) => (
               <FadeInWhenVisible key={service.slug}>
-                <Card className="overflow-hidden">
+                <Card id={service.slug} className="overflow-hidden scroll-mt-24">
                   <CardContent className="p-0">
                     <div className="grid md:grid-cols-2 gap-0">
                       <div className="p-5 md:p-8 lg:p-10">
@@ -126,7 +126,7 @@ export default function UslugePage() {
       </section>
 
       {/* Extra services */}
-      <section className="py-20 bg-muted/10 border-t border-border/40">
+      <section id="dodatne" className="py-20 bg-muted/10 border-t border-border/40 scroll-mt-16">
         <div className="max-w-7xl mx-auto px-4 md:px-6">
           <FadeInWhenVisible>
             <h2 className="text-2xl font-bold mb-8">Dodatne usluge</h2>

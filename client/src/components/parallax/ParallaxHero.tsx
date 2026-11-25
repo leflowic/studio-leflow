@@ -29,7 +29,9 @@ export function ParallaxHero({ children }: ParallaxHeroProps) {
   return (
     <div 
       ref={containerRef}
-      className="relative min-h-screen overflow-hidden"
+      // Inset, rounded hero card (small gutter on every side) instead of a
+      // full-bleed image - reads more like a product site than a template.
+      className="relative min-h-[calc(100svh-4rem-1rem)] overflow-hidden mx-2 mt-2 rounded-2xl border border-border/60"
       style={{ perspective: "1000px" }}
     >
       <div className="absolute inset-0 z-0">
@@ -99,7 +101,6 @@ export function ParallaxHero({ children }: ParallaxHeroProps) {
         {children}
       </motion.div>
 
-      <div className="absolute bottom-0 left-0 right-0 h-32 bg-gradient-to-t from-background to-transparent z-20 pointer-events-none" />
     </div>
   );
 }
