@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { Link, useLocation } from "wouter";
-import { Music, Mic2, Video, ArrowRight, Phone, Play, AlertCircle, Gamepad2, UserPlus, X, Star } from "lucide-react";
+import { Music, Mic2, Video, ArrowRight, Phone, Play, AlertCircle, Gamepad2, UserPlus, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Alert, AlertDescription } from "@/components/ui/alert";
@@ -19,6 +19,7 @@ import { WaveDivider } from "@/components/WaveDivider";
 import { BeforeAfterSection } from "@/components/home/BeforeAfterPlayer";
 import { ProcessSection } from "@/components/home/ProcessSection";
 import { ForYouToday } from "@/components/home/ForYouToday";
+import { GoogleIcon } from "@/components/icons/GoogleIcon";
 import { PlatformMarquee } from "@/components/home/PlatformMarquee";
 import { AvatarWithInitials } from "@/components/ui/avatar-with-initials";
 
@@ -609,7 +610,7 @@ export default function Home() {
                 className="shrink-0"
               >
                 <Button size="lg" variant="outline" className="gap-2">
-                  <Star className="w-5 h-5 text-yellow-400 fill-yellow-400" />
+                  <GoogleIcon className="w-4 h-4" />
                   Recenzije na Google-u
                   <ArrowRight className="w-4 h-4" />
                 </Button>
