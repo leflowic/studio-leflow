@@ -36,7 +36,7 @@ export function ParallaxHero({ children }: ParallaxHeroProps) {
         <img
           src="/equipment/hero-studio-background.jpg"
           alt="Studio LeFlow Background"
-          className="w-full h-full object-cover blur-[2px]"
+          className="w-full h-full object-cover blur-[2px] saturate-[0.25]"
         />
       </div>
 

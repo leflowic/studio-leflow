@@ -318,6 +318,7 @@ export interface IStorage {
   getTestimonialForJob(jobId: number): Promise<Testimonial | undefined>;
   getAllTestimonials(): Promise<Array<Testimonial & { username: string; avatarUrl: string | null; jobTitle: string }>>;
   updateTestimonialStatus(id: number, status: "approved" | "rejected"): Promise<void>;
+  getApprovedTestimonials(limit: number): Promise<Array<{ id: number; text: string; createdAt: Date; username: string; avatarUrl: string | null }>>;
 
   // News Articles (/news portal)
   createArticle(data: InsertNewsArticle & { createdBy: number }): Promise<NewsArticle>;
@@ -2326,6 +2327,24 @@ export class DatabaseStorage implements IStorage {
   async getTestimonialForJob(jobId: number): Promise<Testimonial | undefined> {
     const [testimonial] = await db.select().from(testimonials).where(eq(testimonials.jobId, jobId));
     return testimonial || undefined;
+  }
+
+  // Public: approved only, and deliberately no jobTitle/userId - a job title is
+  // internal ("Demo v2 - Marko") and was never shown to the client as public.
+  async getApprovedTestimonials(limit: number): Promise<Array<{ id: number; text: string; createdAt: Date; username: string; avatarUrl: string | null }>> {
+    return db
+      .select({
+        id: testimonials.id,
+        text: testimonials.text,
+        createdAt: testimonials.createdAt,
+        username: users.username,
+        avatarUrl: users.avatarUrl,
+      })
+      .from(testimonials)
+      .innerJoin(users, eq(testimonials.userId, users.id))
+      .where(eq(testimonials.status, "approved"))
+      .orderBy(desc(testimonials.createdAt))
+      .limit(limit);
   }
 
   async getAllTestimonials(): Promise<Array<Testimonial & { username: string; avatarUrl: string | null; jobTitle: string }>> {

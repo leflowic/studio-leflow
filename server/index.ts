@@ -83,6 +83,11 @@ async function runMigrations() {
         ADD COLUMN IF NOT EXISTS open_hour INTEGER NOT NULL DEFAULT 17,
         ADD COLUMN IF NOT EXISTS open_minute INTEGER NOT NULL DEFAULT 0;
     `);
+    // Contact form: optional link to a demo recording
+    await client.query(`
+      ALTER TABLE contact_submissions
+        ADD COLUMN IF NOT EXISTS demo_url TEXT;
+    `);
     // Add audio clip URL column
     await client.query(`
       ALTER TABLE daily_challenges

@@ -28,6 +28,7 @@ export const contactSubmissions = pgTable("contact_submissions", {
   phone: text("phone").notNull(),
   service: text("service").notNull(),
   preferredDate: text("preferred_date"),
+  demoUrl: text("demo_url"),
   message: text("message").notNull(),
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });
@@ -41,6 +42,10 @@ export const insertContactSubmissionSchema = createInsertSchema(contactSubmissio
   name: z.string().min(2, "Ime mora imati najmanje 2 karaktera"),
   message: z.string().min(10, "Poruka mora imati najmanje 10 karaktera"),
   service: z.string().min(1, "Izaberite uslugu"),
+  demoUrl: z.string().trim().max(500, "Link je predugačak")
+    .refine((v) => v === "" || /^https?:\/\/\S+$/i.test(v), "Unesite ceo link (počinje sa https://)")
+    .optional()
+    .nullable(),
 });
 
 export type InsertContactSubmission = z.infer<typeof insertContactSubmissionSchema>;
@@ -170,7 +175,7 @@ export type SiteAnnouncement = typeof siteAnnouncement.$inferSelect;
 
 // CMS Page and Section enums
 export const cmsPages = ["home", "team"] as const;
-export const cmsSections = ["hero", "services", "equipment", "cta", "members"] as const;
+export const cmsSections = ["hero", "services", "equipment", "cta", "members", "beforeafter"] as const;
 export const cmsContentTypes = ["text", "image", "html"] as const;
 
 export type CmsPage = typeof cmsPages[number];

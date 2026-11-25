@@ -29,7 +29,7 @@ export default function Contact() {
 
   const form = useForm<InsertContactSubmission>({
     resolver: zodResolver(insertContactSubmissionSchema),
-    defaultValues: { name: "", email: "", phone: "", service: "", preferredDate: "", message: "" },
+    defaultValues: { name: "", email: "", phone: "", service: "", preferredDate: "", demoUrl: "", message: "" },
   });
 
   const mutation = useMutation({
@@ -211,6 +211,27 @@ export default function Contact() {
                                 <FormLabel>Željeni termin (opciono)</FormLabel>
                                 <FormControl>
                                   <Input type="date" {...field} value={field.value || ""} data-testid="input-date" />
+                                </FormControl>
+                                <FormMessage />
+                              </FormItem>
+                            )}
+                          />
+
+                          <FormField
+                            control={form.control}
+                            name="demoUrl"
+                            render={({ field }) => (
+                              <FormItem>
+                                <FormLabel>Link do demo snimka (opciono)</FormLabel>
+                                <FormControl>
+                                  <Input
+                                    type="url"
+                                    inputMode="url"
+                                    placeholder="YouTube, SoundCloud, Google Drive, WeTransfer..."
+                                    {...field}
+                                    value={field.value || ""}
+                                    data-testid="input-demo-url"
+                                  />
                                 </FormControl>
                                 <FormMessage />
                               </FormItem>

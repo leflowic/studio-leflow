@@ -89,6 +89,9 @@ function TestimonialPrompt({ jobId }: { jobId: number }) {
         placeholder="Kako je proteklo snimanje, da li si zadovoljan rezultatom..."
         className="text-sm min-h-20"
       />
+      <p className="text-[11px] text-muted-foreground">
+        Nakon odobrenja utisak može biti objavljen na sajtu, uz tvoje korisničko ime.
+      </p>
       <div className="flex items-center gap-2">
         <Button
           size="sm"

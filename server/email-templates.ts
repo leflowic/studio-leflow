@@ -40,16 +40,16 @@ function wrap(body: string): string {
 
           <!-- HEADER -->
           <tr>
-            <td style="background:linear-gradient(145deg,#130826 0%,#0c1a4a 100%);border-radius:16px 16px 0 0;padding:36px 32px 28px;text-align:center;border:1px solid #2a1a5e;border-bottom:none;">
+            <td style="background:#1b1c1e;border-radius:16px 16px 0 0;padding:36px 32px 28px;text-align:center;border:1px solid #2c2a27;border-bottom:none;">
               <img src="${BASE_URL}/leflow-logo-white.png" alt="Studio LeFlow" width="48" height="48" style="display:block;margin:0 auto 12px;" />
-              <div style="font-size:10px;letter-spacing:5px;color:#8b5cf6;text-transform:uppercase;margin-bottom:4px;font-weight:600;">Muzički Studio</div>
+              <div style="font-size:10px;letter-spacing:5px;color:#c9a27a;text-transform:uppercase;margin-bottom:4px;font-weight:600;">Muzički Studio</div>
               <div style="font-size:28px;font-weight:900;color:#ffffff;letter-spacing:3px;text-transform:uppercase;line-height:1;">LeFlow</div>
             </td>
           </tr>
 
           <!-- DIVIDER LINE -->
           <tr>
-            <td style="background:linear-gradient(90deg,transparent,#7c3aed,transparent);height:1px;border-left:1px solid #2a1a5e;border-right:1px solid #2a1a5e;"></td>
+            <td style="background:linear-gradient(90deg,transparent,#c9a27a,transparent);height:1px;border-left:1px solid #2c2a27;border-right:1px solid #2c2a27;"></td>
           </tr>
 
           <!-- BODY -->
@@ -64,7 +64,7 @@ function wrap(body: string): string {
             <td style="background:#0d0d0d;border-radius:0 0 16px 16px;padding:24px 36px;border:1px solid #1e1e1e;border-top:1px solid #1a1a1a;text-align:center;">
               <p style="margin:0 0 6px;color:#444444;font-size:12px;">Studio LeFlow &nbsp;·&nbsp; Beograd, Srbija</p>
               <p style="margin:0 0 6px;color:#333333;font-size:11px;">
-                <a href="${BASE_URL}" style="color:#6d28d9;text-decoration:none;">studioleflow.com</a>
+                <a href="${BASE_URL}" style="color:#c9a27a;text-decoration:none;">studioleflow.com</a>
                 &nbsp;&nbsp;·&nbsp;&nbsp;
                 <a href="${BASE_URL}/pravila" style="color:#444444;text-decoration:none;">Pravila</a>
               </p>
@@ -84,8 +84,8 @@ function codeBlock(code: string, label: string): string {
   return `
     <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="margin:28px 0;">
       <tr>
-        <td style="background:#1a1a1a;border:1px solid #2d1b69;border-radius:12px;padding:28px 24px;text-align:center;">
-          <div style="font-size:44px;font-weight:800;letter-spacing:14px;color:#a78bfa;font-family:'Courier New',Courier,monospace;line-height:1;">${code}</div>
+        <td style="background:#1a1a1a;border:1px solid #2c2a27;border-radius:12px;padding:28px 24px;text-align:center;">
+          <div style="font-size:44px;font-weight:800;letter-spacing:14px;color:#d8bb98;font-family:'Courier New',Courier,monospace;line-height:1;">${code}</div>
           <div style="font-size:11px;color:#555555;margin-top:10px;letter-spacing:2px;text-transform:uppercase;">${label}</div>
         </td>
       </tr>
@@ -108,8 +108,8 @@ function button(label: string, url: string): string {
   return `
     <table role="presentation" cellspacing="0" cellpadding="0" style="margin:28px auto;">
       <tr>
-        <td style="border-radius:8px;background:linear-gradient(135deg,#7c3aed,#4f46e5);">
-          <a href="${url}" style="display:inline-block;padding:14px 36px;color:#ffffff;text-decoration:none;font-size:15px;font-weight:600;letter-spacing:0.5px;border-radius:8px;">${label}</a>
+        <td style="border-radius:999px;background:#c9a27a;">
+          <a href="${url}" style="display:inline-block;padding:14px 36px;color:#161718;text-decoration:none;font-size:15px;font-weight:600;letter-spacing:0.5px;border-radius:999px;">${label}</a>
         </td>
       </tr>
     </table>`;
@@ -179,7 +179,7 @@ export function newsletterConfirmEmail(confirmUrl: string): string {
     ${heading('Potvrdite Prijavu na Newsletter')}
     ${paragraph('Hvala što ste se prijavili na Studio LeFlow newsletter! Kliknite dugme ispod da potvrdite Vašu email adresu i počnete da primate najnovije vesti, promocije i ekskluzivan sadržaj.')}
     ${button('Potvrdi Email Adresu', confirmUrl)}
-    ${paragraph(`Ili kopirajte link u pretraživač:<br><span style="color:#6d28d9;font-size:12px;word-break:break-all;">${confirmUrl}</span>`)}
+    ${paragraph(`Ili kopirajte link u pretraživač:<br><span style="color:#c9a27a;font-size:12px;word-break:break-all;">${confirmUrl}</span>`)}
     ${notice('Ako niste zatražili prijavu na newsletter, ignorišite ovaj email.')}
   `);
 }
@@ -192,6 +192,7 @@ export function contactFormEmail(data: {
   phone: string;
   message: string;
   preferredDate?: string;
+  demoUrl?: string;
 }): string {
   return wrap(`
     ${heading('Novi Upit Sa Sajta')}
@@ -200,9 +201,10 @@ export function contactFormEmail(data: {
       <tbody>
         ${infoRow('Usluga', data.service)}
         ${infoRow('Ime', data.name)}
-        ${infoRow('Email', `<a href="mailto:${data.email}" style="color:#7c3aed;text-decoration:none;">${data.email}</a>`)}
+        ${infoRow('Email', `<a href="mailto:${data.email}" style="color:#c9a27a;text-decoration:none;">${data.email}</a>`)}
         ${infoRow('Telefon', data.phone)}
         ${data.preferredDate ? infoRow('Željeni termin', data.preferredDate) : ''}
+        ${data.demoUrl ? infoRow('Demo snimak', `<a href="${data.demoUrl}" style="color:#c9a27a;text-decoration:none;word-break:break-all;">${data.demoUrl}</a>`) : ''}
       </tbody>
     </table>
     <div style="background:#1a1a1a;border:1px solid #222;border-radius:10px;padding:16px;margin-top:8px;">
@@ -240,8 +242,8 @@ export function licenseDeliveryEmail(data: {
 
   const verifySection = data.verificationHash
     ? `${paragraph(`Autentičnost ove licence možete proveriti na:`)}
-       <div style="background:#1a1a1a;border:1px solid #2d1b69;border-radius:8px;padding:12px 16px;margin:0 0 16px;text-align:center;">
-         <a href="${BASE_URL}/proveri/${data.verificationHash}" style="color:#8b5cf6;font-size:13px;text-decoration:none;word-break:break-all;">${BASE_URL}/proveri/${data.verificationHash}</a>
+       <div style="background:#1a1a1a;border:1px solid #2c2a27;border-radius:8px;padding:12px 16px;margin:0 0 16px;text-align:center;">
+         <a href="${BASE_URL}/proveri/${data.verificationHash}" style="color:#c9a27a;font-size:13px;text-decoration:none;word-break:break-all;">${BASE_URL}/proveri/${data.verificationHash}</a>
        </div>`
     : '';
 
@@ -256,7 +258,7 @@ export function licenseDeliveryEmail(data: {
       </tbody>
     </table>
     ${verifySection}
-    ${notice('Ova poruka je automatski generisana. Za sva pitanja kontaktirajte nas na <a href="mailto:podrska@studioleflow.com" style="color:#6d28d9;text-decoration:none;">podrska@studioleflow.com</a>.')}
+    ${notice('Ova poruka je automatski generisana. Za sva pitanja kontaktirajte nas na <a href="mailto:podrska@studioleflow.com" style="color:#c9a27a;text-decoration:none;">podrska@studioleflow.com</a>.')}
   `);
 }
 
@@ -273,6 +275,6 @@ export function reviewRequestEmail(data: { jobTitle: string; username: string })
     ${paragraph('Vaše mišljenje nam puno znači - ako imate minut vremena, ostavite nam recenziju na Google-u. Pomaže drugim izvođačima da nas pronađu.')}
     ${button('Ostavi recenziju', GOOGLE_REVIEW_URL)}
     ${paragraph('Takođe možete ostaviti kratak utisak direktno na svom nalogu, na stranici gde pratite status svojih poslova - koristimo ih (uz Vašu dozvolu) kao prave citate na sajtu, umesto izmišljenih.')}
-    ${notice('Ova poruka je automatski generisana. Za sva pitanja kontaktirajte nas na <a href="mailto:podrska@studioleflow.com" style="color:#6d28d9;text-decoration:none;">podrska@studioleflow.com</a>.')}
+    ${notice('Ova poruka je automatski generisana. Za sva pitanja kontaktirajte nas na <a href="mailto:podrska@studioleflow.com" style="color:#c9a27a;text-decoration:none;">podrska@studioleflow.com</a>.')}
   `);
 }

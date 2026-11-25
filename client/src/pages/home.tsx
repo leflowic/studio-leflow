@@ -16,6 +16,9 @@ import { ScrollIndicator } from "@/components/ScrollIndicator";
 import { SEO } from "@/components/SEO";
 import { ParallaxHero } from "@/components/parallax/ParallaxHero";
 import { WaveDivider } from "@/components/WaveDivider";
+import { BeforeAfterSection } from "@/components/home/BeforeAfterPlayer";
+import { ProcessSection } from "@/components/home/ProcessSection";
+import { AvatarWithInitials } from "@/components/ui/avatar-with-initials";
 
 import type { CmsContent } from "@shared/schema";
 import videoSetupImage from "@assets/generated_images/Video_camera_production_setup_199f7c64.png";
@@ -185,6 +188,10 @@ export default function Home() {
       // Ensure we always return an array
       return Array.isArray(data) ? data : [];
     },
+  });
+
+  const { data: testimonials = [] } = useQuery<Array<{ id: number; text: string; createdAt: string; username: string; avatarUrl: string | null }>>({
+    queryKey: ["/api/testimonials"],
   });
 
   const { data: announcement } = useQuery<{ isActive: boolean; message: string }>({
@@ -445,7 +452,7 @@ export default function Home() {
                       currentImageUrl={getCmsValue("services", service.imageKey, undefined)}
                       fallbackSrc={service.imageFallback}
                       alt={service.title}
-                      className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-[1.03]"
+                      className="w-full h-full object-cover saturate-[0.25] transition-transform duration-500 group-hover:scale-[1.03]"
                     />
                   </div>
                   <CardContent className="p-6 flex flex-col flex-1">
@@ -478,7 +485,11 @@ export default function Home() {
         </div>
       </section>
 
-      <section className="py-20 lg:py-28 bg-muted/30 relative z-10 overflow-hidden">
+      <BeforeAfterSection getCms={getCmsValue} />
+
+      <ProcessSection />
+
+      <section className="py-20 lg:py-28 bg-background relative z-10 overflow-hidden">
         <div className="max-w-7xl mx-auto px-4 md:px-6">
           <FadeInWhenVisible>
             <div className="grid md:grid-cols-2 gap-10 lg:gap-16 items-center">
@@ -489,7 +500,7 @@ export default function Home() {
                 currentImageUrl={getCmsValue("equipment", "equipment_image", undefined)}
                 fallbackSrc="/services/yamaha-hs8-service.jpg"
                 alt="Studio oprema"
-                className="rounded-xl w-full"
+                className="rounded-xl w-full saturate-[0.25]"
               />
 
               <div>
@@ -514,7 +525,7 @@ export default function Home() {
         </div>
       </section>
 
-      <section className="py-20 lg:py-28 bg-background">
+      <section className="py-20 lg:py-28 bg-muted/30">
         <div className="max-w-7xl mx-auto px-4 md:px-6">
           <FadeInWhenVisible>
             <div className="mb-12 max-w-2xl">
@@ -551,7 +562,7 @@ export default function Home() {
               ].map((item) => (
                 <Card key={item.title} className="overflow-hidden">
                   <CardContent className="p-0">
-                    <OptimizedImage src={item.src} alt={item.title} className="w-full h-48 object-cover" />
+                    <OptimizedImage src={item.src} alt={item.title} className="w-full h-48 object-cover saturate-[0.25]" />
                     <div className="p-6">
                       <h3 className="text-lg font-bold mb-2">{item.title}</h3>
                       <p className="text-muted-foreground text-sm leading-relaxed">{item.text}</p>
@@ -573,14 +584,16 @@ export default function Home() {
         </div>
       </section>
 
-      <section className="py-16 bg-muted/30 relative z-10">
+      <section className="py-16 lg:py-20 bg-background relative z-10">
         <div className="max-w-7xl mx-auto px-4 md:px-6">
           <FadeInWhenVisible>
             <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-6">
               <div>
                 <h2 className="text-2xl md:text-3xl font-bold mb-2">Šta kažu klijenti</h2>
                 <p className="text-muted-foreground">
-                  Recenzije su na Google-u, gde ih ne možemo menjati ni birati.
+                  {testimonials.length
+                    ? "Utisci klijenata posle isporuke. Ostale recenzije su na Google-u, gde ih ne možemo menjati ni birati."
+                    : "Recenzije su na Google-u, gde ih ne možemo menjati ni birati."}
                 </p>
               </div>
               <a
@@ -596,11 +609,29 @@ export default function Home() {
                 </Button>
               </a>
             </div>
+            {testimonials.length > 0 && (
+              <div className="mt-10 grid md:grid-cols-2 lg:grid-cols-3 gap-6">
+                {testimonials.map(t => (
+                  <figure key={t.id} className="rounded-xl border border-border/60 bg-card p-6 flex flex-col">
+                    <blockquote className="text-foreground/90 leading-relaxed flex-1">"{t.text}"</blockquote>
+                    <figcaption className="mt-5 flex items-center gap-3">
+                      <AvatarWithInitials src={t.avatarUrl} name={t.username} className="w-8 h-8" />
+                      <div className="text-sm">
+                        <p className="font-semibold">{t.username}</p>
+                        <p className="text-muted-foreground text-xs">
+                          {new Date(t.createdAt).toLocaleDateString("sr-Latn", { month: "long", year: "numeric" })}
+                        </p>
+                      </div>
+                    </figcaption>
+                  </figure>
+                ))}
+              </div>
+            )}
           </FadeInWhenVisible>
         </div>
       </section>
 
-      <section className="py-20 lg:py-28 bg-background relative z-10">
+      <section className="py-20 lg:py-28 bg-background border-t border-border/40 relative z-10">
         <div className="max-w-4xl mx-auto px-4 md:px-6 text-center">
           <FadeInWhenVisible>
             <EditableText

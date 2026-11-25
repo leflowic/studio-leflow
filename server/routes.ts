@@ -840,7 +840,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
       
       const validatedData = insertContactSubmissionSchema.parse(req.body);
+      if (!validatedData.demoUrl) validatedData.demoUrl = null;
       const submission = await storage.createContactSubmission(validatedData);
+      // <input type="date"> submits ISO (2026-11-30); show it the way it's read here
+      const isoDate = validatedData.preferredDate?.match(/^(\d{4})-(\d{2})-(\d{2})$/);
+      const preferredDate = isoDate ? `${isoDate[3]}.${isoDate[2]}.${isoDate[1]}.` : validatedData.preferredDate;
       
       // Šalji email notifikaciju
       try {
@@ -853,7 +857,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
             email: escapeHtml(validatedData.email),
             phone: escapeHtml(validatedData.phone),
             message: escapeHtml(validatedData.message),
-            preferredDate: validatedData.preferredDate ? escapeHtml(validatedData.preferredDate) : undefined,
+            preferredDate: preferredDate ? escapeHtml(preferredDate) : undefined,
+            demoUrl: validatedData.demoUrl ? escapeHtml(validatedData.demoUrl) : undefined,
           }),
         });
       } catch (emailError) {
@@ -3439,6 +3444,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   // Admin moderation for client-submitted testimonials - the real, sourced
   // quotes CLAUDE.md's "no fake testimonials" rule points to instead.
+  // Public: approved client testimonials for the homepage (hidden there when empty)
+  app.get("/api/testimonials", async (_req, res) => {
+    try {
+      res.json(await storage.getApprovedTestimonials(6));
+    } catch (error) {
+      console.error("Public testimonials error:", error);
+      res.status(500).json({ error: "Greška na serveru" });
+    }
+  });
+
   app.get("/api/admin/testimonials", requireRole("producer", "marketing"), async (_req, res) => {
     try {
       const list = await storage.getAllTestimonials();
