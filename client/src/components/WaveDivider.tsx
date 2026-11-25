@@ -5,10 +5,10 @@ import { motion } from "framer-motion";
 // scale-in when the divider enters the viewport.
 const BARS = [4, 10, 7, 16, 9, 22, 12, 28, 14, 22, 9, 16, 7, 10, 4];
 
-export function WaveDivider({ className = "" }: { className?: string }) {
+export function WaveDivider({ className = "", align = "center" }: { className?: string; align?: "center" | "start" }) {
   return (
     <div
-      className={`flex items-center justify-center gap-[3px] ${className}`}
+      className={`flex items-center ${align === "start" ? "justify-start" : "justify-center"} gap-[3px] ${className}`}
       aria-hidden="true"
     >
       {BARS.map((height, i) => (

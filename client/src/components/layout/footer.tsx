@@ -1,4 +1,4 @@
-import { Link } from "wouter";
+import { Link, useLocation } from "wouter";
 import { MapPin, Phone, Mail, Instagram, BadgeCheck, ArrowRight, ShieldCheck } from "lucide-react";
 import { NewsletterForm } from "@/components/newsletter-form";
 import { Button } from "@/components/ui/button";
@@ -10,7 +10,7 @@ const links = [
   { label: "Zajednica", href: "/zajednica" },
   { label: "Projekti", href: "/projekti" },
   { label: "Tim", href: "/tim" },
-  { label: "Pravila i Česta Pitanja", href: "/pravila" },
+  { label: "Pravila i česta pitanja", href: "/pravila" },
   { label: "Kontakt", href: "/kontakt" },
 ];
 
@@ -21,25 +21,34 @@ const contact = [
   { icon: MapPin, label: "Beograd, Srbija", href: null },
 ];
 
+// Pages that already end with their own booking CTA - repeating the strip
+// right below it reads as a template (two "ready for your next production?"
+// blocks back to back), and on /kontakt it would link to the page you're on.
+const PAGES_WITH_OWN_CTA = ["/", "/usluge", "/kontakt", "/tim"];
+
 export function Footer() {
   const currentYear = new Date().getFullYear();
+  const [location] = useLocation();
+  const showCtaStrip = !PAGES_WITH_OWN_CTA.includes(location);
 
   return (
     <footer className="border-t border-border/40 bg-background">
       <div className="max-w-7xl mx-auto px-6 pt-16 pb-8">
 
         {/* Top CTA strip */}
+        {showCtaStrip && (
         <div className="border border-border/60 rounded-xl px-6 py-5 mb-14 flex flex-col sm:flex-row items-center justify-between gap-4">
           <div>
-            <p className="font-semibold text-sm">Spremni za sledeću produkciju?</p>
-            <p className="text-xs text-muted-foreground">Besplatna konsultacija - odgovaramo u roku od 24h</p>
+            <p className="font-semibold text-sm">Imate pesmu za snimanje?</p>
+            <p className="text-xs text-muted-foreground">Pošaljite upit, odgovaramo u roku od 24h.</p>
           </div>
           <Link href="/kontakt">
             <Button size="sm" className="gap-2 flex-shrink-0" data-testid="button-footer-cta">
-              Zakažite Termin <ArrowRight className="w-3.5 h-3.5" />
+              Zakažite termin <ArrowRight className="w-3.5 h-3.5" />
             </Button>
           </Link>
         </div>
+        )}
 
         {/* Main grid */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-10 lg:gap-16 mb-14">
@@ -57,7 +66,7 @@ export function Footer() {
               <span className="text-lg font-bold font-[Figtree]">Studio LeFlow</span>
             </div>
             <p className="text-sm text-muted-foreground leading-relaxed mb-6 max-w-xs">
-              Profesionalni muzički studio u Beogradu. Snimanje, mix/mastering, instrumentali i video produkcija od 2026.
+              Muzički studio u Beogradu. Snimanje, mix i mastering, instrumentali i video produkcija od 2026.
             </p>
             <div className="space-y-2.5">
               {contact.map(({ icon: Icon, label, href, external }) => (
@@ -102,7 +111,7 @@ export function Footer() {
           <div>
             <p className="text-xs font-semibold text-muted-foreground uppercase tracking-widest mb-4">Newsletter</p>
             <p className="text-sm text-muted-foreground mb-4 leading-relaxed">
-              Novi projekti, ekskluzivne ponude i promocije - direktno u vaš inbox.
+              Nova izdanja iz studija i povremene akcije. Bez spama.
             </p>
             <NewsletterForm variant="footer" />
           </div>
@@ -116,13 +125,13 @@ export function Footer() {
           </p>
           <div className="flex items-center gap-5 text-xs text-muted-foreground">
             <Link href="/proveri" className="hover:text-primary transition-colors flex items-center gap-1" data-testid="link-footer-verify">
-              <BadgeCheck className="w-3 h-3" /> Proveri Licencu
+              <BadgeCheck className="w-3 h-3" /> Proveri licencu
             </Link>
             <Link href="/zastita-brenda" className="hover:text-primary transition-colors flex items-center gap-1" data-testid="link-footer-brand-protection">
-              <ShieldCheck className="w-3 h-3" /> Zaštita Brenda
+              <ShieldCheck className="w-3 h-3" /> Zaštita brenda
             </Link>
-            <Link href="/pravila" className="hover:text-primary transition-colors" data-testid="link-footer-privacy">Pravila i Česta Pitanja</Link>
-            <Link href="/uslovi-koriscenja" className="hover:text-primary transition-colors" data-testid="link-footer-terms">Uslovi Korišćenja</Link>
+            <Link href="/pravila" className="hover:text-primary transition-colors" data-testid="link-footer-privacy">Pravila i česta pitanja</Link>
+            <Link href="/uslovi-koriscenja" className="hover:text-primary transition-colors" data-testid="link-footer-terms">Uslovi korišćenja</Link>
           </div>
         </div>
 

@@ -46,7 +46,7 @@ export function MySmartLinkPanel() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/user/smart-links"] });
       setEditing(null);
-      toast({ title: "Sačuvano ✓" });
+      toast({ title: "Sačuvano" });
     },
     onError: () => toast({ title: "Greška", description: "Izmene nisu sačuvane", variant: "destructive" }),
   });

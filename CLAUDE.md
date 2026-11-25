@@ -336,6 +336,11 @@ The owner explicitly dislikes these patterns. Never introduce them:
 - **Per-element FadeInWhenVisible** — wrapping every individual `<li>` or small element in its own animation. Animate sections, not atoms
 - **Stat banner rows** — horizontal row of abstract numbers/metrics that don't mean anything concrete
 - **Emoji as icons** — use Lucide icon components, never emoji characters as UI icons
+- **Title Case in headings/buttons/labels** ("Zakažite Termin", "Naše Usluge", "Kontakt Informacije") - an English-language habit Serbian orthography doesn't use, and a top "AI template" tell. Use sentence case: "Zakažite termin", "Usluge". Proper nouns and product names (Apollo Twin X, Pogodi Pesmu) keep their capitals. SEO `<title>` strings were left as-is (they must stay in sync with `server/seo-meta.ts`).
+- **Fake "live" status** - e.g. a pulsing green dot with "Dostupni smo odmah" shown 24/7. Don't claim availability the page can't know.
+- **3D tilt / spring / hover-lift on content cards** (`Parallax3DCard`, `whileHover={{ y: -8, scale: 1.02 }}`, rotateX entrance springs) - removed from home/team; keep motion to one subtle `FadeInWhenVisible` per section (its defaults were cut to 12px / 0.4s for this reason).
+- **Repeated CTAs** - one primary CTA per block. Service cards use a text link ("Pošaljite upit"), not three identical full-width buttons. The footer's top CTA strip is hidden on pages that already end with their own booking CTA (`PAGES_WITH_OWN_CTA` in `footer.tsx`: `/`, `/usluge`, `/kontakt`, `/tim`) - add a page there if you give it its own closing CTA.
+- **Everything centered** - section headers on home/usluge/tim/pravila/projekti are left-aligned; `WaveDivider` takes `align="start"` for that. Keep centered layout for the hero and the single closing CTA only.
 - **Em-dash (—) in user-facing copy** — the owner considers it an AI-slop marker. Use a plain hyphen "-" instead, everywhere: page copy, titles/meta, toasts, server error messages, email templates, PDFs. (A 2026-07 sweep replaced all 123 occurrences — don't reintroduce them.)
 
 **Design system (2026-07 premium pass):**

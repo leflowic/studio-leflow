@@ -58,7 +58,7 @@ function CollabToggle() {
     mutationFn: (val: boolean) => apiRequest("PATCH", "/api/me/collab", { available: val }),
     onSuccess: (_, val) => {
       setAvailable(val);
-      toast({ title: val ? "Dostupan si za saradnju 🎵" : "Više nisi prikazan kao dostupan" });
+      toast({ title: val ? "Dostupan si za saradnju" : "Više nisi prikazan kao dostupan" });
     },
     onError: () => toast({ title: "Greška", variant: "destructive" }),
   });

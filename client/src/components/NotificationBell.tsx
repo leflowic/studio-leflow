@@ -2,7 +2,7 @@ import { useState, useRef, useEffect } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useWebSocketContext } from "@/contexts/WebSocketContext";
-import { Bell } from "lucide-react";
+import { Bell, Heart, MessageCircle, AtSign } from "lucide-react";
 import { formatDistanceToNow } from "date-fns";
 import { sr } from "date-fns/locale";
 import { Link } from "wouter";
@@ -20,10 +20,10 @@ type Notif = {
   fromAvatarUrl: string | null;
 };
 
-const TYPE_EMOJI: Record<string, string> = {
-  like: "❤️",
-  comment: "💬",
-  mention: "📢",
+const TYPE_ICON: Record<string, typeof Bell> = {
+  like: Heart,
+  comment: MessageCircle,
+  mention: AtSign,
 };
 
 export function NotificationBell() {
@@ -129,7 +129,14 @@ export function NotificationBell() {
                         </AvatarFallback>
                       )}
                     </Avatar>
-                    <span className="absolute -bottom-0.5 -right-0.5 text-[11px]">{TYPE_EMOJI[n.type] ?? "🔔"}</span>
+                    {(() => {
+                      const Icon = TYPE_ICON[n.type] ?? Bell;
+                      return (
+                        <span className="absolute -bottom-0.5 -right-0.5 w-4 h-4 rounded-full bg-primary text-primary-foreground flex items-center justify-center ring-2 ring-card">
+                          <Icon className="w-2.5 h-2.5" />
+                        </span>
+                      );
+                    })()}
                   </div>
                   <div className="flex-1 min-w-0">
                     <p className="text-sm leading-snug">{n.message}</p>

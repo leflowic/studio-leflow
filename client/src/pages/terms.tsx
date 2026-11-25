@@ -13,7 +13,7 @@ import {
 const rulesSections = [
   {
     id: "politika-avansa",
-    title: "Politika Avansa",
+    title: "Politika avansa",
     items: [
       "Za sve usluge Studio LeFlow zahteva se obavezan avans u iznosu od 30% ukupne cene projekta.",
       "Avans se plaća pri rezervaciji termina i potvrđivanju dogovora o projektu.",
@@ -22,7 +22,7 @@ const rulesSections = [
   },
   {
     id: "nepovrativost-avansa",
-    title: "Razlozi Nepovrativosti Avansa",
+    title: "Zašto se avans ne vraća",
     items: [
       "<strong>Rezervacija studijskog vremena:</strong> Vaš termin se rezerviše ekskluzivno za vas, što znači da studio odbija druge klijente u tom periodu. Otkazivanje termina u kratkom roku rezultira gubicima koje studio ne može nadoknaditi.",
       "<strong>Tehnička i kreativna priprema:</strong> Pre svakog termina, naš tim priprema opremu, podešava akustiku prostora i planira kreativni pristup na osnovu vaših potreba.",
@@ -32,7 +32,7 @@ const rulesSections = [
   },
   {
     id: "otkazivanje",
-    title: "Otkazivanje i Izmene Termina",
+    title: "Otkazivanje i izmene termina",
     items: [
       "Izmene termina moguće su uz obavezu da nas obavestite <strong>najmanje 48 sati unapred</strong>.",
       "Promena termina uz poštovanje ovog roka ne utiče na avans - jednostavno prenosimo rezervaciju.",
@@ -43,7 +43,7 @@ const rulesSections = [
   },
   {
     id: "uslovi-placanja",
-    title: "Uslovi Plaćanja",
+    title: "Uslovi plaćanja",
     items: [
       "<strong>Prihvaćeni načini plaćanja:</strong> Gotovina, bankovna transakcija, PayPal.",
       "<strong>Avans (30%):</strong> Plaća se prilikom potvrde rezervacije.",
@@ -54,7 +54,7 @@ const rulesSections = [
   },
   {
     id: "autorska-prava",
-    title: "Autorska Prava i Vlasništvo",
+    title: "Autorska prava i vlasništvo",
     items: [
       "<strong>Snimanje i Mix/Master:</strong> Vi zadržavate sva prava na snimljeni materijal i finalni miks. Studio LeFlow ne koristi vaš materijal bez vaše dozvole.",
       "<strong>Instrumentali (Beatovi):</strong> U zavisnosti od dogovora, možete kupiti ekskluzivna prava (samo vi možete koristiti beat) ili neekskluzivnu licencu (beat može biti prodat i drugima). Uslovi se preciziraju u licenci.",
@@ -64,7 +64,7 @@ const rulesSections = [
   },
   {
     id: "digitalne-licence",
-    title: "Digitalne Licence",
+    title: "Digitalne licence",
     items: [
       "<strong>Šta je digitalna licenca?</strong> Studio LeFlow izdaje digitalne licence kao zvanični dokaz o pruženim uslugama, prenosu prava ili kupovini instrumentala. Svaka licenca ima jedinstven broj i verifikacioni kod koji garantuje njenu autentičnost.",
       "<strong>Verifikacija autentičnosti:</strong> Svaku licencu možete proveriti na adresi <strong>studioleflow.com/proveri/[kod]</strong>. Verifikaciona stranica prikazuje sve relevantne podatke o licenci.",
@@ -75,7 +75,7 @@ const rulesSections = [
   },
   {
     id: "revizije",
-    title: "Revizije i Garancija Kvaliteta",
+    title: "Revizije i garancija kvaliteta",
     items: [
       "<strong>Snimanje i Mix/Master:</strong> Uključene su do <strong>2 besplatne revizije</strong> finalne verzije. Dodatne revizije se naplaćuju posebno.",
       "<strong>Instrumentali:</strong> Uključene su do <strong>2 besplatne revizije</strong> beat-a. Potpuno novi beat se smatra novim projektom.",
@@ -134,19 +134,19 @@ export default function Terms() {
         <section className="py-20 px-6">
           <div className="max-w-3xl mx-auto">
             <FadeInWhenVisible>
-              <div className="text-center mb-14">
+              <div className="mb-14">
                 <h1 className="text-4xl md:text-5xl font-bold font-[Figtree] mb-4">
-                  Pravila i Česta Pitanja
+                  Pravila i česta pitanja
                 </h1>
                 <p className="text-lg text-muted-foreground">
-                  Uslovi saradnje i odgovori na sve što treba da znaš pre dolaska u studio.
+                  Uslovi saradnje i odgovori na pitanja koja nam se najčešće postavljaju pre prvog termina.
                 </p>
               </div>
             </FadeInWhenVisible>
 
             <FadeInWhenVisible delay={0.1}>
               <div className="mb-16">
-                <h2 className="text-2xl font-bold font-[Figtree] mb-6">Pravila i Uslovi Saradnje</h2>
+                <h2 className="text-2xl font-bold font-[Figtree] mb-6">Pravila i uslovi saradnje</h2>
                 <Accordion type="single" collapsible className="space-y-3">
                   {rulesSections.map((section) => (
                     <AccordionItem key={section.id} value={section.id} className="border rounded-lg px-6">
@@ -166,7 +166,7 @@ export default function Terms() {
 
             <FadeInWhenVisible delay={0.15}>
               <div>
-                <h2 className="text-2xl font-bold font-[Figtree] mb-6">Česta Pitanja</h2>
+                <h2 className="text-2xl font-bold font-[Figtree] mb-6">Česta pitanja</h2>
                 <Accordion type="single" collapsible className="space-y-3">
                   {faqs.map((faq, index) => (
                     <AccordionItem key={index} value={`faq-${index}`} className="border rounded-lg px-6">

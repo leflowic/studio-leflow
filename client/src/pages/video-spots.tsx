@@ -174,12 +174,12 @@ export default function VideoSpots() {
       <section className="py-20">
         <div className="container px-4 mx-auto">
           <FadeInWhenVisible>
-            <div className="flex flex-col items-center text-center mb-12">
+            <div className="flex flex-col mb-12 max-w-7xl mx-auto">
               <h1 className="text-4xl md:text-5xl font-bold mb-4">
-                Naši Projekti
+                Projekti
               </h1>
               <p className="text-lg text-muted-foreground max-w-2xl">
-                Projekti u kojima je naš tim učestvovao - pogledajte šta smo kreirali
+                Pesme i spotovi na kojima je radio naš tim.
               </p>
             </div>
           </FadeInWhenVisible>
@@ -192,7 +192,7 @@ export default function VideoSpots() {
                 size="lg"
               >
                 <Plus className="w-5 h-5" />
-                Dodaj Novi Projekat
+                Dodaj novi projekat
               </Button>
             </div>
           )}
@@ -280,7 +280,7 @@ export default function VideoSpots() {
         <DialogContent className="sm:max-w-[525px]">
           <DialogHeader>
             <DialogTitle>
-              {editingSpot ? "Izmeni Projekat" : "Dodaj Novi Projekat"}
+              {editingSpot ? "Izmeni Projekat" : "Dodaj novi projekat"}
             </DialogTitle>
             <DialogDescription>
               Popunite informacije o projektu. Unesite YouTube URL videa.
@@ -314,7 +314,7 @@ export default function VideoSpots() {
                 placeholder="https://www.youtube.com/watch?v=..."
               />
               <p className="text-xs text-muted-foreground">
-                ⚠️ Napomena: Age-restricted YouTube videi (18+) ne mogu da se prikazuju preko iframe-a. Koristite samo javne videe bez starosnih ograničenja.
+                Napomena: Age-restricted YouTube videi (18+) ne mogu da se prikazuju preko iframe-a. Koristite samo javne videe bez starosnih ograničenja.
               </p>
             </div>
             <div className="grid gap-2">

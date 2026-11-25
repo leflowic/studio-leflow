@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { MapPin, Phone, Mail, Instagram, Send, CheckCircle2, Clock, ArrowRight } from "lucide-react";
+import { MapPin, Phone, Mail, Instagram, Send, CheckCircle2, Clock } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -66,7 +66,7 @@ export default function Contact() {
             className="text-4xl md:text-5xl font-bold tracking-tight mb-3"
             data-testid="text-contact-title"
           >
-            Zakažite Termin
+            Zakažite termin
           </motion.h1>
           <motion.p
             initial={{ opacity: 0, y: 10 }}
@@ -91,7 +91,7 @@ export default function Contact() {
           >
             <div className="rounded-2xl border border-border/60 bg-card shadow-sm overflow-hidden">
               <div className="px-6 py-5 border-b border-border/40 bg-muted/20">
-                <h2 className="font-bold text-lg" data-testid="text-form-title">Pošaljite Upit</h2>
+                <h2 className="font-bold text-lg" data-testid="text-form-title">Pošaljite upit</h2>
                 <p className="text-sm text-muted-foreground mt-0.5">Sva polja označena sa * su obavezna</p>
               </div>
 
@@ -129,7 +129,7 @@ export default function Contact() {
                         className="rounded-xl"
                         data-testid="button-send-another"
                       >
-                        Pošalji Još Jedan Upit
+                        Pošalji još jedan upit
                       </Button>
                     </motion.div>
                   ) : (
@@ -142,7 +142,7 @@ export default function Contact() {
                               name="name"
                               render={({ field }) => (
                                 <FormItem>
-                                  <FormLabel>Ime i Prezime *</FormLabel>
+                                  <FormLabel>Ime i prezime *</FormLabel>
                                   <FormControl>
                                     <Input placeholder="Vaše ime" {...field} data-testid="input-name" />
                                   </FormControl>
@@ -171,7 +171,7 @@ export default function Contact() {
                               name="phone"
                               render={({ field }) => (
                                 <FormItem>
-                                  <FormLabel>Telefon (Opciono)</FormLabel>
+                                  <FormLabel>Telefon (opciono)</FormLabel>
                                   <FormControl>
                                     <Input placeholder="+381 XX XXX XXXX" {...field} data-testid="input-phone" />
                                   </FormControl>
@@ -208,7 +208,7 @@ export default function Contact() {
                             name="preferredDate"
                             render={({ field }) => (
                               <FormItem>
-                                <FormLabel>Željeni Termin (Opciono)</FormLabel>
+                                <FormLabel>Željeni termin (opciono)</FormLabel>
                                 <FormControl>
                                   <Input type="date" {...field} value={field.value || ""} data-testid="input-date" />
                                 </FormControl>
@@ -244,7 +244,7 @@ export default function Contact() {
                             data-testid="button-submit"
                           >
                             {mutation.isPending ? "Šalje se..." : (
-                              <>Pošalji Upit <Send className="ml-2 w-4 h-4" /></>
+                              <>Pošalji upit <Send className="ml-2 w-4 h-4" /></>
                             )}
                           </Button>
                         </form>
@@ -265,13 +265,10 @@ export default function Contact() {
           >
             {/* Contact info */}
             <div className="rounded-2xl border border-border/60 bg-card p-6 space-y-5">
-              <h3 className="font-bold" data-testid="text-info-title">Kontakt Informacije</h3>
+              <h3 className="font-bold" data-testid="text-info-title">Kontakt</h3>
               {contactInfo.map(({ icon: Icon, label, value, href }, i) => (
-                <motion.div
+                <div
                   key={label}
-                  initial={{ opacity: 0, x: 10 }}
-                  animate={{ opacity: 1, x: 0 }}
-                  transition={{ delay: 0.3 + i * 0.07 }}
                   className="flex items-center gap-3"
                   data-testid={`info-item-${i}`}
                 >
@@ -288,34 +285,30 @@ export default function Contact() {
                       <p className="text-sm font-medium">{value}</p>
                     )}
                   </div>
-                </motion.div>
+                </div>
               ))}
             </div>
 
             {/* Call CTA */}
             <div className="rounded-2xl border border-primary/20 bg-primary/5 p-6 space-y-3">
-              <div className="flex items-center gap-2">
-                <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse" />
-                <h3 className="font-bold text-sm" data-testid="text-direct-call-title">Dostupni smo odmah</h3>
-              </div>
+              <h3 className="font-bold text-sm" data-testid="text-direct-call-title">Brže je telefonom</h3>
               <p className="text-sm text-muted-foreground leading-relaxed">
-                Za hitno zakazivanje ili dodatna pitanja, slobodno nas pozovite direktno.
+                Ako vam termin treba hitno, pozovite nas tokom radnog vremena.
               </p>
               <Button className="w-full" asChild data-testid="button-call">
                 <a href="tel:+381637347023">
                   <Phone className="mr-2 w-4 h-4" />
-                  Pozovi Sada
-                  <ArrowRight className="ml-auto w-4 h-4" />
+                  +381 63 734 7023
                 </a>
               </Button>
             </div>
 
             {/* Working hours */}
             <div className="rounded-2xl border border-border/60 bg-card p-6 space-y-3">
-              <h3 className="font-bold text-sm">Radno Vreme</h3>
+              <h3 className="font-bold text-sm">Radno vreme</h3>
               {[
-                { day: "Ponedeljak - Petak", time: "10:00 - 22:00" },
-                { day: "Subota - Nedjelja", time: "11:00 - 20:00" },
+                { day: "Ponedeljak - petak", time: "10:00 - 22:00" },
+                { day: "Subota - nedelja", time: "11:00 - 20:00" },
               ].map(({ day, time }) => (
                 <div key={day} className="flex items-center justify-between text-sm">
                   <span className="text-muted-foreground">{day}</span>
@@ -330,15 +323,15 @@ export default function Contact() {
               {[
                 {
                   q: "Koliko traje termin?",
-                  a: "Standardna sesija snimanja traje 2–3 sata, u zavisnosti od pesme i pripreme.",
+                  a: "Sesija snimanja obično traje 2-3 sata, u zavisnosti od pesme i pripreme.",
                 },
                 {
                   q: "Koliko košta?",
-                  a: "Svaki projekat je različit - pošaljite upit i vraćamo tačnu ponudu u roku od 24h.",
+                  a: "Zavisi od projekta. Pošaljite upit i tačnu ponudu dobijate u roku od 24h.",
                 },
                 {
                   q: "Mogu li da dođem samo na razgovor?",
-                  a: "Naravno - prva konsultacija je besplatna i bez obaveze.",
+                  a: "Može. Prva konsultacija je besplatna i ničim vas ne obavezuje.",
                 },
               ].map(({ q, a }) => (
                 <div key={q} className="space-y-1">

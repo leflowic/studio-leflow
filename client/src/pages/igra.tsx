@@ -260,7 +260,7 @@ export default function IgraPage() {
                     <CheckCircle2 className="w-16 h-16 text-green-500" />
                   </motion.div>
                   <motion.div initial={{ y: 10, opacity: 0 }} animate={{ y: 0, opacity: 1 }} transition={{ delay: 0.2 }}>
-                    <p className="text-4xl font-black text-green-500">Tačno! 🎉</p>
+                    <p className="text-4xl font-black text-green-500">Tačno!</p>
                     <div className="inline-flex items-center gap-2 mt-3 bg-green-500/10 border border-green-500/20 rounded-full px-5 py-2">
                       <Zap className="w-4 h-4 text-green-500" />
                       <span className="font-bold text-green-500 text-lg">+10 poena</span>
@@ -279,7 +279,7 @@ export default function IgraPage() {
                   </motion.div>
                   <motion.div initial={{ y: 10, opacity: 0 }} animate={{ y: 0, opacity: 1 }} transition={{ delay: 0.2 }}>
                     <p className="text-4xl font-black text-destructive">Netačno</p>
-                    <p className="text-muted-foreground mt-1">Bolje sreće sutra 💪</p>
+                    <p className="text-muted-foreground mt-1">Bolje sreće sutra.</p>
                   </motion.div>
                 </>
               )}
@@ -289,7 +289,7 @@ export default function IgraPage() {
                 </p>
               )}
               <p className="text-sm text-muted-foreground">
-                {finalResult?.correct ? "Sjajno! Vrati se sutra za novi izazov 🎵" : "Vrati se sutra!"}
+                {finalResult?.correct ? "Vrati se sutra za novi izazov." : "Vrati se sutra!"}
               </p>
             </motion.div>
           </AnimatePresence>
@@ -361,7 +361,7 @@ export default function IgraPage() {
             {/* Status */}
             <p className="text-sm text-muted-foreground text-center">
               {playing
-                ? "🎵 Svira..."
+                ? "Svira..."
                 : audioError
                 ? "Greška pri učitavanju klipa"
                 : noClipFinal
@@ -416,7 +416,7 @@ export default function IgraPage() {
               {guessMutation.isPending ? "Proveravam..." : "Potvrdi odgovor →"}
             </Button>
             <p className="text-xs text-center text-muted-foreground">
-              ⚠️ Jedan pokušaj - razmisli pre nego što odgovoriš
+              Imaš jedan pokušaj, razmisli pre nego što odgovoriš.
             </p>
           </div>
         </div>
@@ -624,7 +624,7 @@ export default function IgraPage() {
                     </div>
                     {leaderboardData.prize && (
                       <span className="text-[11px] text-muted-foreground bg-muted/60 rounded-full px-2.5 py-1 font-medium">
-                        🎁 {leaderboardData.prize.prizeDescription}
+                        Nagrada: {leaderboardData.prize.prizeDescription}
                       </span>
                     )}
                   </div>
@@ -633,14 +633,13 @@ export default function IgraPage() {
                       <div className="text-center py-10 text-muted-foreground">
                         <Trophy className="w-10 h-10 mx-auto mb-2 opacity-20" />
                         <p className="text-sm font-medium">Još niko nije pogodio</p>
-                        <p className="text-xs mt-1">Budi prvi! 🎯</p>
+                        <p className="text-xs mt-1">Budi prvi.</p>
                       </div>
                     ) : (
                       <ul className="space-y-0.5">
                         {leaderboardData.leaderboard.slice(0, 10).map((entry: any, i: number) => {
                           const isMe = entry.userId === user.id;
-                          const medal = i === 0 ? "🥇" : i === 1 ? "🥈" : i === 2 ? "🥉" : null;
-                          return (
+                                                    return (
                             <motion.li
                               key={entry.userId}
                               initial={{ opacity: 0, x: 10 }}
@@ -662,7 +661,7 @@ export default function IgraPage() {
                                 i === 2 && "text-amber-600",
                                 i >= 3 && "text-muted-foreground text-xs"
                               )}>
-                                {medal ?? `${i + 1}.`}
+                                {`${i + 1}.`}
                               </span>
                               <AvatarWithInitials
                                 src={entry.avatarUrl}

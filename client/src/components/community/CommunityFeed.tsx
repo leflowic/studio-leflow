@@ -682,7 +682,7 @@ function CreatePost({ userId, onCreated }: { userId: number; onCreated: (post: F
         value={content}
         onChange={e => setContent(e.target.value)}
         placeholder={
-          activeType === "status" ? "Šta ti je na umu? 🎵" :
+          activeType === "status" ? "Šta ti je na umu?" :
           activeType === "audio" ? "Dodaj opis demoa (opcionalno)..." :
           activeType === "image" ? "Dodaj opis slike (opcionalno)..." :
           "Opiši šta tražiš (opcionalno)..."

@@ -376,7 +376,7 @@ export default function AuthPage() {
                       disabled={forgotPasswordMutation.isPending}
                       data-testid="button-send-code"
                     >
-                      {forgotPasswordMutation.isPending ? "Slanje..." : "Pošalji Kod"}
+                      {forgotPasswordMutation.isPending ? "Slanje..." : "Pošalji kod"}
                     </Button>
 
                     <div className="text-center">
@@ -483,7 +483,7 @@ export default function AuthPage() {
                       name="token"
                       render={({ field }) => (
                         <FormItem>
-                          <FormLabel>Verifikacioni Kod</FormLabel>
+                          <FormLabel>Verifikacioni kod</FormLabel>
                           <FormControl>
                             <Input
                               placeholder="123456"
@@ -502,7 +502,7 @@ export default function AuthPage() {
                       name="newPassword"
                       render={({ field }) => (
                         <FormItem>
-                          <FormLabel>Nova Lozinka</FormLabel>
+                          <FormLabel>Nova lozinka</FormLabel>
                           <FormControl>
                             <PasswordInput
                               placeholder="Unesite novu lozinku"
@@ -521,7 +521,7 @@ export default function AuthPage() {
                       name="confirmPassword"
                       render={({ field }) => (
                         <FormItem>
-                          <FormLabel>Potvrda Lozinke</FormLabel>
+                          <FormLabel>Potvrda lozinke</FormLabel>
                           <FormControl>
                             <PasswordInput
                               placeholder="Ponovite novu lozinku"
@@ -541,7 +541,7 @@ export default function AuthPage() {
                       disabled={resetPasswordMutation.isPending}
                       data-testid="button-reset-password"
                     >
-                      {resetPasswordMutation.isPending ? "Čuvanje..." : "Resetuj Lozinku"}
+                      {resetPasswordMutation.isPending ? "Čuvanje..." : "Resetuj lozinku"}
                     </Button>
 
                     <div className="text-center">
@@ -1017,9 +1017,9 @@ export default function AuthPage() {
 
           <div className="grid grid-cols-1 gap-4 max-w-sm w-full mt-4">
             {[
-              { icon: Music, title: "Snimanje & Mix", desc: "Profesionalna audio produkcija" },
-              { icon: Zap, title: "Brza Produkcija", desc: "Efikasna izrada instrumentala" },
-              { icon: CheckCircle2, title: "Ekskluzivni Sadržaj", desc: "Giveaway i zajednica za producente" }
+              { icon: Music, title: "Snimanje i mix", desc: "Profesionalna audio produkcija" },
+              { icon: Zap, title: "Brza produkcija", desc: "Efikasna izrada instrumentala" },
+              { icon: CheckCircle2, title: "Ekskluzivni sadržaj", desc: "Giveaway i zajednica za producente" }
             ].map((feature, index) => (
               <motion.div
                 key={feature.title}

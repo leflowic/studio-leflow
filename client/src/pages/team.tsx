@@ -1,4 +1,5 @@
-import { Instagram, Mic2, Headphones, Video, Zap, Plus, Trash2, ImagePlus, Loader2 } from "lucide-react";
+import { Instagram, ArrowRight, Plus, Trash2, ImagePlus, Loader2 } from "lucide-react";
+import { Link } from "wouter";
 import { useState, useRef } from "react";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -9,7 +10,6 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { motion } from "framer-motion";
 import { FadeInWhenVisible } from "@/components/motion/FadeIn";
 import { EditableText } from "@/components/cms/EditableText";
 import { EditableImage } from "@/components/cms/EditableImage";
@@ -207,29 +207,25 @@ export default function Team() {
       />
       <section className="py-20 lg:py-32">
         <div className="max-w-7xl mx-auto px-4 md:px-6">
-          <div className="text-center mb-16">
+          <div className="mb-16 max-w-5xl mx-auto">
             <h1 className="text-4xl md:text-5xl lg:text-6xl font-bold mb-6 tracking-tight font-[Figtree]" data-testid="text-team-title">
-              Naš Tim
+              Tim
             </h1>
             
-            <p className="text-lg text-muted-foreground max-w-2xl mx-auto">
-              Kreativni tim profesionalaca posvećenih izvrsnosti u muzičkoj i video produkciji
+            <p className="text-lg text-muted-foreground max-w-2xl">
+              Ljudi koji će raditi na vašoj pesmi: producenti, tekstopisci i inženjeri zvuka.
             </p>
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-8 max-w-5xl mx-auto">
-            {teamMembers.map((member, mapIndex) => (
+            {teamMembers.map((member) => (
               <FadeInWhenVisible 
                 key={member.index}
-                delay={mapIndex * 0.15}
                 className={member.featured ? 'md:col-span-2' : ''}
               >
-                <motion.div
-                  whileHover={{ y: -8, scale: 1.02 }}
-                  transition={{ duration: 0.3 }}
-                >
+                <div>
                   <Card 
-                    className="overflow-visible h-full hover-elevate active-elevate-2 cursor-pointer"
+                    className="overflow-visible h-full"
                     data-testid={`card-team-${member.alias.toLowerCase()}`}
                   >
                 <CardHeader className="flex flex-row items-start justify-between gap-4 flex-wrap space-y-0 pb-4">
@@ -315,24 +311,19 @@ export default function Team() {
                         className="flex items-center gap-2 flex-wrap"
                         data-testid={`link-instagram-${member.alias.toLowerCase()}`}
                       >
-                        <motion.div
-                          whileHover={{ scale: 1.2, rotate: 5 }}
-                          transition={{ type: "spring", stiffness: 400, damping: 10 }}
-                        >
-                          <Instagram className="w-4 h-4" />
-                        </motion.div>
+                        <Instagram className="w-4 h-4" />
                         <span className="hidden sm:inline text-sm">{member.instagramHandle}</span>
                       </a>
                     </Button>
                   </div>
                 </CardHeader>
                   </Card>
-                </motion.div>
+                </div>
               </FadeInWhenVisible>
             ))}
             
             {isEditMode && (
-              <FadeInWhenVisible delay={teamMembers.length * 0.15} className="md:col-span-2">
+              <FadeInWhenVisible className="md:col-span-2">
                 <Button
                   onClick={() => setAddDialogOpen(true)}
                   className="w-full h-full min-h-[120px] border-2 border-dashed border-primary/30 bg-primary/5 hover:bg-primary/10 transition-colors"
@@ -340,7 +331,7 @@ export default function Team() {
                 >
                   <div className="flex flex-col items-center gap-2">
                     <Plus className="w-8 h-8 text-primary" />
-                    <span className="text-lg font-semibold">Dodaj Novog Člana Tima</span>
+                    <span className="text-lg font-semibold">Dodaj novog člana tima</span>
                   </div>
                 </Button>
               </FadeInWhenVisible>
@@ -417,33 +408,19 @@ export default function Team() {
             </DialogContent>
           </Dialog>
 
-          <div className="mt-20 text-center">
-            <Card className="max-w-3xl mx-auto bg-primary/5 border-primary/20 hover-elevate">
-              <CardContent className="p-8">
-                <h2 className="text-2xl font-bold mb-4">Pridružite Se Našoj Kreativnoj Porodici</h2>
-                <p className="text-muted-foreground mb-6">
-                  Radimo sa talentovanim artistima iz cele Srbije i regiona. Dođite u studio i snimimo nešto zajedno.
-                </p>
-                <div className="flex flex-wrap gap-3 justify-center text-sm">
-                  <Badge variant="outline">
-                    <Mic2 className="w-3 h-3 mr-1.5" />
-                    2 besplatne revizije
-                  </Badge>
-                  <Badge variant="outline">
-                    <Headphones className="w-3 h-3 mr-1.5" />
-                    Vrhunska oprema
-                  </Badge>
-                  <Badge variant="outline">
-                    <Video className="w-3 h-3 mr-1.5" />
-                    Kompletna produkcija
-                  </Badge>
-                  <Badge variant="outline">
-                    <Zap className="w-3 h-3 mr-1.5" />
-                    Brza realizacija
-                  </Badge>
-                </div>
-              </CardContent>
-            </Card>
+          <div className="mt-20 max-w-5xl mx-auto border-t border-border/50 pt-12 flex flex-col md:flex-row md:items-center md:justify-between gap-6">
+            <div>
+              <h2 className="text-2xl font-bold mb-2">Radimo sa izvođačima iz cele Srbije i regiona</h2>
+              <p className="text-muted-foreground">
+                Dođite u studio i snimimo nešto zajedno.
+              </p>
+            </div>
+            <Link href="/kontakt" className="shrink-0">
+              <Button size="lg">
+                Zakažite termin
+                <ArrowRight className="ml-2 w-5 h-5" />
+              </Button>
+            </Link>
           </div>
         </div>
       </section>

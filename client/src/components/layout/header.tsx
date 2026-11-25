@@ -252,7 +252,7 @@ export function Header() {
 
               <Link href="/kontakt">
                 <Button size="sm" className="h-9 gap-1.5 font-medium px-4" data-testid="button-header-contact">
-                  Zakažite Termin <ChevronRight className="w-3.5 h-3.5" />
+                  Zakažite termin <ChevronRight className="w-3.5 h-3.5" />
                 </Button>
               </Link>
             </div>
@@ -408,7 +408,7 @@ export function Header() {
 
                 <Link href="/kontakt" onClick={() => setMobileMenuOpen(false)}>
                   <Button size="sm" className="w-full h-9 gap-1.5 text-xs font-medium" data-testid="button-mobile-contact">
-                    Zakažite Termin <ChevronRight className="w-3.5 h-3.5" />
+                    Zakažite termin <ChevronRight className="w-3.5 h-3.5" />
                   </Button>
                 </Link>
               </div>
