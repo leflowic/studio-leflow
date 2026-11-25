@@ -50,7 +50,7 @@ export default function MusicHubPage() {
       <div className="relative z-10 w-full max-w-xl mx-auto px-5 py-16 sm:py-20">
         <div className="flex flex-col items-center text-center mb-11">
           <img src="/leflow-logo-white.png" alt="Studio LeFlow" className="h-8 mb-6 opacity-80" />
-          <h1 className="font-[Figtree] text-[22px] font-bold text-white tracking-tight">Poslednja izdanja iz studija</h1>
+          <h1 className="text-[22px] font-bold text-white tracking-tight">Poslednja izdanja iz studija</h1>
           <p className="text-[13px] text-white/35 mt-1.5">Izaberi pesmu da je čuješ na svojoj platformi</p>
         </div>
 

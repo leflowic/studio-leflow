@@ -8,6 +8,13 @@ export default {
   ],
   theme: {
     extend: {
+      // Brand type (2026-11): Geist for everything, Geist Mono for numbers,
+      // codes and timestamps - a free stand-in for Cloudflare's STK Bureau
+      // Sans + Apercu Mono pairing (both commercial).
+      fontFamily: {
+        sans: ['Geist', 'system-ui', '-apple-system', '"Segoe UI"', 'sans-serif'],
+        mono: ['"Geist Mono"', 'ui-monospace', 'SFMono-Regular', 'Menlo', 'monospace'],
+      },
       borderRadius: {
         lg: "var(--radius)",
         md: "calc(var(--radius) - 2px)",

@@ -135,7 +135,7 @@ export default function Terms() {
           <div className="max-w-3xl mx-auto">
             <FadeInWhenVisible>
               <div className="mb-14">
-                <h1 className="text-4xl md:text-5xl font-bold font-[Figtree] mb-4">
+                <h1 className="text-4xl md:text-5xl font-bold mb-4">
                   Pravila i česta pitanja
                 </h1>
                 <p className="text-lg text-muted-foreground">
@@ -146,7 +146,7 @@ export default function Terms() {
 
             <FadeInWhenVisible delay={0.1}>
               <div className="mb-16">
-                <h2 className="text-2xl font-bold font-[Figtree] mb-6">Pravila i uslovi saradnje</h2>
+                <h2 className="text-2xl font-bold mb-6">Pravila i uslovi saradnje</h2>
                 <Accordion type="single" collapsible className="space-y-3">
                   {rulesSections.map((section) => (
                     <AccordionItem key={section.id} value={section.id} className="border rounded-lg px-6">
@@ -166,7 +166,7 @@ export default function Terms() {
 
             <FadeInWhenVisible delay={0.15}>
               <div>
-                <h2 className="text-2xl font-bold font-[Figtree] mb-6">Česta pitanja</h2>
+                <h2 className="text-2xl font-bold mb-6">Česta pitanja</h2>
                 <Accordion type="single" collapsible className="space-y-3">
                   {faqs.map((faq, index) => (
                     <AccordionItem key={index} value={`faq-${index}`} className="border rounded-lg px-6">

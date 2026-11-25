@@ -88,7 +88,7 @@ export function ProcessSection() {
               <ol className="space-y-8">
                 {STEPS.map((step, i) => (
                   <li key={step.title} className="grid grid-cols-[2.5rem_1fr] gap-3">
-                    <span className="font-[Figtree] text-2xl font-bold text-primary leading-none pt-0.5 tabular-nums">
+                    <span className="font-mono text-lg font-medium text-primary leading-none pt-1 tabular-nums">
                       {String(i + 1).padStart(2, "0")}
                     </span>
                     <div>

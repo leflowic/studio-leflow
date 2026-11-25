@@ -93,7 +93,7 @@ html {
   --chart-4: 40 88% 30%;
   --chart-5: 160 70% 28%;
 
-  --font-sans: Inter, Work Sans, Open Sans, sans-serif;
+  --font-sans: Geist, system-ui, -apple-system, "Segoe UI", sans-serif;
   --font-serif: Georgia, serif;
   --font-mono: Menlo, monospace;
   --radius: .5rem; /* 8px */
@@ -404,28 +404,32 @@ html {
   }
 }
 
-/* Heading font - Figtree (geometric, Circular-like) with Inter body */
+/* Type: Geist throughout (headings + body), Geist Mono via `font-mono`.
+   Cloudflare-style headings: same family as body, tight tracking, and a
+   semibold weight instead of heavy bold. */
 @layer base {
   body {
-    font-family: Inter, "Work Sans", "Open Sans", sans-serif;
+    font-family: Geist, system-ui, -apple-system, "Segoe UI", sans-serif;
+    font-feature-settings: "ss01" off;
   }
   h1, h2, h3, h4, h5, h6 {
-    font-family: "Figtree", Inter, sans-serif;
+    font-family: Geist, system-ui, -apple-system, "Segoe UI", sans-serif;
+    letter-spacing: -0.025em;
   }
 }
 
 /* Typography Scale - Consistent heading hierarchy */
 @layer components {
   .heading-xl {
-    @apply text-5xl md:text-6xl lg:text-7xl font-black tracking-tight;
+    @apply text-5xl md:text-6xl lg:text-7xl font-semibold tracking-tight;
   }
   
   .heading-lg {
-    @apply text-4xl md:text-5xl lg:text-6xl font-bold tracking-tight;
+    @apply text-4xl md:text-5xl lg:text-6xl font-semibold tracking-tight;
   }
   
   .heading-md {
-    @apply text-3xl md:text-4xl lg:text-5xl font-bold tracking-tight;
+    @apply text-3xl md:text-4xl lg:text-5xl font-semibold tracking-tight;
   }
   
   .heading-sm {
@@ -497,4 +501,11 @@ img,
 /* Disable context menu on images via CSS (backup) */
 img {
   -webkit-touch-callout: none;
+}
+
+/* Headings never go heavier than semibold - many pages still carry
+   font-bold/font-black from before the Geist switch; this keeps them all on
+   the calmer Cloudflare-style weight without touching every page. */
+:is(h1, h2, h3):is(.font-bold, .font-extrabold, .font-black) {
+  font-weight: 600;
 }

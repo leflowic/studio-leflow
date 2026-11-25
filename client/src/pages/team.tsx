@@ -208,7 +208,7 @@ export default function Team() {
       <section className="py-20 lg:py-32">
         <div className="max-w-7xl mx-auto px-4 md:px-6">
           <div className="mb-16 max-w-5xl mx-auto">
-            <h1 className="text-4xl md:text-5xl lg:text-6xl font-bold mb-6 tracking-tight font-[Figtree]" data-testid="text-team-title">
+            <h1 className="text-4xl md:text-5xl lg:text-6xl font-bold mb-6 tracking-tight" data-testid="text-team-title">
               Tim
             </h1>
             

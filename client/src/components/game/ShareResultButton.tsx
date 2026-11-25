@@ -31,6 +31,14 @@ function loadImage(src: string): Promise<HTMLImageElement | null> {
 }
 
 async function drawCard({ challengeNumber, correct, listensUsed, maxListens = 3, streak }: Props): Promise<Blob> {
+  // Canvas only uses a web font that's already loaded - Geist Mono in
+  // particular may not be on the page yet, so request the exact faces first.
+  await Promise.all([
+    document.fonts?.load('600 110px Geist'),
+    document.fonts?.load('500 40px Geist'),
+    document.fonts?.load('400 46px Geist'),
+    document.fonts?.load('500 72px "Geist Mono"'),
+  ].map(p => p?.catch(() => null)));
   await document.fonts?.ready;
   const logo = await loadImage("/leflow-logo-white.png");
   const W = 1080, H = 1920;
@@ -63,14 +71,14 @@ async function drawCard({ challengeNumber, correct, listensUsed, maxListens = 3,
     ctx.drawImage(logo, (W - lw) / 2, 150, lw, lh);
   }
   ctx.fillStyle = MUTED;
-  ctx.font = "600 40px Figtree, Inter, sans-serif";
+  ctx.font = "500 40px Geist, sans-serif";
   ctx.fillText("STUDIO LEFLOW", W / 2, logo ? 380 : 300);
 
   ctx.fillStyle = TEXT;
-  ctx.font = "800 110px Figtree, Inter, sans-serif";
+  ctx.font = "600 110px Geist, sans-serif";
   ctx.fillText("Pogodi Pesmu", W / 2, 780);
   ctx.fillStyle = OAK;
-  ctx.font = "700 72px Figtree, Inter, sans-serif";
+  ctx.font = "500 72px \"Geist Mono\", monospace";
   ctx.fillText(`#${challengeNumber}`, W / 2, 880);
 
   // Listens used: filled = used
@@ -86,7 +94,7 @@ async function drawCard({ challengeNumber, correct, listensUsed, maxListens = 3,
   }
 
   ctx.fillStyle = TEXT;
-  ctx.font = "700 76px Figtree, Inter, sans-serif";
+  ctx.font = "600 76px Geist, sans-serif";
   const headline = correct
     ? listensUsed <= 1 ? "Pogođeno iz prvog slušanja" : `Pogođeno posle ${listensUsed} slušanja`
     : "Danas nije pogođeno";
@@ -103,12 +111,12 @@ async function drawCard({ challengeNumber, correct, listensUsed, maxListens = 3,
 
   if (streak > 1) {
     ctx.fillStyle = OAK;
-    ctx.font = "600 56px Inter, sans-serif";
+    ctx.font = "500 56px Geist, sans-serif";
     ctx.fillText(`Niz: ${streak} dana zaredom`, W / 2, 1240 + lines.length * 92 + 70);
   }
 
   ctx.fillStyle = MUTED;
-  ctx.font = "500 46px Inter, sans-serif";
+  ctx.font = "400 46px Geist, sans-serif";
   ctx.fillText("Igraj i ti: studioleflow.com/igra", W / 2, 1720);
 
   return new Promise((resolve, reject) => c.toBlob(b => (b ? resolve(b) : reject(new Error("canvas"))), "image/png"));

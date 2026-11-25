@@ -136,14 +136,14 @@ function PairPlayer({ title, artist, beforeUrl, afterUrl, active, onActivate }: 
       </div>
 
       <div className="mt-4 flex items-center gap-3">
-        <span className="text-xs tabular-nums text-muted-foreground w-9">{formatTime(time)}</span>
+        <span className="text-xs font-mono tabular-nums text-muted-foreground w-10">{formatTime(time)}</span>
         <div className="relative flex-1 h-1.5 rounded-full bg-muted cursor-pointer" onClick={seek}>
           <div
             className="absolute inset-y-0 left-0 rounded-full bg-primary"
             style={{ width: duration ? `${(time / duration) * 100}%` : "0%" }}
           />
         </div>
-        <span className="text-xs tabular-nums text-muted-foreground w-9 text-right">{formatTime(duration)}</span>
+        <span className="text-xs font-mono tabular-nums text-muted-foreground w-10 text-right">{formatTime(duration)}</span>
       </div>
     </div>
   );

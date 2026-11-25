@@ -197,7 +197,7 @@ export default function ZastitaBrendaPage() {
                     <p className="text-[11px] font-semibold uppercase tracking-[0.2em] text-muted-foreground mb-3">
                       {c.overline}
                     </p>
-                    <h1 className="text-3xl md:text-[2.65rem] font-bold font-[Figtree] tracking-tight mb-4">
+                    <h1 className="text-3xl md:text-[2.65rem] font-bold tracking-tight mb-4">
                       {c.title}
                     </h1>
                     <p className="text-sm text-muted-foreground">
@@ -225,7 +225,7 @@ export default function ZastitaBrendaPage() {
                   </div>
 
                   <div className="border-t border-border mt-12 pt-8">
-                    <p className="text-sm font-semibold font-[Figtree]">Studio LeFlow</p>
+                    <p className="text-sm font-semibold">Studio LeFlow</p>
                     <p className="text-xs text-muted-foreground mt-0.5">{c.signatureLine}</p>
                   </div>
 
