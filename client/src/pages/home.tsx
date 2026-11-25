@@ -19,6 +19,7 @@ import { WaveDivider } from "@/components/WaveDivider";
 import { BeforeAfterSection } from "@/components/home/BeforeAfterPlayer";
 import { ProcessSection } from "@/components/home/ProcessSection";
 import { ForYouToday } from "@/components/home/ForYouToday";
+import { PlatformMarquee } from "@/components/home/PlatformMarquee";
 import { AvatarWithInitials } from "@/components/ui/avatar-with-initials";
 
 import type { CmsContent } from "@shared/schema";
@@ -419,6 +420,8 @@ export default function Home() {
       </ParallaxHero>
 
       {user?.emailVerified && <ForYouToday gameData={gameData} />}
+
+      <PlatformMarquee />
 
       <section className="py-20 lg:py-28 bg-background relative z-10" id="usluge">
         <div className="max-w-7xl mx-auto px-4 md:px-6">
