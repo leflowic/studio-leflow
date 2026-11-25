@@ -86,7 +86,7 @@ export function SmartLinksTab() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/admin/smart-links"] });
       setAssigningLink(null);
-      toast({ title: "Vlasnik ažuriran ✓" });
+      toast({ title: "Vlasnik ažuriran" });
     },
     onError: () => toast({ title: "Greška pri dodeli korisnika", variant: "destructive" }),
   });
@@ -109,7 +109,7 @@ export function SmartLinksTab() {
       queryClient.invalidateQueries({ queryKey: ["/api/admin/smart-links"] });
       const wasEditing = editingId !== null;
       closeDialog();
-      setTimeout(() => toast({ title: wasEditing ? "Link ažuriran ✓" : "Link kreiran ✓" }), 50);
+      setTimeout(() => toast({ title: wasEditing ? "Link ažuriran" : "Link kreiran" }), 50);
     },
     onError: async (e: any) => {
       const msg = await e?.response?.json?.().catch(() => null);

@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState, useCallback } from "react";
 import { useAuth } from "@/hooks/use-auth";
-import { Terminal, Trash2, ChevronDown, ChevronUp, Search, Copy, Wifi, Database, FileText } from "lucide-react";
+import { Terminal, Trash2, ChevronDown, ChevronUp, Search, Copy, Wifi, Database, FileText, X } from "lucide-react";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -303,7 +303,7 @@ function NetPanel({ entries }: { entries: NetEntry[] }) {
         <div className="w-1/2 flex flex-col font-mono text-[10px] overflow-hidden">
           <div className="flex items-center justify-between px-2 py-1 border-b border-zinc-800/60 shrink-0">
             <span className="text-zinc-400 truncate">{selected.method} {selected.url}</span>
-            <button onClick={() => setSelected(null)} className="text-zinc-600 hover:text-zinc-300 ml-2 shrink-0">✕</button>
+            <button onClick={() => setSelected(null)} className="text-zinc-600 hover:text-zinc-300 ml-2 shrink-0" aria-label="Zatvori"><X className="w-3.5 h-3.5" /></button>
           </div>
           <div className="overflow-y-auto flex-1 p-2 space-y-2">
             <div>

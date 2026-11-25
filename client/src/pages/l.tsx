@@ -1,4 +1,5 @@
 import { useQuery, useMutation } from "@tanstack/react-query";
+import { ArrowLeft } from "lucide-react";
 import { useParams } from "wouter";
 import { useEffect, useState } from "react";
 import type { SmartLink } from "@shared/schema";
@@ -416,8 +417,9 @@ export default function SmartLinkPage() {
       <div className="min-h-screen bg-[#050505] flex flex-col items-center justify-center gap-3 text-center px-6">
         <p className="text-xl font-bold text-white">Link nije pronađen</p>
         <p className="text-sm text-white/40">Ovaj smart link ne postoji ili je obrisan.</p>
-        <a href="/" className="mt-3 text-xs text-white/30 hover:text-white/60 transition-colors tracking-widest uppercase">
-          ← Studio LeFlow
+        <a href="/" className="mt-3 text-xs text-white/30 hover:text-white/60 transition-colors tracking-widest uppercase inline-flex items-center gap-1.5">
+          <ArrowLeft className="w-3.5 h-3.5" />
+          Studio LeFlow
         </a>
       </div>
     );

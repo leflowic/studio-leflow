@@ -27,7 +27,7 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
-import { Users, Music, Heart, MessageCircle, Trash2, Shield, ShieldOff, ShieldCheck, Settings, Construction, Send, Mail, Eye, Search, Download, UserPlus, FileText, Crown, Trophy, BadgeCheck, LayoutDashboard, Radio, MessagesSquare, MessageSquareHeart, Receipt, CalendarDays, Archive, Gamepad2, Link2, FolderOpen, FolderKanban, Newspaper, CheckCircle2, Clock, ArrowLeft, CalendarClock, UserCog, ShieldAlert, IdCard, type LucideIcon } from "lucide-react";
+import { Users, Music, Heart, MessageCircle, Trash2, Shield, ShieldOff, ShieldCheck, Settings, Construction, Send, Mail, Eye, Search, Download, UserPlus, FileText, Crown, Trophy, BadgeCheck, LayoutDashboard, Radio, MessagesSquare, MessageSquareHeart, Receipt, CalendarDays, Archive, Gamepad2, Link2, FolderOpen, FolderKanban, Newspaper, CheckCircle2, Clock, ArrowLeft, CalendarClock, UserCog, ShieldAlert, IdCard, ArrowLeftRight, ExternalLink, type LucideIcon } from "lucide-react";
 import { format, formatDistanceToNow } from "date-fns";
 import { srLatn } from "date-fns/locale";
 import type { User } from "@shared/schema";
@@ -1117,7 +1117,7 @@ function MessagesTab() {
                               />
                             </div>
                             <span className="font-medium">
-                              {conversation.user1Username} ↔ {conversation.user2Username}
+                              {conversation.user1Username} <ArrowLeftRight className="inline w-3.5 h-3.5 mx-1 text-muted-foreground" /> {conversation.user2Username}
                             </span>
                           </div>
                           <Badge variant="secondary">{conversation.messageCount}</Badge>
@@ -1333,7 +1333,7 @@ function MessagesTab() {
                       <TableCell>
                         <div className="flex items-center gap-2">
                           <Users className="w-4 h-4 text-muted-foreground" />
-                          <span>{log.user1Username} ↔ {log.user2Username}</span>
+                          <span className="inline-flex items-center gap-1">{log.user1Username} <ArrowLeftRight className="w-3.5 h-3.5 text-muted-foreground" /> {log.user2Username}</span>
                         </div>
                       </TableCell>
                       <TableCell>{formatDate(log.viewedAt)}</TableCell>
@@ -1997,7 +1997,18 @@ function UsersTab() {
                   <AvatarWithInitials src={user.avatarUrl} name={user.username} className="w-11 h-11 shrink-0" />
                   <div className="min-w-0 flex-1">
                     <div className="flex items-center gap-2 flex-wrap">
-                      <span className="font-medium text-sm truncate" data-testid={`cell-username-${user.id}`}>{user.username}</span>
+                      <a
+                        href={`/u/${user.username}`}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        onClick={e => e.stopPropagation()}
+                        title="Otvori profil u zajednici"
+                        className="font-medium text-sm truncate hover:text-primary hover:underline underline-offset-4 inline-flex items-center gap-1"
+                        data-testid={`cell-username-${user.id}`}
+                      >
+                        {user.username}
+                        <ExternalLink className="w-3 h-3 opacity-60 shrink-0" />
+                      </a>
                       <RankBadge rank={user.rank} />
                       {user.banned && (
                         <Badge variant="destructive" className="text-xs" data-testid={`badge-banned-${user.id}`}>Banovan</Badge>
@@ -2057,6 +2068,22 @@ function UserDetailPanel({
           <ArrowLeft className="w-4 h-4" />
         </Button>
         <h2 className="text-xl font-semibold">Profil korisnika</h2>
+        <div className="ml-auto flex items-center gap-2 flex-wrap">
+          <Button variant="outline" size="sm" asChild className="gap-1.5" data-testid="button-open-user-profile">
+            <a href={`/u/${user.username}`} target="_blank" rel="noopener noreferrer">
+              <ExternalLink className="w-3.5 h-3.5" />
+              Profil u zajednici
+            </a>
+          </Button>
+          {(user as any).publicProfile && user.isVerifiedArtist && (
+            <Button variant="outline" size="sm" asChild className="gap-1.5">
+              <a href={`/izvodjac/${user.username}`} target="_blank" rel="noopener noreferrer">
+                <ExternalLink className="w-3.5 h-3.5" />
+                Javni profil
+              </a>
+            </Button>
+          )}
+        </div>
       </div>
 
       <Card className="bg-zinc-900/50 border-zinc-800">

@@ -1360,7 +1360,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Notify user about successful upload
       notifyUser(
         req.jwtUser!.id,
-        "Projekat uploadovan! 🎉",
+        "Projekat je uploadovan",
         `Vaš projekat "${project.title}" je uspešno poslat. Sada možete glasati za druge projekte.`
       );
       
@@ -2120,7 +2120,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Notify the user that their song was approved
       notifyUser(
         song.userId, 
-        "Pesma odobrena! 🎵",
+        "Pesma je odobrena",
         `Vaša pesma "${song.songTitle}" je odobrena i sada je vidljiva svima.`
       );
       
@@ -4514,7 +4514,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       if ("userId" in parsed.data && link.userId != null && link.userId !== before?.userId) {
         notifyUser(
           link.userId,
-          "Dodeljen vam je smart link! 🎵",
+          "Dodeljen vam je smart link",
           `Sada možete da menjate cover i platform linkove za "${link.title}" iz svog dashboard-a.`
         );
       }

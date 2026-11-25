@@ -3,6 +3,30 @@ import type { Readable } from "stream";
 import path from "path";
 import { fileURLToPath } from "url";
 
+// Checked item in a license: a drawn vector checkbox + text, instead of the
+// "☑" glyph (renders inconsistently and reads as an emoji). Keeps doc.x at the
+// left margin afterwards so following doc.text() calls aren't indented.
+function checkItem(doc: PDFKit.PDFDocument, text: string) {
+  const left = doc.page.margins.left;
+  const size = 8;
+  const y = doc.y + 1.5;
+  doc.save()
+    .strokeColor("#1a1a1a")
+    .lineWidth(0.8)
+    .rect(left, y, size, size)
+    .stroke()
+    .lineWidth(1.1)
+    .moveTo(left + 1.8, y + 4.3)
+    .lineTo(left + 3.5, y + 6.2)
+    .lineTo(left + 6.6, y + 2)
+    .stroke()
+    .restore();
+  const width = doc.page.width - left - doc.page.margins.right - (size + 6);
+  doc.text(text, left + size + 6, doc.y, { width });
+  doc.x = left;
+}
+
+
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
@@ -311,11 +335,11 @@ export function generateMixMasterPDF(data: MixMasterContract, licenseNumber: str
     if (data.vocalRecording === 'yes') {
       doc.text('Strane se slažu da:');
       if (data.vocalRights === 'client') {
-        doc.text('☑ Sva prava na vokalne snimke i izvedbu prenose se isključivo na Naručioca.');
+        checkItem(doc, 'Sva prava na vokalne snimke i izvedbu prenose se isključivo na Naručioca.');
       } else if (data.vocalRights === 'studio') {
-        doc.text('☑ Pružalac usluge zadržava pravo da koristi snimke isključivo u promotivne svrhe studija (portfolio, sajt, društvene mreže), uz obavezu navođenja imena izvođača.');
+        checkItem(doc, 'Pružalac usluge zadržava pravo da koristi snimke isključivo u promotivne svrhe studija (portfolio, sajt, društvene mreže), uz obavezu navođenja imena izvođača.');
       } else {
-        doc.text(`☑ Drugo: ${data.vocalRightsOther || ''}`);
+        checkItem(doc, `Drugo: ${data.vocalRightsOther || ''}`);
       }
     }
     doc.moveDown(2);
@@ -403,11 +427,11 @@ export function generateCopyrightTransferPDF(data: CopyrightTransferContract, li
     doc.text(`Naziv pesme: ${data.songTitle}`);
     doc.moveDown();
     doc.text('Delo obuhvata sledeće komponente:');
-    if (data.components.text) doc.text('☑ Tekst');
-    if (data.components.music) doc.text('☑ Muziku (instrumental)');
-    if (data.components.vocals) doc.text('☑ Snimanje vokala');
-    if (data.components.mixMaster) doc.text('☑ Miks i mastering');
-    if (data.components.other) doc.text(`☑ Ostalo: ${data.components.otherText || ''}`);
+    if (data.components.text) checkItem(doc, 'Tekst');
+    if (data.components.music) checkItem(doc, 'Muziku (instrumental)');
+    if (data.components.vocals) checkItem(doc, 'Snimanje vokala');
+    if (data.components.mixMaster) checkItem(doc, 'Miks i mastering');
+    if (data.components.other) checkItem(doc, `Ostalo: ${data.components.otherText || ''}`);
     doc.moveDown(2);
 
     // Član 2
@@ -415,14 +439,14 @@ export function generateCopyrightTransferPDF(data: CopyrightTransferContract, li
     doc.moveDown();
     doc.fontSize(10).font('DejaVuSans');
     doc.text('Autor prenosi sledeća imovinska autorska prava:');
-    doc.text(data.rightsType === 'exclusive' ? '☑ Isključiva prava' : '☑ Neisključiva prava');
+    checkItem(doc, data.rightsType === 'exclusive' ? 'Isključiva prava' : 'Neisključiva prava');
     doc.moveDown();
     doc.text('Obuhvat prenosa prava:');
-    if (data.rightsScope.reproduction) doc.text('☑ Reprodukovanje i umnožavanje dela');
-    if (data.rightsScope.distribution) doc.text('☑ Distribucija i digitalna prodaja');
-    if (data.rightsScope.performance) doc.text('☑ Javno izvođenje i emitovanje');
-    if (data.rightsScope.adaptation) doc.text('☑ Prerada i adaptacija');
-    if (data.rightsScope.other) doc.text(`☑ Ostalo: ${data.rightsScope.otherText || ''}`);
+    if (data.rightsScope.reproduction) checkItem(doc, 'Reprodukovanje i umnožavanje dela');
+    if (data.rightsScope.distribution) checkItem(doc, 'Distribucija i digitalna prodaja');
+    if (data.rightsScope.performance) checkItem(doc, 'Javno izvođenje i emitovanje');
+    if (data.rightsScope.adaptation) checkItem(doc, 'Prerada i adaptacija');
+    if (data.rightsScope.other) checkItem(doc, `Ostalo: ${data.rightsScope.otherText || ''}`);
     doc.moveDown(2);
 
     // Član 3
@@ -540,14 +564,14 @@ export function generateInstrumentalSalePDF(data: InstrumentalSaleContract, lice
     doc.fontSize(10).font('DejaVuSans');
     doc.text('Korisniku se izdaje sledeća vrsta licence:');
     doc.moveDown();
-    doc.text(data.rightsType === 'exclusive' ? '☑ Isključiva licenca' : '☑ Neisključiva licenca');
+    checkItem(doc, data.rightsType === 'exclusive' ? 'Isključiva licenca' : 'Neisključiva licenca');
     doc.moveDown();
     doc.text('Opseg dozvoljenog korišćenja:');
-    if (data.rightsScope.reproduction) doc.text('☑ Reprodukovanje i umnožavanje');
-    if (data.rightsScope.distribution) doc.text('☑ Distribucija i digitalna prodaja');
-    if (data.rightsScope.performance) doc.text('☑ Javno izvođenje i emitovanje');
-    if (data.rightsScope.adaptation) doc.text('☑ Prerada i adaptacija');
-    if (data.rightsScope.other) doc.text(`☑ Ostalo: ${data.rightsScope.otherText || ''}`);
+    if (data.rightsScope.reproduction) checkItem(doc, 'Reprodukovanje i umnožavanje');
+    if (data.rightsScope.distribution) checkItem(doc, 'Distribucija i digitalna prodaja');
+    if (data.rightsScope.performance) checkItem(doc, 'Javno izvođenje i emitovanje');
+    if (data.rightsScope.adaptation) checkItem(doc, 'Prerada i adaptacija');
+    if (data.rightsScope.other) checkItem(doc, `Ostalo: ${data.rightsScope.otherText || ''}`);
     doc.moveDown(2);
 
     // Član 3

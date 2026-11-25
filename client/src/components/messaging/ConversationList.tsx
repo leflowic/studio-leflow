@@ -7,6 +7,7 @@ import { AvatarWithInitials } from "@/components/ui/avatar-with-initials";
 import { Skeleton } from "@/components/ui/skeleton";
 import { EmptyState } from "@/components/ui/empty-state";
 import { MessageCircle, SearchX } from "lucide-react";
+import { ImageLabel } from "@/components/messaging/ImageLabel";
 import { isToday, isYesterday, format } from "date-fns";
 import { cn } from "@/lib/utils";
 import { useEffect } from "react";
@@ -63,13 +64,14 @@ export default function ConversationList({ selectedUserId, onSelectConversation,
     });
   }, [subscribe, refetch]);
 
-  const getLastMessageText = (conv: ConversationData): string => {
+  const getLastMessageText = (conv: ConversationData): React.ReactNode => {
     if (!conv.lastMessage) return "Započni konverzaciju";
     if (conv.lastMessage.deleted) return "Poruka obrisana";
     const prefix = conv.lastMessage.senderId === user?.id ? "Ti: " : "";
     const content = conv.lastMessage.content;
-    const text = content === "📎" ? "📷 Slika" : content;
-    const truncated = text.length > 45 ? text.slice(0, 45) + "…" : text;
+    // "📎" is the stored placeholder content of an image-only message
+    if (content === "📎") return <>{prefix}<ImageLabel /></>;
+    const truncated = content.length > 45 ? content.slice(0, 45) + "…" : content;
     return prefix + truncated;
   };
 

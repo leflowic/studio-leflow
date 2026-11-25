@@ -25,6 +25,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { ArrowLeft, Send, Loader2, Check, CheckCheck, Trash2, Smile, Paperclip, CornerUpLeft, X, ChevronDown, Pencil, Forward, ExternalLink } from "lucide-react";
+import { ImageLabel } from "@/components/messaging/ImageLabel";
 import { format, isToday, isYesterday, isSameDay } from "date-fns";
 import { cn } from "@/lib/utils";
 import { apiRequest } from "@/lib/queryClient";
@@ -537,11 +538,12 @@ export default function ChatInterface({ selectedUserId, onBack }: ChatInterfaceP
     );
   }
 
-  const getReplyPreview = (replyToId: number | null): string => {
+  const getReplyPreview = (replyToId: number | null): React.ReactNode => {
     if (!replyToId || !messages) return "";
     const msg = messages.find(m => m.id === replyToId);
     if (!msg || msg.deleted) return "Obrisana poruka";
-    if (msg.imageUrl && msg.content === "📎") return "📷 Slika";
+    // "📎" is the stored placeholder content of an image-only message - never shown as-is
+    if (msg.imageUrl && msg.content === "📎") return <ImageLabel />;
     return msg.content.length > 60 ? msg.content.slice(0, 60) + "…" : msg.content;
   };
 
@@ -880,7 +882,7 @@ export default function ChatInterface({ selectedUserId, onBack }: ChatInterfaceP
                 {replyTo.senderId === user?.id ? "Ti" : otherUser?.username}
               </span>
               <p className="text-muted-foreground truncate text-xs mt-0.5">
-                {replyTo.imageUrl && replyTo.content === "📎" ? "📷 Slika" : replyTo.content}
+                {replyTo.imageUrl && replyTo.content === "📎" ? <ImageLabel /> : replyTo.content}
               </p>
             </div>
             <Button variant="ghost" size="icon" className="h-5 w-5 flex-shrink-0" onClick={() => setReplyTo(null)} aria-label="Otkaži odgovor">

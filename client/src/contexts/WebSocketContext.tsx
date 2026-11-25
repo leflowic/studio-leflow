@@ -3,6 +3,10 @@ import { useAuth } from "@/hooks/use-auth";
 import { useToast } from "@/hooks/use-toast";
 import notificationSound from "@assets/universfield-new-notification-035-485894.mp3";
 
+// Browser tab title while a new DM is unread (the "(1)" prefix is the common
+// convention tab bars recognize - no emoji).
+const TAB_TITLE_UNREAD = "(1) Nova poruka - Studio LeFlow";
+
 function requestNotificationPermission() {
   if ("Notification" in window && Notification.permission === "default") {
     Notification.requestPermission();
@@ -149,10 +153,10 @@ export function WebSocketProvider({ children }: { children: ReactNode }) {
             if (document.hidden) {
               showBrowserNotification(
                 `Nova poruka od ${senderUsername}`,
-                message.message?.content || "Poslao ti je poruku",
+                message.message?.content && message.message.content !== "📎" ? message.message.content : (message.message?.imageUrl ? "Poslao/la ti je sliku" : "Poslao/la ti je poruku"),
                 senderUsername,
               );
-              document.title = `💬 Nova poruka - Studio LeFlow`;
+              document.title = TAB_TITLE_UNREAD;
             }
           }
         }
@@ -240,7 +244,7 @@ export function WebSocketProvider({ children }: { children: ReactNode }) {
   // Reset document title when user returns to the tab
   useEffect(() => {
     const handleVisibilityChange = () => {
-      if (!document.hidden && document.title.startsWith("💬")) {
+      if (!document.hidden && document.title === TAB_TITLE_UNREAD) {
         document.title = "Studio LeFlow";
       }
     };

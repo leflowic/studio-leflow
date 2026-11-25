@@ -9,7 +9,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { AvatarWithInitials } from "@/components/ui/avatar-with-initials";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Separator } from "@/components/ui/separator";
-import { ArrowLeft, Search, User, Music, FileText, Receipt, Calendar, Mail, Crown, Trophy, Star } from "lucide-react";
+import { ArrowLeft, Search, User, Music, FileText, Receipt, Calendar, Mail, Crown, Trophy, Star, Heart } from "lucide-react";
 import { format } from "date-fns";
 
 interface ClientUser {
@@ -202,7 +202,7 @@ function ClientDetail({ userId, onBack }: { userId: number; onBack: () => void }
                         <p className="text-xs text-muted-foreground">{p.genre} · {format(new Date(p.uploadDate), "dd.MM.yyyy")}</p>
                       </div>
                       <div className="flex items-center gap-2 shrink-0 ml-2">
-                        <span className="text-xs text-muted-foreground">♥ {p.votesCount}</span>
+                        <span className="text-xs text-muted-foreground inline-flex items-center gap-1"><Heart className="w-3 h-3" />{p.votesCount}</span>
                         {projectStatusBadge(p.approved)}
                       </div>
                     </div>

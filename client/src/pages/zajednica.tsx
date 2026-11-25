@@ -6,7 +6,7 @@ import { useToast } from "@/hooks/use-toast";
 import { Link } from "wouter";
 import { motion } from "framer-motion";
 import { FadeInWhenVisible } from "@/components/motion/FadeIn";
-import { Music, Heart, User, TrendingUp, Youtube, Trophy, Flame, Plus, LayoutList, Gamepad2, Users } from "lucide-react";
+import { Music, Heart, User, TrendingUp, Youtube, Trophy, Flame, Plus, LayoutList, Gamepad2, Users, BadgeCheck } from "lucide-react";
 import { SEO } from "@/components/SEO";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -84,7 +84,7 @@ function CollabUsersWidget() {
         {data.slice(0, 8).map(u => (
           <Link key={u.id} href={`/u/${u.username}`} className="flex items-center gap-1.5 bg-muted/60 hover:bg-muted rounded-xl px-2.5 py-1.5 transition-colors">
             <span className="text-xs font-medium">{u.username}</span>
-            {u.isVerifiedArtist && <span className="text-primary text-[10px]">✓</span>}
+            {u.isVerifiedArtist && <BadgeCheck className="w-3.5 h-3.5 text-primary" aria-label="Verifikovan izvođač" />}
           </Link>
         ))}
       </div>

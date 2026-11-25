@@ -392,7 +392,7 @@ export default function GameTab() {
                   <div className="flex items-center gap-2">
                     <span className="font-medium text-sm">{p.weekStart}</span>
                     <Badge variant="outline" className="text-xs">{p.discountPct}% popust</Badge>
-                    {p.winnerUsername && <Badge className="text-xs bg-yellow-500">🏆 {p.winnerUsername}</Badge>}
+                    {p.winnerUsername && <Badge className="text-xs bg-yellow-500 gap-1"><Trophy className="w-3 h-3" />{p.winnerUsername}</Badge>}
                   </div>
                   <p className="text-xs text-muted-foreground">{p.prizeDescription}</p>
                   {p.promoCode && <p className="text-xs font-mono text-primary">{p.promoCode}</p>}

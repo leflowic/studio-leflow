@@ -9,7 +9,7 @@ import { AvatarWithInitials } from "@/components/ui/avatar-with-initials";
 import { SEO } from "@/components/SEO";
 import { useToast } from "@/hooks/use-toast";
 import { motion, AnimatePresence } from "framer-motion";
-import { Play, Trophy, Clock, CheckCircle2, XCircle, Lock, Info, ChevronDown, Headphones, Zap, Flame } from "lucide-react";
+import { Play, Trophy, Clock, CheckCircle2, XCircle, Lock, Info, ChevronDown, Headphones, Zap, Flame, ArrowRight } from "lucide-react";
 import { ShareResultButton } from "@/components/game/ShareResultButton";
 import { cn } from "@/lib/utils";
 
@@ -434,7 +434,7 @@ export default function IgraPage() {
               className="w-full h-12 text-base font-bold rounded-xl shadow-lg shadow-primary/20"
               size="lg"
             >
-              {guessMutation.isPending ? "Proveravam..." : "Potvrdi odgovor →"}
+              {guessMutation.isPending ? "Proveravam..." : <>Potvrdi odgovor <ArrowRight className="ml-1.5 w-4 h-4" /></>}
             </Button>
             <p className="text-xs text-center text-muted-foreground">
               Imaš jedan pokušaj, razmisli pre nego što odgovoriš.

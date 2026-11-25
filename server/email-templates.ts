@@ -169,7 +169,7 @@ export function adminLoginEmail(code: string): string {
     ${paragraph('Detektovana je prijava na admin panel. Unesite kod ispod da potvrdite identitet:')}
     ${codeBlock(code, 'Admin Verifikacioni Kod')}
     ${paragraph('Kod važi <strong style="color:#cccccc;">15 minuta</strong>.')}
-    ${notice('⚠️ Ako ovo niste Vi, Vaš nalog je možda kompromitovan. Odmah promenite lozinku.')}
+    ${notice('<strong style="color:#c9a27a;">Upozorenje:</strong> Ako ovo niste Vi, Vaš nalog je možda kompromitovan. Odmah promenite lozinku.')}
   `);
 }
 

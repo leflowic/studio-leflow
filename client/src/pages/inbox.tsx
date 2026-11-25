@@ -2,7 +2,7 @@ import { useState, useEffect } from "react";
 import { useAuth } from "@/hooks/use-auth";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-import { MessageCircle, Search, ShieldAlert } from "lucide-react";
+import { MessageCircle, Search, ShieldAlert, Check } from "lucide-react";
 import ConversationList from "@/components/messaging/ConversationList";
 import ChatInterface from "@/components/messaging/ChatInterface";
 import { SEO } from "@/components/SEO";
@@ -126,7 +126,7 @@ export default function Inbox() {
                     <MessageCircle className="w-10 h-10 text-primary/50" />
                   </div>
                   <div className="absolute -top-1 -right-1 w-5 h-5 bg-primary rounded-full flex items-center justify-center">
-                    <span className="text-[9px] text-primary-foreground font-bold">✓</span>
+                    <Check className="w-3 h-3 text-primary-foreground" strokeWidth={3} />
                   </div>
                 </div>
                 <h2 className="text-base font-semibold mb-1">Izaberi konverzaciju</h2>

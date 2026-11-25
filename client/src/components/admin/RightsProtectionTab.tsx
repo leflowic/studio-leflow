@@ -107,7 +107,7 @@ export function RightsProtectionTab() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/admin/rights-protection"] });
       closeDialog();
-      toast({ title: "Evidencija sačuvana ✓" });
+      toast({ title: "Evidencija sačuvana" });
     },
     onError: async (e: any) => {
       const msg = await e?.response?.json?.().catch(() => null);
