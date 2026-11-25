@@ -4,7 +4,8 @@ import { SEO } from "@/components/SEO";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
-import { Check, Eye, EyeOff } from "lucide-react";
+import { Check, Eye, EyeOff, Music, Zap, CheckCircle2 } from "lucide-react";
+import { motion } from "framer-motion";
 import { useGoogleLogin } from "@react-oauth/google";
 import leflowLogo from "@/assets/leflow-logo.png";
 import { insertUserSchema } from "@shared/schema";
@@ -40,34 +41,162 @@ function GoogleIcon({ className }: { className?: string }) {
 
 // Shared look for every auth view (sign in / sign up / password reset):
 // a standalone page - small logo top-left, one secondary action top-right,
-// a narrow centered column. No site header/footer (see AUTH_PATHS in App.tsx).
+// a narrow centered column, with the animated brand panel as the right half
+// on desktop. No site header/footer (see AUTH_PATHS in App.tsx).
 const FIELD = "h-11";
 const SUBMIT = "w-full h-11 font-semibold";
 const LINK = "text-foreground font-medium underline underline-offset-4 decoration-border hover:decoration-foreground";
 
+// Right half on desktop: the studio's animated brand panel (photo, floating
+// logo with rotating rings and glow, frequency lines, particles). The owner
+// asked to keep this - it's part of the brand, not decoration to strip.
+function AuthBrandPanel() {
+  return (
+    <div className="hidden lg:flex lg:w-1/2 relative overflow-hidden text-white bg-black">
+      <motion.div
+        initial={{ scale: 1.1, opacity: 0 }}
+        animate={{ scale: 1, opacity: 0.3 }}
+        transition={{ duration: 1.5, ease: "easeOut" }}
+        className="absolute inset-0 bg-cover bg-center saturate-[0.25]"
+        style={{ backgroundImage: "url('/equipment/midi-workstation.jpg')" }}
+      />
+      <div
+        className="absolute inset-0"
+        style={{ background: "radial-gradient(ellipse 150% 100% at 100% 50%, rgba(0,0,0,0.85) 0%, rgba(0,0,0,0.95) 40%, transparent 70%)" }}
+      />
+
+      {/* Frequency lines */}
+      <div className="absolute inset-0 overflow-hidden pointer-events-none">
+        {[...Array(5)].map((_, i) => (
+          <motion.div
+            key={i}
+            className="absolute h-px bg-gradient-to-r from-transparent via-primary/30 to-transparent"
+            style={{ top: `${20 + i * 15}%`, width: "100%" }}
+            animate={{ x: ["-100%", "100%"], opacity: [0, 0.5, 0] }}
+            transition={{ duration: 4 + i * 0.5, repeat: Infinity, delay: i * 0.8, ease: "linear" }}
+          />
+        ))}
+      </div>
+
+      {/* Particles */}
+      <div className="absolute inset-0 overflow-hidden pointer-events-none">
+        {[...Array(12)].map((_, i) => (
+          <motion.div
+            key={`particle-${i}`}
+            className="absolute w-1 h-1 bg-primary/40 rounded-full"
+            style={{ left: `${10 + (i * 7) % 80}%`, top: `${20 + (i * 11) % 60}%` }}
+            animate={{ y: [0, -30, 0], x: [0, Math.sin(i) * 10, 0], opacity: [0.2, 0.6, 0.2], scale: [1, 1.5, 1] }}
+            transition={{ duration: 3 + (i % 3), repeat: Infinity, delay: i * 0.3, ease: "easeInOut" }}
+          />
+        ))}
+      </div>
+
+      <div className="relative z-10 flex flex-col items-center justify-center text-center p-12 w-full gap-8">
+        <motion.div
+          initial={{ scale: 0, opacity: 0, rotate: -180 }}
+          animate={{ scale: 1, opacity: 1, rotate: 0 }}
+          transition={{ duration: 0.8, ease: "easeOut", delay: 0.2 }}
+          className="relative"
+        >
+          <motion.div
+            className="absolute inset-0 -m-8 border border-primary/20 rounded-full"
+            animate={{ rotate: 360 }}
+            transition={{ duration: 20, repeat: Infinity, ease: "linear" }}
+            style={{ width: "calc(100% + 4rem)", height: "calc(100% + 4rem)" }}
+          />
+          <motion.div
+            className="absolute inset-0 -m-12 border border-primary/10 rounded-full"
+            animate={{ rotate: -360 }}
+            transition={{ duration: 30, repeat: Infinity, ease: "linear" }}
+            style={{ width: "calc(100% + 6rem)", height: "calc(100% + 6rem)" }}
+          />
+          <motion.div
+            animate={{ scale: [1, 1.3, 1], opacity: [0.15, 0.35, 0.15] }}
+            transition={{ duration: 3, repeat: Infinity, ease: "easeInOut" }}
+            className="absolute inset-0 bg-primary/20 blur-3xl rounded-full scale-150"
+          />
+          <motion.img
+            src={leflowLogo}
+            alt="Studio LeFlow"
+            className="w-32 h-auto relative z-10 invert object-contain"
+            animate={{ y: [0, -8, 0] }}
+            transition={{ duration: 4, repeat: Infinity, ease: "easeInOut" }}
+          />
+        </motion.div>
+
+        <motion.div
+          initial={{ y: 30, opacity: 0 }}
+          animate={{ y: 0, opacity: 1 }}
+          transition={{ duration: 0.6, delay: 0.5 }}
+          className="space-y-3"
+        >
+          <h2 className="text-4xl lg:text-5xl font-semibold tracking-tight">Studio LeFlow</h2>
+          <p className="text-lg text-white/70">Muzička produkcija, Beograd</p>
+        </motion.div>
+
+        <motion.p
+          initial={{ y: 20, opacity: 0 }}
+          animate={{ y: 0, opacity: 1 }}
+          transition={{ duration: 0.6, delay: 0.7 }}
+          className="text-lg max-w-md mx-auto leading-relaxed text-white/75"
+        >
+          Pratite svoju pesmu od snimanja do isporuke i budite deo zajednice izvođača.
+        </motion.p>
+
+        <div className="grid grid-cols-1 gap-3 max-w-sm w-full mt-2">
+          {[
+            { icon: Music, title: "Status pesme", desc: "Snimanje, mix, mastering, isporuka" },
+            { icon: Zap, title: "Pogodi Pesmu", desc: "Dnevna igra i nedeljna rang lista" },
+            { icon: CheckCircle2, title: "Zajednica", desc: "Objave, saradnje i giveaway" },
+          ].map((feature, index) => (
+            <motion.div
+              key={feature.title}
+              initial={{ x: 50, opacity: 0 }}
+              animate={{ x: 0, opacity: 1 }}
+              transition={{ duration: 0.5, delay: 0.9 + index * 0.15, ease: "easeOut" }}
+              className="flex items-center gap-3 bg-white/5 backdrop-blur-sm rounded-lg p-4 border border-white/10 text-left"
+            >
+              <div className="w-10 h-10 rounded-full bg-primary/20 flex items-center justify-center flex-shrink-0">
+                <feature.icon className="w-5 h-5 text-primary" />
+              </div>
+              <div>
+                <p className="font-medium text-white">{feature.title}</p>
+                <p className="text-sm text-white/60">{feature.desc}</p>
+              </div>
+            </motion.div>
+          ))}
+        </div>
+      </div>
+    </div>
+  );
+}
+
 function AuthShell({ children, topAction }: { children: ReactNode; topAction: ReactNode }) {
   return (
-    <div className="min-h-screen bg-background flex flex-col">
-      <header className="flex items-center justify-between px-5 sm:px-8 h-16 mt-[env(safe-area-inset-top)]">
-        <Link href="/" className="flex items-center gap-2.5" aria-label="Studio LeFlow - početna">
-          <img src={leflowLogo} alt="" draggable={false} className="h-7 w-auto dark:invert select-none" />
-          <span className="text-sm font-semibold hidden sm:inline">Studio LeFlow</span>
-        </Link>
-        <div className="flex items-center gap-2">
-          <ThemeToggle />
-          {topAction}
-        </div>
-      </header>
-      <main className="flex-1 flex justify-center px-5 pt-8 sm:pt-14 pb-16">
-        <div className="w-full max-w-[380px]">{children}</div>
-      </main>
-      <footer className="px-5 pb-[calc(1.5rem+env(safe-area-inset-bottom))] text-center text-xs text-muted-foreground">
-        &copy; {new Date().getFullYear()} Studio LeFlow
-        <span className="mx-2">&middot;</span>
-        <Link href="/pravila" className="hover:text-foreground">Pravila</Link>
-        <span className="mx-2">&middot;</span>
-        <Link href="/uslovi-koriscenja" className="hover:text-foreground">Uslovi korišćenja</Link>
-      </footer>
+    <div className="min-h-screen bg-background flex">
+      <div className="w-full lg:w-1/2 flex flex-col min-h-screen">
+        <header className="flex items-center justify-between px-5 sm:px-8 h-16 mt-[env(safe-area-inset-top)]">
+          <Link href="/" className="flex items-center gap-2.5" aria-label="Studio LeFlow - početna">
+            <img src={leflowLogo} alt="" draggable={false} className="h-7 w-auto dark:invert select-none" />
+            <span className="text-sm font-semibold hidden sm:inline">Studio LeFlow</span>
+          </Link>
+          <div className="flex items-center gap-2">
+            <ThemeToggle />
+            {topAction}
+          </div>
+        </header>
+        <main className="flex-1 flex justify-center px-5 pt-8 sm:pt-14 pb-16">
+          <div className="w-full max-w-[380px]">{children}</div>
+        </main>
+        <footer className="px-5 pb-[calc(1.5rem+env(safe-area-inset-bottom))] text-center text-xs text-muted-foreground">
+          &copy; {new Date().getFullYear()} Studio LeFlow
+          <span className="mx-2">&middot;</span>
+          <Link href="/pravila" className="hover:text-foreground">Pravila</Link>
+          <span className="mx-2">&middot;</span>
+          <Link href="/uslovi-koriscenja" className="hover:text-foreground">Uslovi korišćenja</Link>
+        </footer>
+      </div>
+      <AuthBrandPanel />
     </div>
   );
 }
