@@ -515,10 +515,31 @@ export async function registerRoutes(app: Express): Promise<Server> {
       if (!detectedType || !allowed.includes(detectedType.mime))
         return res.status(400).json({ error: "Dozvoljeni su samo JPG, PNG i WebP fajlovi" });
       const uid = `msg_${req.jwtUser!.id}_${Date.now()}`;
-      const url = await uploadImageToCloudinary(req.file.buffer, "studioleflow/messages", uid);
+      // Raw upload: uploadImageToCloudinary applies a 400x400 face-crop meant for avatars only
+      const url = await uploadRawImageToCloudinary(req.file.buffer, "studioleflow/messages", uid);
       res.json({ url });
     } catch (e: any) {
       console.error("[UPLOAD] Message image error:", e.message);
+      res.status(500).json({ error: "Greška pri otpremanju slike" });
+    }
+  });
+
+  // CMS image upload (EditableImage). Super Admin only, same as CMS content writes.
+  // Must NOT reuse /api/upload/avatar - that one face-crops and overwrites the
+  // uploader's fixed user_<id> avatar, so every CMS image replaced the admin's
+  // avatar and all CMS images shared one Cloudinary file.
+  app.post("/api/upload/cms-image", uploadRateLimiter, requireAdmin, upload.single("file"), async (req, res) => {
+    try {
+      if (!req.file) return res.status(400).json({ error: "Fajl nije pronađen" });
+      const detectedType = await fileTypeFromBuffer(req.file.buffer);
+      const allowed = ["image/jpeg", "image/png", "image/webp"];
+      if (!detectedType || !allowed.includes(detectedType.mime))
+        return res.status(400).json({ error: "Dozvoljeni su samo JPG, PNG i WebP fajlovi" });
+      const uid = `cms_${Date.now()}_${randomBytes(4).toString("hex")}`;
+      const url = await uploadRawImageToCloudinary(req.file.buffer, "studioleflow/cms", uid);
+      res.json({ url });
+    } catch (e: any) {
+      console.error("[UPLOAD] CMS image error:", e.message);
       res.status(500).json({ error: "Greška pri otpremanju slike" });
     }
   });
@@ -850,14 +871,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.get("/api/contact", async (_req, res) => {
-    try {
-      const submissions = await storage.getAllContactSubmissions();
-      res.json(submissions);
-    } catch (error) {
-      res.status(500).json({ error: "Greška na serveru" });
-    }
-  });
 
   // ==================== NEWSLETTER API ROUTES ====================
 
@@ -1441,6 +1454,19 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Ban/unban/delete are open to producers, but only Super Admin may act on
+  // staff accounts (admin/producer/editor/marketing) - otherwise a producer
+  // could ban or delete the Super Admin and lock them out of their own panel.
+  // Returns an error message to send with 403/404, or null if allowed.
+  async function checkCanModerateUser(actorRole: string, targetId: number): Promise<{ status: number; error: string } | null> {
+    const target = await storage.getUser(targetId);
+    if (!target) return { status: 404, error: "Korisnik nije pronađen" };
+    if (actorRole !== "admin" && target.role !== "user") {
+      return { status: 403, error: "Samo glavni administrator može da menja naloge članova tima" };
+    }
+    return null;
+  }
+
   // Ban a user
   app.post("/api/admin/users/:id/ban", requireRole("producer"), async (req, res) => {
     try {
@@ -1448,7 +1474,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
       if (isNaN(userId)) {
         return res.status(400).json({ error: "Nevažeći ID korisnika" });
       }
-      
+      if (userId === req.jwtUser!.id) {
+        return res.status(400).json({ error: "Ne možete banovati sami sebe" });
+      }
+      const denied = await checkCanModerateUser(req.jwtUser!.role, userId);
+      if (denied) return res.status(denied.status).json({ error: denied.error });
+
       await storage.banUser(userId);
       res.sendStatus(200);
     } catch (error) {
@@ -1463,7 +1494,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
       if (isNaN(userId)) {
         return res.status(400).json({ error: "Nevažeći ID korisnika" });
       }
-      
+      const denied = await checkCanModerateUser(req.jwtUser!.role, userId);
+      if (denied) return res.status(denied.status).json({ error: denied.error });
+
       await storage.unbanUser(userId);
       res.sendStatus(200);
     } catch (error) {
@@ -1483,7 +1516,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
       if (userId === req.jwtUser!.id) {
         return res.status(400).json({ error: "Ne možete obrisati sami sebe" });
       }
-      
+      const denied = await checkCanModerateUser(req.jwtUser!.role, userId);
+      if (denied) return res.status(denied.status).json({ error: denied.error });
+
       await storage.deleteUser(userId);
       res.sendStatus(200);
     } catch (error) {
@@ -2240,73 +2275,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
       console.error("Calendar update error:", error);
       res.status(500).json({ error: "Greška na serveru" });
     }
-  });
-
-  // SEO routes - robots.txt
-  app.get("/robots.txt", (req, res) => {
-    const host = req.get('host') || 'localhost:5000';
-    const protocol = req.protocol || 'https';
-    const siteUrl = `${protocol}://${host}`;
-    
-    const robotsTxt = `User-agent: *
-Allow: /
-Disallow: /admin
-Disallow: /api/
-Disallow: /inbox
-
-Sitemap: ${siteUrl}/sitemap.xml
-`;
-    res.type("text/plain");
-    res.send(robotsTxt);
-  });
-
-  // SEO routes - sitemap.xml
-  app.get("/sitemap.xml", (req, res) => {
-    const host = req.get('host') || 'localhost:5000';
-    const protocol = req.protocol || 'https';
-    const siteUrl = `${protocol}://${host}`;
-    
-    const sitemap = `<?xml version="1.0" encoding="UTF-8"?>
-<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
-  <url>
-    <loc>${siteUrl}/</loc>
-    <lastmod>${new Date().toISOString().split('T')[0]}</lastmod>
-    <changefreq>weekly</changefreq>
-    <priority>1.0</priority>
-  </url>
-  <url>
-    <loc>${siteUrl}/kontakt</loc>
-    <lastmod>${new Date().toISOString().split('T')[0]}</lastmod>
-    <changefreq>monthly</changefreq>
-    <priority>0.8</priority>
-  </url>
-  <url>
-    <loc>${siteUrl}/tim</loc>
-    <lastmod>${new Date().toISOString().split('T')[0]}</lastmod>
-    <changefreq>monthly</changefreq>
-    <priority>0.7</priority>
-  </url>
-  <url>
-    <loc>${siteUrl}/giveaway</loc>
-    <lastmod>${new Date().toISOString().split('T')[0]}</lastmod>
-    <changefreq>weekly</changefreq>
-    <priority>0.9</priority>
-  </url>
-  <url>
-    <loc>${siteUrl}/pravila</loc>
-    <lastmod>${new Date().toISOString().split('T')[0]}</lastmod>
-    <changefreq>yearly</changefreq>
-    <priority>0.5</priority>
-  </url>
-  <url>
-    <loc>${siteUrl}/usluge</loc>
-    <lastmod>${new Date().toISOString().split('T')[0]}</lastmod>
-    <changefreq>yearly</changefreq>
-    <priority>0.5</priority>
-  </url>
-</urlset>`;
-    res.type("application/xml");
-    res.send(sitemap);
   });
 
   // ===== MESSAGING ENDPOINTS =====
@@ -4610,6 +4578,10 @@ Sitemap: ${siteUrl}/sitemap.xml
       if (!portal) return res.status(404).json({ error: "Portal nije pronađen" });
       const versionId = parseInt(req.params.versionId);
       if (isNaN(versionId)) return res.status(400).json({ error: "Nevažeći ID" });
+      // Version IDs are sequential - make sure this version belongs to the portal
+      // the token resolved to, or one client could approve another client's track.
+      const versions = await storage.getPortalVersions(portal.id);
+      if (!versions.some(v => v.id === versionId)) return res.status(404).json({ error: "Verzija nije pronađena" });
       await storage.approvePortalVersion(versionId, portal.clientName);
       res.json({ ok: true });
     } catch (e) {

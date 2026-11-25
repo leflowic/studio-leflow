@@ -76,6 +76,7 @@ There are no automated tests in this project.
 
 **Korisnici (Users) tab:**
 - `UsersTab` in `admin.tsx` is a two-level view: a searchable/filterable card grid, and (on clicking a card) `UserDetailPanel` — a profile header plus three Radix tabs: **Pregled** (read-only info), **Dozvole** (rank select, staff-role select, admin toggle, verified-artist toggle), **Bezbednost** (ban/unban, delete account).
+- Ban/unban/delete routes are `requireRole("producer")`, but `checkCanModerateUser()` in `routes.ts` lets only Super Admin act on staff accounts (any `role !== "user"`) - otherwise a producer could ban/delete the Super Admin. Ban also refuses to target yourself.
 - The staff-role `<Select>` in Dozvole (Korisnik/Producent/Urednik/Marketing) and the "Administratorske privilegije" (admin) toggle are both gated to render only when the viewing user (`useAuth()`) is `role === "admin"` — a Producent can see and act on the rest of the Korisnici tab but can't grant panel access or promote anyone.
 - `RankBadge`/`rankMeta` (site rank: user/vip/legend/admin) is a separate concept from the admin staff role — don't conflate the `rank` column with `role`.
 
@@ -185,7 +186,7 @@ There are no automated tests in this project.
 **Client Portal:**
 - Tables: `client_portals` (name, clientName, shareToken), `portal_versions` (portalId, versionName, audioUrl, approved), `portal_comments` (versionId, authorName, authorType, timestampSeconds, text, resolved).
 - Access is token-based — no auth required. `GET /api/portal/:token` returns the portal with versions.
-- **Any route taking both `:token` and a nested `:versionId`/`:commentId` must verify the nested resource actually belongs to the portal resolved from the token**, not just that the token itself is valid — version/comment IDs are sequential integers, so skipping this check lets one client's valid link enumerate and read/write another client's portal data. This was a real IDOR found in `/api/portal/:token/versions/:versionId/comments`; the fix pattern is `storage.getPortalVersions(portal.id)` then check `.some(v => v.id === versionId)` before proceeding.
+- **Any route taking both `:token` and a nested `:versionId`/`:commentId` must verify the nested resource actually belongs to the portal resolved from the token**, not just that the token itself is valid — version/comment IDs are sequential integers, so skipping this check lets one client's valid link enumerate and read/write another client's portal data. This was a real IDOR found in `/api/portal/:token/versions/:versionId/comments` and again (2026-11) in `/approve`; the fix pattern is `storage.getPortalVersions(portal.id)` then check `.some(v => v.id === versionId)` before proceeding.
 - Clients can add timestamped comments and approve versions. Producers (admin) can add comments, upload versions, and mark comments resolved.
 - Route `/portal/:token` uses a standalone layout (no header/footer), same as smart links.
 
@@ -196,8 +197,9 @@ There are no automated tests in this project.
 - Three tabs: Console (intercepts `console.log/warn/error/info` + uncaught errors/rejections), Network (intercepts all `fetch()` with method/URL/status/duration/body), Storage (localStorage + sessionStorage viewer/editor with delete support).
 
 **File uploads:**
-- Avatar/image uploads: `POST /api/upload/avatar` → Cloudinary (`server/cloudinary.ts`), fixed `user_${id}` public_id with face-crop transformation.
-- Message images: `POST /api/upload/message-image` → Cloudinary `studioleflow/messages` folder, unique `msg_${userId}_${timestamp}` public_id (no overwrite, no crop).
+- Avatar/image uploads: `POST /api/upload/avatar` → Cloudinary (`server/cloudinary.ts`), fixed `user_${id}` public_id with face-crop transformation. **Avatar only** - never point another uploader at it (`EditableImage` used to, which overwrote the admin's avatar and made every CMS image share one face-cropped file).
+- CMS images (`EditableImage`): `POST /api/upload/cms-image` (`requireAdmin`) → `uploadRawImageToCloudinary()`, `studioleflow/cms` folder, unique public_id.
+- Message images: `POST /api/upload/message-image` → Cloudinary `studioleflow/messages` folder, unique `msg_${userId}_${timestamp}` public_id, via `uploadRawImageToCloudinary()` (no overwrite, no crop).
 - Audio uploads: `POST /api/upload/audio` → Cloudinary, with `fileTypeFromBuffer` magic-bytes validation.
 - Game clip: `POST /api/upload/game-clip` (admin) → Cloudinary `studioleflow/game-clips` folder.
 - Smart link cover: `POST /api/upload/smart-link-cover` (`requireVerifiedEmail` — staff or an assigned link owner, see "Smart Links") → Cloudinary `studioleflow/smart-links` folder.
@@ -236,7 +238,7 @@ There are no automated tests in this project.
 - Business email in structured data is `podrska@studioleflow.com` — never `leflowbusiness@gmail.com`.
 - `canonicalUrl` prop accepts relative paths (e.g. `"/faq"`) — the component converts to absolute automatically. Defaults to `window.location.href` (minus query/hash) if omitted.
 - Pages that must use `<SEO noIndex={true}>`: `/uslovi-koriscenja`, `/prijava`, `/registracija`. Protected/private pages (`/admin`, `/settings`, `/dashboard`, `/inbox`, `/igra`, `/zajednica`, `/moje-pesme`) don't need `noIndex` — they are already Disallowed in `robots.txt` and behind auth.
-- `client/public/sitemap.xml` — only public, indexable pages: `/`, `/usluge`, `/projekti`, `/faq`, `/kontakt`, `/tim`, `/pravila`, `/news`. Do not add noIndex pages, auth pages, or individual `/news/:slug` articles (dynamic, not worth hand-maintaining here).
+- `client/public/sitemap.xml` — only public, indexable pages: `/`, `/usluge`, `/projekti`, `/faq`, `/kontakt`, `/tim`, `/pravila`, `/news`. Do not add noIndex pages, auth pages, or individual `/news/:slug` articles (dynamic, not worth hand-maintaining here). Served as a plain static file - don't add an Express `/sitemap.xml` or `/robots.txt` route; one used to exist in `routes.ts`, registered before `serveStatic`, and silently shadowed these files with a stale list.
 - `client/public/robots.txt` — Disallow list includes: `/admin`, `/dashboard`, `/inbox`, `/moje-pesme`, `/igra`, `/zajednica`, `/giveaway`, `/settings`, `/u/`, `/api/`. Keep Allow list minimal (only `/` needed — everything not disallowed is allowed by default).
 
 **Default avatar and favicons:**
@@ -399,7 +401,7 @@ The owner explicitly dislikes these patterns. Never introduce them:
 - Client (`App.tsx`): if `GET /api/maintenance` returns `{ maintenanceMode: true }` and user is not admin, renders `<MaintenancePage>`. Bypass: `localStorage.setItem("maintenance_bypass", "1")` (admin use only). The `music.studioleflow.com`/`/l/`/`/portal/` branches in `Router()` return before this check even runs, so those standalone pages are never gated by it client-side either.
 
 **Verify License page:**
-- Route: `/verify-license` — public. Users enter a contract number; `GET /api/contracts/verify/:licenseNumber` returns sanitized contract info (no personal data beyond what's on the license itself).
+- Route: `/verify-license` — public. Users enter a contract number; `GET /api/verify/:hash` (license `verificationHash`) returns sanitized contract info (no personal data beyond what's on the license itself).
 
 **Admin panel — PortalTab:**
 - `PortalTab` (`client/src/components/admin/PortalTab.tsx`) is a separate-file tab in the admin panel. Manages client portals: create portal, upload versions (`POST /api/upload/portal-audio`), view comments, mark comments resolved.

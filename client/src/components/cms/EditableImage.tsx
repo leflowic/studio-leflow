@@ -98,11 +98,10 @@ export function EditableImage({
       formData.append("file", file);
 
       const token = getAuthToken();
-      const uploadResponse = await fetch("/api/upload/avatar", {
+      const uploadResponse = await fetch("/api/upload/cms-image", {
         method: "POST",
         headers: token ? { Authorization: `Bearer ${token}` } : {},
         body: formData,
-        credentials: "include",
       });
 
       if (!uploadResponse.ok) throw new Error("Upload failed");
