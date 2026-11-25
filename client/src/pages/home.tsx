@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { Link, useLocation } from "wouter";
-import { Music, Mic2, Video, ArrowRight, Phone, Play, AlertCircle, Gamepad2, UserPlus, X } from "lucide-react";
+import { Music, Mic2, Video, ArrowRight, Phone, Play, AlertCircle, Gamepad2, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Alert, AlertDescription } from "@/components/ui/alert";
@@ -20,6 +20,7 @@ import { BeforeAfterSection } from "@/components/home/BeforeAfterPlayer";
 import { ProcessSection } from "@/components/home/ProcessSection";
 import { ForYouToday } from "@/components/home/ForYouToday";
 import { GoogleIcon } from "@/components/icons/GoogleIcon";
+import leflowLogo from "@/assets/leflow-logo.png";
 import { PlatformMarquee } from "@/components/home/PlatformMarquee";
 import { AvatarWithInitials } from "@/components/ui/avatar-with-initials";
 
@@ -128,36 +129,38 @@ function GuestBanner() {
   if (dismissed || !visible) return null;
 
   return (
-    <div className="fixed bottom-24 left-1/2 -translate-x-1/2 sm:left-6 sm:translate-x-0 sm:bottom-[calc(1.5rem+env(safe-area-inset-bottom))] z-40 w-[calc(100%-2rem)] max-w-md">
+    <div className="fixed bottom-24 left-1/2 -translate-x-1/2 sm:left-6 sm:translate-x-0 sm:bottom-[calc(1.5rem+env(safe-area-inset-bottom))] z-40 w-[calc(100%-2rem)] max-w-sm">
       <motion.div
-        initial={{ y: 80, opacity: 0 }}
+        role="dialog"
+        aria-label="Napravite besplatan nalog"
+        initial={{ y: 12, opacity: 0 }}
         animate={{ y: 0, opacity: 1 }}
-        exit={{ y: 80, opacity: 0 }}
-        transition={{ type: "spring", damping: 24, stiffness: 280 }}
+        transition={{ duration: 0.3, ease: [0.22, 1, 0.36, 1] }}
+        className="relative rounded-2xl border border-border bg-popover text-popover-foreground shadow-[0_20px_50px_-12px_rgba(0,0,0,0.5)] p-5"
       >
-        <div className="flex flex-wrap items-center justify-center gap-3 bg-card border border-border/80 rounded-2xl shadow-2xl px-4 py-3 backdrop-blur-sm">
-          <div className="w-9 h-9 rounded-xl bg-primary/10 flex items-center justify-center flex-shrink-0">
-            <UserPlus className="w-4 h-4 text-primary" />
-          </div>
-          <div className="flex-1 min-w-[160px] text-center sm:text-left">
-            <p className="text-sm font-semibold leading-tight">Pridruži se zajednici</p>
-            <p className="text-xs text-muted-foreground">Besplatno · Igre · Feed · Poruke</p>
-          </div>
-          <div className="flex items-center gap-1.5 flex-shrink-0">
-            <Link href="/registracija">
-              <Button size="sm" className="h-8 text-xs px-3 gap-1.5">
-                Registruj se
-              </Button>
-            </Link>
-            <Link href="/prijava">
-              <Button size="sm" variant="ghost" className="h-8 text-xs px-2.5">
-                Prijava
-              </Button>
-            </Link>
-            <button onClick={dismiss} className="text-muted-foreground hover:text-foreground transition-colors ml-0.5" aria-label="Zatvori">
-              <X className="w-4 h-4" />
-            </button>
-          </div>
+        <button
+          onClick={dismiss}
+          className="absolute top-3 right-3 p-1.5 rounded-full text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
+          aria-label="Zatvori"
+        >
+          <X className="w-4 h-4" />
+        </button>
+
+        <div className="flex items-center gap-2.5 pr-8">
+          <img src={leflowLogo} alt="" className="h-5 w-auto dark:invert select-none" draggable={false} />
+          <p className="text-[15px] font-semibold leading-tight">Napravite besplatan nalog</p>
+        </div>
+        <p className="mt-2 text-sm text-muted-foreground leading-relaxed">
+          Pratite status svoje pesme, igrajte Pogodi Pesmu i dopisujte se sa drugim izvođačima.
+        </p>
+
+        <div className="mt-4 flex items-center gap-4">
+          <Link href="/registracija">
+            <Button size="sm" className="h-9 px-4">Napravi nalog</Button>
+          </Link>
+          <Link href="/prijava" className="text-sm text-muted-foreground hover:text-foreground underline-offset-4 hover:underline">
+            Već imate nalog?
+          </Link>
         </div>
       </motion.div>
     </div>
