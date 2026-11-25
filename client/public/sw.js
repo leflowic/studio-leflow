@@ -97,3 +97,39 @@ self.addEventListener('fetch', (event) => {
       .catch(() => caches.match(event.request))
   );
 });
+
+// ─── Web Push ────────────────────────────────────────────────────────────────
+self.addEventListener('push', (event) => {
+  let data = {};
+  try { data = event.data ? event.data.json() : {}; } catch (e) { data = { body: event.data && event.data.text() }; }
+  const title = data.title || 'Studio LeFlow';
+  event.waitUntil(
+    self.registration.showNotification(title, {
+      body: data.body || '',
+      icon: '/favicon-192x192.png',
+      badge: '/favicon-192x192.png',
+      tag: data.tag,
+      renotify: !!data.tag,
+      data: { url: data.url || '/' },
+    })
+  );
+});
+
+self.addEventListener('notificationclick', (event) => {
+  event.notification.close();
+  const target = new URL((event.notification.data && event.notification.data.url) || '/', self.location.origin).href;
+  event.waitUntil(
+    self.clients.matchAll({ type: 'window', includeUncontrolled: true }).then((clients) => {
+      // Reuse an open tab of the site if there is one
+      for (const client of clients) {
+        if (client.url.startsWith(self.location.origin) && 'focus' in client) {
+          if (target.startsWith(self.location.origin) && 'navigate' in client) {
+            return client.navigate(target).then((c) => (c || client).focus());
+          }
+          break;
+        }
+      }
+      return self.clients.openWindow(target);
+    })
+  );
+});

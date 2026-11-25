@@ -19,6 +19,8 @@ import { motion } from "framer-motion";
 import { format } from "date-fns";
 import { FadeInWhenVisible } from "@/components/motion/FadeIn";
 import { PanelCard } from "@/components/ui/panel-card";
+import { Textarea } from "@/components/ui/textarea";
+import { PushToggle } from "@/components/PushToggle";
 
 function PasswordInput({ id, value, onChange, placeholder, autoComplete, disabled }: {
   id: string; value: string; onChange: (v: string) => void;
@@ -83,6 +85,56 @@ function CollabToggle() {
           <span className={`absolute top-0.5 left-0.5 w-5 h-5 bg-white rounded-full shadow transition-transform ${available ? "translate-x-6" : "translate-x-0"}`} />
         </button>
       </div>
+    </div>
+  );
+}
+
+function PublicProfileCard() {
+  const { user } = useAuth();
+  const { toast } = useToast();
+  const [enabled, setEnabled] = useState<boolean>((user as any)?.publicProfile ?? false);
+  const [bio, setBio] = useState<string>((user as any)?.bio ?? "");
+
+  const save = useMutation({
+    mutationFn: (data: { publicProfile: boolean; bio: string }) => apiRequest("PATCH", "/api/me/public-profile", data),
+    onSuccess: (_, data) => {
+      setEnabled(data.publicProfile);
+      queryClient.invalidateQueries({ queryKey: ["/api/user"] });
+      toast({ title: data.publicProfile ? "Javni profil je uključen" : "Javni profil je isključen" });
+    },
+    onError: (e: any) => toast({ title: "Greška", description: e?.message, variant: "destructive" }),
+  });
+
+  const url = `${window.location.origin}/izvodjac/${user?.username}`;
+
+  return (
+    <div className="rounded-2xl border border-border/60 bg-card p-6 space-y-4">
+      <div className="flex items-center justify-between gap-4">
+        <div>
+          <p className="font-semibold text-sm">Javni profil izvođača</p>
+          <p className="text-xs text-muted-foreground mt-0.5">
+            Stranica sa tvojim pesmama koju svako može da otvori, bez prijave. Dobra za link u Instagram biografiji.
+          </p>
+        </div>
+        <button
+          onClick={() => save.mutate({ publicProfile: !enabled, bio })}
+          disabled={save.isPending}
+          aria-label="Javni profil"
+          className={`relative w-12 h-6 rounded-full transition-colors flex-shrink-0 ${enabled ? "bg-primary" : "bg-muted-foreground/30"}`}
+        >
+          <span className={`absolute top-0.5 left-0.5 w-5 h-5 bg-white rounded-full shadow transition-transform ${enabled ? "translate-x-6" : "translate-x-0"}`} />
+        </button>
+      </div>
+      {enabled && (
+        <div className="space-y-3">
+          <a href={url} target="_blank" rel="noopener noreferrer" className="text-sm text-primary hover:underline break-all">{url}</a>
+          <div className="space-y-1.5">
+            <Label htmlFor="artist-bio" className="text-xs">Kratka biografija (do 300 karaktera)</Label>
+            <Textarea id="artist-bio" value={bio} maxLength={300} onChange={e => setBio(e.target.value)} className="text-sm min-h-20" />
+            <Button size="sm" onClick={() => save.mutate({ publicProfile: true, bio })} disabled={save.isPending}>Sačuvaj biografiju</Button>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
@@ -392,6 +444,20 @@ export default function Settings() {
             </PanelCard>
           </FadeInWhenVisible>
         </div>
+
+        {/* Push notifications */}
+        <FadeInWhenVisible>
+          <div className="rounded-2xl border border-border/60 bg-card p-6">
+            <PushToggle />
+          </div>
+        </FadeInWhenVisible>
+
+        {/* Public artist profile (verified artists only) */}
+        {(user as any)?.isVerifiedArtist && (
+          <FadeInWhenVisible>
+            <PublicProfileCard />
+          </FadeInWhenVisible>
+        )}
 
         {/* Collab toggle */}
         {user?.emailVerified && (

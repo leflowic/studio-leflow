@@ -1383,6 +1383,7 @@ function GiveawaySettingsSection() {
   };
 
   return (
+    <div className="space-y-8">
     <div className="flex items-center justify-between">
       <div className="space-y-0.5">
         <Label htmlFor="giveaway-active" className="text-base">
@@ -1398,6 +1399,62 @@ function GiveawaySettingsSection() {
         onCheckedChange={handleToggleGiveaway}
         disabled={settingsLoading || toggleGiveawayMutation.isPending}
       />
+    </div>
+    <MonthlyChallengeForm />
+    </div>
+  );
+}
+
+// Monthly challenge on top of the giveaway: theme, prize and deadline shown on
+// /giveaway and on the homepage strip for logged-in users. Setting a NEW theme
+// sends a push notification to every subscriber - so don't retype the theme
+// just to fix a typo in the description.
+function MonthlyChallengeForm() {
+  const { toast } = useToast();
+  const { data } = useQuery<{ theme: string; description: string; prize: string; deadline: string } | null>({ queryKey: ["/api/challenge"] });
+  const [form, setForm] = useState({ theme: "", description: "", prize: "", deadline: "" });
+  const [loaded, setLoaded] = useState(false);
+
+  useEffect(() => {
+    if (loaded || data === undefined) return;
+    if (data) setForm({ theme: data.theme, description: data.description, prize: data.prize, deadline: data.deadline });
+    setLoaded(true);
+  }, [data, loaded]);
+
+  const save = useMutation({
+    mutationFn: (f: typeof form) => apiRequest("PUT", "/api/admin/challenge", f),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/challenge"] });
+      toast({ title: "Izazov je sačuvan" });
+    },
+    onError: (e: any) => toast({ title: "Greška", description: e?.message, variant: "destructive" }),
+  });
+
+  return (
+    <div className="space-y-3 border-t pt-6">
+      <div>
+        <p className="text-base font-medium">Izazov meseca</p>
+        <p className="text-sm text-muted-foreground">Tema i rok se prikazuju na giveaway stranici i na početnoj prijavljenim korisnicima. Nova tema šalje obaveštenje svima koji su ih uključili. Prazna tema isključuje izazov.</p>
+      </div>
+      <div className="grid sm:grid-cols-2 gap-3">
+        <div className="space-y-1.5">
+          <Label>Tema</Label>
+          <Input value={form.theme} maxLength={120} placeholder="npr. Trap bit do 90 BPM" onChange={e => setForm(f => ({ ...f, theme: e.target.value }))} />
+        </div>
+        <div className="space-y-1.5">
+          <Label>Rok (poslednji dan)</Label>
+          <Input type="date" value={form.deadline} onChange={e => setForm(f => ({ ...f, deadline: e.target.value }))} />
+        </div>
+        <div className="space-y-1.5 sm:col-span-2">
+          <Label>Opis (opciono)</Label>
+          <Input value={form.description} maxLength={500} onChange={e => setForm(f => ({ ...f, description: e.target.value }))} />
+        </div>
+        <div className="space-y-1.5 sm:col-span-2">
+          <Label>Nagrada (opciono)</Label>
+          <Input value={form.prize} maxLength={160} placeholder="npr. Besplatan sat u studiju" onChange={e => setForm(f => ({ ...f, prize: e.target.value }))} />
+        </div>
+      </div>
+      <Button size="sm" onClick={() => save.mutate(form)} disabled={save.isPending}>Sačuvaj izazov</Button>
     </div>
   );
 }

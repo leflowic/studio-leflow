@@ -433,6 +433,9 @@ export interface IStorage {
   // Verified artist + collab
   setVerifiedArtist(userId: number, value: boolean): Promise<void>;
   setAvailableForCollab(userId: number, value: boolean): Promise<void>;
+  setPublicProfile(userId: number, enabled: boolean, bio: string | null): Promise<void>;
+  getGameStreak(userId: number, today: string): Promise<{ current: number; best: number; totalCorrect: number; challengeNumber: number }>;
+  getPublicArtist(username: string): Promise<{ username: string; avatarUrl: string | null; bio: string | null; createdAt: Date; releases: Array<{ slug: string; title: string; artist: string; coverUrl: string | null; createdAt: Date }> } | null>;
   getCollabUsers(): Promise<Array<{ id: number; username: string; avatarUrl: string | null; availableForCollab: boolean; isVerifiedArtist: boolean }>>;
 
   // Session store
@@ -3494,6 +3497,58 @@ export class DatabaseStorage implements IStorage {
 
   async setVerifiedArtist(userId: number, value: boolean): Promise<void> {
     await db.update(users).set({ isVerifiedArtist: value }).where(eq(users.id, userId));
+  }
+
+  // Streak over *challenge days*, not calendar days: a day the studio didn't
+  // post a challenge can't break anyone's streak. Today's challenge only
+  // counts once played - not having played it *yet* doesn't break the streak.
+  async getGameStreak(userId: number, today: string) {
+    const challengeRows = await db
+      .select({ date: dailyChallenges.challengeDate })
+      .from(dailyChallenges)
+      .where(sql`${dailyChallenges.challengeDate} <= ${today}`)
+      .orderBy(desc(dailyChallenges.challengeDate));
+    const guessRows = await db
+      .select({ date: dailyGuesses.challengeDate, correct: dailyGuesses.correct })
+      .from(dailyGuesses)
+      .where(eq(dailyGuesses.userId, userId));
+    const played = new Set(guessRows.map(g => g.date));
+    const dates = challengeRows.map(c => c.date);
+
+    let current = 0;
+    for (let i = 0; i < dates.length; i++) {
+      const d = dates[i]!;
+      if (played.has(d)) current++;
+      else if (i === 0 && d === today) continue;
+      else break;
+    }
+    let best = 0, run = 0;
+    for (const d of [...dates].reverse()) {
+      if (played.has(d)) { run++; best = Math.max(best, run); } else if (d !== today) run = 0;
+    }
+    return {
+      current,
+      best: Math.max(best, current),
+      totalCorrect: guessRows.filter(g => g.correct).length,
+      challengeNumber: dates.length,
+    };
+  }
+
+  async setPublicProfile(userId: number, enabled: boolean, bio: string | null): Promise<void> {
+    await db.update(users).set({ publicProfile: enabled, bio }).where(eq(users.id, userId));
+  }
+
+  // Public artist page: only for verified, opted-in, non-banned users. Returns
+  // a narrow shape on purpose - no email, id, role or click stats.
+  async getPublicArtist(username: string) {
+    const [u] = await db.select().from(users).where(sql`lower(${users.username}) = lower(${username})`).limit(1);
+    if (!u || !u.publicProfile || !u.isVerifiedArtist || u.banned) return null;
+    const links = await db
+      .select({ slug: smartLinks.slug, title: smartLinks.title, artist: smartLinks.artist, coverUrl: smartLinks.coverUrl, createdAt: smartLinks.createdAt })
+      .from(smartLinks)
+      .where(eq(smartLinks.userId, u.id))
+      .orderBy(desc(smartLinks.createdAt));
+    return { username: u.username, avatarUrl: u.avatarUrl, bio: u.bio, createdAt: u.createdAt, releases: links };
   }
 
   async setAvailableForCollab(userId: number, value: boolean): Promise<void> {

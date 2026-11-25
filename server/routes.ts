@@ -2,6 +2,8 @@ import type { Express, Response } from "express";
 import { createServer, type Server } from "http";
 import { storage } from "./storage";
 import { wsHelpers, notifyUser, broadcastToUser, getOnlineUsersSnapshot } from "./websocket-helpers";
+import { getActivityPoints, rankForPoints, RANK_THRESHOLDS, POINT_RULES } from "./activity";
+import { getVapidPublicKey, saveSubscription, removeSubscription, hasSubscription, sendPushToUser, sendPushToUserIfOffline, sendPushToAll } from "./push";
 import { insertContactSubmissionSchema, insertCmsContentSchema, insertCmsMediaSchema, insertVideoSpotSchema, insertUserSongSchema, insertNewsletterSubscriberSchema, insertInvoiceSchema, insertCommunityMessageSchema, insertSiteAnnouncementSchema, mixMasterContractDataSchema, copyrightTransferContractDataSchema, instrumentalSaleContractDataSchema, insertSmartLinkSchema, insertStudioJobSchema, JOB_STAGES, insertNewsArticleSchema, insertRightsProtectionSchema, insertTestimonialSchema, upsertJobBriefSchema, type CmsContent, type CmsMedia, type VideoSpot, type UserSong } from "@shared/schema";
 import { sendEmail, getLastVerificationCode } from "./resend-client";
 import { resendVerificationEmail, adminLoginEmail, contactFormEmail, newsletterConfirmEmail, licenseDeliveryEmail, customEmail, reviewRequestEmail } from "./email-templates";
@@ -1244,6 +1246,60 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Monthly challenge (theme + prize + deadline on top of the giveaway).
+  // Stored as plain settings rows; empty theme = no active challenge.
+  async function getMonthlyChallenge() {
+    const [theme, description, prize, deadline, giveaway] = await Promise.all([
+      storage.getSetting("challenge_theme"),
+      storage.getSetting("challenge_description"),
+      storage.getSetting("challenge_prize"),
+      storage.getSetting("challenge_deadline"),
+      storage.getGiveawaySettings(),
+    ]);
+    if (!theme?.value) return null;
+    return {
+      theme: theme.value,
+      description: description?.value || "",
+      prize: prize?.value || "",
+      deadline: deadline?.value || "",
+      isActive: !!giveaway?.isActive,
+    };
+  }
+
+  app.get("/api/challenge", async (_req, res) => {
+    try {
+      res.json(await getMonthlyChallenge());
+    } catch {
+      res.status(500).json({ error: "Greška na serveru" });
+    }
+  });
+
+  app.put("/api/admin/challenge", requireRole("producer"), async (req, res) => {
+    try {
+      const schema = z.object({
+        theme: z.string().trim().max(120),
+        description: z.string().trim().max(500).default(""),
+        prize: z.string().trim().max(160).default(""),
+        deadline: z.string().regex(/^(\d{4}-\d{2}-\d{2})?$/, "Rok mora biti datum"),
+      });
+      const data = schema.parse(req.body);
+      const previous = await storage.getSetting("challenge_theme");
+      await Promise.all([
+        storage.setSetting("challenge_theme", data.theme),
+        storage.setSetting("challenge_description", data.description),
+        storage.setSetting("challenge_prize", data.prize),
+        storage.setSetting("challenge_deadline", data.deadline),
+      ]);
+      res.json({ success: true });
+      if (data.theme && data.theme !== previous?.value) {
+        sendPushToAll({ title: "Novi izazov meseca", body: data.theme, url: "/giveaway", tag: "challenge" });
+      }
+    } catch (error: any) {
+      if (error.name === "ZodError") return res.status(400).json({ error: error.errors[0]?.message ?? "Nevažeći podaci" });
+      res.status(500).json({ error: "Greška na serveru" });
+    }
+  });
+
   // Get all projects
   app.get("/api/giveaway/projects", async (_req, res) => {
     try {
@@ -2282,6 +2338,47 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // ===== WEB PUSH =====
+  app.get("/api/push/public-key", (_req, res) => {
+    const key = getVapidPublicKey();
+    if (!key) return res.status(503).json({ error: "Obaveštenja trenutno nisu dostupna" });
+    res.json({ key });
+  });
+
+  app.get("/api/push/status", requireNotBanned, async (req, res) => {
+    try {
+      res.json({ subscribed: await hasSubscription(req.jwtUser!.id) });
+    } catch {
+      res.status(500).json({ error: "Greška na serveru" });
+    }
+  });
+
+  app.post("/api/push/subscribe", requireNotBanned, async (req, res) => {
+    try {
+      const sub = req.body?.subscription;
+      if (!sub || typeof sub.endpoint !== "string" || !/^https:\/\//.test(sub.endpoint) || sub.endpoint.length > 1000
+          || typeof sub.keys?.p256dh !== "string" || typeof sub.keys?.auth !== "string") {
+        return res.status(400).json({ error: "Nevažeća pretplata" });
+      }
+      await saveSubscription(req.jwtUser!.id, sub);
+      res.json({ success: true });
+      sendPushToUser(req.jwtUser!.id, { title: "Obaveštenja su uključena", body: "Javićemo ti za igru, nove pesme i tvoje poruke.", url: "/", tag: "push-welcome" });
+    } catch (e) {
+      console.error("[Push] subscribe error:", e);
+      res.status(500).json({ error: "Greška na serveru" });
+    }
+  });
+
+  app.post("/api/push/unsubscribe", requireNotBanned, async (req, res) => {
+    try {
+      if (typeof req.body?.endpoint !== "string") return res.status(400).json({ error: "Nevažeći zahtev" });
+      await removeSubscription(req.body.endpoint, req.jwtUser!.id);
+      res.json({ success: true });
+    } catch {
+      res.status(500).json({ error: "Greška na serveru" });
+    }
+  });
+
   // ===== MESSAGING ENDPOINTS =====
   
   // Lookup by username - MUST BE BEFORE /api/users/:id
@@ -2445,6 +2542,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
           message,
         });
       }
+
+      const preview = imageUrl && !content.trim().replace("📎", "") ? "Poslao/la ti je sliku" : content.trim().slice(0, 120);
+      sendPushToUserIfOffline(receiverId, {
+        title: `Nova poruka od ${req.jwtUser!.username}`,
+        body: preview,
+        url: "/inbox",
+        tag: `dm-${req.jwtUser!.id}`,
+      });
       
       res.json(message);
     } catch (error: any) {
@@ -3370,6 +3475,18 @@ export async function registerRoutes(app: Express): Promise<Server> {
       if (!job) return res.status(404).json({ error: "Posao nije pronađen" });
       await storage.updateJobStage(jobId, stage);
 
+      if (stage !== job.stage) {
+        const STAGE_PUSH: Record<string, string> = {
+          snimanje: "je u fazi snimanja",
+          mix: "je na miksu",
+          mastering: "je na masteringu",
+          revizija: "čeka tvoju reviziju",
+          isporuceno: "je isporučena",
+        };
+        const phrase = STAGE_PUSH[stage];
+        if (phrase) sendPushToUser(job.userId, { title: "Gde je moja pesma", body: `"${job.title}" ${phrase}.`, url: "/dashboard", tag: `job-${jobId}` });
+      }
+
       // Auto review-request: fires once, the first time a job is delivered -
       // reviewRequestedAt guards against re-sending if the producer moves it
       // back out of "isporuceno" and delivers it again later.
@@ -3996,12 +4113,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       const guess = await storage.getUserGuessForDate(req.jwtUser!.id as number, today);
+      const streak = await storage.getGameStreak(req.jwtUser!.id as number, today);
       const { correctAnswers, clipUrl, ...safeChallenge } = challenge;
       res.json({
         available: true,
         challenge: { ...safeChallenge, hasClip: !!clipUrl },
         alreadyPlayed: !!guess,
         guess,
+        streak,
       });
     } catch (e) {
       res.status(500).json({ error: "Greška na serveru" });
@@ -4368,6 +4487,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
       if (!parsed.success) return res.status(400).json({ error: parsed.error.errors[0]?.message ?? "Nevažeći podaci" });
       const link = await storage.createSmartLink(parsed.data);
       res.json(link);
+      sendPushToAll({
+        title: "Nova pesma iz studija",
+        body: `${link.artist} - ${link.title}`,
+        url: `https://music.studioleflow.com/${link.slug}`,
+        tag: `release-${link.id}`,
+      });
     } catch (e: any) {
       if (e?.code === "23505") return res.status(409).json({ error: "Slug već postoji. Izaberite drugi." });
       res.status(500).json({ error: "Greška na serveru" });
@@ -4685,6 +4810,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
             message: `${liker?.username ?? "Neko"} je lajkovao tvoju objavu`,
           });
           broadcastToUser(post.userId, { type: "feed_notification", notification: { ...notif, fromUsername: liker?.username ?? null, fromAvatarUrl: liker?.avatarUrl ?? null } });
+          sendPushToUserIfOffline(post.userId, { title: "Zajednica", body: notif.message, url: "/zajednica", tag: `post-${postId}` });
         }
       }
     } catch (e) {
@@ -4729,6 +4855,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           message: `${commenter?.username ?? "Neko"} je komentarisao tvoju objavu`,
         });
         broadcastToUser(post.userId, { type: "feed_notification", notification: { ...notif, fromUsername: commenter?.username ?? null, fromAvatarUrl: commenter?.avatarUrl ?? null } });
+        sendPushToUserIfOffline(post.userId, { title: "Zajednica", body: notif.message, url: "/zajednica", tag: `post-${postId}` });
       }
       // Mentions: @username
       const mentions = [...content.matchAll(/@(\w+)/g)].map(m => m[1]);
@@ -4743,6 +4870,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
             message: `${commenter?.username ?? "Neko"} te pomenuo u komentaru`,
           });
           broadcastToUser(mentioned.id, { type: "feed_notification", notification: { ...notif, fromUsername: commenter?.username ?? null, fromAvatarUrl: commenter?.avatarUrl ?? null } });
+          sendPushToUserIfOffline(mentioned.id, { title: "Zajednica", body: notif.message, url: "/zajednica", tag: `post-${postId}` });
         }
       }
     } catch (e) {
@@ -4862,6 +4990,51 @@ export async function registerRoutes(app: Express): Promise<Server> {
       await storage.setAvailableForCollab(req.jwtUser!.id, available);
       res.json({ ok: true });
     } catch (e) {
+      res.status(500).json({ error: "Greška na serveru" });
+    }
+  });
+
+  // Opt-in public artist page. Only verified artists can turn it on; the bio is
+  // plain text (rendered as text, never HTML).
+  app.patch("/api/me/public-profile", requireVerifiedEmail, async (req, res) => {
+    try {
+      const { publicProfile, bio } = req.body ?? {};
+      if (typeof publicProfile !== "boolean") return res.status(400).json({ error: "Nevažeći zahtev" });
+      if (bio != null && (typeof bio !== "string" || bio.length > 300)) return res.status(400).json({ error: "Biografija može imati najviše 300 karaktera" });
+      if (publicProfile && !req.jwtUser!.isVerifiedArtist) {
+        return res.status(403).json({ error: "Javni profil je dostupan verifikovanim izvođačima" });
+      }
+      await storage.setPublicProfile(req.jwtUser!.id, publicProfile, bio?.trim() || null);
+      res.json({ success: true });
+    } catch (e) {
+      console.error("[Profile] public-profile error:", e);
+      res.status(500).json({ error: "Greška na serveru" });
+    }
+  });
+
+  app.get("/api/public/artists/:username", async (req, res) => {
+    try {
+      const artist = await storage.getPublicArtist(req.params.username);
+      if (!artist) return res.status(404).json({ error: "Profil nije pronađen" });
+      res.json(artist);
+    } catch (e) {
+      console.error("[Profile] public artist error:", e);
+      res.status(500).json({ error: "Greška na serveru" });
+    }
+  });
+
+  // Earned-rank progress for the dashboard (ranks themselves are upgraded by
+  // the hourly job in engagement-jobs.ts, never on this read)
+  app.get("/api/me/activity", requireNotBanned, async (req, res) => {
+    try {
+      const points = await getActivityPoints(req.jwtUser!.id);
+      const rank = req.jwtUser!.rank;
+      const next = rank === "user" ? { rank: "vip", label: "VIP", at: RANK_THRESHOLDS.vip }
+        : rank === "vip" ? { rank: "legend", label: "Legenda", at: RANK_THRESHOLDS.legend }
+        : null;
+      res.json({ points, rank, earnedRank: rankForPoints(points), next, rules: POINT_RULES });
+    } catch (e) {
+      console.error("[Activity] error:", e);
       res.status(500).json({ error: "Greška na serveru" });
     }
   });

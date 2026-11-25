@@ -159,6 +159,24 @@ export function registerHtmlMetaRoutes(app: Express) {
     }
   });
 
+  app.get("/izvodjac/:username", async (req, res, next) => {
+    try {
+      const artist = await storage.getPublicArtist(req.params.username);
+      if (!artist) return next();
+      const meta: PageMeta = {
+        title: `${artist.username} - izvođač | Studio LeFlow`,
+        description: artist.bio || `Pesme izvođača ${artist.username} snimljene u Studio LeFlow, Beograd.`,
+        canonical: `${BASE_URL}/izvodjac/${artist.username}`,
+        image: artist.releases[0]?.coverUrl || artist.avatarUrl || undefined,
+        ogType: "profile",
+      };
+      if (!sendWithMeta(res, meta)) return next();
+    } catch (err: any) {
+      log(`[SEO meta] Artist lookup failed: ${err.message}`, "express");
+      next();
+    }
+  });
+
   app.get("/news/:slug", async (req, res, next) => {
     try {
       const article = await storage.getArticleBySlugPublic(req.params.slug);

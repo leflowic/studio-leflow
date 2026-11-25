@@ -9,6 +9,8 @@ import { WebSocketServer, WebSocket } from "ws";
 import { storage } from "./storage";
 import { setBroadcastFunction, setNotificationFunction, setOnlineUsersAccessor } from "./websocket-helpers";
 import { pool } from "./db";
+import { initPush } from "./push";
+import { startEngagementJobs } from "./engagement-jobs";
 
 async function runMigrations() {
   const client = await pool.connect();
@@ -82,6 +84,21 @@ async function runMigrations() {
       ALTER TABLE daily_challenges
         ADD COLUMN IF NOT EXISTS open_hour INTEGER NOT NULL DEFAULT 17,
         ADD COLUMN IF NOT EXISTS open_minute INTEGER NOT NULL DEFAULT 0;
+    `);
+    // Web push subscriptions + public artist profile fields
+    await client.query(`
+      CREATE TABLE IF NOT EXISTS push_subscriptions (
+        id SERIAL PRIMARY KEY,
+        user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+        endpoint TEXT NOT NULL UNIQUE,
+        p256dh TEXT NOT NULL,
+        auth TEXT NOT NULL,
+        created_at TIMESTAMP NOT NULL DEFAULT NOW()
+      );
+      CREATE INDEX IF NOT EXISTS push_subscriptions_user_idx ON push_subscriptions(user_id);
+      ALTER TABLE users
+        ADD COLUMN IF NOT EXISTS public_profile BOOLEAN NOT NULL DEFAULT FALSE,
+        ADD COLUMN IF NOT EXISTS bio TEXT;
     `);
     // Contact form: optional link to a demo recording
     await client.query(`
@@ -655,6 +672,11 @@ app.use((req, res, next) => {
     
     // Run safe schema migrations (idempotent - safe to run on every startup)
     await runMigrations();
+
+    // Web Push needs the settings table (VAPID keys live there)
+    await initPush();
+    // Game/challenge reminders + earned-rank upgrades (1-minute in-process tick)
+    startEngagementJobs();
 
     // Seed CMS content if needed
     await seedCmsContent();

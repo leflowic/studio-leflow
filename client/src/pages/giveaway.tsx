@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { ChallengeBanner } from "@/components/ChallengeBanner";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { useAuth } from "@/hooks/use-auth";
 import { apiRequest, queryClient } from "@/lib/queryClient";
@@ -382,16 +383,16 @@ export default function Giveaway() {
       <section className="relative py-20 lg:py-32 bg-background">
         <div className="max-w-7xl mx-auto px-4 md:px-6 text-center">
           <h1 className="text-5xl md:text-6xl lg:text-7xl font-bold mb-6 tracking-tight font-[Figtree]" data-testid="text-hero-title">
-            Mesečni Giveaway
+            Mesečni giveaway
           </h1>
 
-          <p className="text-xl md:text-2xl mb-4 text-muted-foreground max-w-3xl mx-auto">
-            Pobedi Besplatnu Produkciju!
+          <p className="text-lg mb-8 text-muted-foreground max-w-2xl mx-auto">
+            Uploaduj svoj projekat, glasaj za najbolje i osvoji produkciju u Studio LeFlow.
           </p>
 
-          <p className="text-lg mb-12 text-muted-foreground max-w-2xl mx-auto">
-            Uploaduj svoj projekat, glasaj za najbolje, i osvoji profesionalnu produkciju u Studio LeFlow
-          </p>
+          <div className="max-w-2xl mx-auto mb-10">
+            <ChallengeBanner />
+          </div>
 
           <Dialog open={uploadDialogOpen} onOpenChange={setUploadDialogOpen}>
             <DialogTrigger asChild>
@@ -405,8 +406,8 @@ export default function Giveaway() {
                 {!user 
                   ? "Prijavite se da upload-ujete"
                   : settings?.isActive 
-                    ? "Uploaduj Projekat" 
-                    : "Giveaway Trenutno Neaktivan"
+                    ? "Uploaduj projekat" 
+                    : "Giveaway trenutno nije aktivan"
                 }
               </Button>
             </DialogTrigger>

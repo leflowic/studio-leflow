@@ -9,7 +9,8 @@ import { AvatarWithInitials } from "@/components/ui/avatar-with-initials";
 import { SEO } from "@/components/SEO";
 import { useToast } from "@/hooks/use-toast";
 import { motion, AnimatePresence } from "framer-motion";
-import { Play, Trophy, Clock, CheckCircle2, XCircle, Lock, Info, ChevronDown, Headphones, Zap } from "lucide-react";
+import { Play, Trophy, Clock, CheckCircle2, XCircle, Lock, Info, ChevronDown, Headphones, Zap, Flame } from "lucide-react";
+import { ShareResultButton } from "@/components/game/ShareResultButton";
 import { cn } from "@/lib/utils";
 
 function getBelgradeMinutes(): number {
@@ -288,8 +289,25 @@ export default function IgraPage() {
                   Tvoj odgovor: <strong className="text-foreground">{displayedAnswer}</strong>
                 </p>
               )}
+              {data?.streak && data.streak.current > 0 && (
+                <div className="inline-flex items-center gap-2 rounded-full border border-primary/30 bg-primary/10 px-4 py-1.5 text-sm">
+                  <Flame className="w-4 h-4 text-primary" />
+                  <span>
+                    Niz: <strong>{data.streak.current}</strong> {data.streak.current === 1 ? "dan" : "dana"} zaredom
+                    {data.streak.best > data.streak.current && <span className="text-muted-foreground"> · rekord {data.streak.best}</span>}
+                  </span>
+                </div>
+              )}
+              <div>
+                <ShareResultButton
+                  challengeNumber={data?.streak?.challengeNumber ?? 1}
+                  correct={!!finalResult?.correct}
+                  listensUsed={Math.min(3, Math.max(1, 3 - playsLeft))}
+                  streak={data?.streak?.current ?? 0}
+                />
+              </div>
               <p className="text-sm text-muted-foreground">
-                {finalResult?.correct ? "Vrati se sutra za novi izazov." : "Vrati se sutra!"}
+                {data?.streak?.current > 0 ? "Vrati se sutra da ne prekineš niz." : "Vrati se sutra za novi izazov."}
               </p>
             </motion.div>
           </AnimatePresence>

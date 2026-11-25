@@ -34,6 +34,7 @@ import { FadeInWhenVisible } from "@/components/motion/FadeIn";
 import { WaveDivider } from "@/components/WaveDivider";
 import { MySmartLinkPanel } from "@/components/dashboard/MySmartLinkPanel";
 import { MyJobsPanel } from "@/components/dashboard/MyJobsPanel";
+import { RankPanel } from "@/components/dashboard/RankPanel";
 
 type Project = {
   id: number;
@@ -383,6 +384,10 @@ export default function Dashboard() {
 
         <FadeInWhenVisible>
           <MySmartLinkPanel />
+        </FadeInWhenVisible>
+
+        <FadeInWhenVisible>
+          <RankPanel />
         </FadeInWhenVisible>
 
         {/* Bottom row: messages + settings shortcuts */}

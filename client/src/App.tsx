@@ -110,6 +110,7 @@ const UserProfilePage = lazy(() => import("@/pages/user-profile"));
 const NewsPage = lazy(() => import("@/pages/news"));
 const NewsArticlePage = lazy(() => import("@/pages/news-article"));
 const ZastitaBrendaPage = lazy(() => import("@/pages/zastita-brenda"));
+const IzvodjacPage = lazy(() => import("@/pages/izvodjac"));
 function Router() {
   const [location] = useLocation();
   const { user } = useAuth();
@@ -220,6 +221,7 @@ function Router() {
                 <Route path="/zastita-brenda"><ZastitaBrendaPage /></Route>
                 <Route path="/news"><NewsPage /></Route>
                 <Route path="/news/:slug"><NewsArticlePage /></Route>
+                <Route path="/izvodjac/:username"><IzvodjacPage /></Route>
                 <ProtectedRoute path="/u/:username" component={() => <UserProfilePage />} />
                 <ProtectedRoute path="/igra" component={() => <IgraPage />} />
                 <ProtectedRoute path="/zajednica" component={() => <ZajednicaPage />} />

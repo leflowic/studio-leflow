@@ -73,6 +73,9 @@ export const users = pgTable("users", {
   lastSeen: timestamp("last_seen"),
   isVerifiedArtist: boolean("is_verified_artist").notNull().default(false),
   availableForCollab: boolean("available_for_collab").notNull().default(false),
+  // Opt-in public artist page at /izvodjac/:username (verified artists only)
+  publicProfile: boolean("public_profile").notNull().default(false),
+  bio: text("bio"),
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });
 
@@ -1167,3 +1170,20 @@ export const notifications = pgTable("notifications", {
 });
 
 export type Notification = typeof notifications.$inferSelect;
+
+// ─── Web Push subscriptions ───────────────────────────────────────────────────
+// One row per browser/device a user enabled notifications on. Rows are removed
+// when the push service reports the subscription gone (404/410).
+
+export const pushSubscriptions = pgTable("push_subscriptions", {
+  id: serial("id").primaryKey(),
+  userId: integer("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  endpoint: text("endpoint").notNull().unique(),
+  p256dh: text("p256dh").notNull(),
+  auth: text("auth").notNull(),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+}, (t) => ({
+  userIdx: index("push_subscriptions_user_idx").on(t.userId),
+}));
+
+export type PushSubscriptionRow = typeof pushSubscriptions.$inferSelect;
