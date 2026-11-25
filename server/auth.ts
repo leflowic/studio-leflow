@@ -208,7 +208,7 @@ export function setupAuth(app: Express) {
       try {
         const result = await sendEmail({
           to: validatedData.email,
-          subject: 'Potvrdite Vašu Email Adresu - Studio LeFlow',
+          subject: 'Verifikacioni kod za Studio LeFlow',
           html: verificationEmail(verificationCode, validatedData.username),
         });
         console.log(`[AUTH] Verification email sent successfully to ${validatedData.email}. Message ID: ${result.messageId}`);
@@ -382,7 +382,7 @@ export function setupAuth(app: Express) {
       try {
         await sendEmail({
           to: email,
-          subject: 'Resetovanje Lozinke - Studio LeFlow',
+          subject: 'Kod za promenu lozinke - Studio LeFlow',
           html: passwordResetEmail(resetToken),
         });
         console.log(`[AUTH] Password reset email sent successfully to ${email}`);

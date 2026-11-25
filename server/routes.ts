@@ -6,7 +6,31 @@ import { getActivityPoints, rankForPoints, RANK_THRESHOLDS, POINT_RULES, RANK_PE
 import { getVapidPublicKey, saveSubscription, removeSubscription, hasSubscription, sendPushToUser, sendPushToUserIfOffline, sendPushToAll } from "./push";
 import { insertContactSubmissionSchema, insertCmsContentSchema, insertCmsMediaSchema, insertVideoSpotSchema, insertUserSongSchema, insertNewsletterSubscriberSchema, insertInvoiceSchema, insertCommunityMessageSchema, insertSiteAnnouncementSchema, mixMasterContractDataSchema, copyrightTransferContractDataSchema, instrumentalSaleContractDataSchema, insertSmartLinkSchema, insertStudioJobSchema, JOB_STAGES, insertNewsArticleSchema, insertRightsProtectionSchema, insertTestimonialSchema, upsertJobBriefSchema, type CmsContent, type CmsMedia, type VideoSpot, type UserSong } from "@shared/schema";
 import { sendEmail, getLastVerificationCode } from "./resend-client";
-import { resendVerificationEmail, adminLoginEmail, contactFormEmail, newsletterConfirmEmail, licenseDeliveryEmail, customEmail, reviewRequestEmail } from "./email-templates";
+import { resendVerificationEmail, adminLoginEmail, contactFormEmail, newsletterConfirmEmail, licenseDeliveryEmail, customEmail, reviewRequestEmail, newsletterCampaignEmail } from "./email-templates";
+
+// Signed newsletter unsubscribe links: /api/newsletter/u/<email b64url>/<hmac>.
+// No DB token needed, and nobody can unsubscribe an address they can't sign.
+const NEWSLETTER_UNSUB_SECRET = `${process.env.SESSION_SECRET || "dev-secret"}:newsletter-unsubscribe`;
+function newsletterUnsubscribeSig(email: string) {
+  return createHmac("sha256", NEWSLETTER_UNSUB_SECRET).update(email.toLowerCase()).digest("base64url").slice(0, 32);
+}
+function newsletterUnsubscribeUrl(email: string) {
+  const base = process.env.APP_URL || "https://studioleflow.com";
+  return `${base}/api/newsletter/u/${Buffer.from(email).toString("base64url")}/${newsletterUnsubscribeSig(email)}`;
+}
+function verifyNewsletterUnsubscribe(encodedEmail: string, sig: string): string | null {
+  try {
+    const email = Buffer.from(encodedEmail, "base64url").toString("utf8");
+    if (!email.includes("@")) return null;
+    const expected = newsletterUnsubscribeSig(email);
+    if (sig.length !== expected.length) return null;
+    let diff = 0;
+    for (let i = 0; i < sig.length; i++) diff |= sig.charCodeAt(i) ^ expected.charCodeAt(i);
+    return diff === 0 ? email : null;
+  } catch {
+    return null;
+  }
+}
 import { setupAuth, hashPassword, comparePasswords } from "./auth";
 import multer from "multer";
 import fs from "fs";
@@ -335,6 +359,7 @@ async function checkMaintenanceMode(req: any, res: any, next: any) {
     '/smart-links', // Public music.studioleflow.com hub list must work even in maintenance
     '/messages',  // Messaging must work in maintenance
     '/ws',        // WebSocket auth must work in maintenance
+    '/newsletter/u/', // Unsubscribe links in sent emails must always work
   ];
   
   // Check if the request is for an allowed path
@@ -701,7 +726,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       try {
         await sendEmail({
           to: email,
-          subject: 'Novi Verifikacioni Kod - Studio LeFlow',
+          subject: 'Novi verifikacioni kod - Studio LeFlow',
           html: resendVerificationEmail(verificationCode),
         });
         return res.json({ success: true, message: "Novi verifikacioni kod je poslat" });
@@ -762,7 +787,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       try {
         await sendEmail({
           to: user.email,
-          subject: 'Admin Prijava - Verifikacioni Kod - Studio LeFlow',
+          subject: 'Kod za prijavu na admin panel',
           html: adminLoginEmail(verificationCode),
         });
         
@@ -852,7 +877,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
       try {
         await sendEmail({
           to: 'podrska@studioleflow.com',
-          subject: `Novi Upit - ${escapeHtml(validatedData.service)} - Studio LeFlow`,
+          subject: `Novi upit: ${validatedData.service} - ${validatedData.name}`,
+          replyTo: validatedData.email,
           html: contactFormEmail({
             service: escapeHtml(validatedData.service),
             name: escapeHtml(validatedData.name),
@@ -907,7 +933,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
             
             await sendEmail({
               to: email,
-              subject: 'Potvrdite Prijavu na Newsletter - Studio LeFlow',
+              subject: 'Potvrdite prijavu na newsletter - Studio LeFlow',
               html: newsletterConfirmEmail(confirmUrl),
             });
           } catch (emailError) {
@@ -930,7 +956,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         
         await sendEmail({
           to: email,
-          subject: 'Potvrdite Prijavu na Newsletter - Studio LeFlow',
+          subject: 'Potvrdite prijavu na newsletter - Studio LeFlow',
           html: newsletterConfirmEmail(confirmUrl),
         });
       } catch (emailError) {
@@ -967,6 +993,25 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Unsubscribe from newsletter (public)
+  // Signed one-click unsubscribe (link in every campaign email). GET = person
+  // clicked the footer link -> redirect to a confirmation page; POST = the mail
+  // client's own "Unsubscribe" button (RFC 8058) -> plain 200.
+  const handleSignedUnsubscribe = async (req: any, res: any, redirect: boolean) => {
+    const email = verifyNewsletterUnsubscribe(req.params.e, req.params.t);
+    if (!email) {
+      return redirect ? res.redirect(302, "/newsletter/odjava?status=nevazeci") : res.status(400).json({ error: "Nevažeći link" });
+    }
+    try {
+      await storage.unsubscribeNewsletter(email);
+    } catch (e) {
+      console.error("Newsletter signed unsubscribe error:", e);
+      return redirect ? res.redirect(302, "/newsletter/odjava?status=greska") : res.status(500).json({ error: "Greška na serveru" });
+    }
+    return redirect ? res.redirect(302, "/newsletter/odjava?status=ok") : res.json({ success: true });
+  };
+  app.get("/api/newsletter/u/:e/:t", (req, res) => handleSignedUnsubscribe(req, res, true));
+  app.post("/api/newsletter/u/:e/:t", (req, res) => handleSignedUnsubscribe(req, res, false));
+
   app.post("/api/newsletter/unsubscribe", async (req, res) => {
     try {
       const { email } = req.body;
@@ -1048,14 +1093,23 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(400).json({ error: "Nema potvrđenih pretplatnika" });
       }
 
-      // Send email to all confirmed subscribers
-      const emailPromises = subscribers.map(subscriber => 
-        sendEmail({
+      // Send to all confirmed subscribers, each wrapped in the brand layout
+      // with their own signed unsubscribe link (+ RFC 8058 one-click headers,
+      // which Gmail/Yahoo require for bulk mail).
+      const preheader = String(htmlContent).replace(/<[^>]+>/g, " ").replace(/\s+/g, " ").trim().slice(0, 110);
+      const emailPromises = subscribers.map(subscriber => {
+        const unsubscribeUrl = newsletterUnsubscribeUrl(subscriber.email);
+        return sendEmail({
           to: subscriber.email,
           subject: subject,
-          html: htmlContent,
-        })
-      );
+          html: newsletterCampaignEmail(htmlContent, unsubscribeUrl, preheader),
+          replyTo: 'podrska@studioleflow.com',
+          headers: {
+            "List-Unsubscribe": `<${unsubscribeUrl}>, <mailto:podrska@studioleflow.com?subject=Odjava%20sa%20newslettera>`,
+            "List-Unsubscribe-Post": "List-Unsubscribe=One-Click",
+          },
+        });
+      });
 
       await Promise.all(emailPromises);
 
@@ -3070,7 +3124,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
           });
           await sendEmail({
             to: contractData.clientEmail,
-            subject: `Studio LeFlow - Licenca ${contract.contractNumber}`,
+            subject: `Licenca ${contract.contractNumber} - Studio LeFlow`,
+            replyTo: 'podrska@studioleflow.com',
             html: emailHtml,
             attachments: [{
               filename,
@@ -3195,7 +3250,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       await sendEmail({
         to: email,
-        subject: `Studio LeFlow - Licenca ${contract.contractNumber}`,
+        subject: `Licenca ${contract.contractNumber} - Studio LeFlow`,
+            replyTo: 'podrska@studioleflow.com',
         html: emailHtml,
         attachments: [{ filename: emailFilename, content: pdfBuffer.toString('base64'), encoding: 'base64', contentType: 'application/pdf' }],
       });
@@ -3266,7 +3322,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
             });
             await sendEmail({
               to: user.email,
-              subject: `Studio LeFlow - Licenca ${contract.contractNumber}`,
+              subject: `Licenca ${contract.contractNumber} - Studio LeFlow`,
+            replyTo: 'podrska@studioleflow.com',
               html: emailHtml,
               attachments: [{ filename: autoFilename, content: autoPdfBuffer.toString('base64'), encoding: 'base64', contentType: 'application/pdf' }],
             });
@@ -3507,7 +3564,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
           if (!client) return;
           return sendEmail({
             to: client.email,
-            subject: "Vaša pesma je isporučena - Studio LeFlow",
+            subject: `"${job.title}" je isporučena - Studio LeFlow`,
+            replyTo: 'podrska@studioleflow.com',
             html: reviewRequestEmail({ jobTitle: job.title, username: client.username }),
           });
         }).catch(error => console.error("[JOBS] Review request email failed:", error));

@@ -89,11 +89,13 @@ export async function sendEmail({
   html,
   attachments,
   replyTo,
+  headers,
 }: {
   to: string;
   subject: string;
   html: string;
   replyTo?: string;
+  headers?: Record<string, string>;
   attachments?: Array<{
     filename: string;
     content: string;
@@ -117,14 +119,18 @@ export async function sendEmail({
       to,
       subject,
       html,
-      ...(replyTo && { reply_to: replyTo }),
+      // The SDK maps camelCase options to the API's snake_case itself - passing
+      // reply_to / content_type directly was silently dropped (replies used to
+      // go to the noreply address).
+      ...(replyTo && { replyTo }),
+      ...(headers && { headers }),
       ...(attachments && {
         attachments: attachments.map(a => ({
           filename: a.filename,
           content: a.content,
           ...(a.encoding && { encoding: a.encoding }),
-          ...(a.contentType && { content_type: a.contentType }),
-          ...(a.contentId && { inline: true, content_id: a.contentId }),
+          ...(a.contentType && { contentType: a.contentType }),
+          ...(a.contentId && { contentId: a.contentId }),
         })),
       }),
     });

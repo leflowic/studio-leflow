@@ -111,6 +111,7 @@ const NewsPage = lazy(() => import("@/pages/news"));
 const NewsArticlePage = lazy(() => import("@/pages/news-article"));
 const ZastitaBrendaPage = lazy(() => import("@/pages/zastita-brenda"));
 const IzvodjacPage = lazy(() => import("@/pages/izvodjac"));
+const NewsletterOdjavaPage = lazy(() => import("@/pages/newsletter-odjava"));
 function Router() {
   const [location] = useLocation();
   const { user } = useAuth();
@@ -215,6 +216,7 @@ function Router() {
                 <Route path="/proveri/:hash"><VerifyLicensePage /></Route>
                 <Route path="/proveri"><VerifyLicensePage /></Route>
                 <Route path="/newsletter/potvrda/:token"><NewsletterConfirmationPage /></Route>
+                <Route path="/newsletter/odjava"><NewsletterOdjavaPage /></Route>
                 <Route path="/uslovi-koriscenja"><TermsOfUsePage /></Route>
                 <Route path="/usluge"><UslugePage /></Route>
                 <Route path="/faq"><Redirect to="/pravila" /></Route>
