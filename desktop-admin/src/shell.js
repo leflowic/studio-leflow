@@ -18,6 +18,7 @@ const ADMIN_NAV = [
       { value: "comments", label: "Komentari", icon: "message-circle", roles: ["producer"] },
       { value: "user-songs", label: "Zajednica", icon: "radio", roles: ["producer"] },
       { value: "game", label: "Igra", icon: "gamepad", roles: ["producer"] },
+      { value: "anti-abuse", label: "Zaštita igara", icon: "shield-check", roles: ["producer"] },
       { value: "smart-links", label: "Smart Links", icon: "link", roles: ["producer", "marketing"] },
       { value: "news", label: "Vesti", icon: "newspaper", roles: ["editor", "marketing"] },
     ],

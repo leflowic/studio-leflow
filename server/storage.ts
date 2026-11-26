@@ -450,7 +450,14 @@ export interface IStorage {
 
   // Ploča dana (daily spin) + vouchers
   getSpin(userId: number, date: string): Promise<DailySpin | undefined>;
-  performSpin(userId: number, date: string, opts: { canExtraListen: boolean; ip: string | null }): Promise<{ spin: DailySpin; voucher: Voucher | null; created: boolean } | { blocked: "ip" }>;
+  getGameDayOverview(date: string): Promise<{
+    players: Array<{ userId: number; username: string; listensUsed: number; answered: boolean; correct: boolean | null; answer: string | null; guessedAt: Date | null }>;
+    spins: Array<{ userId: number; username: string; reward: string; createdAt: Date }>;
+  }>;
+  getSharedIpGroups(sinceDate: string): Promise<Array<{ ip: string; users: Array<{ id: number; username: string }>; lastSeen: string }>>;
+  resetListens(userId: number, date: string): Promise<void>;
+  deleteGuess(userId: number, date: string): Promise<boolean>;
+  performSpin(userId: number, date: string, opts: { canExtraListen: boolean; ip: string | null; ipLimit?: boolean }): Promise<{ spin: DailySpin; voucher: Voucher | null; created: boolean } | { blocked: "ip" }>;
   getStudioEligibility(userId: number, ip: string | null): Promise<{ eligible: boolean; reason: "disabled" | "staff" | "new_account" | "already_won" | "no_ip" | null; eligibleFrom?: Date }>;
   getStudioPrizesLeft(date: string): Promise<number>;
   getUserVouchers(userId: number): Promise<Voucher[]>;
@@ -3665,7 +3672,56 @@ export class DatabaseStorage implements IStorage {
     return { eligible: true, reason: null };
   }
 
-  async performSpin(userId: number, date: string, opts: { canExtraListen: boolean; ip: string | null }): Promise<{ spin: DailySpin; voucher: Voucher | null; created: boolean } | { blocked: "ip" }> {
+  // ─── Admin "Zaštita igara" ───────────────────────────────────────────────
+  async getGameDayOverview(date: string) {
+    const listens = await db.select({ userId: gameListens.userId, username: users.username, count: gameListens.count })
+      .from(gameListens).innerJoin(users, eq(users.id, gameListens.userId)).where(eq(gameListens.challengeDate, date));
+    const guesses = await db.select({ userId: dailyGuesses.userId, username: users.username, answer: dailyGuesses.answer, correct: dailyGuesses.correct, guessedAt: dailyGuesses.guessedAt })
+      .from(dailyGuesses).innerJoin(users, eq(users.id, dailyGuesses.userId)).where(eq(dailyGuesses.challengeDate, date));
+    const byUser = new Map<number, { userId: number; username: string; listensUsed: number; answered: boolean; correct: boolean | null; answer: string | null; guessedAt: Date | null }>();
+    for (const l of listens) byUser.set(l.userId, { userId: l.userId, username: l.username, listensUsed: l.count, answered: false, correct: null, answer: null, guessedAt: null });
+    for (const g of guesses) {
+      const row = byUser.get(g.userId) ?? { userId: g.userId, username: g.username, listensUsed: 0, answered: false, correct: null, answer: null, guessedAt: null };
+      Object.assign(row, { answered: true, correct: g.correct, answer: g.answer, guessedAt: g.guessedAt });
+      byUser.set(g.userId, row);
+    }
+    const players = [...byUser.values()].sort((a, b) => (b.guessedAt?.getTime() ?? 0) - (a.guessedAt?.getTime() ?? 0));
+    const spins = await db.select({ userId: dailySpins.userId, username: users.username, reward: dailySpins.reward, createdAt: dailySpins.createdAt })
+      .from(dailySpins).innerJoin(users, eq(users.id, dailySpins.userId)).where(eq(dailySpins.spinDate, date)).orderBy(desc(dailySpins.createdAt));
+    return { players, spins };
+  }
+
+  // IPs used by more than one account (game answers + spins) since a date -
+  // a hint at multi-accounting, not proof (households share an IP).
+  async getSharedIpGroups(sinceDate: string) {
+    const result: any = await db.execute(sql`
+      WITH seen AS (
+        SELECT ip_address AS ip, user_id, challenge_date AS d FROM daily_guesses WHERE ip_address IS NOT NULL AND challenge_date >= ${sinceDate}
+        UNION ALL
+        SELECT ip_address AS ip, user_id, spin_date AS d FROM daily_spins WHERE ip_address IS NOT NULL AND spin_date >= ${sinceDate}
+      )
+      SELECT s.ip, MAX(s.d) AS last_seen,
+        json_agg(DISTINCT jsonb_build_object('id', u.id, 'username', u.username)) AS users
+      FROM seen s JOIN users u ON u.id = s.user_id
+      GROUP BY s.ip
+      HAVING COUNT(DISTINCT s.user_id) > 1
+      ORDER BY MAX(s.d) DESC
+      LIMIT 100
+    `);
+    const rows: any[] = result.rows ?? result;
+    return rows.map(r => ({ ip: String(r.ip), lastSeen: String(r.last_seen), users: (typeof r.users === "string" ? JSON.parse(r.users) : r.users) as Array<{ id: number; username: string }> }));
+  }
+
+  async resetListens(userId: number, date: string): Promise<void> {
+    await db.delete(gameListens).where(and(eq(gameListens.userId, userId), eq(gameListens.challengeDate, date)));
+  }
+
+  async deleteGuess(userId: number, date: string): Promise<boolean> {
+    const rows = await db.delete(dailyGuesses).where(and(eq(dailyGuesses.userId, userId), eq(dailyGuesses.challengeDate, date))).returning({ id: dailyGuesses.id });
+    return rows.length > 0;
+  }
+
+  async performSpin(userId: number, date: string, opts: { canExtraListen: boolean; ip: string | null; ipLimit?: boolean }): Promise<{ spin: DailySpin; voucher: Voucher | null; created: boolean } | { blocked: "ip" }> {
     return db.transaction(async (tx) => {
       await tx.execute(sql`SELECT pg_advisory_xact_lock(735102)`);
 
@@ -3675,11 +3731,14 @@ export class DatabaseStorage implements IStorage {
         return { spin: existing, voucher: v ?? null, created: false };
       }
 
-      // One spin per IP per day, whichever account it comes from.
+      // One spin per IP per day, whichever account it comes from (switchable in admin).
+      // With the limit off, a repeat IP is stored as null so the partial unique index can't reject it.
+      let storeIp = opts.ip;
       if (opts.ip) {
         const [sameIp] = await tx.select({ id: dailySpins.id }).from(dailySpins)
           .where(and(eq(dailySpins.ipAddress, opts.ip), eq(dailySpins.spinDate, date))).limit(1);
-        if (sameIp) return { blocked: "ip" as const };
+        if (sameIp && opts.ipLimit !== false) return { blocked: "ip" as const };
+        if (sameIp) storeIp = null;
       }
 
       const studio = await this.getStudioEligibility(userId, opts.ip, tx);
@@ -3708,7 +3767,7 @@ export class DatabaseStorage implements IStorage {
         expectedSpinsLeft,
       });
 
-      const [spin] = await tx.insert(dailySpins).values({ userId, spinDate: date, reward, ipAddress: opts.ip }).returning();
+      const [spin] = await tx.insert(dailySpins).values({ userId, spinDate: date, reward, ipAddress: storeIp }).returning();
 
       let voucher: Voucher | null = null;
       if (reward === "studio_50") {

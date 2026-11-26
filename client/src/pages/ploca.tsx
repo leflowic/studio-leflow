@@ -8,7 +8,8 @@ import { SEO } from "@/components/SEO";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { MyVouchersPanel } from "@/components/dashboard/MyVouchersPanel";
-import { Copy, Check, Loader2, ArrowRight } from "lucide-react";
+import { Copy, Check, Loader2, ArrowRight, Volume2, VolumeX } from "lucide-react";
+import { playSpin, playResult, primeAudio, isSoundOn, setSoundOn } from "@/components/spin/spin-sound";
 import {
   RecordDisc, PRIZES, ICONS, sectorsFor, rotationFor, fmtDate,
   type SpinResult, type SpinToday, type Reward,
@@ -51,6 +52,7 @@ export default function PlocaPage() {
   const [spinning, setSpinning] = useState(false);
   const [revealed, setRevealed] = useState<SpinResult | null>(null);
   const [copied, setCopied] = useState(false);
+  const [soundOn, setSoundOnState] = useState(() => isSoundOn());
   const settledRef = useRef(false);
   const jitter = useMemo(() => Math.random() * 13 - 6.5, []);
   const countdown = useMidnightCountdown();
@@ -74,9 +76,11 @@ export default function PlocaPage() {
       const { rotation: next, index } = rotationFor(sectors, result.reward, rotation, reduced ? 1 : 6, jitter);
       setRotation(next);
       setLanded(index);
+      playSpin(rotation, next, reduced ? 600 : SPIN_MS, sectors.length);
       window.setTimeout(() => {
         setSpinning(false);
         setRevealed(result);
+        playResult(result.reward);
         for (const k of ["/api/spin/today", "/api/spin/history", "/api/game/today", "/api/me/vouchers"]) queryClient.invalidateQueries({ queryKey: [k] });
       }, reduced ? 700 : SPIN_MS + 150);
     },
@@ -116,7 +120,7 @@ export default function PlocaPage() {
       <div className="mt-6">
         <Button
           size="lg" className={!canSpin ? "opacity-60 pointer-events-none" : ""} aria-busy={busy}
-          onClick={() => canSpin && spin.mutate()}
+          onClick={() => { if (!canSpin) return; primeAudio(); spin.mutate(); }}
         >
           {busy && <Loader2 className="w-4 h-4 animate-spin" />}
           {busy ? "Ploča se vrti..." : "Zavrti ploču"}
@@ -166,6 +170,19 @@ export default function PlocaPage() {
         <section className="grid md:grid-cols-2 gap-10 md:gap-14 items-center py-10 md:py-16">
           <div className="mx-auto w-full max-w-[420px]">
             <RecordDisc sectors={sectors} rotation={rotation} spinMs={spinning ? (reduced ? 600 : SPIN_MS) : null} highlight={result && !spinning ? landed : null} />
+            {verified && (
+              <div className="flex justify-center mt-4">
+                <button
+                  type="button"
+                  onClick={() => { const next = !soundOn; setSoundOn(next); setSoundOnState(next); }}
+                  aria-pressed={soundOn}
+                  className="inline-flex items-center gap-1.5 rounded-full px-3 h-8 text-xs text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
+                >
+                  {soundOn ? <Volume2 className="w-3.5 h-3.5" /> : <VolumeX className="w-3.5 h-3.5" />}
+                  {soundOn ? "Zvuk uključen" : "Zvuk isključen"}
+                </button>
+              </div>
+            )}
           </div>
           <div>
             <h1 className="text-4xl md:text-5xl font-semibold">Ploča dana</h1>

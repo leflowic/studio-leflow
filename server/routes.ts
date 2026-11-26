@@ -5,7 +5,7 @@ import { wsHelpers, notifyUser, broadcastToUser, getOnlineUsersSnapshot } from "
 import { getActivityPoints, rankForPoints, RANK_THRESHOLDS, POINT_RULES, RANK_PERKS, perksFor } from "./activity";
 import { getTrustedClientIp } from "./client-ip";
 import { getClipSlice } from "./game-clip";
-import { SPIN_REWARDS, STUDIO_PRIZES_PER_MONTH, STUDIO_MIN_ACCOUNT_DAYS, SETTING_SPIN_ENABLED, SETTING_STUDIO_PRIZE_ENABLED, getSpinIp, type SpinReward } from "./spin";
+import { SPIN_REWARDS, STUDIO_PRIZES_PER_MONTH, STUDIO_MIN_ACCOUNT_DAYS, SETTING_SPIN_ENABLED, SETTING_STUDIO_PRIZE_ENABLED, SETTING_SPIN_IP_LIMIT, SETTING_GAME_IP_LIMIT, getSpinIp, type SpinReward } from "./spin";
 import { getVapidPublicKey, saveSubscription, removeSubscription, hasSubscription, sendPushToUser, sendPushToUserIfOffline, sendPushToAll } from "./push";
 import { insertContactSubmissionSchema, insertCmsContentSchema, insertCmsMediaSchema, insertVideoSpotSchema, insertUserSongSchema, insertNewsletterSubscriberSchema, insertInvoiceSchema, insertCommunityMessageSchema, insertSiteAnnouncementSchema, mixMasterContractDataSchema, copyrightTransferContractDataSchema, instrumentalSaleContractDataSchema, insertSmartLinkSchema, insertStudioJobSchema, JOB_STAGES, insertNewsArticleSchema, insertRightsProtectionSchema, insertTestimonialSchema, upsertJobBriefSchema, type CmsContent, type CmsMedia, type VideoSpot, type UserSong } from "@shared/schema";
 import { sendEmail, getLastVerificationCode } from "./resend-client";
@@ -4264,7 +4264,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const ip = getSpinIp(req);
       const challenge = await storage.getTodayChallenge();
       const guess = challenge ? await storage.getUserGuessForDate(userId, today) : null;
-      const outcome = await storage.performSpin(userId, today, { canExtraListen: !!challenge && !guess, ip });
+      const ipLimit = (await storage.getSetting(SETTING_SPIN_IP_LIMIT))?.value !== "false";
+      const outcome = await storage.performSpin(userId, today, { canExtraListen: !!challenge && !guess, ip, ipLimit });
       if ("blocked" in outcome) {
         return res.status(429).json({ error: "Sa ove mreže je ploča danas već zavrtena. Pokušajte sutra ili sa druge mreže." });
       }
@@ -4292,6 +4293,76 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const list = await storage.getUserVouchers(req.jwtUser!.id);
       res.json(list.map(v => ({ id: v.id, code: v.code, type: v.type, expiresAt: v.expiresAt, redeemedAt: v.redeemedAt, createdAt: v.createdAt })));
+    } catch {
+      res.status(500).json({ error: "Greška na serveru" });
+    }
+  });
+
+  // ─── Admin "Zaštita igara" (anti-abuse for Pogodi Pesmu + Ploča dana) ─────
+  const maskIp = (ip: string) => ip.includes(":")
+    ? ip.split(":").slice(0, 2).join(":") + ":…"
+    : ip.split(".").slice(0, 2).join(".") + ".x.x";
+  const ipLimitSwitches = async () => ({
+    gameIpLimit: (await storage.getSetting(SETTING_GAME_IP_LIMIT))?.value !== "false",
+    spinIpLimit: (await storage.getSetting(SETTING_SPIN_IP_LIMIT))?.value !== "false",
+  });
+
+  app.get("/api/admin/anti-abuse/overview", requireRole("producer"), async (_req, res) => {
+    try {
+      const today = belgradeToday();
+      const since = new Intl.DateTimeFormat('sv', { timeZone: 'Europe/Belgrade' }).format(new Date(Date.now() - 30 * 86400_000));
+      const [day, groups, switches, challenge] = await Promise.all([
+        storage.getGameDayOverview(today),
+        storage.getSharedIpGroups(since),
+        ipLimitSwitches(),
+        storage.getTodayChallenge(),
+      ]);
+      res.json({
+        date: today,
+        hasChallenge: !!challenge,
+        ...day,
+        spins: day.spins.map(s => ({ ...s, title: SPIN_REWARDS[s.reward as SpinReward]?.title ?? s.reward })),
+        sharedIps: groups.map(g => ({ ...g, ip: maskIp(g.ip) })),
+        switches,
+      });
+    } catch (e) {
+      console.error("[AntiAbuse] overview error:", e);
+      res.status(500).json({ error: "Greška na serveru" });
+    }
+  });
+
+  app.put("/api/admin/anti-abuse/settings", requireAdmin, async (req, res) => {
+    try {
+      const { gameIpLimit, spinIpLimit } = req.body ?? {};
+      if (typeof gameIpLimit === "boolean") await storage.setSetting(SETTING_GAME_IP_LIMIT, String(gameIpLimit));
+      if (typeof spinIpLimit === "boolean") await storage.setSetting(SETTING_SPIN_IP_LIMIT, String(spinIpLimit));
+      res.json(await ipLimitSwitches());
+    } catch {
+      res.status(500).json({ error: "Greška na serveru" });
+    }
+  });
+
+  app.post("/api/admin/anti-abuse/reset-listens", requireRole("producer"), async (req, res) => {
+    try {
+      const userId = Number(req.body?.userId);
+      if (!Number.isInteger(userId)) return res.status(400).json({ error: "Nevažeći korisnik" });
+      await storage.resetListens(userId, belgradeToday());
+      res.json({ ok: true });
+    } catch {
+      res.status(500).json({ error: "Greška na serveru" });
+    }
+  });
+
+  app.post("/api/admin/anti-abuse/delete-guess", requireRole("producer"), async (req, res) => {
+    try {
+      const userId = Number(req.body?.userId);
+      if (!Number.isInteger(userId)) return res.status(400).json({ error: "Nevažeći korisnik" });
+      const today = belgradeToday();
+      const removed = await storage.deleteGuess(userId, today);
+      if (!removed) return res.status(404).json({ error: "Korisnik danas nije poslao odgovor" });
+      await storage.resetListens(userId, today);
+      console.log(`[AntiAbuse] guess of user ${userId} for ${today} removed by staff ${req.jwtUser!.id}`);
+      res.json({ ok: true });
     } catch {
       res.status(500).json({ error: "Greška na serveru" });
     }
@@ -4382,9 +4453,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // One answer per network per day - stops trying several answers through extra accounts.
       const ip = getTrustedClientIp(req);
       const ipTaken = "Sa ove mreže je danas već poslat odgovor. Pokušajte sutra.";
-      if (ip && await storage.hasGuessFromIp(ip, today)) return res.status(429).json({ error: ipTaken });
+      const gameIpLimit = (await storage.getSetting(SETTING_GAME_IP_LIMIT))?.value !== "false";
+      if (gameIpLimit && ip && await storage.hasGuessFromIp(ip, today)) return res.status(429).json({ error: ipTaken });
 
-      const result = await storage.submitGuess(req.jwtUser!.id as number, today, answer, ip);
+      // With the IP limit off, a second answer from the same IP must not trip the
+      // partial unique index - store it without the IP in that case.
+      const storeIp = gameIpLimit ? ip : (ip && await storage.hasGuessFromIp(ip, today) ? null : ip);
+
+      const result = await storage.submitGuess(req.jwtUser!.id as number, today, answer, storeIp);
       res.json(result);
     } catch (e: any) {
       // Unique violations from parallel requests (same account or same IP): never reveal correctness.

@@ -52,6 +52,7 @@ import { NewsTab } from "@/components/admin/NewsTab";
 import { RightsProtectionTab } from "@/components/admin/RightsProtectionTab";
 import { TestimonialsTab } from "@/components/admin/TestimonialsTab";
 import { VouchersTab } from "@/components/admin/VouchersTab";
+import { AntiAbuseTab } from "@/components/admin/AntiAbuseTab";
 import {
   Select,
   SelectContent,
@@ -84,6 +85,7 @@ const ADMIN_NAV: { group: string; items: { value: string; label: string; icon: L
       { value: "comments", label: "Komentari", icon: MessageCircle, roles: ["producer"] },
       { value: "user-songs", label: "Zajednica", icon: Radio, roles: ["producer"] },
       { value: "game", label: "Igra", icon: Gamepad2, roles: ["producer"] },
+      { value: "anti-abuse", label: "Zaštita igara", icon: ShieldAlert, roles: ["producer"] },
       { value: "smart-links", label: "Smart Links", icon: Link2, roles: ["producer", "marketing"] },
       { value: "news", label: "Vesti", icon: Newspaper, roles: ["editor", "marketing"] },
     ],
@@ -394,6 +396,10 @@ export default function AdminPage() {
 
           <TabsContent value="game" forceMount>
             <GameTab />
+          </TabsContent>
+
+          <TabsContent value="anti-abuse">
+            <AntiAbuseTab />
           </TabsContent>
 
           <TabsContent value="smart-links" forceMount>
