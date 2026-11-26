@@ -9,7 +9,12 @@ import { createPortal } from "react-dom";
  * only closes when `onClose` is explicitly called. Use this for any new
  * admin modal instead of Radix `<Dialog>`.
  */
-export function Modal({ open, onClose, children }: { open: boolean; onClose: () => void; children: React.ReactNode }) {
+export function Modal({ open, onClose, children, themed = false, wide = false }: {
+  open: boolean; onClose: () => void; children: React.ReactNode;
+  /** Use theme tokens (bg-card/border-border) instead of the fixed dark panel - content must then use theme text colors too. */
+  themed?: boolean;
+  wide?: boolean;
+}) {
   useEffect(() => {
     if (!open) return;
     const handler = (e: KeyboardEvent) => { if (e.key === "Escape") onClose(); };
@@ -28,8 +33,8 @@ export function Modal({ open, onClose, children }: { open: boolean; onClose: () 
         onClick={onClose}
       />
       <div
-        className="relative w-full max-w-lg max-h-[90vh] overflow-y-auto rounded-3xl flex flex-col"
-        style={{
+        className={`relative w-full ${wide ? "max-w-2xl" : "max-w-lg"} max-h-[90vh] overflow-y-auto rounded-3xl flex flex-col ${themed ? "bg-card text-card-foreground border border-border shadow-2xl" : ""}`}
+        style={themed ? { animation: "slideUp 0.2s cubic-bezier(0.16,1,0.3,1)" } : {
           background: "linear-gradient(135deg, rgba(18,18,22,0.99) 0%, rgba(12,12,16,0.99) 100%)",
           border: "1px solid rgba(255,255,255,0.07)",
           boxShadow: "0 0 0 1px rgba(255,255,255,0.04), 0 32px 80px rgba(0,0,0,0.85), 0 8px 32px rgba(0,0,0,0.6)",
