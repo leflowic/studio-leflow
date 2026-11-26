@@ -102,6 +102,20 @@ const rulesSections = [
       "Studio LeFlow može da poništi coine, kupovine i nagrade stečene varanjem, na primer otvaranjem više naloga ili korišćenjem programa koji sami vrte ploču.",
     ],
   },
+  {
+    id: "privatnost",
+    title: "Privatnost i podaci",
+    items: [
+      "Podatke obrađuje Studio LeFlow, Beograd. Za sva pitanja o vašim podacima pišite na <strong>podrska@studioleflow.com</strong>.",
+      "<strong>Nalog:</strong> korisničko ime, email adresa i lozinka (čuvamo je samo u šifrovanom obliku, ne možemo da je pročitamo). Ako se prijavite preko Google-a, dobijamo ime, email i sliku sa Google naloga. Biografiju i profilnu sliku dodajete sami.",
+      "<strong>Sadržaj koji objavite:</strong> objave, komentari, poruke, prijavljene pesme i demo snimci, utisci o saradnji. Za klijente studija: podaci potrebni za licence i fakture (ime, adresa, matični broj), koje unosi studio.",
+      "<strong>IP adresa:</strong> koristimo je samo za zaštitu od zloupotrebe - kod registracije i prijave, kod Ploče dana i igre Pogodi Pesmu (jedno okretanje i jedan odgovor po mreži dnevno). Ove IP adrese automatski brišemo posle 90 dana. IP adresu beležimo i kod glasanja na giveaway-u (jedan glas po mreži) i kod poseta smart linkovima, da bismo brojali jedinstvene posetioce.",
+      "<strong>Kolačići i memorija pregledača:</strong> za prijavu, temu i podešavanja sajta - bez njih sajt ne radi i za njih nije potrebna dozvola. Google Analytics (statistika poseta) se uključuje <strong>samo ako ga prihvatite</strong> u obaveštenju o kolačićima.",
+      "<strong>Obaveštenja na telefonu:</strong> ako ih uključite, čuvamo adresu pretplate koju daje vaš pregledač. Isključujete ih u Podešavanjima, a možete birati i koje vrste obaveštenja želite.",
+      "<strong>Usluge koje koristimo:</strong> Railway (server i baza), Cloudinary (slike i audio fajlovi), Resend (slanje emailova), Google (prijava i, uz vašu dozvolu, Analytics). Vaše podatke ne prodajemo i ne delimo u marketinške svrhe.",
+      "<strong>Vaša prava:</strong> možete tražiti uvid u podatke koje imamo o vama, njihovu ispravku ili brisanje naloga - pišite na podrska@studioleflow.com. Brisanjem naloga brišu se i podaci vezani za njega, osim onih koje smo po zakonu dužni da čuvamo (npr. fakture).",
+    ],
+  },
 ];
 
 const faqs = [

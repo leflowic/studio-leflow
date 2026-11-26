@@ -133,6 +133,16 @@ async function weeklySmartLinkReport() {
   });
 }
 
+// 04:00 Belgrade, daily: drop anti-abuse IP addresses older than 90 days (privacy).
+async function purgeOldIps() {
+  const { hour, today } = belgradeNow();
+  if (hour < 4) return;
+  await once("privacy_ip_purge", today, async () => {
+    const r = await storage.purgeOldIps(90);
+    console.log(`[Privacy] old IPs purged: ${JSON.stringify(r)}`);
+  });
+}
+
 // Hourly: pay referrals whose invitee became active (or block same-network pairs).
 let lastReferralRun = 0;
 async function referralPayouts() {
@@ -153,7 +163,7 @@ async function referralPayouts() {
 
 export function startEngagementJobs() {
   const tick = async () => {
-    for (const job of [gameReminder, challengeDeadlineReminder, rankUpgrades, spinStreakReminder, weeklyLeaderboardCoins, weeklySmartLinkReport, referralPayouts]) {
+    for (const job of [gameReminder, challengeDeadlineReminder, rankUpgrades, spinStreakReminder, weeklyLeaderboardCoins, weeklySmartLinkReport, referralPayouts, purgeOldIps]) {
       try { await job(); } catch (e) { console.error(`[Jobs] ${job.name} failed:`, e); }
     }
   };

@@ -463,6 +463,7 @@ export interface IStorage {
   }>;
   getSharedIpGroups(sinceDate: string): Promise<Array<{ ip: string; users: Array<{ id: number; username: string }>; lastSeen: string }>>;
   resetListens(userId: number, date: string): Promise<void>;
+  purgeOldIps(days: number): Promise<Record<string, number>>;
   resetSpin(userId: number, date: string): Promise<boolean>;
   deleteGuess(userId: number, date: string): Promise<boolean>;
   performSpin(userId: number, date: string, opts: { canExtraListen: boolean; ip: string | null; ipLimit?: boolean }): Promise<{ spin: DailySpin; voucher: Voucher | null; created: boolean; streak?: number; streakBonus?: number } | { blocked: "ip" }>;
@@ -4072,6 +4073,19 @@ export class DatabaseStorage implements IStorage {
       await tx.delete(dailySpins).where(eq(dailySpins.id, spin.id));
       return true;
     });
+  }
+
+  // Privacy (see /pravila#privatnost): anti-abuse IPs are kept only as long as
+  // they're useful. Same-day limits and the 30-day "shared IP" admin view need
+  // far less than 90 days; pending referrals keep their claim IP until resolved.
+  async purgeOldIps(days: number): Promise<Record<string, number>> {
+    const cutoffDate = new Intl.DateTimeFormat("sv", { timeZone: "Europe/Belgrade" }).format(new Date(Date.now() - days * 86400_000));
+    const n = (r: any) => Number(r?.rowCount ?? r?.count ?? 0);
+    const spins = await db.execute(sql`UPDATE daily_spins SET ip_address = NULL WHERE ip_address IS NOT NULL AND spin_date < ${cutoffDate}`);
+    const guesses = await db.execute(sql`UPDATE daily_guesses SET ip_address = NULL WHERE ip_address IS NOT NULL AND challenge_date < ${cutoffDate}`);
+    const refs = await db.execute(sql`UPDATE referrals SET claim_ip = NULL WHERE claim_ip IS NOT NULL AND status <> 'pending' AND created_at < NOW() - make_interval(days => ${days})`);
+    const attempts = await db.execute(sql`DELETE FROM registration_attempts WHERE attempted_at < NOW() - make_interval(days => ${days})`);
+    return { spins: n(spins), guesses: n(guesses), referrals: n(refs), registrationAttempts: n(attempts) };
   }
 
   async resetListens(userId: number, date: string): Promise<void> {

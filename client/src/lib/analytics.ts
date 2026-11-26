@@ -11,12 +11,22 @@ declare global {
 
 const GA_ID = import.meta.env.VITE_GA_MEASUREMENT_ID as string | undefined;
 
-function enabled(): boolean {
-  return Boolean(import.meta.env.PROD && GA_ID);
+// Analytics cookies need an explicit "Prihvatam" in the cookie banner
+// (CookieConsent stores "cookie-consent" = "accepted"). Closing or declining
+// the banner means no Google Analytics at all.
+export function hasAnalyticsConsent(): boolean {
+  try { return localStorage.getItem("cookie-consent") === "accepted"; } catch { return false; }
 }
 
+function enabled(): boolean {
+  return Boolean(import.meta.env.PROD && GA_ID && hasAnalyticsConsent());
+}
+
+let started = false;
+
 export function initAnalytics() {
-  if (!enabled()) return;
+  if (!enabled() || started) return;
+  started = true;
 
   const script = document.createElement("script");
   script.async = true;
@@ -44,4 +54,10 @@ export function trackPageView(path: string) {
       page_title: document.title,
     });
   }, 0);
+}
+
+/** Called from the cookie banner right after "Prihvatam", so the current visit counts too. */
+export function startAnalyticsAfterConsent() {
+  initAnalytics();
+  trackPageView(window.location.pathname);
 }

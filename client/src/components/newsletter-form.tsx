@@ -111,7 +111,8 @@ export function NewsletterForm({ variant = "default", className = "" }: Newslett
         </Button>
       </div>
       <p className="text-xs text-muted-foreground text-center mt-2">
-        Prijavom na newsletter prihvatate našu politiku privatnosti
+        Email koristimo samo za newsletter i odjava je jednim klikom.{" "}
+        <a href="/pravila#privatnost" className="underline underline-offset-2 hover:text-foreground">Privatnost i podaci</a>
       </p>
     </motion.form>
   );
