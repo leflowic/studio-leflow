@@ -36,10 +36,15 @@ export default function MusicHubPage() {
     document.title = "Studio LeFlow Music";
   }, []);
 
+  // Nothing featured yet: there's no catalogue to show, send visitors to the studio site.
+  useEffect(() => {
+    if (Array.isArray(links) && links.length === 0) window.location.replace("https://studioleflow.com");
+  }, [links]);
+
   return (
     <div className="min-h-screen bg-[#050505] relative overflow-hidden">
       <div className="absolute inset-0 pointer-events-none"
-        style={{ background: "radial-gradient(ellipse 70% 45% at 50% 0%, rgba(99,82,255,0.12) 0%, transparent 70%)" }} />
+        style={{ background: "radial-gradient(ellipse 70% 45% at 50% 0%, rgba(201,162,122,0.08) 0%, transparent 70%)" }} />
       <div className="absolute inset-0 pointer-events-none" style={{
         opacity: 0.03,
         backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='300' height='300'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='300' height='300' filter='url(%23n)' opacity='1'/%3E%3C/svg%3E")`,
@@ -96,7 +101,7 @@ export default function MusicHubPage() {
                     className="track-row group flex items-center gap-4 py-3 px-2 -mx-2 rounded-xl transition-colors duration-200 hover:bg-white/[0.035]"
                     style={{ borderBottom: i < links.length - 1 ? "1px solid rgba(255,255,255,0.06)" : "none" }}
                   >
-                    <span className="w-5 shrink-0 text-right font-mono text-[11px] text-white/25 transition-colors duration-200 group-hover:text-[#a094ff]">
+                    <span className="w-5 shrink-0 text-right font-mono text-[11px] text-white/25 transition-colors duration-200 group-hover:text-[#c9a27a]">
                       {String(i + 1).padStart(2, "0")}
                     </span>
 

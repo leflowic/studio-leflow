@@ -5172,7 +5172,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // root hub page (no click stats/platform URLs - those are admin-only fields).
   app.get("/api/smart-links", async (_req, res) => {
     try {
-      const links = await storage.getAllSmartLinks();
+      // Only songs staff chose to feature (not every client's release), and no click stats.
+      const links = await storage.getFeaturedSmartLinks();
       res.json(links.map(l => ({ slug: l.slug, title: l.title, artist: l.artist, coverUrl: l.coverUrl })));
     } catch (e: any) {
       console.error("[SmartLink] List error:", e?.message);

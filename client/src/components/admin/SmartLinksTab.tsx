@@ -14,7 +14,7 @@ import {
   AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import {
-  Link2, Plus, Trash2, Pencil, Copy, Check, ExternalLink, Music2, Upload, X, Wand2, Loader2,
+  Link2, Plus, Trash2, Pencil, Copy, Check, ExternalLink, Music2, Upload, X, Wand2, Loader2, Star,
   UserPlus, Search, MoreHorizontal, ChevronDown, ArrowUpRight,
 } from "lucide-react";
 import { SMART_LINK_PLATFORMS as PLATFORMS, SMART_LINK_HUB as HUB, PlatformBars, nfSr as nf, type SmartLinkPlatformKey as PlatformKey } from "@/lib/smart-link-platforms";
@@ -117,6 +117,16 @@ export function SmartLinksTab() {
       toast({ title: "Vlasnik ažuriran" });
     },
     onError: () => toast({ title: "Vlasnik nije sačuvan", description: "Pokušajte ponovo.", variant: "destructive" }),
+  });
+
+  const featureMutation = useMutation({
+    mutationFn: ({ id, featured }: { id: number; featured: boolean }) =>
+      apiRequest("PATCH", `/api/admin/smart-links/${id}`, { featured }),
+    onSuccess: (_r, v) => {
+      queryClient.invalidateQueries({ queryKey: ["/api/admin/smart-links"] });
+      toast({ title: v.featured ? "Pesma je na music stranici" : "Pesma je skinuta sa music stranice", description: v.featured ? undefined : "Link pesme i dalje radi." });
+    },
+    onError: () => toast({ title: "Izmena nije sačuvana", description: "Pokušajte ponovo.", variant: "destructive" }),
   });
 
   const saveMutation = useMutation({
@@ -585,6 +595,7 @@ export function SmartLinksTab() {
                               <p className="text-xs text-muted-foreground truncate">
                                 {link.artist}
                                 {owner && <span className="text-muted-foreground/70"> · vlasnik {owner}</span>}
+                                {link.featured && <span className="text-primary"> · na music stranici</span>}
                               </p>
                               <p className="text-[11px] font-mono text-muted-foreground/70 truncate mt-0.5">/{link.slug}</p>
                             </div>
@@ -622,6 +633,9 @@ export function SmartLinksTab() {
                                   <a href={`https://${HUB}/${link.slug}`} target="_blank" rel="noopener noreferrer">
                                     <ExternalLink className="w-4 h-4 mr-2" /> Otvori stranicu
                                   </a>
+                                </DropdownMenuItem>
+                                <DropdownMenuItem onSelect={() => featureMutation.mutate({ id: link.id, featured: !link.featured })}>
+                                  <Star className={`w-4 h-4 mr-2 ${link.featured ? "fill-current text-primary" : ""}`} /> {link.featured ? "Skini sa music stranice" : "Prikaži na music stranici"}
                                 </DropdownMenuItem>
                                 <DropdownMenuItem onSelect={() => openAssign(link)}>
                                   <UserPlus className="w-4 h-4 mr-2" /> {owner ? "Promeni vlasnika" : "Dodeli vlasnika"}

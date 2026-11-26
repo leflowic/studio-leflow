@@ -167,8 +167,8 @@ export default function SmartLinkPage() {
         <div className="w-24 h-24 mb-4 opacity-60"><Record labelColor="hsl(32 42% 62%)" spinning={false} /></div>
         <p className="text-2xl font-semibold text-white">Pesma nije pronađena</p>
         <p className="text-sm text-white/50 max-w-xs">Link je možda pogrešno prekucan ili je pesma uklonjena.</p>
-        <a href="/" className="mt-4 inline-flex items-center gap-2 rounded-full border border-white/15 px-5 h-10 text-sm text-white/80 hover:text-white hover:border-white/30 transition-colors">
-          Sve pesme iz studija <ArrowRight className="w-4 h-4" />
+        <a href="https://studioleflow.com" className="mt-4 inline-flex items-center gap-2 rounded-full border border-white/15 px-5 h-10 text-sm text-white/80 hover:text-white hover:border-white/30 transition-colors">
+          Studio LeFlow <ArrowRight className="w-4 h-4" />
         </a>
       </div>
     );
@@ -294,7 +294,7 @@ export default function SmartLinkPage() {
         </div>
 
         <footer className="relative z-10 pb-8 pt-2 flex items-center justify-center">
-          <a href="/" className="group inline-flex items-center gap-2.5 text-white/40 hover:text-white/80 transition-colors">
+          <a href="https://studioleflow.com" className="group inline-flex items-center gap-2.5 text-white/40 hover:text-white/80 transition-colors">
             <img src="/leflow-logo-white.png" alt="" className="h-4 w-auto opacity-70 group-hover:opacity-100 transition-opacity" />
             <span className="text-[13px] font-medium">Studio LeFlow</span>
           </a>

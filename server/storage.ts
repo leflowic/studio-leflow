@@ -413,6 +413,7 @@ export interface IStorage {
   getAllSmartLinks(): Promise<Array<SmartLink & { totalClicks: number; clicksByPlatform: Record<string, number>; uniqueClicks: number }>>;
   getSmartLinkById(id: number): Promise<SmartLink | undefined>;
   getSmartLinkBySlug(slug: string): Promise<SmartLink | undefined>;
+  getFeaturedSmartLinks(): Promise<SmartLink[]>;
   getSmartLinksByUserId(userId: number): Promise<Array<SmartLink & { uniqueClicks: number; uniqueByPlatform: Record<string, number>; weekUnique: number; prevWeekUnique: number }>>;
   updateSmartLink(id: number, data: Partial<InsertSmartLink>): Promise<SmartLink>;
   deleteSmartLink(id: number): Promise<void>;
@@ -3423,6 +3424,10 @@ export class DatabaseStorage implements IStorage {
   async getSmartLinkById(id: number): Promise<SmartLink | undefined> {
     const [link] = await db.select().from(smartLinks).where(eq(smartLinks.id, id));
     return link || undefined;
+  }
+
+  async getFeaturedSmartLinks(): Promise<SmartLink[]> {
+    return db.select().from(smartLinks).where(eq(smartLinks.featured, true)).orderBy(desc(smartLinks.createdAt));
   }
 
   async getSmartLinkBySlug(slug: string): Promise<SmartLink | undefined> {
