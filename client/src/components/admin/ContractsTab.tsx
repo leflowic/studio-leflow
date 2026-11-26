@@ -494,11 +494,11 @@ function AssignUserDialog({
       >
         <UserPlus className="w-4 h-4" />
       </Button>
-      <Modal open={open} onClose={() => setOpen(false)}>
-        <div className="flex items-center justify-between px-6 pt-6 pb-4 border-b shrink-0" style={{ borderColor: "rgba(255,255,255,0.06)" }}>
+      <Modal open={open} onClose={() => setOpen(false)} themed>
+        <div className="flex items-center justify-between px-6 pt-6 pb-4 border-b shrink-0 border-border">
           <div>
-            <h2 className="text-[15px] font-bold text-white">Dodeli licencu korisniku</h2>
-            <p className="text-[11px] mt-0.5" style={{ color: "rgba(255,255,255,0.35)" }}>
+            <h2 className="text-[15px] font-bold text-foreground">Dodeli licencu korisniku</h2>
+            <p className="text-[11px] mt-0.5 text-muted-foreground">
               Licenca {contractNumber} - Izaberite korisnika koji će videti ovu licencu u svom dashboard-u
             </p>
           </div>
@@ -506,9 +506,9 @@ function AssignUserDialog({
             type="button"
             onClick={() => setOpen(false)}
             aria-label="Zatvori"
-            className="w-8 h-8 rounded-xl flex items-center justify-center transition-all active:scale-90 bg-white/5 hover:bg-white/10 border border-white/[0.07] shrink-0"
+            className="w-8 h-8 rounded-xl flex items-center justify-center transition-all active:scale-90 bg-muted/40 hover:bg-muted border border-border shrink-0"
           >
-            <X className="w-3.5 h-3.5 text-white/50" />
+            <X className="w-3.5 h-3.5 text-muted-foreground" />
           </button>
         </div>
         <div className="px-6 py-5 space-y-4">
@@ -535,7 +535,7 @@ function AssignUserDialog({
             </Select>
           </div>
         </div>
-        <div className="flex items-center justify-end gap-3 px-6 py-4 shrink-0 border-t" style={{ borderColor: "rgba(255,255,255,0.06)" }}>
+        <div className="flex items-center justify-end gap-3 px-6 py-4 shrink-0 border-t border-border">
           <Button variant="outline" onClick={() => setOpen(false)}>
             Otkaži
           </Button>
@@ -584,11 +584,11 @@ function SendEmailDialog({ contractId, contractNumber }: { contractId: number; c
       <Button variant="ghost" size="sm" onClick={() => setOpen(true)} data-testid={`button-email-contract-${contractId}`}>
         <Mail className="w-4 h-4" />
       </Button>
-      <Modal open={open} onClose={() => setOpen(false)}>
-        <div className="flex items-center justify-between px-6 pt-6 pb-4 border-b shrink-0" style={{ borderColor: "rgba(255,255,255,0.06)" }}>
+      <Modal open={open} onClose={() => setOpen(false)} themed>
+        <div className="flex items-center justify-between px-6 pt-6 pb-4 border-b shrink-0 border-border">
           <div>
-            <h2 className="text-[15px] font-bold text-white">Pošalji licencu Email-om</h2>
-            <p className="text-[11px] mt-0.5" style={{ color: "rgba(255,255,255,0.35)" }}>
+            <h2 className="text-[15px] font-bold text-foreground">Pošalji licencu Email-om</h2>
+            <p className="text-[11px] mt-0.5 text-muted-foreground">
               Unesite email adresu klijenta za licencu {contractNumber}
             </p>
           </div>
@@ -596,9 +596,9 @@ function SendEmailDialog({ contractId, contractNumber }: { contractId: number; c
             type="button"
             onClick={() => setOpen(false)}
             aria-label="Zatvori"
-            className="w-8 h-8 rounded-xl flex items-center justify-center transition-all active:scale-90 bg-white/5 hover:bg-white/10 border border-white/[0.07] shrink-0"
+            className="w-8 h-8 rounded-xl flex items-center justify-center transition-all active:scale-90 bg-muted/40 hover:bg-muted border border-border shrink-0"
           >
-            <X className="w-3.5 h-3.5 text-white/50" />
+            <X className="w-3.5 h-3.5 text-muted-foreground" />
           </button>
         </div>
         <div className="px-6 py-5 space-y-4">
@@ -614,7 +614,7 @@ function SendEmailDialog({ contractId, contractNumber }: { contractId: number; c
             />
           </div>
         </div>
-        <div className="flex items-center justify-end gap-3 px-6 py-4 shrink-0 border-t" style={{ borderColor: "rgba(255,255,255,0.06)" }}>
+        <div className="flex items-center justify-end gap-3 px-6 py-4 shrink-0 border-t border-border">
           <Button variant="outline" onClick={() => setOpen(false)}>
             Otkaži
           </Button>
@@ -666,7 +666,7 @@ function MixMasterForm({ onSubmit, isSubmitting }: { onSubmit: (data: any) => vo
     <form onSubmit={(e) => { e.preventDefault(); onSubmit(formData); }} className="space-y-6 mt-4">
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
         <div className="space-y-2">
-          <Label>Datum Licence</Label>
+          <Label>Datum licence</Label>
           <Input value={formData.contractDate} onChange={(e) => handleChange("contractDate", e.target.value)} data-testid="input-contract-date" />
         </div>
         <div className="space-y-2">
@@ -830,7 +830,7 @@ function CopyrightTransferForm({ onSubmit, isSubmitting }: { onSubmit: (data: an
     <form onSubmit={(e) => { e.preventDefault(); onSubmit(formData); }} className="space-y-6 mt-4">
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
         <div className="space-y-2">
-          <Label>Datum Licence</Label>
+          <Label>Datum licence</Label>
           <Input value={formData.contractDate} onChange={(e) => handleChange("contractDate", e.target.value)} data-testid="input-contract-date-copyright" />
         </div>
         <div className="space-y-2">
@@ -1027,7 +1027,7 @@ function InstrumentalSaleForm({ onSubmit, isSubmitting }: { onSubmit: (data: any
     <form onSubmit={(e) => { e.preventDefault(); onSubmit(formData); }} className="space-y-6 mt-4">
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
         <div className="space-y-2">
-          <Label>Datum Licence</Label>
+          <Label>Datum licence</Label>
           <Input value={formData.contractDate} onChange={(e) => handleChange("contractDate", e.target.value)} data-testid="input-contract-date-instrumental" />
         </div>
         <div className="space-y-2">

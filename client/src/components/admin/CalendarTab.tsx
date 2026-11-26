@@ -127,39 +127,39 @@ export function CalendarTab() {
   return (
     <div className="space-y-6">
       {/* Header card */}
-      <div className="rounded-2xl overflow-hidden border border-white/5 shadow-2xl">
+      <div className="rounded-2xl overflow-hidden border border-border shadow-2xl">
         {/* Gradient header */}
-        <div className="bg-gradient-to-r from-[#130826] via-[#1a1040] to-[#0c1a4a] px-6 py-5 flex items-center justify-between">
+        <div className="bg-muted/40 border-b border-border px-6 py-5 flex items-center justify-between">
           <button
             onClick={prevMonth}
-            className="w-9 h-9 rounded-lg bg-white/5 hover:bg-white/10 border border-white/10 flex items-center justify-center transition-colors active:scale-[0.96]"
+            className="w-9 h-9 rounded-lg bg-muted/40 hover:bg-muted border border-border flex items-center justify-center transition-colors active:scale-[0.96]"
             aria-label="Prethodni mesec"
           >
-            <ChevronLeft className="w-4 h-4 text-white/70" />
+            <ChevronLeft className="w-4 h-4 text-foreground/80" />
           </button>
 
           <div className="text-center">
-            <h2 className="text-2xl font-bold text-white tracking-tight">
+            <h2 className="text-2xl font-bold text-foreground tracking-tight">
               {MONTHS_SR[month - 1]}
             </h2>
-            <p className="text-sm text-white/40 mt-0.5">{year}</p>
+            <p className="text-sm text-muted-foreground mt-0.5">{year}</p>
           </div>
 
           <button
             onClick={nextMonth}
-            className="w-9 h-9 rounded-lg bg-white/5 hover:bg-white/10 border border-white/10 flex items-center justify-center transition-colors active:scale-[0.96]"
+            className="w-9 h-9 rounded-lg bg-muted/40 hover:bg-muted border border-border flex items-center justify-center transition-colors active:scale-[0.96]"
             aria-label="Sledeći mesec"
           >
-            <ChevronRight className="w-4 h-4 text-white/70" />
+            <ChevronRight className="w-4 h-4 text-foreground/80" />
           </button>
         </div>
 
         {/* Calendar grid */}
-        <div className="bg-[#0a0a0a] p-4">
+        <div className="bg-card p-4">
           {/* Day headers */}
           <div className="grid grid-cols-7 mb-2">
             {DAYS_SR.map((d) => (
-              <div key={d} className="text-center text-xs font-semibold text-white/30 py-2 uppercase tracking-widest">
+              <div key={d} className="text-center text-xs font-semibold text-muted-foreground py-2 uppercase tracking-widest">
                 {d}
               </div>
             ))}
@@ -169,7 +169,7 @@ export function CalendarTab() {
           {isLoading ? (
             <div className="grid grid-cols-7 gap-1.5">
               {Array.from({ length: 35 }).map((_, i) => (
-                <div key={i} className="aspect-square rounded-lg bg-white/5 animate-pulse" />
+                <div key={i} className="aspect-square rounded-lg bg-muted/40 animate-pulse" />
               ))}
             </div>
           ) : (
@@ -191,13 +191,13 @@ export function CalendarTab() {
                       "hover:scale-105 hover:z-10",
                       cfg
                         ? `${cfg.bg} ${cfg.border}`
-                        : "bg-white/[0.03] border-white/[0.06] hover:bg-white/[0.07] hover:border-white/20",
-                      isToday && !cfg && "border-violet-500/50 bg-violet-500/10",
+                        : "bg-muted/40 border-border hover:bg-muted hover:border-white/20",
+                      isToday && !cfg && "border-primary/50 bg-primary/10",
                     )}
                   >
                     <span className={cn(
                       "text-sm font-semibold leading-none",
-                      cfg ? cfg.text : isToday ? "text-violet-300" : "text-white/60",
+                      cfg ? cfg.text : isToday ? "text-primary" : "text-foreground/80",
                     )}>
                       {day}
                     </span>
@@ -215,17 +215,17 @@ export function CalendarTab() {
         </div>
 
         {/* Legend */}
-        <div className="bg-[#0a0a0a] border-t border-white/5 px-4 pb-4">
+        <div className="bg-card border-t border-border px-4 pb-4">
           <div className="flex flex-wrap gap-4 pt-3">
             {Object.entries(STATUS_CONFIG).map(([key, cfg]) => (
               <div key={key} className="flex items-center gap-1.5">
                 <span className={cn("w-2 h-2 rounded-full", cfg.dot)} />
-                <span className="text-xs text-white/40">{cfg.label}</span>
+                <span className="text-xs text-muted-foreground">{cfg.label}</span>
               </div>
             ))}
             <div className="flex items-center gap-1.5">
-              <span className="w-2 h-2 rounded-full bg-violet-400" />
-              <span className="text-xs text-white/40">Danas</span>
+              <span className="w-2 h-2 rounded-full bg-primary" />
+              <span className="text-xs text-muted-foreground">Danas</span>
             </div>
           </div>
         </div>
@@ -233,11 +233,11 @@ export function CalendarTab() {
 
       {/* Day editor panel */}
       {selected && (
-        <div className="rounded-2xl border border-white/10 bg-[#0f0f0f] overflow-hidden shadow-2xl">
-          <div className="flex items-center justify-between px-5 py-4 border-b border-white/5">
+        <div className="rounded-2xl border border-border bg-card overflow-hidden shadow-2xl">
+          <div className="flex items-center justify-between px-5 py-4 border-b border-border">
             <div>
-              <p className="text-xs text-white/40 uppercase tracking-widest mb-0.5">Izabrani dan</p>
-              <p className="text-white font-semibold">
+              <p className="text-xs text-muted-foreground uppercase tracking-widest mb-0.5">Izabrani dan</p>
+              <p className="text-foreground font-semibold">
                 {new Date(selected.date + "T12:00:00").toLocaleDateString("sr-RS", {
                   weekday: "long", day: "numeric", month: "long", year: "numeric",
                 })}
@@ -245,17 +245,17 @@ export function CalendarTab() {
             </div>
             <button
               onClick={() => setSelected(null)}
-              className="w-8 h-8 rounded-lg bg-white/5 hover:bg-white/10 border border-white/10 flex items-center justify-center transition-colors active:scale-[0.96]"
+              className="w-8 h-8 rounded-lg bg-muted/40 hover:bg-muted border border-border flex items-center justify-center transition-colors active:scale-[0.96]"
               aria-label="Zatvori"
             >
-              <X className="w-4 h-4 text-white/50" />
+              <X className="w-4 h-4 text-muted-foreground" />
             </button>
           </div>
 
           <div className="p-5 space-y-5">
             {/* Status picker */}
             <div>
-              <p className="text-xs font-semibold text-white/40 uppercase tracking-widest mb-3">Status</p>
+              <p className="text-xs font-semibold text-muted-foreground uppercase tracking-widest mb-3">Status</p>
               <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
                 {(Object.entries(STATUS_CONFIG) as [NonNullable<Status>, typeof STATUS_CONFIG[keyof typeof STATUS_CONFIG]][]).map(([key, cfg]) => {
                   const isActive = (selected.day?.status ?? null) === key;
@@ -268,7 +268,7 @@ export function CalendarTab() {
                         "px-3 py-2.5 rounded-xl border text-sm font-medium transition-all flex items-center gap-2",
                         isActive
                           ? `${cfg.bg} ${cfg.border} ${cfg.text} ring-1 ring-inset ${cfg.border}`
-                          : "bg-white/[0.03] border-white/10 text-white/50 hover:bg-white/[0.07]",
+                          : "bg-muted/40 border-border text-muted-foreground hover:bg-muted",
                       )}
                     >
                       <span className={cn("w-2 h-2 rounded-full shrink-0", cfg.dot)} />
@@ -281,19 +281,19 @@ export function CalendarTab() {
 
             {/* Note */}
             <div>
-              <p className="text-xs font-semibold text-white/40 uppercase tracking-widest mb-2">Napomena (opciono)</p>
+              <p className="text-xs font-semibold text-muted-foreground uppercase tracking-widest mb-2">Napomena (opciono)</p>
               <div className="flex gap-2">
                 <input
                   value={noteInput}
                   onChange={(e) => setNoteInput(e.target.value)}
                   placeholder="Npr. Snimanje benda, Mix projekt..."
-                  className="flex-1 bg-white/[0.04] border border-white/10 rounded-xl px-4 py-2.5 text-sm text-white placeholder:text-white/20 focus:outline-none focus:border-violet-500/50 focus:bg-white/[0.06] transition-colors"
+                  className="flex-1 bg-muted/40 border border-border rounded-xl px-4 py-2.5 text-sm text-foreground placeholder:text-muted-foreground/60 focus:outline-none focus:border-primary/50 focus:bg-white/[0.06] transition-colors"
                   onKeyDown={(e) => { if (e.key === "Enter") applyStatus(selected.day?.status as Status ?? null); }}
                 />
                 <button
                   disabled={mutation.isPending}
                   onClick={() => applyStatus(selected.day?.status as Status ?? null)}
-                  className="px-4 py-2.5 rounded-xl bg-violet-600 hover:bg-violet-500 disabled:opacity-50 text-white text-sm font-medium transition-colors"
+                  className="px-4 py-2.5 rounded-xl bg-primary hover:bg-primary/90 disabled:opacity-50 text-primary-foreground text-sm font-medium transition-colors"
                 >
                   {mutation.isPending ? "..." : "Sačuvaj"}
                 </button>
@@ -305,7 +305,7 @@ export function CalendarTab() {
               <button
                 disabled={mutation.isPending}
                 onClick={() => applyStatus(null)}
-                className="text-xs text-white/30 hover:text-white/50 transition-colors underline underline-offset-2"
+                className="text-xs text-muted-foreground hover:text-muted-foreground transition-colors underline underline-offset-2"
               >
                 Ukloni status
               </button>

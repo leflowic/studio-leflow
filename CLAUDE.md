@@ -400,6 +400,9 @@ The owner explicitly dislikes these patterns. Never introduce them:
 - The route `ChunkErrorBoundary` shows the raw JS error only in dev (`import.meta.env.DEV`); visitors get a plain Serbian message.
 - Decorative accents use theme tokens (`primary`, `muted-foreground`), not Tailwind blue/violet/emerald. Green/amber/red stay only where they carry meaning (verified, pending, error).
 - UI text is sentence case. A one-off script lowercased ~125 Title Case JSX strings; keep new strings sentence case (proper nouns: Studio LeFlow, Pogodi Pesmu, Ploča dana, brand names).
+- **Admin tabs use theme tokens too** (2026-11-26): no `zinc-*`, `text-white`, `bg-white/x`, `#6352ff`/indigo or inline `rgba(255,255,255,…)` styles - those broke the light theme. Every `Modal` from `AdminModal.tsx` is opened with `themed` (the unthemed dark panel is legacy; don't add new callers). Status colors (green approved / amber pending / red error) stay.
+- forceMount'ed admin tabs (Prodavnica's `EconomyOverview`, `ShopCatalogue`, JobsBoard's `BottleneckPanel`) render even while another tab is open, so they must guard against a malformed response (`Array.isArray`, optional fields) - one bad payload otherwise takes the whole admin panel down through the error boundary.
+- Founding year is **2020** (owner, 2026-11-26): hero "Od 2020.", footer, and `foundingDate` in the org JSON-LD in `client/index.html`; matches `/zastita-brenda`.
 
 **Copy rules (owner decisions — hard constraints):**
 - **Never show prices anywhere.** Pricing questions are answered with "pošaljite upit — tačna ponuda u roku od 24h."

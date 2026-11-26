@@ -288,7 +288,7 @@ export function SmartLinksTab() {
                   <>
                     <img src={form.coverUrl} alt="" className="absolute inset-0 w-full h-full object-cover" />
                     <div className="absolute inset-0 flex items-center justify-center bg-black/60 opacity-0 group-hover:opacity-100 transition-opacity">
-                      {uploading ? <Loader2 className="w-5 h-5 text-white animate-spin" /> : <Upload className="w-5 h-5 text-white" />}
+                      {uploading ? <Loader2 className="w-5 h-5 text-foreground animate-spin" /> : <Upload className="w-5 h-5 text-foreground" />}
                     </div>
                   </>
                 ) : (

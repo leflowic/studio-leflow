@@ -33,7 +33,7 @@ function stageLabel(value: string) {
 
 function BottleneckPanel() {
   const { data } = useQuery<StageAnalytics>({ queryKey: ["/api/admin/jobs/analytics"] });
-  if (!data) return null;
+  if (!data || !Array.isArray(data.avgDaysByStage) || !Array.isArray(data.stuckJobs)) return null;
 
   // "Isporuceno" is terminal - there's no "next stage" to measure a duration
   // against, so it never has samples. Not useful in a "where do jobs get
@@ -43,7 +43,7 @@ function BottleneckPanel() {
   const maxDays = Math.max(...bars.map(b => b.avgDays), 1);
 
   return (
-    <Card className="bg-zinc-900/50 border-zinc-800">
+    <Card className="bg-card border-border">
       <CardContent className="pt-6 space-y-5">
         {bars.length > 0 && (
           <div className="space-y-2.5">
@@ -51,8 +51,8 @@ function BottleneckPanel() {
             {bars.map(b => (
               <div key={b.stage} className="flex items-center gap-3">
                 <span className="text-xs text-muted-foreground w-24 shrink-0 truncate">{stageLabel(b.stage)}</span>
-                <div className="flex-1 h-2 rounded-full bg-zinc-800 overflow-hidden">
-                  <div className="h-full rounded-full bg-violet-500" style={{ width: `${(b.avgDays / maxDays) * 100}%` }} />
+                <div className="flex-1 h-2 rounded-full bg-muted/50 overflow-hidden">
+                  <div className="h-full rounded-full bg-primary" style={{ width: `${(b.avgDays / maxDays) * 100}%` }} />
                 </div>
                 <span className="text-xs font-medium w-16 shrink-0 text-right">{b.avgDays} {b.avgDays === 1 ? "dan" : "dana"}</span>
               </div>
@@ -60,7 +60,7 @@ function BottleneckPanel() {
           </div>
         )}
         {data.stuckJobs.length > 0 && (
-          <div className="space-y-2 pt-1 border-t border-zinc-800/70">
+          <div className="space-y-2 pt-1 border-t border-border/70">
             <h3 className="text-xs font-semibold text-amber-500 uppercase tracking-wider flex items-center gap-1.5">
               <TriangleAlert className="w-3.5 h-3.5" /> Duže nego obično u trenutnoj fazi
             </h3>
@@ -100,11 +100,11 @@ function JobBriefSection({ brief }: { brief: Job["brief"] }) {
   const [expanded, setExpanded] = useState(false);
   if (!brief) return null;
   return (
-    <div className="pt-2 border-t border-zinc-800/70">
+    <div className="pt-2 border-t border-border/70">
       <button
         type="button"
         onClick={() => setExpanded(e => !e)}
-        className="flex items-center gap-1.5 text-[11px] text-violet-400 hover:text-violet-300"
+        className="flex items-center gap-1.5 text-[11px] text-primary hover:text-primary"
       >
         <Sparkles className="w-3 h-3" /> {expanded ? "Sakrij brief" : "Klijent je poslao brief"}
       </button>
@@ -119,7 +119,7 @@ function JobBriefSection({ brief }: { brief: Job["brief"] }) {
                   href={url}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="flex items-center gap-1 text-[11px] text-violet-400 hover:underline truncate"
+                  className="flex items-center gap-1 text-[11px] text-primary hover:underline truncate"
                 >
                   <Link2 className="w-3 h-3 shrink-0" /> <span className="truncate">{url}</span>
                 </a>
@@ -220,7 +220,7 @@ export function JobsBoard() {
       <BottleneckPanel />
 
       {showForm && (
-        <Card className="bg-zinc-900/50 border-zinc-800">
+        <Card className="bg-card border-border">
           <CardContent className="pt-6 space-y-4">
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
               <div className="space-y-1.5">
@@ -305,7 +305,7 @@ export function JobsBoard() {
                     key={job.id}
                     draggable
                     onDragStart={() => setDraggedId(job.id)}
-                    className="bg-zinc-900/50 border-zinc-800 hover:border-violet-500/50 transition-all cursor-grab active:cursor-grabbing"
+                    className="bg-card border-border hover:border-primary/50 transition-all cursor-grab active:cursor-grabbing"
                     data-testid={`card-job-${job.id}`}
                   >
                     <CardContent className="pt-4 pb-3 space-y-2">
@@ -326,7 +326,7 @@ export function JobsBoard() {
                         <span className="text-xs text-muted-foreground truncate">{job.username}</span>
                       </div>
                       {(job.contractNumber || job.invoiceNumber || job.deliveryDate) && (
-                        <div className="flex flex-wrap gap-2 pt-2 border-t border-zinc-800/70">
+                        <div className="flex flex-wrap gap-2 pt-2 border-t border-border/70">
                           {job.contractNumber && (
                             <span className="inline-flex items-center gap-1 text-[11px] text-muted-foreground">
                               <FileText className="w-3 h-3" />{job.contractNumber}

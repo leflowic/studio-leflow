@@ -85,7 +85,7 @@ type FormState = typeof emptyForm;
 function statusBadge(status: string) {
   return status === "published"
     ? <Badge className="bg-green-500/15 text-green-400 border-green-500/30 text-xs">Objavljeno</Badge>
-    : <Badge className="bg-zinc-500/15 text-zinc-400 border-zinc-500/30 text-xs">Nacrt</Badge>;
+    : <Badge className="bg-muted text-muted-foreground border-border text-xs">Nacrt</Badge>;
 }
 
 export function NewsTab() {
@@ -199,21 +199,21 @@ export function NewsTab() {
           <h2 className="text-xl font-semibold">{editingId !== null ? "Uredi vest" : "Nova vest"}</h2>
         </div>
 
-        <Card className="bg-zinc-900/50 border-zinc-800">
+        <Card className="bg-card border-border">
           <CardContent className="pt-6 space-y-5">
             <div className="flex gap-4 items-start">
               <div
                 role="button"
                 tabIndex={0}
                 aria-label="Promeni naslovnu sliku"
-                className="relative w-28 h-28 rounded-xl overflow-hidden shrink-0 cursor-pointer group border border-zinc-800 bg-zinc-950"
+                className="relative w-28 h-28 rounded-xl overflow-hidden shrink-0 cursor-pointer group border border-border bg-muted"
                 onClick={() => fileRef.current?.click()}
               >
                 {form.coverImage ? (
                   <>
                     <img src={form.coverImage} alt="" className="absolute inset-0 w-full h-full object-cover" />
                     <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity bg-black/60">
-                      <Upload className="w-5 h-5 text-white" />
+                      <Upload className="w-5 h-5 text-foreground" />
                     </div>
                     <button
                       type="button"
@@ -221,7 +221,7 @@ export function NewsTab() {
                       aria-label="Ukloni sliku"
                       className="absolute top-1 right-1 w-5 h-5 rounded-full flex items-center justify-center bg-black/80"
                     >
-                      <X className="w-3 h-3 text-white" />
+                      <X className="w-3 h-3 text-foreground" />
                     </button>
                   </>
                 ) : (
@@ -314,7 +314,7 @@ export function NewsTab() {
           </CardContent>
         </Card>
 
-        <Card className="bg-zinc-900/50 border-zinc-800">
+        <Card className="bg-card border-border">
           <CardContent className="pt-6 space-y-4">
             <div className="flex items-center gap-2">
               <Search className="w-4 h-4 text-muted-foreground" />
@@ -388,7 +388,7 @@ export function NewsTab() {
           {(articles ?? []).map(article => (
             <Card
               key={article.id}
-              className="bg-zinc-900/50 border-zinc-800 hover:border-violet-500/50 transition-all cursor-pointer"
+              className="bg-card border-border hover:border-primary/50 transition-all cursor-pointer"
               onClick={() => openEdit(article)}
               data-testid={`card-news-${article.id}`}
             >
@@ -438,7 +438,7 @@ export function NewsTab() {
                   </div>
                 </div>
                 <p className="text-xs text-muted-foreground line-clamp-2">{article.excerpt}</p>
-                <Separator className="bg-zinc-800/70" />
+                <Separator className="bg-muted/50" />
                 <div className="flex items-center justify-between text-xs text-muted-foreground">
                   <span>{article.authorUsername}</span>
                   {statusBadge(article.status)}

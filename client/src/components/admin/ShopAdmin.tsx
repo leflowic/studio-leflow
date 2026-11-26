@@ -133,7 +133,8 @@ function NewItemForm({ onDone }: { onDone: () => void }) {
 }
 
 export function ShopCatalogue({ canEdit }: { canEdit: boolean }) {
-  const { data } = useQuery<AdminShopItem[]>({ queryKey: KEY });
+  const { data: raw } = useQuery<AdminShopItem[]>({ queryKey: KEY });
+  const data = Array.isArray(raw) ? raw : undefined;
   const [adding, setAdding] = useState(false);
   return (
     <section className="space-y-3">
@@ -219,7 +220,8 @@ const REASON_LABEL: Record<string, string> = {
 
 export function EconomyOverview() {
   const { data } = useQuery<EconomyStats>({ queryKey: ["/api/admin/shop/stats"], refetchInterval: 5 * 60_000 });
-  if (!data) return null;
+  // forceMount'ed tab: a malformed response must never take the whole admin panel down
+  if (!data?.issuedByReason || !data.vouchers || !Array.isArray(data.purchasesMonth)) return null;
   const issued = Object.values(data.issuedByReason).reduce((a, b) => a + b, 0);
   const v = data.vouchers;
   const tiles = [

@@ -62,9 +62,9 @@ interface ClientProfile {
 function rankBadge(rank: string) {
   const map: Record<string, { label: string; className: string; icon: JSX.Element }> = {
     admin:   { label: "Admin",   className: "bg-red-500/20 text-red-400 border-red-500/30",    icon: <Crown className="w-3 h-3" /> },
-    legend:  { label: "Legend",  className: "bg-yellow-500/20 text-yellow-400 border-yellow-500/30", icon: <Trophy className="w-3 h-3" /> },
-    vip:     { label: "VIP",     className: "bg-purple-500/20 text-purple-400 border-purple-500/30", icon: <Star className="w-3 h-3" /> },
-    user:    { label: "User",    className: "bg-zinc-500/20 text-zinc-400 border-zinc-500/30",  icon: <User className="w-3 h-3" /> },
+    legend:  { label: "Legenda",  className: "bg-yellow-500/20 text-yellow-400 border-yellow-500/30", icon: <Trophy className="w-3 h-3" /> },
+    vip:     { label: "VIP",     className: "bg-primary/20 text-primary border-primary/30", icon: <Star className="w-3 h-3" /> },
+    user:    { label: "Korisnik",    className: "bg-muted text-muted-foreground border-border",  icon: <User className="w-3 h-3" /> },
   };
   const r = map[rank] ?? map["user"]!;
   return (
@@ -82,11 +82,11 @@ function projectStatusBadge(approved: boolean) {
 
 function contractTypeBadge(type: string) {
   const map: Record<string, { label: string; cls: string }> = {
-    mix_master:           { label: "Mix & Master",         cls: "bg-violet-500/20 text-violet-400 border-violet-500/30" },
+    mix_master:           { label: "Mix & Master",         cls: "bg-primary/20 text-primary border-primary/30" },
     copyright_transfer:   { label: "Prenos autorskih prava", cls: "bg-blue-500/20 text-blue-400 border-blue-500/30" },
     instrumental_sale:    { label: "Prodaja instrumentala", cls: "bg-green-500/20 text-green-400 border-green-500/30" },
   };
-  const r = map[type] ?? { label: type, cls: "bg-zinc-500/20 text-zinc-400 border-zinc-500/30" };
+  const r = map[type] ?? { label: type, cls: "bg-muted text-muted-foreground border-border" };
   return <Badge className={`${r.cls} text-xs`}>{r.label}</Badge>;
 }
 
@@ -95,9 +95,9 @@ function invoiceStatusBadge(status: string) {
     paid:      "bg-green-500/20 text-green-400 border-green-500/30",
     pending:   "bg-yellow-500/20 text-yellow-400 border-yellow-500/30",
     overdue:   "bg-red-500/20 text-red-400 border-red-500/30",
-    cancelled: "bg-zinc-500/20 text-zinc-400 border-zinc-500/30",
+    cancelled: "bg-muted text-muted-foreground border-border",
   };
-  const cls = map[status] ?? "bg-zinc-500/20 text-zinc-400 border-zinc-500/30";
+  const cls = map[status] ?? "bg-muted text-muted-foreground border-border";
   return <Badge className={`${cls} text-xs`}>{status}</Badge>;
 }
 
@@ -138,7 +138,7 @@ function ClientDetail({ userId, onBack }: { userId: number; onBack: () => void }
       </div>
 
       {/* Client info card */}
-      <Card className="bg-zinc-900/50 border-zinc-800">
+      <Card className="bg-card border-border">
         <CardContent className="pt-6">
           <div className="flex items-start gap-4">
             <AvatarWithInitials
@@ -164,7 +164,7 @@ function ClientDetail({ userId, onBack }: { userId: number; onBack: () => void }
             {/* Summary stats */}
             <div className="hidden sm:grid grid-cols-3 gap-4 text-center">
               <div>
-                <div className="text-2xl font-bold text-violet-400">{projects.length}</div>
+                <div className="text-2xl font-bold text-primary">{projects.length}</div>
                 <div className="text-xs text-muted-foreground">Projekata</div>
               </div>
               <div>
@@ -182,10 +182,10 @@ function ClientDetail({ userId, onBack }: { userId: number; onBack: () => void }
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         {/* Projects */}
-        <Card className="bg-zinc-900/50 border-zinc-800">
+        <Card className="bg-card border-border">
           <CardHeader className="pb-3">
             <CardTitle className="text-base flex items-center gap-2">
-              <Music className="w-4 h-4 text-violet-400" />
+              <Music className="w-4 h-4 text-primary" />
               Projekti ({projects.length})
             </CardTitle>
           </CardHeader>
@@ -196,7 +196,7 @@ function ClientDetail({ userId, onBack }: { userId: number; onBack: () => void }
               <ScrollArea className="max-h-64">
                 <div className="space-y-2">
                   {projects.map(p => (
-                    <div key={p.id} className="flex items-center justify-between py-2 border-b border-zinc-800 last:border-0">
+                    <div key={p.id} className="flex items-center justify-between py-2 border-b border-border last:border-0">
                       <div className="min-w-0">
                         <p className="text-sm font-medium truncate">{p.title}</p>
                         <p className="text-xs text-muted-foreground">{p.genre} · {format(new Date(p.uploadDate), "dd.MM.yyyy")}</p>
@@ -214,7 +214,7 @@ function ClientDetail({ userId, onBack }: { userId: number; onBack: () => void }
         </Card>
 
         {/* Contracts */}
-        <Card className="bg-zinc-900/50 border-zinc-800">
+        <Card className="bg-card border-border">
           <CardHeader className="pb-3">
             <CardTitle className="text-base flex items-center gap-2">
               <FileText className="w-4 h-4 text-blue-400" />
@@ -228,7 +228,7 @@ function ClientDetail({ userId, onBack }: { userId: number; onBack: () => void }
               <ScrollArea className="max-h-64">
                 <div className="space-y-2">
                   {contracts.map(c => (
-                    <div key={c.id} className="flex items-center justify-between py-2 border-b border-zinc-800 last:border-0">
+                    <div key={c.id} className="flex items-center justify-between py-2 border-b border-border last:border-0">
                       <div className="min-w-0">
                         <p className="text-sm font-medium truncate">{c.contractNumber}</p>
                         <p className="text-xs text-muted-foreground">{format(new Date(c.createdAt), "dd.MM.yyyy")}</p>
@@ -246,7 +246,7 @@ function ClientDetail({ userId, onBack }: { userId: number; onBack: () => void }
       </div>
 
       {/* Invoices */}
-      <Card className="bg-zinc-900/50 border-zinc-800">
+      <Card className="bg-card border-border">
         <CardHeader className="pb-3">
           <div className="flex items-center justify-between">
             <CardTitle className="text-base flex items-center gap-2">
@@ -268,7 +268,7 @@ function ClientDetail({ userId, onBack }: { userId: number; onBack: () => void }
           ) : (
             <div className="space-y-2">
               {invoices.map(inv => (
-                <div key={inv.id} className="flex items-center justify-between py-2 border-b border-zinc-800 last:border-0">
+                <div key={inv.id} className="flex items-center justify-between py-2 border-b border-border last:border-0">
                   <div className="min-w-0">
                     <p className="text-sm font-medium">{inv.invoiceNumber}</p>
                     <p className="text-xs text-muted-foreground">
@@ -355,7 +355,7 @@ export function KatastarTab() {
           {[...Array(6)].map((_, i) => <Skeleton key={i} className="h-16 w-full" />)}
         </div>
       ) : filtered.length === 0 ? (
-        <Card className="bg-zinc-900/50 border-zinc-800">
+        <Card className="bg-card border-border">
           <CardContent className="py-12 text-center text-muted-foreground">
             Nema pronađenih klijenata
           </CardContent>
@@ -365,7 +365,7 @@ export function KatastarTab() {
           {filtered.map(u => (
             <Card
               key={u.id}
-              className="bg-zinc-900/50 border-zinc-800 hover:border-violet-500/50 hover:bg-zinc-800/50 transition-all cursor-pointer"
+              className="bg-card border-border hover:border-primary/50 hover:bg-muted/50 transition-all cursor-pointer"
               onClick={() => setSelectedUserId(u.id)}
             >
               <CardContent className="pt-4 pb-4">

@@ -315,10 +315,10 @@ export default function AdminPage() {
                         data-testid={`tab-${value}`}
                         aria-current={activeTab === value ? "page" : undefined}
                         className={`relative flex items-center gap-2.5 px-3 py-2 rounded-lg text-sm whitespace-nowrap transition-all duration-200 cursor-pointer shrink-0 lg:w-full text-left active:scale-[0.98] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background hover-elevate active-elevate-2 ${
-                          activeTab === value
-                            ? "bg-primary/10 text-primary font-semibold"
-                            : "text-muted-foreground hover:text-foreground font-medium"
-                        }`}
+ activeTab === value
+ ? "bg-primary/10 text-primary font-semibold"
+ : "text-muted-foreground hover:text-foreground font-medium"
+ }`}
                       >
                         {activeTab === value && (
                           <span className="hidden lg:block absolute left-0 top-1/2 -translate-y-1/2 h-4 w-[3px] rounded-full bg-primary" />
@@ -1055,7 +1055,7 @@ function MessagesTab() {
       {/* Statistics Cards */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
         <StatTile icon={MessageCircle} iconBg="bg-blue-500/10" iconColor="text-blue-500" label="Ukupno Poruka" value={stats?.totalMessages || 0} loading={statsLoading} />
-        <StatTile icon={Users} iconBg="bg-purple-500/10" iconColor="text-purple-500" label="Ukupno Konverzacija" value={stats?.totalConversations || 0} loading={statsLoading} />
+        <StatTile icon={Users} iconBg="bg-primary/10" iconColor="text-primary" label="Ukupno Konverzacija" value={stats?.totalConversations || 0} loading={statsLoading} />
         <StatTile icon={Heart} iconBg="bg-green-500/10" iconColor="text-green-500" label="Aktivne (30 dana)" value={stats?.activeConversations || 0} loading={statsLoading} />
         <StatTile icon={Trash2} iconBg="bg-destructive/10" iconColor="text-destructive" label="Obrisane Poruke" value={stats?.deletedMessages || 0} loading={statsLoading} />
       </div>
@@ -1106,8 +1106,8 @@ function MessagesTab() {
                     <Card
                       key={conversation.id}
                       className={`cursor-pointer transition-colors hover:bg-accent ${
-                        selectedConversation?.id === conversation.id ? "bg-accent border-primary" : ""
-                      }`}
+ selectedConversation?.id === conversation.id ? "bg-accent border-primary" : ""
+ }`}
                       onClick={() => setSelectedConversation(conversation)}
                       data-testid={`card-conversation-${conversation.id}`}
                     >
@@ -1660,7 +1660,7 @@ function DashboardTab() {
           />
           <StatTile
             data-testid="card-stat-approved-songs"
-            icon={Music} iconBg="bg-purple-500/10" iconColor="text-purple-500"
+            icon={Music} iconBg="bg-primary/10" iconColor="text-primary"
             label="Odobrene Pesme" value={analytics?.approvedSongs.today || 0}
             sub={`Danas • ${analytics?.approvedSongs.week || 0} ove nedelje • ${analytics?.approvedSongs.month || 0} ovog meseca`}
           />
@@ -1688,7 +1688,7 @@ function DashboardTab() {
           />
           <StatTile
             data-testid="card-stat-total-contracts"
-            icon={FileText} iconBg="bg-indigo-500/10" iconColor="text-indigo-500"
+            icon={FileText} iconBg="bg-primary/10" iconColor="text-primary"
             label="Ukupno Licenci" value={analytics?.contracts.total || 0} sub="Izdate licence"
           />
           <StatTile
@@ -1717,11 +1717,11 @@ function DashboardTab() {
                 >
                   <div className="flex items-center gap-3 min-w-0">
                     <div className={`flex items-center justify-center w-8 h-8 rounded-full font-bold text-sm flex-shrink-0 ${
-                      index === 0 ? "bg-amber-500/15 text-amber-500"
-                      : index === 1 ? "bg-slate-400/15 text-slate-400"
-                      : index === 2 ? "bg-orange-600/15 text-orange-600"
-                      : "bg-primary/10 text-primary"
-                    }`}>
+ index === 0 ? "bg-amber-500/15 text-amber-500"
+ : index === 1 ? "bg-slate-400/15 text-slate-400"
+ : index === 2 ? "bg-orange-600/15 text-orange-600"
+ : "bg-primary/10 text-primary"
+ }`}>
                       #{index + 1}
                     </div>
                     <div className="min-w-0">
@@ -1751,9 +1751,9 @@ function DashboardTab() {
 
 function rankMeta(rank: string) {
   const map: Record<string, { label: string; icon: LucideIcon; className: string }> = {
-    user: { label: "User", icon: Users, className: "bg-zinc-500/15 text-zinc-400 border-zinc-500/30" },
+    user: { label: "Korisnik", icon: Users, className: "bg-muted text-muted-foreground border-border" },
     vip: { label: "VIP", icon: Crown, className: "bg-blue-500/15 text-blue-400 border-blue-500/30" },
-    legend: { label: "Legend", icon: Trophy, className: "bg-yellow-500/15 text-yellow-400 border-yellow-500/30" },
+    legend: { label: "Legenda", icon: Trophy, className: "bg-yellow-500/15 text-yellow-400 border-yellow-500/30" },
     admin: { label: "Admin", icon: Shield, className: "bg-red-500/15 text-red-400 border-red-500/30" },
   };
   return map[rank] ?? map.user!;
@@ -1960,9 +1960,9 @@ function UsersTab() {
       </div>
 
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
-        <StatTile icon={Users} iconBg="bg-violet-500/15" iconColor="text-violet-400" label="Ukupno" value={totalUsers} />
+        <StatTile icon={Users} iconBg="bg-primary/15" iconColor="text-primary" label="Ukupno" value={totalUsers} />
         <StatTile icon={Shield} iconBg="bg-red-500/15" iconColor="text-red-400" label="Admini" value={adminCount} />
-        <StatTile icon={ShieldAlert} iconBg="bg-zinc-500/15" iconColor="text-zinc-400" label="Banovani" value={bannedCount} />
+        <StatTile icon={ShieldAlert} iconBg="bg-muted" iconColor="text-muted-foreground" label="Banovani" value={bannedCount} />
         <StatTile icon={BadgeCheck} iconBg="bg-blue-500/15" iconColor="text-blue-400" label="Verifikovani Umetnici" value={verifiedArtistCount} />
       </div>
 
@@ -1985,9 +1985,8 @@ function UsersTab() {
               size="sm"
               variant={rankFilter === r ? "default" : "outline"}
               onClick={() => setRankFilter(r)}
-              className="capitalize"
             >
-              {r === "all" ? "Svi" : r}
+              {({ all: "Svi", admin: "Admin", legend: "Legenda", vip: "VIP", user: "Korisnik" } as Record<string, string>)[r]}
             </Button>
           ))}
         </div>
@@ -2000,7 +1999,7 @@ function UsersTab() {
           {filteredUsers.map((user) => (
             <Card
               key={user.id}
-              className="bg-zinc-900/50 border-zinc-800 hover:border-violet-500/50 hover:bg-zinc-800/50 transition-all cursor-pointer"
+              className="bg-card border-border hover:border-primary/50 hover:bg-muted/50 transition-all cursor-pointer"
               onClick={() => setSelectedUserId(user.id)}
               data-testid={`row-user-${user.id}`}
             >
@@ -2098,7 +2097,7 @@ function UserDetailPanel({
         </div>
       </div>
 
-      <Card className="bg-zinc-900/50 border-zinc-800">
+      <Card className="bg-card border-border">
         <CardContent className="pt-6">
           <div className="flex items-start gap-4 flex-wrap">
             <AvatarWithInitials src={user.avatarUrl} name={user.username} className="w-16 h-16 text-xl" />
@@ -2152,7 +2151,7 @@ function UserDetailPanel({
         </TabsList>
 
         <TabsContent value="pregled">
-          <Card className="bg-zinc-900/50 border-zinc-800">
+          <Card className="bg-card border-border">
             <CardContent className="pt-6 grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div>
                 <p className="text-xs uppercase tracking-wider text-muted-foreground/70">Email verifikovan</p>
@@ -2175,7 +2174,7 @@ function UserDetailPanel({
         </TabsContent>
 
         <TabsContent value="dozvole">
-          <Card className="bg-zinc-900/50 border-zinc-800">
+          <Card className="bg-card border-border">
             <CardContent className="pt-6 space-y-5">
               <div className="flex items-center justify-between gap-4 flex-wrap">
                 <div>
@@ -2197,9 +2196,9 @@ function UserDetailPanel({
                     </SelectValue>
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="user">User</SelectItem>
+                    <SelectItem value="user">Korisnik</SelectItem>
                     <SelectItem value="vip">VIP</SelectItem>
-                    <SelectItem value="legend">Legend</SelectItem>
+                    <SelectItem value="legend">Legenda</SelectItem>
                     <SelectItem value="admin">Admin</SelectItem>
                     <SelectItem value="auto">Automatski (po bodovima)</SelectItem>
                   </SelectContent>
@@ -2280,7 +2279,7 @@ function UserDetailPanel({
         </TabsContent>
 
         <TabsContent value="bezbednost">
-          <Card className="bg-zinc-900/50 border-zinc-800">
+          <Card className="bg-card border-border">
             <CardContent className="pt-6 space-y-5">
               <div className="flex items-center justify-between gap-4 flex-wrap">
                 <div>

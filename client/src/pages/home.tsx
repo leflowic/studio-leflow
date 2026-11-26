@@ -414,7 +414,7 @@ export default function Home() {
               animate={{ opacity: 1 }}
               transition={{ duration: 0.5, delay: 0.5 }}
             >
-              Odgovaramo u roku od 24h&ensp;·&ensp;2 besplatne revizije&ensp;·&ensp;Od 2026.
+              Odgovaramo u roku od 24h&ensp;·&ensp;2 besplatne revizije&ensp;·&ensp;Od 2020.
             </motion.p>
 
             {/* Upcoming game announcement */}

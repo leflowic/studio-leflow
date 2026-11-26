@@ -47,11 +47,11 @@ type VersionWithCount = PortalVersion & { commentCount: number };
 
 function CommentItem({ comment, onResolve }: { comment: PortalComment; onResolve: (id: number) => void }) {
   return (
-    <div className={`flex items-start gap-3 p-3 rounded-lg border ${comment.resolved ? "border-zinc-800 opacity-50" : "border-zinc-700 bg-zinc-900/40"}`}>
-      <div className={`mt-1 w-2.5 h-2.5 rounded-full flex-shrink-0 ${comment.authorType === "producer" ? "bg-amber-500" : "bg-blue-500"}`} />
+    <div className={`flex items-start gap-3 p-3 rounded-lg border ${comment.resolved ? "border-border opacity-50" : "border-border bg-card"}`}>
+      <div className={`mt-1 w-2.5 h-2.5 rounded-full flex-shrink-0 ${comment.authorType === "producer" ? "bg-primary" : "bg-muted-foreground"}`} />
       <div className="flex-1 min-w-0">
         <div className="flex items-center gap-2 mb-1">
-          <span className="text-xs font-mono text-muted-foreground bg-zinc-800 px-1.5 py-0.5 rounded">
+          <span className="text-xs font-mono text-muted-foreground bg-muted/50 px-1.5 py-0.5 rounded">
             {formatTime(comment.timestampSeconds)}
           </span>
           <span className="text-xs font-medium">{comment.authorName}</span>
@@ -59,7 +59,7 @@ function CommentItem({ comment, onResolve }: { comment: PortalComment; onResolve
             {comment.authorType === "producer" ? "Studio" : "Klijent"}
           </span>
         </div>
-        <p className="text-sm text-zinc-200">{comment.text}</p>
+        <p className="text-sm text-foreground">{comment.text}</p>
         <p className="text-xs text-muted-foreground mt-1">
           {format(new Date(comment.createdAt), "dd.MM.yyyy HH:mm")}
         </p>
@@ -103,9 +103,9 @@ function VersionPanel({ version, token, onDelete }: { version: VersionWithCount;
   });
 
   return (
-    <div className="border border-zinc-800 rounded-xl overflow-hidden">
-      <div className="bg-zinc-900/60 px-4 py-3 flex items-center gap-3">
-        <Music2 className="w-4 h-4 text-amber-500 flex-shrink-0" />
+    <div className="border border-border rounded-xl overflow-hidden">
+      <div className="bg-card px-4 py-3 flex items-center gap-3">
+        <Music2 className="w-4 h-4 text-primary flex-shrink-0" />
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-2 flex-wrap">
             <span className="font-semibold text-sm">{version.versionName}</span>
@@ -114,7 +114,7 @@ function VersionPanel({ version, token, onDelete }: { version: VersionWithCount;
                 <CheckCircle2 className="w-3 h-3 mr-1" /> Odobreno
               </Badge>
             ) : (
-              <Badge variant="outline" className="text-xs text-zinc-400">Na čekanju</Badge>
+              <Badge variant="outline" className="text-xs text-muted-foreground">Na čekanju</Badge>
             )}
             {comments.filter(c => !c.resolved).length > 0 && (
               <Badge className="bg-blue-500/20 text-blue-400 border-blue-500/30 text-xs">
@@ -134,7 +134,7 @@ function VersionPanel({ version, token, onDelete }: { version: VersionWithCount;
               <Trash2 className="w-3.5 h-3.5" />
             </Button>
           </AlertDialogTrigger>
-          <AlertDialogContent className="bg-zinc-900 border-zinc-800">
+          <AlertDialogContent className="bg-card border-border">
             <AlertDialogHeader>
               <AlertDialogTitle>Obriši verziju?</AlertDialogTitle>
               <AlertDialogDescription>Ovo će obrisati i sve komentare na ovoj verziji.</AlertDialogDescription>
@@ -148,7 +148,7 @@ function VersionPanel({ version, token, onDelete }: { version: VersionWithCount;
       </div>
 
       {comments.length > 0 && (
-        <div className="px-4 py-3 space-y-2 border-t border-zinc-800">
+        <div className="px-4 py-3 space-y-2 border-t border-border">
           <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide mb-2">Komentari ({comments.length})</p>
           {comments.map(c => (
             <CommentItem key={c.id} comment={c} onResolve={(id) => resolveMutation.mutate(id)} />
@@ -156,7 +156,7 @@ function VersionPanel({ version, token, onDelete }: { version: VersionWithCount;
         </div>
       )}
 
-      <div className="px-4 py-3 border-t border-zinc-800">
+      <div className="px-4 py-3 border-t border-border">
         <p className="text-xs font-medium text-muted-foreground mb-2">Odgovor studia</p>
         <div className="flex gap-2 mb-2">
           <Input
@@ -164,7 +164,7 @@ function VersionPanel({ version, token, onDelete }: { version: VersionWithCount;
             placeholder="Sekunda (npr. 92)"
             value={commentTs}
             onChange={e => setCommentTs(e.target.value)}
-            className="w-36 h-8 text-xs bg-zinc-900 border-zinc-700"
+            className="w-36 h-8 text-xs bg-card border-border"
           />
           <span className="text-xs text-muted-foreground self-center">= {formatTime(parseInt(commentTs) || 0)}</span>
         </div>
@@ -173,11 +173,11 @@ function VersionPanel({ version, token, onDelete }: { version: VersionWithCount;
             placeholder="Odgovor na komentar klijenta..."
             value={producerComment}
             onChange={e => setProducerComment(e.target.value)}
-            className="text-sm bg-zinc-900 border-zinc-700 min-h-[60px] resize-none"
+            className="text-sm bg-card border-border min-h-[60px] resize-none"
           />
           <Button
             size="sm"
-            className="h-auto bg-amber-600 hover:bg-amber-500 text-black self-end"
+            className="h-auto bg-primary hover:bg-primary/90 text-primary-foreground self-end"
             disabled={!producerComment.trim() || addCommentMutation.isPending}
             onClick={() => addCommentMutation.mutate()}
           >
@@ -271,10 +271,10 @@ function PortalDetail({ portal, onClose }: { portal: PortalWithStats; onClose: (
           </p>
         </div>
         <div className="flex gap-2 flex-shrink-0">
-          <Button size="sm" variant="outline" onClick={copyLink} className="h-8 text-xs border-zinc-700">
+          <Button size="sm" variant="outline" onClick={copyLink} className="h-8 text-xs border-border">
             <Link2 className="w-3.5 h-3.5 mr-1.5" /> Kopiraj link
           </Button>
-          <Button size="sm" variant="outline" asChild className="h-8 text-xs border-zinc-700">
+          <Button size="sm" variant="outline" asChild className="h-8 text-xs border-border">
             <a href={shareUrl} target="_blank" rel="noopener noreferrer">
               <ExternalLink className="w-3.5 h-3.5 mr-1.5" /> Pregledaj
             </a>
@@ -283,10 +283,10 @@ function PortalDetail({ portal, onClose }: { portal: PortalWithStats; onClose: (
       </div>
 
       {/* Upload new version */}
-      <Card className="bg-zinc-900/40 border-zinc-800">
+      <Card className="bg-card border-border">
         <CardHeader className="pb-3 pt-4 px-4">
           <CardTitle className="text-sm font-semibold flex items-center gap-2">
-            <Upload className="w-4 h-4 text-amber-500" /> Dodaj verziju
+            <Upload className="w-4 h-4 text-primary" /> Dodaj verziju
           </CardTitle>
         </CardHeader>
         <CardContent className="px-4 pb-4 space-y-3">
@@ -294,29 +294,29 @@ function PortalDetail({ portal, onClose }: { portal: PortalWithStats; onClose: (
             placeholder="Naziv verzije (npr. Mix v1, Master)"
             value={versionName}
             onChange={e => setVersionName(e.target.value)}
-            className="bg-zinc-900 border-zinc-700"
+            className="bg-card border-border"
           />
           <div
-            className="border-2 border-dashed border-zinc-700 rounded-lg p-4 text-center cursor-pointer hover:border-amber-500/50 transition-colors"
+            className="border-2 border-dashed border-border rounded-lg p-4 text-center cursor-pointer hover:border-primary/50 transition-colors"
             onClick={() => fileRef.current?.click()}
           >
             {selectedFile ? (
               <div className="flex items-center justify-center gap-2">
-                <Music2 className="w-4 h-4 text-amber-500" />
-                <span className="text-sm text-zinc-300 truncate max-w-[200px]">{selectedFile.name}</span>
-                <button onClick={e => { e.stopPropagation(); setSelectedFile(null); if (fileRef.current) fileRef.current.value = ""; }} className="text-zinc-500 hover:text-zinc-300">
+                <Music2 className="w-4 h-4 text-primary" />
+                <span className="text-sm text-foreground/80 truncate max-w-[200px]">{selectedFile.name}</span>
+                <button onClick={e => { e.stopPropagation(); setSelectedFile(null); if (fileRef.current) fileRef.current.value = ""; }} className="text-muted-foreground hover:text-foreground/80">
                   <X className="w-4 h-4" />
                 </button>
               </div>
             ) : (
               <p className="text-sm text-muted-foreground">
-                Klikni da izabereš audio fajl <span className="text-zinc-500 text-xs">(MP3, WAV, do 50MB)</span>
+                Klikni da izabereš audio fajl <span className="text-muted-foreground text-xs">(MP3, WAV, do 50MB)</span>
               </p>
             )}
           </div>
           <input ref={fileRef} type="file" accept="audio/*" className="hidden" onChange={e => setSelectedFile(e.target.files?.[0] ?? null)} />
           <Button
-            className="w-full bg-amber-600 hover:bg-amber-500 text-black font-semibold"
+            className="w-full bg-primary hover:bg-primary/90 text-primary-foreground font-semibold"
             onClick={uploadVersion}
             disabled={uploading}
           >
@@ -389,30 +389,30 @@ export function PortalTab() {
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h2 className="text-xl font-bold">Client Portal</h2>
+          <h2 className="text-xl font-bold">Portal za klijente</h2>
           <p className="text-sm text-muted-foreground">Deli mixeve sa klijentima i prikupljaj komentare</p>
         </div>
         <Dialog open={createOpen} onOpenChange={setCreateOpen}>
           <DialogTrigger asChild>
-            <Button className="bg-amber-600 hover:bg-amber-500 text-black font-semibold">
+            <Button className="bg-primary hover:bg-primary/90 text-primary-foreground font-semibold">
               <Plus className="w-4 h-4 mr-2" /> Novi portal
             </Button>
           </DialogTrigger>
-          <DialogContent className="bg-zinc-900 border-zinc-800">
+          <DialogContent className="bg-card border-border">
             <DialogHeader>
               <DialogTitle>Kreiraj novi portal</DialogTitle>
             </DialogHeader>
             <div className="space-y-4 mt-2">
               <div>
                 <label className="text-sm font-medium mb-1.5 block">Naziv projekta/pesme</label>
-                <Input placeholder="npr. Marko - Pesma 01" value={newName} onChange={e => setNewName(e.target.value)} className="bg-zinc-800 border-zinc-700" />
+                <Input placeholder="npr. Marko - Pesma 01" value={newName} onChange={e => setNewName(e.target.value)} className="bg-muted/50 border-border" />
               </div>
               <div>
                 <label className="text-sm font-medium mb-1.5 block">Ime klijenta</label>
-                <Input placeholder="npr. Marko Marković" value={newClient} onChange={e => setNewClient(e.target.value)} className="bg-zinc-800 border-zinc-700" />
+                <Input placeholder="npr. Marko Marković" value={newClient} onChange={e => setNewClient(e.target.value)} className="bg-muted/50 border-border" />
               </div>
               <Button
-                className={`w-full bg-amber-600 hover:bg-amber-500 text-black font-semibold${createMutation.isPending ? " opacity-70" : ""}`}
+                className={`w-full bg-primary hover:bg-primary/90 text-primary-foreground font-semibold${createMutation.isPending ? " opacity-70" : ""}`}
                 onClick={() => {
                   if (createMutation.isPending) return;
                   createMutation.mutate();
@@ -429,24 +429,24 @@ export function PortalTab() {
 
       {isLoading ? (
         <div className="space-y-3">
-          {[1, 2, 3].map(i => <div key={i} className="h-20 rounded-xl bg-zinc-800/50 animate-pulse" />)}
+          {[1, 2, 3].map(i => <div key={i} className="h-20 rounded-xl bg-muted/50 animate-pulse" />)}
         </div>
       ) : portals.length === 0 ? (
-        <Card className="bg-zinc-900/40 border-zinc-800 border-dashed">
+        <Card className="bg-card border-border border-dashed">
           <CardContent className="py-16 text-center">
-            <Music2 className="w-12 h-12 text-zinc-600 mx-auto mb-4" />
+            <Music2 className="w-12 h-12 text-muted-foreground/60 mx-auto mb-4" />
             <p className="text-muted-foreground font-medium">Nema portala</p>
-            <p className="text-sm text-zinc-600 mt-1">Kreiraj prvi portal i podeli link sa klijentom</p>
+            <p className="text-sm text-muted-foreground/60 mt-1">Kreiraj prvi portal i podeli link sa klijentom</p>
           </CardContent>
         </Card>
       ) : (
         <div className="space-y-3">
           {portals.map(p => (
-            <Card key={p.id} className="bg-zinc-900/40 border-zinc-800 hover:border-zinc-700 transition-colors cursor-pointer" onClick={() => setSelectedPortal(p)}>
+            <Card key={p.id} className="bg-card border-border hover:border-border transition-colors cursor-pointer" onClick={() => setSelectedPortal(p)}>
               <CardContent className="p-4">
                 <div className="flex items-center gap-4">
-                  <div className="w-10 h-10 rounded-lg bg-amber-500/10 border border-amber-500/20 flex items-center justify-center flex-shrink-0">
-                    <Music2 className="w-5 h-5 text-amber-500" />
+                  <div className="w-10 h-10 rounded-lg bg-primary/10 border border-primary/20 flex items-center justify-center flex-shrink-0">
+                    <Music2 className="w-5 h-5 text-primary" />
                   </div>
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-2 flex-wrap">
@@ -464,7 +464,7 @@ export function PortalTab() {
                     </div>
                   </div>
                   <div className="flex items-center gap-2 flex-shrink-0" onClick={e => e.stopPropagation()}>
-                    <Button size="sm" variant="outline" className="h-8 text-xs border-zinc-700" onClick={() => copyLink(p.shareToken)}>
+                    <Button size="sm" variant="outline" className="h-8 text-xs border-border" onClick={() => copyLink(p.shareToken)}>
                       <Link2 className="w-3.5 h-3.5" />
                     </Button>
                     <AlertDialog>
@@ -473,7 +473,7 @@ export function PortalTab() {
                           <Trash2 className="w-3.5 h-3.5" />
                         </Button>
                       </AlertDialogTrigger>
-                      <AlertDialogContent className="bg-zinc-900 border-zinc-800">
+                      <AlertDialogContent className="bg-card border-border">
                         <AlertDialogHeader>
                           <AlertDialogTitle>Obriši portal?</AlertDialogTitle>
                           <AlertDialogDescription>Ovo će obrisati sve verzije i komentare za "{p.name}".</AlertDialogDescription>
@@ -484,7 +484,7 @@ export function PortalTab() {
                         </AlertDialogFooter>
                       </AlertDialogContent>
                     </AlertDialog>
-                    <ChevronRight className="w-4 h-4 text-zinc-600" />
+                    <ChevronRight className="w-4 h-4 text-muted-foreground/60" />
                   </div>
                 </div>
               </CardContent>
