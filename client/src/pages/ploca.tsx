@@ -264,12 +264,13 @@ export default function PlocaPage() {
 
         {/* Rules in short */}
         <section className="py-10 border-t border-border/60 mb-10" aria-labelledby="rules-title">
-          <h2 id="rules-title" className="text-xl font-semibold">Pravila ukratko</h2>
+          <h2 id="rules-title" className="text-xl font-semibold">Kako funkcioniše</h2>
           <ul className="mt-4 space-y-2 text-sm text-muted-foreground max-w-2xl list-disc pl-5">
-            <li>Jedno okretanje dnevno po nalogu i po mreži (IP adresi). Nova ploča u ponoć.</li>
-            <li>Nagradu bira server u trenutku okretanja. Polja na ploči su samo prikaz, ne stvarne šanse.</li>
-            <li>Studijski popust mogu da osvoje nalozi stari bar 7 dana, najviše jednom godišnje po osobi.</li>
-            <li>Vaučer je vezan za nalog, ne prenosi se i ne menja se za novac.</li>
+            <li>Ploču vrtiš jednom dnevno. Nova te čeka posle ponoći.</li>
+            <li>Sa istog interneta (iste kuće ili istog telefona) ploča može da se zavrti jednom dnevno, bez obzira na to koliko naloga imate.</li>
+            <li>Nagrada se izvlači nasumično. Polja na ploči su tu zbog izgleda - ne pokazuju koliko je koja nagrada verovatna.</li>
+            <li>Popust od 50% može da osvoji nalog star bar 7 dana, i to jednom godišnje po osobi.</li>
+            <li>Vaučer važi samo za tvoj nalog - ne možeš da ga pokloniš drugome niti da ga zameniš za novac.</li>
           </ul>
           <Link href="/pravila#ploca-dana" className="inline-flex items-center gap-1 text-sm text-primary hover:underline underline-offset-4 mt-4">
             Sva pravila <ArrowRight className="w-3.5 h-3.5" />
