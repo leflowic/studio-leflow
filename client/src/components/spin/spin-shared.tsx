@@ -54,6 +54,9 @@ export function RecordDisc({ sectors, rotation, spinMs, highlight }: {
   const deg = 360 / sectors.length;
   return (
     <div className="relative w-full aspect-square">
+      {/* Shadow lives on a static disc behind the record - a filter on the
+          rotating SVG would rotate its offset along with the record. */}
+      <div className="absolute inset-[1.5%] rounded-full shadow-2xl shadow-black/60" aria-hidden="true" />
       {/* Needle */}
       <div className="absolute left-1/2 -top-1 -translate-x-1/2 z-10 flex flex-col items-center" aria-hidden="true">
         <div className="w-3.5 h-3.5 rounded-full bg-primary shadow" />
@@ -61,7 +64,7 @@ export function RecordDisc({ sectors, rotation, spinMs, highlight }: {
       </div>
       <svg
         viewBox="-150 -150 300 300"
-        className="w-full h-full drop-shadow-2xl"
+        className="relative w-full h-full"
         style={{
           transform: `rotate(${rotation}deg)`,
           transition: spinMs ? `transform ${spinMs}ms cubic-bezier(0.12, 0.7, 0.12, 1)` : "none",
