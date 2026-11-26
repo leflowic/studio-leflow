@@ -438,6 +438,17 @@ async function checkMaintenanceMode(req: any, res: any, next: any) {
 }
 
 export async function registerRoutes(app: Express): Promise<Server> {
+  // Whole-API ceiling per visitor: far above normal use (a page load is ~10-20
+  // calls), it only stops one address hammering the server. The per-route
+  // limiters below stay the real rules.
+  app.use("/api", rateLimit({
+    windowMs: 60 * 1000,
+    max: 300,
+    message: { error: "Previše zahteva. Sačekajte minut pa pokušajte ponovo." },
+    standardHeaders: true,
+    legacyHeaders: false,
+  }));
+
   // Setup authentication routes: /api/register, /api/login, /api/logout, /api/user
   setupAuth(app);
 

@@ -1,4 +1,5 @@
 import express, { type Request, Response, NextFunction } from "express";
+import { isTrustedProxy } from "./client-ip";
 import compression from "compression";
 import path from "path";
 import { registerRoutes } from "./routes";
@@ -702,9 +703,11 @@ app.use('/public', express.static(path.join(process.cwd(), 'public'), {
   }
 }));
 
-// Trust proxy - omogućava dobijanje prave IP adrese klijenta
-// Postavljamo na 1 jer je Replit iza jednog proxy hop-a
-app.set('trust proxy', 1);
+// Trust proxy: req.ip is the first X-Forwarded-For hop (from the right) that is
+// not our own infrastructure - Railway's internal network or a Cloudflare edge.
+// Same rule as getTrustedClientIp(), so every rate limiter keys on the real
+// visitor with or without Cloudflare in front.
+app.set('trust proxy', (addr: string) => isTrustedProxy(addr));
 
 declare module 'http' {
   interface IncomingMessage {
