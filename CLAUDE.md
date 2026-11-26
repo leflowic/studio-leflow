@@ -28,7 +28,7 @@ npm run db:push
 npm run seed
 ```
 
-There are no automated tests in this project.
+Tests: `npm test` runs `server/__tests__/*.test.ts` with Node's built-in test runner (via `tsx`, no test framework installed). Single file: `node --import tsx --test server/__tests__/spin.test.ts`. They cover pure server logic only (spin draw, trusted client IP, coin refs, report email, game clip slicing) - there are no DB or frontend tests, so DB-enforced rules (ledger uniqueness, shop locks) are still verified by hand.
 
 ## Architecture
 
