@@ -1,4 +1,5 @@
 import { useState, useRef, useEffect } from "react";
+import { hasAvatarFrame, AVATAR_FRAME_CLASS } from "@/lib/avatar-frame";
 import { createPortal } from "react-dom";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { useAuth } from "@/hooks/use-auth";
@@ -29,6 +30,7 @@ type FeedPost = {
   username: string;
   avatarUrl: string | null;
   isVerifiedArtist?: boolean;
+  avatarFrameUntil?: string | null;
   likesCount: number;
   commentsCount: number;
   hasLiked: boolean;
@@ -62,9 +64,9 @@ const POST_TYPES = [
   { key: "collab", label: "Kolaboracija", icon: Users, color: "text-violet-500" },
 ];
 
-function AvatarImg({ avatarUrl, username }: { avatarUrl: string | null; username: string }) {
+function AvatarImg({ avatarUrl, username, frameUntil }: { avatarUrl: string | null; username: string; frameUntil?: string | null }) {
   return (
-    <Avatar className="w-9 h-9 ring-2 ring-border/40">
+    <Avatar className={`w-9 h-9 ${hasAvatarFrame(frameUntil) ? AVATAR_FRAME_CLASS : "ring-2 ring-border/40"}`}>
       {avatarUrl ? (
         <img src={avatarUrl} alt={username} className="w-full h-full object-cover rounded-full" />
       ) : (
@@ -250,7 +252,7 @@ function PostCard({ post, currentUserId, onDeleted, onLikeChanged, onCommentCoun
       {/* Header */}
       <div className="flex items-start justify-between gap-2">
         <div className="flex items-center gap-2.5 min-w-0">
-          <AvatarImg avatarUrl={post.avatarUrl} username={post.username} />
+          <AvatarImg avatarUrl={post.avatarUrl} username={post.username} frameUntil={post.avatarFrameUntil} />
           <div className="min-w-0">
             <div className="flex items-center gap-1">
               <Link href={`/u/${post.username}`} className="font-semibold text-sm leading-tight hover:underline truncate">{post.username}</Link>

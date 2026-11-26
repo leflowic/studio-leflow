@@ -32,6 +32,7 @@ import { RankPanel } from "@/components/dashboard/RankPanel";
 import { GettingStarted } from "@/components/dashboard/GettingStarted";
 import { MyVouchersPanel } from "@/components/dashboard/MyVouchersPanel";
 import { useForYouItems } from "@/components/home/ForYouToday";
+import { hasAvatarFrame, AVATAR_FRAME_CLASS } from "@/lib/avatar-frame";
 
 type Project = {
   id: number;
@@ -186,7 +187,7 @@ export default function Dashboard() {
         {/* Header */}
         <header className="flex flex-col sm:flex-row sm:items-center gap-4 sm:gap-5">
           <Link href="/settings" aria-label="Promenite profilnu sliku" className="shrink-0 self-start sm:self-auto">
-            <Avatar className="w-16 h-16 border border-border">
+            <Avatar className={`w-16 h-16 ${hasAvatarFrame((user as any).avatarFrameUntil) ? AVATAR_FRAME_CLASS : "border border-border"}`}>
               {user.avatarUrl
                 ? <AvatarImage src={user.avatarUrl} alt={user.username} />
                 : <AvatarFallback className="bg-muted text-foreground text-lg font-semibold">{initials}</AvatarFallback>

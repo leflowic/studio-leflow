@@ -10,27 +10,30 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { EmptyState } from "@/components/ui/empty-state";
 import { Ticket, Search } from "lucide-react";
 import { format } from "date-fns";
+import { ShopCatalogue, CoinGrant } from "./ShopAdmin";
 
 type AdminVoucher = {
-  id: number; code: string; type: string; userId: number; username: string; email: string;
+  id: number; code: string; type: string; title?: string | null; userId: number; username: string; email: string;
   expiresAt: string; redeemedAt: string | null; createdAt: string;
 };
 
 const TYPE_LABEL: Record<string, string> = { studio_50: "50% snimanje + mix/master" };
 
-// Vouchers won on the "Ploča dana". Staff checks the code a client quotes when
-// booking, then marks it redeemed here. Read-only list + one toggle, so no
-// forceMount needed on its TabsContent.
-// Super Admin switches for the Ploča dana (PUT /api/admin/spin-settings is requireAdmin).
+// Admin "Prodavnica" tab (ADMIN_NAV value "vouchers"): Ploča/shop switches,
+// the Studio Coins catalogue, manual coin grants, and the voucher list where
+// staff check a code a client quotes when booking and mark it redeemed.
+// Has typed forms, so its TabsContent uses forceMount.
+// Super Admin switches (PUT /api/admin/spin-settings is requireAdmin).
 function SpinSwitches() {
   const { toast } = useToast();
-  const { data } = useQuery<{ enabled: boolean; studioPrizeEnabled: boolean }>({ queryKey: ["/api/admin/spin-settings"] });
+  const { data } = useQuery<{ enabled: boolean; shopEnabled: boolean }>({ queryKey: ["/api/admin/spin-settings"] });
   const save = useMutation({
-    mutationFn: async (patch: Partial<{ enabled: boolean; studioPrizeEnabled: boolean }>) =>
+    mutationFn: async (patch: Partial<{ enabled: boolean; shopEnabled: boolean }>) =>
       (await apiRequest("PUT", "/api/admin/spin-settings", patch)).json(),
     onSuccess: (next) => {
       queryClient.setQueryData(["/api/admin/spin-settings"], next);
       queryClient.invalidateQueries({ queryKey: ["/api/spin/today"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/shop"] });
       toast({ title: "Sačuvano" });
     },
     onError: () => toast({ title: "Izmena nije sačuvana", variant: "destructive" }),
@@ -38,7 +41,7 @@ function SpinSwitches() {
   if (!data) return null;
   const rows = [
     { key: "enabled" as const, title: "Ploča dana", desc: "Kad je isključena, stranica /ploca prikazuje da je ploča pauzirana i niko ne može da vrti." },
-    { key: "studioPrizeEnabled" as const, title: "Studijski popust na ploči", desc: "Kad je isključen, 50% popust ne može da padne; ostale nagrade rade normalno. Već osvojeni vaučeri ostaju važeći." },
+    { key: "shopEnabled" as const, title: "Prodavnica", desc: "Kad je zatvorena, niko ne može da kupuje; coini ostaju u novčanicima. Već kupljeni vaučeri ostaju važeći." },
   ];
   return (
     <div className="rounded-2xl border border-border bg-card divide-y divide-border">
@@ -82,13 +85,19 @@ export function VouchersTab() {
   return (
     <div className="space-y-5">
       <div>
-        <h2 className="text-xl font-semibold">Vaučeri</h2>
+        <h2 className="text-xl font-semibold">Prodavnica</h2>
         <p className="text-sm text-muted-foreground mt-1">
-          Dobici sa Ploče dana. Kad klijent navede kod, proverite ga ovde i označite kao iskorišćen. Najviše 2 studijska vaučera mesečno.
+          Studio Coins se zarađuju na Ploči dana i u igri Pogodi Pesmu, a troše ovde. Kad klijent navede kod vaučera, proverite ga u listi ispod i označite kao iskorišćen.
         </p>
       </div>
 
       {user?.role === "admin" && <SpinSwitches />}
+
+      <ShopCatalogue canEdit={user?.role === "admin"} />
+
+      {user?.role === "admin" && <CoinGrant />}
+
+      <h3 className="font-semibold pt-2">Vaučeri</h3>
 
       <div className="relative max-w-md">
         <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground pointer-events-none" />
@@ -114,7 +123,7 @@ export function VouchersTab() {
                   <div className="flex-1 min-w-[10rem]">
                     <p className="text-sm font-medium">{v.username} <span className="text-muted-foreground font-normal">· {v.email}</span></p>
                     <p className="text-xs text-muted-foreground">
-                      {TYPE_LABEL[v.type] ?? v.type} · osvojen <span className="font-mono">{format(new Date(v.createdAt), "dd.MM.yyyy.")}</span>
+                      {v.title ?? TYPE_LABEL[v.type] ?? v.type} · {v.type === "shop" ? "kupljen" : "osvojen"} <span className="font-mono">{format(new Date(v.createdAt), "dd.MM.yyyy.")}</span>
                     </p>
                   </div>
                   <span className={`text-xs ${v.redeemedAt ? "text-muted-foreground" : expired ? "text-destructive" : "text-primary"}`}>

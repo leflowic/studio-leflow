@@ -73,6 +73,7 @@ export const users = pgTable("users", {
   adminLoginExpiry: timestamp("admin_login_expiry"),
   usernameLastChanged: timestamp("username_last_changed"),
   avatarUrl: text("avatar_url"),
+  avatarFrameUntil: timestamp("avatar_frame_until"), // Studio Coins shop: oak ring around the avatar until this time
   lastSeen: timestamp("last_seen"),
   isVerifiedArtist: boolean("is_verified_artist").notNull().default(false),
   availableForCollab: boolean("available_for_collab").notNull().default(false),
@@ -1229,7 +1230,9 @@ export const vouchers = pgTable("vouchers", {
   id: serial("id").primaryKey(),
   code: text("code").notNull().unique(),
   userId: integer("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
-  type: text("type").notNull(), // studio_50
+  type: text("type").notNull(), // studio_50 (old Ploča prize) | shop (bought with Studio Coins)
+  title: text("title"), // e.g. "20% popusta na snimanje + mix/master" (shop vouchers)
+  percentOff: integer("percent_off"),
   spinId: integer("spin_id").references(() => dailySpins.id, { onDelete: "set null" }),
   expiresAt: timestamp("expires_at").notNull(),
   redeemedAt: timestamp("redeemed_at"),
@@ -1240,3 +1243,54 @@ export const vouchers = pgTable("vouchers", {
 }));
 
 export type Voucher = typeof vouchers.$inferSelect;
+
+// ─── Studio Coins (SC) ──────────────────────────────────────────────────────
+// Earned only (Ploča dana + correct Pogodi Pesmu answers), never sold for
+// money. Balance = SUM(amount). One ledger row per earning event, enforced by
+// a partial unique index on (reason, ref_id) for "spin"/"game".
+export const coinLedger = pgTable("coin_ledger", {
+  id: serial("id").primaryKey(),
+  userId: integer("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  amount: integer("amount").notNull(), // + earned, - spent
+  reason: text("reason").notNull(),    // spin | game | purchase | admin
+  refId: integer("ref_id"),            // daily_spins.id / daily_guesses.id / shop_purchases.id
+  note: text("note"),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+}, (table) => ({
+  userIdx: index("coin_ledger_user_idx").on(table.userId),
+  earnUnique: uniqueIndex("coin_ledger_earn_unique").on(table.reason, table.refId).where(sql`reason IN ('spin', 'game') AND ref_id IS NOT NULL`),
+}));
+
+export type CoinLedgerEntry = typeof coinLedger.$inferSelect;
+
+// Shop items, managed by staff in the admin "Prodavnica" tab.
+export const shopItems = pgTable("shop_items", {
+  id: serial("id").primaryKey(),
+  kind: text("kind").notNull(), // studio_voucher | avatar_frame
+  title: text("title").notNull(),
+  description: text("description"),
+  priceSc: integer("price_sc").notNull(),
+  percentOff: integer("percent_off"),     // studio_voucher
+  durationDays: integer("duration_days"), // avatar_frame
+  monthlyStock: integer("monthly_stock"), // null = unlimited; site-wide per Belgrade month
+  active: boolean("active").notNull().default(true),
+  sortOrder: integer("sort_order").notNull().default(0),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+
+export type ShopItem = typeof shopItems.$inferSelect;
+
+export const shopPurchases = pgTable("shop_purchases", {
+  id: serial("id").primaryKey(),
+  userId: integer("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  itemId: integer("item_id").references(() => shopItems.id, { onDelete: "set null" }),
+  itemTitle: text("item_title").notNull(),
+  priceSc: integer("price_sc").notNull(),
+  voucherId: integer("voucher_id").references(() => vouchers.id, { onDelete: "set null" }),
+  month: text("month").notNull(), // YYYY-MM (Belgrade) - for monthly stock
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+}, (table) => ({
+  itemMonthIdx: index("shop_purchases_item_month_idx").on(table.itemId, table.month),
+}));
+
+export type ShopPurchase = typeof shopPurchases.$inferSelect;

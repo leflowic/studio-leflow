@@ -1,4 +1,5 @@
 import { useQuery } from "@tanstack/react-query";
+import { hasAvatarFrame, AVATAR_FRAME_CLASS } from "@/lib/avatar-frame";
 import { useParams, Link } from "wouter";
 import { useAuth } from "@/hooks/use-auth";
 import { SEO } from "@/components/SEO";
@@ -214,7 +215,7 @@ export default function UserProfile() {
           <div className="relative overflow-hidden border-b border-border/40 bg-gradient-to-br from-primary/10 via-background to-muted/20">
             <div className="relative container mx-auto px-4 max-w-3xl py-10">
               <div className="flex items-center gap-5">
-                <Avatar className="w-20 h-20 ring-4 ring-background shadow-lg">
+                <Avatar className={`w-20 h-20 shadow-lg ${hasAvatarFrame((profileUser as any).avatarFrameUntil) ? AVATAR_FRAME_CLASS : "ring-4 ring-background"}`}>
                   {profileUser.avatarUrl ? (
                     <img src={profileUser.avatarUrl} alt={profileUser.username} className="w-full h-full object-cover rounded-full" />
                   ) : (

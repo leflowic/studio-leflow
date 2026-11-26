@@ -5,7 +5,7 @@ import { wsHelpers, notifyUser, broadcastToUser, getOnlineUsersSnapshot } from "
 import { getActivityPoints, rankForPoints, RANK_THRESHOLDS, POINT_RULES, RANK_PERKS, perksFor } from "./activity";
 import { getTrustedClientIp } from "./client-ip";
 import { getClipSlice } from "./game-clip";
-import { SPIN_REWARDS, STUDIO_PRIZES_PER_MONTH, STUDIO_MIN_ACCOUNT_DAYS, SETTING_SPIN_ENABLED, SETTING_STUDIO_PRIZE_ENABLED, SETTING_SPIN_IP_LIMIT, SETTING_GAME_IP_LIMIT, getSpinIp, type SpinReward } from "./spin";
+import { SPIN_REWARDS, COIN_REWARDS, STUDIO_MIN_ACCOUNT_DAYS, SETTING_SPIN_ENABLED, SETTING_SHOP_ENABLED, SETTING_SPIN_IP_LIMIT, SETTING_GAME_IP_LIMIT, getSpinIp, type SpinReward } from "./spin";
 import { getVapidPublicKey, saveSubscription, removeSubscription, hasSubscription, sendPushToUser, sendPushToUserIfOffline, sendPushToAll } from "./push";
 import { insertContactSubmissionSchema, insertCmsContentSchema, insertCmsMediaSchema, insertVideoSpotSchema, insertUserSongSchema, insertNewsletterSubscriberSchema, insertInvoiceSchema, insertCommunityMessageSchema, insertSiteAnnouncementSchema, mixMasterContractDataSchema, copyrightTransferContractDataSchema, instrumentalSaleContractDataSchema, insertSmartLinkSchema, insertStudioJobSchema, JOB_STAGES, insertNewsArticleSchema, insertRightsProtectionSchema, insertTestimonialSchema, upsertJobBriefSchema, type CmsContent, type CmsMedia, type VideoSpot, type UserSong } from "@shared/schema";
 import { sendEmail, getLastVerificationCode } from "./resend-client";
@@ -2464,7 +2464,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const { username } = req.params;
       const user = await storage.getUserByUsername(username);
       if (!user) return res.status(404).json({ error: "Korisnik nije pronađen" });
-      res.json({ id: user.id, username: user.username, avatarUrl: user.avatarUrl, createdAt: user.createdAt });
+      res.json({ id: user.id, username: user.username, avatarUrl: user.avatarUrl, avatarFrameUntil: user.avatarFrameUntil, createdAt: user.createdAt });
     } catch (e) {
       console.error("[Users] by-username error:", e);
       res.status(500).json({ error: "Greška na serveru" });
@@ -4225,16 +4225,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   const spinSwitches = async () => ({
     enabled: (await storage.getSetting(SETTING_SPIN_ENABLED))?.value !== "false",
-    studioPrizeEnabled: (await storage.getSetting(SETTING_STUDIO_PRIZE_ENABLED))?.value !== "false",
+    shopEnabled: (await storage.getSetting(SETTING_SHOP_ENABLED))?.value !== "false",
   });
 
   app.get("/api/spin/today", requireVerifiedEmail, async (req, res) => {
     try {
       const today = belgradeToday();
-      const { enabled, studioPrizeEnabled } = await spinSwitches();
+      const { enabled, shopEnabled } = await spinSwitches();
       if (!enabled) return res.json({ enabled: false });
       const spin = await storage.getSpin(req.jwtUser!.id, today);
-      const studio = await storage.getStudioEligibility(req.jwtUser!.id, getSpinIp(req));
       let voucher = null;
       if (spin?.reward === "studio_50") voucher = (await storage.getUserVouchers(req.jwtUser!.id)).find(v => v.spinId === spin.id) ?? null;
       res.json({
@@ -4242,13 +4241,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
         date: today,
         spun: !!spin,
         result: spinPayload(spin, voucher),
-        studioPrizeEnabled,
-        studioPrizesLeft: await storage.getStudioPrizesLeft(today),
-        studioPrizesPerMonth: STUDIO_PRIZES_PER_MONTH,
-        // Only explain the reasons a person can act on / should know; never reveal IP matching details.
-        studioNote: studio.reason === "new_account"
-          ? `Popust mogu da osvoje nalozi stari bar ${STUDIO_MIN_ACCOUNT_DAYS} dana - za tebe od ${studio.eligibleFrom!.toLocaleDateString("sr-RS", { timeZone: "Europe/Belgrade" })}`
-          : studio.reason === "already_won" ? "Popust si već osvojio u poslednjih godinu dana" : null,
+        balance: await storage.getCoinBalance(req.jwtUser!.id),
+        shopEnabled,
       });
     } catch (e) {
       console.error("[Spin] today error:", e);
@@ -4270,10 +4264,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(429).json({ error: "Sa ovog interneta je ploča danas već zavrtena (možda neko iz iste kuće). Pokušaj ponovo sutra." });
       }
       const { spin, voucher, created } = outcome;
-      if (created && voucher) {
-        console.log(`[Spin] Studio voucher ${voucher.code} won by user ${userId}`);
-      }
-      res.json({ created, result: spinPayload(spin, voucher) });
+      res.json({ created, result: spinPayload(spin, voucher), coins: COIN_REWARDS[spin.reward as SpinReward] ?? 0, balance: await storage.getCoinBalance(userId) });
     } catch (e) {
       console.error("[Spin] error:", e);
       res.status(500).json({ error: "Ploča trenutno ne radi. Pokušajte ponovo za minut." });
@@ -4289,10 +4280,131 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // ─── Studio Coins + shop ─────────────────────────────────────────────────
+  // Coins are earned only (Ploča dana, correct Pogodi Pesmu answers) and are
+  // never sold for money. Prices/stock are set by staff in admin "Prodavnica".
+  const shopRateLimiter = rateLimit({ windowMs: 10 * 60 * 1000, max: 20, message: { error: "Previše pokušaja. Pokušajte ponovo za nekoliko minuta." }, standardHeaders: true, legacyHeaders: false });
+
+  app.get("/api/me/coins", requireVerifiedEmail, async (req, res) => {
+    try {
+      const userId = req.jwtUser!.id;
+      const [balance, history] = await Promise.all([storage.getCoinBalance(userId), storage.getCoinHistory(userId, 50)]);
+      const label = (r: { reason: string; note: string | null }) =>
+        r.reason === "spin" ? "Ploča dana" : r.reason === "game" ? "Tačan odgovor u Pogodi Pesmu"
+        : r.reason === "purchase" ? (r.note ?? "Kupovina") : (r.note ?? "Od studija");
+      res.json({ balance, history: history.map(h => ({ id: h.id, amount: h.amount, label: label(h), createdAt: h.createdAt })) });
+    } catch {
+      res.status(500).json({ error: "Greška na serveru" });
+    }
+  });
+
+  app.get("/api/shop", requireVerifiedEmail, async (req, res) => {
+    try {
+      const { shopEnabled } = await spinSwitches();
+      if (!shopEnabled) return res.json({ enabled: false });
+      const [items, balance] = await Promise.all([storage.getShopItems(false), storage.getCoinBalance(req.jwtUser!.id)]);
+      res.json({
+        enabled: true,
+        balance,
+        items: items.map(i => ({
+          id: i.id, kind: i.kind, title: i.title, description: i.description, priceSc: i.priceSc,
+          percentOff: i.percentOff, durationDays: i.durationDays,
+          left: i.monthlyStock == null ? null : Math.max(0, i.monthlyStock - i.soldThisMonth),
+        })),
+        frameUntil: req.jwtUser!.avatarFrameUntil ?? null,
+      });
+    } catch (e) {
+      console.error("[Shop] list error:", e);
+      res.status(500).json({ error: "Greška na serveru" });
+    }
+  });
+
+  app.post("/api/shop/buy", shopRateLimiter, requireVerifiedEmail, async (req, res) => {
+    try {
+      if (!(await spinSwitches()).shopEnabled) return res.status(403).json({ error: "Prodavnica je trenutno zatvorena." });
+      const itemId = Number(req.body?.itemId);
+      if (!Number.isInteger(itemId)) return res.status(400).json({ error: "Nevažeći artikal" });
+      const month = belgradeToday().slice(0, 7);
+      const r = await storage.buyShopItem(req.jwtUser!.id, itemId, month);
+      if (!r.ok) {
+        const msg: Record<string, string> = {
+          not_found: "Artikal ne postoji.",
+          inactive: "Ovaj artikal trenutno nije u ponudi.",
+          sold_out: "Rasprodato za ovaj mesec. Nove količine stižu prvog u mesecu.",
+          balance: "Nemaš dovoljno Studio Coina.",
+          staff: "Nalozi zaposlenih u studiju ne mogu da kupuju popuste.",
+          new_account: `Popuste mogu da kupe nalozi stari bar ${STUDIO_MIN_ACCOUNT_DAYS} dana${r.eligibleFrom ? ` - za tebe od ${r.eligibleFrom.toLocaleDateString("sr-RS", { timeZone: "Europe/Belgrade" })}` : ""}.`,
+          active_voucher: "Već imaš neiskorišćen vaučer. Iskoristi ga, pa možeš da kupiš sledeći.",
+        };
+        return res.status(r.error === "not_found" ? 404 : 409).json({ error: msg[r.error] ?? "Kupovina nije uspela." });
+      }
+      if (r.voucher) console.log(`[Shop] user ${req.jwtUser!.id} bought "${r.title}" -> voucher ${r.voucher.code}`);
+      res.json({
+        title: r.title,
+        balance: r.balance,
+        voucher: r.voucher ? { code: r.voucher.code, expiresAt: r.voucher.expiresAt } : null,
+        frameUntil: r.frameUntil,
+      });
+    } catch (e) {
+      console.error("[Shop] buy error:", e);
+      res.status(500).json({ error: "Kupovina nije uspela. Pokušajte ponovo." });
+    }
+  });
+
+  // Admin: catalogue + manual coin grants
+  const shopItemSchema = z.object({
+    kind: z.enum(["studio_voucher", "avatar_frame"]),
+    title: z.string().trim().min(3).max(120),
+    description: z.string().trim().max(400).nullable().optional(),
+    priceSc: z.number().int().min(1).max(1_000_000),
+    percentOff: z.number().int().min(1).max(100).nullable().optional(),
+    durationDays: z.number().int().min(1).max(365).nullable().optional(),
+    monthlyStock: z.number().int().min(0).max(10_000).nullable().optional(),
+    active: z.boolean().optional(),
+    sortOrder: z.number().int().min(0).max(1000).optional(),
+  });
+
+  app.get("/api/admin/shop/items", requireRole("producer"), async (_req, res) => {
+    try { res.json(await storage.getShopItems(true)); } catch { res.status(500).json({ error: "Greška na serveru" }); }
+  });
+
+  app.post("/api/admin/shop/items", requireAdmin, async (req, res) => {
+    try {
+      const parsed = shopItemSchema.safeParse(req.body);
+      if (!parsed.success) return res.status(400).json({ error: "Proverite polja artikla" });
+      if (parsed.data.kind === "studio_voucher" && !parsed.data.percentOff) return res.status(400).json({ error: "Unesite procenat popusta" });
+      res.json(await storage.createShopItem(parsed.data as any));
+    } catch { res.status(500).json({ error: "Greška na serveru" }); }
+  });
+
+  app.patch("/api/admin/shop/items/:id", requireAdmin, async (req, res) => {
+    try {
+      const id = parseInt(req.params.id, 10);
+      const parsed = shopItemSchema.partial().safeParse(req.body);
+      if (isNaN(id) || !parsed.success) return res.status(400).json({ error: "Proverite polja artikla" });
+      const row = await storage.updateShopItem(id, parsed.data as any);
+      if (!row) return res.status(404).json({ error: "Artikal nije pronađen" });
+      res.json(row);
+    } catch { res.status(500).json({ error: "Greška na serveru" }); }
+  });
+
+  app.post("/api/admin/coins/grant", requireAdmin, async (req, res) => {
+    try {
+      const username = String(req.body?.username ?? "").trim();
+      const amount = Number(req.body?.amount);
+      const note = req.body?.note ? String(req.body.note).slice(0, 120) : null;
+      if (!username || !Number.isInteger(amount) || amount === 0 || Math.abs(amount) > 100_000) return res.status(400).json({ error: "Unesite korisnika i ceo broj coina" });
+      const user = await storage.getUserByUsername(username);
+      if (!user) return res.status(404).json({ error: "Korisnik nije pronađen" });
+      await storage.addCoins(user.id, amount, "admin", note);
+      res.json({ username: user.username, balance: await storage.getCoinBalance(user.id) });
+    } catch { res.status(500).json({ error: "Greška na serveru" }); }
+  });
+
   app.get("/api/me/vouchers", requireVerifiedEmail, async (req, res) => {
     try {
       const list = await storage.getUserVouchers(req.jwtUser!.id);
-      res.json(list.map(v => ({ id: v.id, code: v.code, type: v.type, expiresAt: v.expiresAt, redeemedAt: v.redeemedAt, createdAt: v.createdAt })));
+      res.json(list.map(v => ({ id: v.id, code: v.code, type: v.type, title: v.title, percentOff: v.percentOff, expiresAt: v.expiresAt, redeemedAt: v.redeemedAt, createdAt: v.createdAt })));
     } catch {
       res.status(500).json({ error: "Greška na serveru" });
     }
@@ -4386,9 +4498,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.put("/api/admin/spin-settings", requireAdmin, async (req, res) => {
     try {
-      const { enabled, studioPrizeEnabled } = req.body ?? {};
+      const { enabled, shopEnabled } = req.body ?? {};
       if (typeof enabled === "boolean") await storage.setSetting(SETTING_SPIN_ENABLED, String(enabled));
-      if (typeof studioPrizeEnabled === "boolean") await storage.setSetting(SETTING_STUDIO_PRIZE_ENABLED, String(studioPrizeEnabled));
+      if (typeof shopEnabled === "boolean") await storage.setSetting(SETTING_SHOP_ENABLED, String(shopEnabled));
       res.json(await spinSwitches());
     } catch {
       res.status(500).json({ error: "Greška na serveru" });

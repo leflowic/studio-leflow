@@ -5,7 +5,7 @@ import {
   Menu, X, ChevronRight, Terminal, ChevronDown, ArrowRight, ArrowUpRight,
   MicVocal, KeyboardMusic, Clapperboard, Podcast, AudioLines, ListMusic,
   FolderOpen, Disc3, Newspaper, Users, ScrollText, Phone,
-  MessagesSquare, Gamepad2, Trophy, Music4, Play, Disc, type LucideIcon,
+  MessagesSquare, Gamepad2, Trophy, Music4, Play, Disc, Store, type LucideIcon,
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Button } from "@/components/ui/button";
@@ -111,7 +111,8 @@ function buildMenus(loggedIn: boolean): NavMenu[] {
           items: [
             { icon: MessagesSquare, title: "Objave i saradnje", desc: "Šta izvođači objavljuju i s kim traže saradnju", href: "/zajednica" },
             { icon: Gamepad2, title: "Pogodi Pesmu", desc: "Dnevna igra, jedan pokušaj", href: "/igra" },
-            { icon: Disc, title: "Ploča dana", desc: "Zavrti jednom dnevno, do 50% popusta u studiju", href: "/ploca" },
+            { icon: Disc, title: "Ploča dana", desc: "Zavrti jednom dnevno i skupljaj Studio Coins", href: "/ploca" },
+            { icon: Store, title: "Prodavnica", desc: "Zameni coine za popuste u studiju", href: "/prodavnica" },
           ],
         },
         {

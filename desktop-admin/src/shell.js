@@ -28,7 +28,7 @@ const ADMIN_NAV = [
     items: [
       { value: "jobs", label: "Radna tabla", icon: "kanban", roles: ["producer"] },
       { value: "testimonials", label: "Utisci", icon: "message-heart", roles: ["producer", "marketing"] },
-      { value: "vouchers", label: "Vaučeri", icon: "ticket", roles: ["producer"] },
+      { value: "vouchers", label: "Prodavnica", icon: "ticket", roles: ["producer"] },
       { value: "contracts", label: "Licence", icon: "file-text", roles: ["producer"] },
       { value: "rights-protection", label: "Zaštita prava", icon: "shield-check", roles: ["producer"] },
       { value: "invoices", label: "Fakture", icon: "receipt", roles: ["producer"] },

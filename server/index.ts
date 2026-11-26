@@ -460,6 +460,62 @@ async function runMigrations() {
       );
     `);
     await clientSpin.query(`CREATE UNIQUE INDEX IF NOT EXISTS daily_spins_ip_date_unique ON daily_spins(ip_address, spin_date) WHERE ip_address IS NOT NULL;`);
+    // Studio Coins + shop
+    await clientSpin.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS avatar_frame_until TIMESTAMP;`);
+    await clientSpin.query(`ALTER TABLE vouchers ADD COLUMN IF NOT EXISTS title TEXT;`);
+    await clientSpin.query(`ALTER TABLE vouchers ADD COLUMN IF NOT EXISTS percent_off INTEGER;`);
+    await clientSpin.query(`
+      CREATE TABLE IF NOT EXISTS coin_ledger (
+        id SERIAL PRIMARY KEY,
+        user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+        amount INTEGER NOT NULL,
+        reason TEXT NOT NULL,
+        ref_id INTEGER,
+        note TEXT,
+        created_at TIMESTAMP NOT NULL DEFAULT NOW()
+      );
+    `);
+    await clientSpin.query(`CREATE INDEX IF NOT EXISTS coin_ledger_user_idx ON coin_ledger(user_id);`);
+    await clientSpin.query(`CREATE UNIQUE INDEX IF NOT EXISTS coin_ledger_earn_unique ON coin_ledger(reason, ref_id) WHERE reason IN ('spin', 'game') AND ref_id IS NOT NULL;`);
+    await clientSpin.query(`
+      CREATE TABLE IF NOT EXISTS shop_items (
+        id SERIAL PRIMARY KEY,
+        kind TEXT NOT NULL,
+        title TEXT NOT NULL,
+        description TEXT,
+        price_sc INTEGER NOT NULL,
+        percent_off INTEGER,
+        duration_days INTEGER,
+        monthly_stock INTEGER,
+        active BOOLEAN NOT NULL DEFAULT TRUE,
+        sort_order INTEGER NOT NULL DEFAULT 0,
+        created_at TIMESTAMP NOT NULL DEFAULT NOW()
+      );
+    `);
+    await clientSpin.query(`
+      CREATE TABLE IF NOT EXISTS shop_purchases (
+        id SERIAL PRIMARY KEY,
+        user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+        item_id INTEGER REFERENCES shop_items(id) ON DELETE SET NULL,
+        item_title TEXT NOT NULL,
+        price_sc INTEGER NOT NULL,
+        voucher_id INTEGER REFERENCES vouchers(id) ON DELETE SET NULL,
+        month TEXT NOT NULL,
+        created_at TIMESTAMP NOT NULL DEFAULT NOW()
+      );
+    `);
+    await clientSpin.query(`CREATE INDEX IF NOT EXISTS shop_purchases_item_month_idx ON shop_purchases(item_id, month);`);
+    // Starter catalogue (owner tunes prices/stock in admin "Prodavnica"); only seeded into an empty table.
+    await clientSpin.query(`
+      INSERT INTO shop_items (kind, title, description, price_sc, percent_off, duration_days, monthly_stock, sort_order)
+      SELECT * FROM (VALUES
+        ('studio_voucher', '10% popusta na snimanje + mix/master', 'Vaučer za jedan projekat, važi 60 dana.', 400, 10, NULL::int, 10, 1),
+        ('studio_voucher', '20% popusta na snimanje + mix/master', 'Vaučer za jedan projekat, važi 60 dana.', 900, 20, NULL::int, 5, 2),
+        ('studio_voucher', '50% popusta na snimanje + mix/master', 'Vaučer za jedan projekat, važi 60 dana.', 2500, 50, NULL::int, 2, 3),
+        ('avatar_frame', 'Zlatni okvir za avatar', 'Okvir oko profilne slike na 30 dana - vidi se u zajednici i na profilu.', 250, NULL::int, 30, NULL::int, 4)
+      ) AS v(kind, title, description, price_sc, percent_off, duration_days, monthly_stock, sort_order)
+      WHERE NOT EXISTS (SELECT 1 FROM shop_items);
+    `);
     log('[Migrations] Daily spin / vouchers ready', 'express');
   } catch (err: any) {
     log(`[Migrations] Warning on daily spin tables: ${err.message}`, 'express');

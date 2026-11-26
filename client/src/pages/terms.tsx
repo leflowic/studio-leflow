@@ -87,16 +87,17 @@ const rulesSections = [
   },
   {
     id: "ploca-dana",
-    title: "Ploča dana",
+    title: "Ploča dana, Studio Coins i prodavnica",
     items: [
       "Ploču dana može da zavrti svako ko ima nalog sa potvrđenom email adresom, jednom dnevno. Nova ploča je dostupna posle ponoći (po beogradskom vremenu). Učešće je besplatno.",
       "Nagrada se izvlači nasumično u trenutku okretanja. Polja na ploči su tu zbog izgleda i ne pokazuju koliko je koja nagrada verovatna.",
-      "<strong>Vaučer za 50% popusta na snimanje + mix/master:</strong> na celom sajtu se mesečno mogu osvojiti najviše 2 ovakva vaučera. Vaučer je vezan za nalog koji ga je osvojio, ne može se preneti na drugu osobu niti zameniti za novac, važi 60 dana od osvajanja i koristi se za jedan projekat. Ne kombinuje se sa drugim popustima.",
-      "Vaučer koristite tako što pri zakazivanju termina navedete kod (LF-...). Studio proverava kod i beleži da je iskorišćen.",
       "Sa istog interneta (iste kuće, iste mreže ili istog telefona) ploča može da se zavrti jednom dnevno, bez obzira na to koliko naloga se koristi.",
-      "Popust od 50% može da osvoji nalog star bar 7 dana, najviše jednom godišnje po osobi i po domaćinstvu. Nalozi zaposlenih u studiju ne učestvuju.",
-      "Nagrade na sajtu (dodatno slušanje u igri Pogodi Pesmu, istaknuta objava) važe samo na sajtu i nemaju novčanu vrednost.",
-      "Studio LeFlow može da poništi nagradu osvojenu varanjem, na primer otvaranjem više naloga ili korišćenjem programa koji sami vrte ploču.",
+      "<strong>Studio Coins (SC)</strong> dobijate na Ploči dana i za svaku pogođenu pesmu u igri Pogodi Pesmu. Coini važe samo na ovom sajtu: ne mogu da se kupe, prodaju, poklone drugom korisniku niti zamene za novac.",
+      "U <strong>prodavnici</strong> coine menjate za popuste u studiju i nagrade na sajtu. Cene u coinima i mesečne količine određuje studio i može da ih menja. Kada se mesečna količina nekog artikla potroši, sledeća stiže prvog u mesecu.",
+      "Popuste iz prodavnice mogu da kupe nalozi stari bar 7 dana, i to jedan po jedan - sledeći tek kada iskoristite prethodni. Nalozi zaposlenih u studiju ne kupuju popuste.",
+      "Vaučer je vezan za nalog koji ga je kupio ili osvojio, ne može se preneti na drugu osobu niti zameniti za novac, važi 60 dana i koristi se za jedan projekat. Ne kombinuje se sa drugim popustima. Pri zakazivanju termina navedite kod (LF-...), a studio beleži da je iskorišćen.",
+      "Nagrade na sajtu (dodatno slušanje u igri Pogodi Pesmu, istaknuta objava, okvir za avatar) važe samo na sajtu i nemaju novčanu vrednost.",
+      "Studio LeFlow može da poništi coine, kupovine i nagrade stečene varanjem, na primer otvaranjem više naloga ili korišćenjem programa koji sami vrte ploču.",
     ],
   },
 ];

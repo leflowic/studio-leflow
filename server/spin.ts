@@ -4,68 +4,74 @@ import { randomInt } from "crypto";
 // decided here, on the server; the client only animates to the result it gets
 // back, so there is nothing to cheat on the client side.
 //
-// The studio voucher (50% off recording + mix/master, owner decision
-// 2026-11-26) is capped at STUDIO_PRIZES_PER_MONTH across the whole site, and
-// its chance is spread over the month (remaining prizes / expected remaining
-// spins) so both prizes don't get won in the first two days.
-
-export const STUDIO_PRIZES_PER_MONTH = 2;
-export const STUDIO_MIN_ACCOUNT_DAYS = 7;   // fresh accounts can spin, but can't win the studio voucher
-export const STUDIO_WIN_COOLDOWN_DAYS = 365; // one studio voucher per person (account AND IP) per year
+// Since 2026-11-26 the record pays out Studio Coins (SC) plus two small site
+// perks. Studio discounts are no longer won on the record - they are bought
+// with coins in the shop (owner decision), which keeps the number of discounts
+// in the owner's hands (prices + monthly stock in admin "Prodavnica").
 
 // settings-table keys for the admin switches (absent = on)
 export const SETTING_SPIN_ENABLED = "spin_enabled";
-export const SETTING_STUDIO_PRIZE_ENABLED = "spin_studio_prize_enabled";
+export const SETTING_SHOP_ENABLED = "shop_enabled";
 // "one per network per day" limits, switchable from the admin "Zaštita igara" tab (absent = on)
 export const SETTING_SPIN_IP_LIMIT = "spin_ip_limit";
 export const SETTING_GAME_IP_LIMIT = "game_ip_limit";
+
 export const VOUCHER_VALID_DAYS = 60;
-export const SPIN_POINTS = 5; // must match the daily_spins term in server/activity.ts
-const STUDIO_MAX_CHANCE = 0.08;
+export const STUDIO_MIN_ACCOUNT_DAYS = 7; // shop: studio vouchers need an account at least this old
+export const GAME_CORRECT_COINS = 10;     // Studio Coins for a correct Pogodi Pesmu answer
+export const SPIN_POINTS = 5;             // retired reward, see SPIN_REWARDS.points
 
-export type SpinReward = "studio_50" | "extra_listen" | "feature_post" | "points" | "nothing";
+export type SpinReward =
+  | "coins_5" | "coins_10" | "coins_25" | "coins_50" | "coins_100"
+  | "extra_listen" | "feature_post" | "nothing"
+  // retired - kept only so old history rows still render
+  | "studio_50" | "points";
 
-export const SPIN_REWARDS: Record<SpinReward, { title: string; detail: string }> = {
-  studio_50: { title: "50% popusta na snimanje + mix/master", detail: "Vaučer važi 60 dana, vezan je za tvoj nalog." },
-  extra_listen: { title: "+1 slušanje u Pogodi Pesmu", detail: "Važi za današnju igru." },
-  feature_post: { title: "Istaknuta objava", detail: "Tvoja poslednja objava stoji na vrhu zajednice 24 sata." },
-  // Retired 2026-11-26 (owner: no rank points from the spin). Kept only so old
-  // history rows still render; it is no longer in BASE_WEIGHTS.
-  points: { title: `+${SPIN_POINTS} bodova za rang`, detail: "Već su dodati na tvoj nalog." },
-  nothing: { title: "Prazna strana", detail: "Ovaj put ništa. Ploča se okreće ponovo sutra." },
+export const COIN_REWARDS: Partial<Record<SpinReward, number>> = {
+  coins_5: 5, coins_10: 10, coins_25: 25, coins_50: 50, coins_100: 100,
 };
 
-const BASE_WEIGHTS: Partial<Record<Exclude<SpinReward, "studio_50">, number>> & { nothing: number } = {
-  extra_listen: 35,
-  feature_post: 20,
-  nothing: 45,
+export const SPIN_REWARDS: Record<SpinReward, { title: string; detail: string }> = {
+  coins_5: { title: "+5 SC", detail: "Studio Coins su dodati u tvoj novčanik." },
+  coins_10: { title: "+10 SC", detail: "Studio Coins su dodati u tvoj novčanik." },
+  coins_25: { title: "+25 SC", detail: "Lep dobitak - coini su već u novčaniku." },
+  coins_50: { title: "+50 SC", detail: "Odličan dobitak - coini su već u novčaniku." },
+  coins_100: { title: "+100 SC", detail: "Glavni dobitak! Coini su već u novčaniku." },
+  extra_listen: { title: "+1 slušanje u Pogodi Pesmu", detail: "Važi za današnju igru." },
+  feature_post: { title: "Istaknuta objava", detail: "Tvoja poslednja objava stoji na vrhu zajednice 24 sata." },
+  nothing: { title: "Prazna strana", detail: "Ovaj put ništa. Ploča se okreće ponovo sutra." },
+  studio_50: { title: "50% popusta na snimanje + mix/master", detail: "Vaučer važi 60 dana, vezan je za tvoj nalog." },
+  points: { title: `+${SPIN_POINTS} bodova za rang`, detail: "Već su dodati na tvoj nalog." },
+};
+
+// Expected payout ≈ 8.75 SC per spin; with correct game answers a regular
+// player earns roughly 300-450 SC a month. Shop prices were set against that.
+const BASE_WEIGHTS: Partial<Record<SpinReward, number>> & { nothing: number } = {
+  coins_5: 25,
+  coins_10: 20,
+  coins_25: 10,
+  coins_50: 4,
+  coins_100: 1,
+  extra_listen: 12,
+  feature_post: 8,
+  nothing: 20,
 };
 
 export type SpinContext = {
-  canExtraListen: boolean;   // today's challenge exists and the user hasn't guessed yet
-  hasPosts: boolean;         // feature_post needs something to feature
-  studioPrizesLeft: number;  // this month, site-wide
-  expectedSpinsLeft: number; // rough estimate for the rest of the month
+  canExtraListen: boolean; // today's challenge exists and the user hasn't guessed yet
+  hasPosts: boolean;       // feature_post needs something to feature
 };
 
-export function studioChance(ctx: Pick<SpinContext, "studioPrizesLeft" | "expectedSpinsLeft">): number {
-  if (ctx.studioPrizesLeft <= 0) return 0;
-  return Math.min(STUDIO_MAX_CHANCE, ctx.studioPrizesLeft / Math.max(ctx.studioPrizesLeft, ctx.expectedSpinsLeft));
-}
-
 export function pickReward(ctx: SpinContext): SpinReward {
-  // crypto-grade randomness; 1e6 buckets is plenty of resolution for the chances here
-  const roll = randomInt(0, 1_000_000) / 1_000_000;
-  if (roll < studioChance(ctx)) return "studio_50";
-
   const weights = { ...BASE_WEIGHTS };
-  // An ineligible reward falls through to "nothing" rather than inflating the others.
+  // An ineligible perk falls through to "nothing" rather than inflating the others.
   if (!ctx.canExtraListen) { weights.nothing += weights.extra_listen ?? 0; weights.extra_listen = 0; }
   if (!ctx.hasPosts) { weights.nothing += weights.feature_post ?? 0; weights.feature_post = 0; }
 
-  const total = Object.values(weights).reduce((a, b) => a + (b ?? 0), 0);
-  let r = randomInt(0, total);
-  for (const [key, w] of Object.entries(weights).map(([k, v]) => [k, v ?? 0]) as Array<[SpinReward, number]>) {
+  const entries = Object.entries(weights).map(([k, v]) => [k, v ?? 0]) as Array<[SpinReward, number]>;
+  const total = entries.reduce((a, [, w]) => a + w, 0);
+  let r = randomInt(0, total); // crypto-grade randomness
+  for (const [key, w] of entries) {
     if (r < w) return key;
     r -= w;
   }
@@ -76,13 +82,6 @@ const CODE_ALPHABET = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789"; // no 0/O/1/I
 export function generateVoucherCode(): string {
   const part = () => Array.from({ length: 4 }, () => CODE_ALPHABET[randomInt(0, CODE_ALPHABET.length)]).join("");
   return `LF-${part()}-${part()}`;
-}
-
-/** Days left in the current Belgrade month, today included. */
-export function daysLeftInMonth(today: string): number {
-  const [y = 1970, m = 1, d = 1] = today.split("-").map(Number);
-  const last = new Date(Date.UTC(y, m, 0)).getUTCDate();
-  return last - d + 1;
 }
 
 // Client IP: see server/client-ip.ts (rightmost public X-Forwarded-For hop).

@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef, useCallback } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { Link } from "wouter";
 import { useAuth } from "@/hooks/use-auth";
 import { apiRequest } from "@/lib/queryClient";
 import { Button } from "@/components/ui/button";
@@ -9,7 +10,7 @@ import { AvatarWithInitials } from "@/components/ui/avatar-with-initials";
 import { SEO } from "@/components/SEO";
 import { useToast } from "@/hooks/use-toast";
 import { motion, AnimatePresence } from "framer-motion";
-import { Play, Trophy, Clock, CheckCircle2, XCircle, Lock, Info, ChevronDown, Headphones, Zap, Flame, ArrowRight } from "lucide-react";
+import { Play, Trophy, Clock, CheckCircle2, XCircle, Lock, Info, ChevronDown, Headphones, Zap, Flame, ArrowRight, Coins } from "lucide-react";
 import { ShareResultButton } from "@/components/game/ShareResultButton";
 import { cn } from "@/lib/utils";
 
@@ -272,6 +273,11 @@ export default function IgraPage() {
                     <div className="inline-flex items-center gap-2 mt-3 bg-green-500/10 border border-green-500/20 rounded-full px-5 py-2">
                       <Zap className="w-4 h-4 text-green-500" />
                       <span className="font-bold text-green-500 text-lg">+10 poena</span>
+                    </div>
+                    <div className="mt-2">
+                      <Link href="/prodavnica" className="inline-flex items-center gap-1.5 text-sm text-primary hover:underline underline-offset-4">
+                        <Coins className="w-4 h-4" /> <span className="font-mono">+10 SC</span> u novčaniku
+                      </Link>
                     </div>
                   </motion.div>
                 </>

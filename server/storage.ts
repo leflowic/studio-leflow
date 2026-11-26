@@ -101,10 +101,15 @@ import {
   dailySpins,
   vouchers,
   gameListens,
+  coinLedger,
+  shopItems,
+  shopPurchases,
+  type CoinLedgerEntry,
+  type ShopItem,
   type DailySpin,
   type Voucher,
 } from "@shared/schema";
-import { pickReward, generateVoucherCode, daysLeftInMonth, VOUCHER_VALID_DAYS, STUDIO_PRIZES_PER_MONTH, STUDIO_MIN_ACCOUNT_DAYS, STUDIO_WIN_COOLDOWN_DAYS, SETTING_STUDIO_PRIZE_ENABLED, type SpinReward } from "./spin";
+import { pickReward, generateVoucherCode, VOUCHER_VALID_DAYS, STUDIO_MIN_ACCOUNT_DAYS, COIN_REWARDS, GAME_CORRECT_COINS, type SpinReward } from "./spin";
 import { db, pool } from "./db";
 import { eq, and, or, desc, sql, notInArray, inArray, gte, lte, count, countDistinct, isNotNull } from "drizzle-orm";
 import session from "express-session";
@@ -388,7 +393,7 @@ export interface IStorage {
   hasGuessFromIp(ip: string, date: string): Promise<boolean>;
   getListensUsed(userId: number, date: string): Promise<number>;
   useListen(userId: number, date: string, max: number): Promise<number | null>;
-  submitGuess(userId: number, challengeDate: string, answer: string, ipAddress?: string | null): Promise<{ correct: boolean; points: number }>;
+  submitGuess(userId: number, challengeDate: string, answer: string, ipAddress?: string | null): Promise<{ correct: boolean; points: number; coins: number }>;
   getWeeklyLeaderboard(weekStart: string): Promise<Array<{ userId: number; username: string; avatarUrl: string | null; correctCount: number; points: number }>>;
   getWeeklyPrize(weekStart: string): Promise<{ discountPct: number; prizeDescription: string; promoCode: string | null; winnerUserId: number | null } | null>;
   adminGetChallenges(): Promise<Array<{ id: number; challengeDate: string; clipUrl: string | null; correctAnswers: string; clipStartSeconds: number; openHour: number; openMinute: number }>>;
@@ -459,8 +464,18 @@ export interface IStorage {
   resetSpin(userId: number, date: string): Promise<boolean>;
   deleteGuess(userId: number, date: string): Promise<boolean>;
   performSpin(userId: number, date: string, opts: { canExtraListen: boolean; ip: string | null; ipLimit?: boolean }): Promise<{ spin: DailySpin; voucher: Voucher | null; created: boolean } | { blocked: "ip" }>;
-  getStudioEligibility(userId: number, ip: string | null): Promise<{ eligible: boolean; reason: "disabled" | "staff" | "new_account" | "already_won" | "no_ip" | null; eligibleFrom?: Date }>;
-  getStudioPrizesLeft(date: string): Promise<number>;
+  // Studio Coins + shop
+  getCoinBalance(userId: number): Promise<number>;
+  getCoinHistory(userId: number, limit: number): Promise<CoinLedgerEntry[]>;
+  addCoins(userId: number, amount: number, reason: "admin", note: string | null): Promise<void>;
+  getShopItems(includeInactive: boolean): Promise<Array<ShopItem & { soldThisMonth: number }>>;
+  createShopItem(data: Partial<ShopItem> & Pick<ShopItem, "kind" | "title" | "priceSc">): Promise<ShopItem>;
+  updateShopItem(id: number, data: Partial<ShopItem>): Promise<ShopItem | undefined>;
+  buyShopItem(userId: number, itemId: number, month: string): Promise<
+    | { ok: true; voucher: Voucher | null; frameUntil: Date | null; balance: number; title: string }
+    | { ok: false; error: "not_found" | "inactive" | "sold_out" | "balance" | "staff" | "new_account" | "active_voucher"; eligibleFrom?: Date }
+  >;
+  getUserPurchases(userId: number, limit: number): Promise<Array<{ id: number; itemTitle: string; priceSc: number; createdAt: Date }>>;
   getUserVouchers(userId: number): Promise<Voucher[]>;
   getUserSpins(userId: number, limit: number): Promise<DailySpin[]>;
   getAllVouchers(): Promise<Array<Voucher & { username: string; email: string }>>;
@@ -3162,7 +3177,7 @@ export class DatabaseStorage implements IStorage {
     return row ? Number(row.count) : null;
   }
 
-  async submitGuess(userId: number, challengeDate: string, answer: string, ipAddress: string | null = null): Promise<{ correct: boolean; points: number }> {
+  async submitGuess(userId: number, challengeDate: string, answer: string, ipAddress: string | null = null): Promise<{ correct: boolean; points: number; coins: number }> {
     const [challenge] = await db.select().from(dailyChallenges).where(eq(dailyChallenges.challengeDate, challengeDate));
     if (!challenge) throw new Error('Challenge not found');
 
@@ -3170,8 +3185,12 @@ export class DatabaseStorage implements IStorage {
     const correct = accepted.some(a => a === answer.trim().toLowerCase());
     const points = correct ? 10 : 0;
 
-    await db.insert(dailyGuesses).values({ userId, challengeDate, answer: answer.trim(), correct, ipAddress });
-    return { correct, points };
+    const [guess] = await db.insert(dailyGuesses).values({ userId, challengeDate, answer: answer.trim(), correct, ipAddress }).returning({ id: dailyGuesses.id });
+    if (correct && guess) {
+      // Studio Coins for a correct answer (unique per guess id, see coin_ledger_earn_unique)
+      await db.insert(coinLedger).values({ userId, amount: GAME_CORRECT_COINS, reason: "game", refId: guess.id, note: "Pogodi Pesmu" }).onConflictDoNothing();
+    }
+    return { correct, points, coins: correct ? GAME_CORRECT_COINS : 0 };
   }
 
   async getWeeklyLeaderboard(weekStart: string): Promise<Array<{ userId: number; username: string; avatarUrl: string | null; correctCount: number; points: number }>> {
@@ -3441,6 +3460,7 @@ export class DatabaseStorage implements IStorage {
         username: users.username,
         avatarUrl: users.avatarUrl,
         isVerifiedArtist: users.isVerifiedArtist,
+        avatarFrameUntil: users.avatarFrameUntil,
         likesCount: sql<number>`(SELECT COUNT(*) FROM post_likes WHERE post_id = ${posts.id})::int`,
         commentsCount: sql<number>`(SELECT COUNT(*) FROM post_comments WHERE post_id = ${posts.id})::int`,
         hasLiked: viewerId
@@ -3471,6 +3491,7 @@ export class DatabaseStorage implements IStorage {
         username: users.username,
         avatarUrl: users.avatarUrl,
         isVerifiedArtist: users.isVerifiedArtist,
+        avatarFrameUntil: users.avatarFrameUntil,
         likesCount: sql<number>`(SELECT COUNT(*) FROM post_likes WHERE post_id = ${posts.id})::int`,
         commentsCount: sql<number>`(SELECT COUNT(*) FROM post_comments WHERE post_id = ${posts.id})::int`,
         hasLiked: viewerId
@@ -3644,33 +3665,100 @@ export class DatabaseStorage implements IStorage {
     return row;
   }
 
-  async getStudioPrizesLeft(date: string): Promise<number> {
-    const month = date.slice(0, 7);
-    const [row] = await db.select({ n: count() }).from(dailySpins)
-      .where(and(eq(dailySpins.reward, "studio_50"), sql`${dailySpins.spinDate} LIKE ${month + "-%"}`));
-    return Math.max(0, STUDIO_PRIZES_PER_MONTH - Number(row?.n ?? 0));
+  // ─── Studio Coins ─────────────────────────────────────────────────────────
+  async getCoinBalance(userId: number, exec: any = db): Promise<number> {
+    const [row] = await exec.select({ total: sql<number>`COALESCE(SUM(${coinLedger.amount}), 0)::int` }).from(coinLedger).where(eq(coinLedger.userId, userId));
+    return Number(row?.total ?? 0);
   }
 
-  // The whole spin (eligibility, cap check, reward, side effects) runs in one
-  // transaction behind a global advisory lock, so two people can't both take
-  // the last studio prize and one user can't spin twice by double-clicking.
-  // Studio voucher eligibility. Anyone verified may spin; only these may win the
-  // studio prize: switch on, regular user (not staff), account >= 7 days old,
-  // known IP, and no studio win by this account OR this IP in the last year.
-  async getStudioEligibility(userId: number, ip: string | null, exec: any = db): Promise<{ eligible: boolean; reason: "disabled" | "staff" | "new_account" | "already_won" | "no_ip" | null; eligibleFrom?: Date }> {
-    const [flag] = await exec.select().from(settings).where(eq(settings.key, SETTING_STUDIO_PRIZE_ENABLED));
-    if (flag?.value === "false") return { eligible: false, reason: "disabled" };
-    const [u] = await exec.select({ role: users.role, createdAt: users.createdAt }).from(users).where(eq(users.id, userId));
-    if (!u || u.role !== "user") return { eligible: false, reason: "staff" };
-    const eligibleFrom = new Date(new Date(u.createdAt).getTime() + STUDIO_MIN_ACCOUNT_DAYS * 86400_000);
-    if (eligibleFrom > new Date()) return { eligible: false, reason: "new_account", eligibleFrom };
-    if (!ip) return { eligible: false, reason: "no_ip" };
-    const since = new Intl.DateTimeFormat("sv", { timeZone: "Europe/Belgrade" }).format(new Date(Date.now() - STUDIO_WIN_COOLDOWN_DAYS * 86400_000));
-    const [prior] = await exec.select({ id: dailySpins.id }).from(dailySpins)
-      .where(and(eq(dailySpins.reward, "studio_50"), sql`${dailySpins.spinDate} >= ${since}`, or(eq(dailySpins.userId, userId), eq(dailySpins.ipAddress, ip))))
-      .limit(1);
-    if (prior) return { eligible: false, reason: "already_won" };
-    return { eligible: true, reason: null };
+  async getCoinHistory(userId: number, limit: number): Promise<CoinLedgerEntry[]> {
+    return db.select().from(coinLedger).where(eq(coinLedger.userId, userId)).orderBy(desc(coinLedger.createdAt)).limit(limit);
+  }
+
+  async addCoins(userId: number, amount: number, reason: "admin", note: string | null): Promise<void> {
+    await db.insert(coinLedger).values({ userId, amount, reason, note });
+  }
+
+  // ─── Shop ─────────────────────────────────────────────────────────────────
+  async getShopItems(includeInactive: boolean): Promise<Array<ShopItem & { soldThisMonth: number }>> {
+    const month = new Intl.DateTimeFormat("sv", { timeZone: "Europe/Belgrade" }).format(new Date()).slice(0, 7);
+    const items = await db.select().from(shopItems)
+      .where(includeInactive ? sql`TRUE` : eq(shopItems.active, true))
+      .orderBy(shopItems.sortOrder, shopItems.id);
+    const sold = await db.select({ itemId: shopPurchases.itemId, n: count() }).from(shopPurchases)
+      .where(eq(shopPurchases.month, month)).groupBy(shopPurchases.itemId);
+    const soldMap = new Map(sold.map(r => [r.itemId, Number(r.n)]));
+    return items.map(i => ({ ...i, soldThisMonth: soldMap.get(i.id) ?? 0 }));
+  }
+
+  async createShopItem(data: Partial<ShopItem> & Pick<ShopItem, "kind" | "title" | "priceSc">): Promise<ShopItem> {
+    const [row] = await db.insert(shopItems).values(data as any).returning();
+    return row!;
+  }
+
+  async updateShopItem(id: number, data: Partial<ShopItem>): Promise<ShopItem | undefined> {
+    const [row] = await db.update(shopItems).set(data).where(eq(shopItems.id, id)).returning();
+    return row;
+  }
+
+  // One purchase = one transaction behind a per-user advisory lock (no double
+  // spend from parallel clicks) plus a per-item lock for the monthly stock.
+  async buyShopItem(userId: number, itemId: number, month: string) {
+    return db.transaction(async (tx) => {
+      await tx.execute(sql`SELECT pg_advisory_xact_lock(735200, ${userId})`);
+      await tx.execute(sql`SELECT pg_advisory_xact_lock(735201, ${itemId})`);
+      const [item] = await tx.select().from(shopItems).where(eq(shopItems.id, itemId));
+      if (!item) return { ok: false as const, error: "not_found" as const };
+      if (!item.active) return { ok: false as const, error: "inactive" as const };
+
+      if (item.monthlyStock != null) {
+        const [sold] = await tx.select({ n: count() }).from(shopPurchases).where(and(eq(shopPurchases.itemId, itemId), eq(shopPurchases.month, month)));
+        if (Number(sold?.n ?? 0) >= item.monthlyStock) return { ok: false as const, error: "sold_out" as const };
+      }
+
+      if (item.kind === "studio_voucher") {
+        const [u] = await tx.select({ role: users.role, createdAt: users.createdAt }).from(users).where(eq(users.id, userId));
+        if (!u || u.role !== "user") return { ok: false as const, error: "staff" as const };
+        const eligibleFrom = new Date(new Date(u.createdAt).getTime() + STUDIO_MIN_ACCOUNT_DAYS * 86400_000);
+        if (eligibleFrom > new Date()) return { ok: false as const, error: "new_account" as const, eligibleFrom };
+        // one unused studio voucher at a time - stops hoarding a stack of discounts
+        const [open] = await tx.select({ id: vouchers.id }).from(vouchers)
+          .where(and(eq(vouchers.userId, userId), sql`${vouchers.redeemedAt} IS NULL AND ${vouchers.expiresAt} > NOW()`)).limit(1);
+        if (open) return { ok: false as const, error: "active_voucher" as const };
+      }
+
+      const balance = await this.getCoinBalance(userId, tx);
+      if (balance < item.priceSc) return { ok: false as const, error: "balance" as const };
+
+      let voucher: Voucher | null = null;
+      let frameUntil: Date | null = null;
+      if (item.kind === "studio_voucher") {
+        const expiresAt = new Date(Date.now() + VOUCHER_VALID_DAYS * 86400_000);
+        for (let attempt = 0; attempt < 5 && !voucher; attempt++) {
+          const rows = await tx.insert(vouchers)
+            .values({ code: generateVoucherCode(), userId, type: "shop", title: item.title, percentOff: item.percentOff, expiresAt })
+            .onConflictDoNothing({ target: vouchers.code }).returning();
+          voucher = rows[0] ?? null;
+        }
+        if (!voucher) throw new Error("Voucher code generation failed");
+      } else if (item.kind === "avatar_frame") {
+        const [u] = await tx.select({ until: users.avatarFrameUntil }).from(users).where(eq(users.id, userId));
+        const from = u?.until && u.until > new Date() ? u.until : new Date();
+        frameUntil = new Date(from.getTime() + (item.durationDays ?? 30) * 86400_000);
+        await tx.update(users).set({ avatarFrameUntil: frameUntil }).where(eq(users.id, userId));
+      }
+
+      const [purchase] = await tx.insert(shopPurchases)
+        .values({ userId, itemId, itemTitle: item.title, priceSc: item.priceSc, voucherId: voucher?.id ?? null, month }).returning();
+      await tx.insert(coinLedger).values({ userId, amount: -item.priceSc, reason: "purchase", refId: purchase!.id, note: item.title });
+
+      return { ok: true as const, voucher, frameUntil, balance: balance - item.priceSc, title: item.title };
+    });
+  }
+
+  async getUserPurchases(userId: number, limit: number) {
+    return db.select({ id: shopPurchases.id, itemTitle: shopPurchases.itemTitle, priceSc: shopPurchases.priceSc, createdAt: shopPurchases.createdAt })
+      .from(shopPurchases).where(eq(shopPurchases.userId, userId)).orderBy(desc(shopPurchases.createdAt)).limit(limit);
   }
 
   // ─── Admin "Zaštita igara" ───────────────────────────────────────────────
@@ -3719,6 +3807,7 @@ export class DatabaseStorage implements IStorage {
       const [spin] = await tx.select().from(dailySpins).where(and(eq(dailySpins.userId, userId), eq(dailySpins.spinDate, date)));
       if (!spin) return false;
       await tx.delete(vouchers).where(eq(vouchers.spinId, spin.id));
+      await tx.delete(coinLedger).where(and(eq(coinLedger.reason, "spin"), eq(coinLedger.refId, spin.id)));
       if (spin.reward === "feature_post") {
         await tx.update(posts).set({ featuredUntil: null }).where(and(eq(posts.userId, userId), sql`${posts.featuredUntil} > NOW()`));
       }
@@ -3733,6 +3822,7 @@ export class DatabaseStorage implements IStorage {
 
   async deleteGuess(userId: number, date: string): Promise<boolean> {
     const rows = await db.delete(dailyGuesses).where(and(eq(dailyGuesses.userId, userId), eq(dailyGuesses.challengeDate, date))).returning({ id: dailyGuesses.id });
+    for (const r of rows) await db.delete(coinLedger).where(and(eq(coinLedger.reason, "game"), eq(coinLedger.refId, r.id)));
     return rows.length > 0;
   }
 
@@ -3756,48 +3846,19 @@ export class DatabaseStorage implements IStorage {
         if (sameIp) storeIp = null;
       }
 
-      const studio = await this.getStudioEligibility(userId, opts.ip, tx);
-
-      const month = date.slice(0, 7);
-      const [won] = await tx.select({ n: count() }).from(dailySpins)
-        .where(and(eq(dailySpins.reward, "studio_50"), sql`${dailySpins.spinDate} LIKE ${month + "-%"}`));
-      const studioPrizesLeft = studio.eligible ? Math.max(0, STUDIO_PRIZES_PER_MONTH - Number(won?.n ?? 0)) : 0;
-
-      // Expected spins for the rest of the month, from the average of the last
-      // 7 days that had any spins. Until there are 3 such days (right after
-      // launch) assume at least 10/day, so both prizes don't go on day one.
-      const [recent] = await tx.select({ n: count(), days: countDistinct(dailySpins.spinDate) }).from(dailySpins)
-        .where(sql`${dailySpins.spinDate} >= to_char((${date}::date - INTERVAL '7 days'), 'YYYY-MM-DD') AND ${dailySpins.spinDate} < ${date}`);
-      const histDays = Number(recent?.days ?? 0);
-      const observed = histDays ? Number(recent?.n ?? 0) / histDays : 0;
-      const avgPerDay = histDays < 3 ? Math.max(10, observed) : Math.max(1, observed);
-      const expectedSpinsLeft = Math.round(avgPerDay * daysLeftInMonth(date));
-
       const [latestPost] = await tx.select({ id: posts.id }).from(posts).where(eq(posts.userId, userId)).orderBy(desc(posts.createdAt)).limit(1);
 
-      const reward: SpinReward = pickReward({
-        canExtraListen: opts.canExtraListen,
-        hasPosts: !!latestPost,
-        studioPrizesLeft,
-        expectedSpinsLeft,
-      });
+      const reward: SpinReward = pickReward({ canExtraListen: opts.canExtraListen, hasPosts: !!latestPost });
 
       const [spin] = await tx.insert(dailySpins).values({ userId, spinDate: date, reward, ipAddress: storeIp }).returning();
 
-      let voucher: Voucher | null = null;
-      if (reward === "studio_50") {
-        const expiresAt = new Date(Date.now() + VOUCHER_VALID_DAYS * 86400_000);
-        for (let attempt = 0; attempt < 5 && !voucher; attempt++) {
-          const rows = await tx.insert(vouchers)
-            .values({ code: generateVoucherCode(), userId, type: "studio_50", spinId: spin!.id, expiresAt })
-            .onConflictDoNothing({ target: vouchers.code })
-            .returning();
-          voucher = rows[0] ?? null;
-        }
-        if (!voucher) throw new Error("Voucher code generation failed");
+      const coins = COIN_REWARDS[reward];
+      if (coins) {
+        await tx.insert(coinLedger).values({ userId, amount: coins, reason: "spin", refId: spin!.id, note: "Ploča dana" });
       } else if (reward === "feature_post" && latestPost) {
         await tx.update(posts).set({ featuredUntil: new Date(Date.now() + 24 * 3600_000) }).where(eq(posts.id, latestPost.id));
       }
+      const voucher: Voucher | null = null;
 
       return { spin: spin!, voucher, created: true };
     });

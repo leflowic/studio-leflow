@@ -95,7 +95,7 @@ const ADMIN_NAV: { group: string; items: { value: string; label: string; icon: L
     items: [
       { value: "jobs", label: "Radna tabla", icon: FolderKanban, roles: ["producer"] },
       { value: "testimonials", label: "Utisci", icon: MessageSquareHeart, roles: ["producer", "marketing"] },
-      { value: "vouchers", label: "Vaučeri", icon: Ticket, roles: ["producer"] },
+      { value: "vouchers", label: "Prodavnica", icon: Ticket, roles: ["producer"] },
       { value: "contracts", label: "Licence", icon: FileText, roles: ["producer"] },
       { value: "rights-protection", label: "Zaštita prava", icon: ShieldCheck, roles: ["producer"] },
       { value: "invoices", label: "Fakture", icon: Receipt, roles: ["producer"] },
@@ -370,7 +370,7 @@ export default function AdminPage() {
             <TestimonialsTab />
           </TabsContent>
 
-          <TabsContent value="vouchers">
+          <TabsContent value="vouchers" forceMount>
             <VouchersTab />
           </TabsContent>
 

@@ -148,7 +148,7 @@ export function playResult(reward: Reward) {
   const t = a.ctx.currentTime + 0.03;
   const note = (n: number) => 440 * Math.pow(2, n / 12); // semitones from A4
 
-  if (reward === "studio_50") {
+  if (reward === "studio_50" || reward === "coins_100" || reward === "coins_50") {
     // bright rising major arpeggio + octave shimmer
     [-5, -1, 2, 7, 11].forEach((n, i) => {
       tone(a, t + i * 0.085, note(n), { type: "triangle", peak: 0.11, decay: 0.9 });

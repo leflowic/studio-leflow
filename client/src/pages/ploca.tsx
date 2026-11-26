@@ -8,10 +8,10 @@ import { SEO } from "@/components/SEO";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { MyVouchersPanel } from "@/components/dashboard/MyVouchersPanel";
-import { Copy, Check, Loader2, ArrowRight, Volume2, VolumeX } from "lucide-react";
+import { Copy, Check, Loader2, ArrowRight, Volume2, VolumeX, Coins } from "lucide-react";
 import { playSpin, playResult, primeAudio, isSoundOn, setSoundOn } from "@/components/spin/spin-sound";
 import {
-  RecordDisc, PRIZES, ICONS, sectorsFor, rotationFor, fmtDate,
+  RecordDisc, PRIZES, ICONS, SECTORS, COIN_AMOUNT, isBigWin, rotationFor, fmtDate,
   type SpinResult, type SpinToday, type Reward,
 } from "@/components/spin/spin-shared";
 
@@ -45,7 +45,9 @@ export default function PlocaPage() {
   const { data: history } = useQuery<Array<{ date: string; reward: Reward; title: string }>>({ queryKey: ["/api/spin/history"], enabled: verified });
 
   const on = data && data.enabled ? data : null;
-  const sectors = useMemo(() => sectorsFor(on ? on.studioPrizeEnabled : true), [on?.studioPrizeEnabled]); // eslint-disable-line react-hooks/exhaustive-deps
+  const sectors = SECTORS;
+  const [balance, setBalance] = useState<number | null>(null);
+  useEffect(() => { if (on) setBalance(on.balance); }, [on?.balance]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const [rotation, setRotation] = useState(0);
   const [landed, setLanded] = useState<number | null>(null);
@@ -69,8 +71,8 @@ export default function PlocaPage() {
   }, [on, spinning, jitter, sectors]);
 
   const spin = useMutation({
-    mutationFn: async () => (await apiRequest("POST", "/api/spin")).json() as Promise<{ created: boolean; result: SpinResult }>,
-    onSuccess: ({ result }) => {
+    mutationFn: async () => (await apiRequest("POST", "/api/spin")).json() as Promise<{ created: boolean; result: SpinResult; coins: number; balance: number }>,
+    onSuccess: ({ result, balance: newBalance }) => {
       settledRef.current = true;
       setSpinning(true);
       const { rotation: next, index } = rotationFor(sectors, result.reward, rotation, reduced ? 1 : 6, jitter);
@@ -80,8 +82,9 @@ export default function PlocaPage() {
       window.setTimeout(() => {
         setSpinning(false);
         setRevealed(result);
+        setBalance(newBalance);
         playResult(result.reward);
-        for (const k of ["/api/spin/today", "/api/spin/history", "/api/game/today", "/api/me/vouchers"]) queryClient.invalidateQueries({ queryKey: [k] });
+        for (const k of ["/api/spin/today", "/api/spin/history", "/api/game/today", "/api/me/coins", "/api/shop"]) queryClient.invalidateQueries({ queryKey: [k] });
       }, reduced ? 700 : SPIN_MS + 150);
     },
     onError: (e: any) => toast({ title: "Ploča nije zavrtena", description: e?.message || "Pokušajte ponovo za minut.", variant: "destructive" }),
@@ -94,7 +97,7 @@ export default function PlocaPage() {
       setRevealed(null);
       setLanded(null);
       settledRef.current = false;
-      for (const k of ["/api/spin/today", "/api/spin/history", "/api/game/today", "/api/me/vouchers"]) await queryClient.invalidateQueries({ queryKey: [k] });
+      for (const k of ["/api/spin/today", "/api/spin/history", "/api/game/today", "/api/me/coins", "/api/shop"]) await queryClient.invalidateQueries({ queryKey: [k] });
       toast({ title: "Ploča je resetovana", description: "Možete ponovo da zavrtite." });
     },
     onError: () => toast({ title: "Reset nije uspeo", variant: "destructive" }),
@@ -139,14 +142,13 @@ export default function PlocaPage() {
           {busy && <Loader2 className="w-4 h-4 animate-spin" />}
           {busy ? "Ploča se vrti..." : "Zavrti ploču"}
         </Button>
-        {on?.studioNote && <p className="text-xs text-muted-foreground mt-3">{on.studioNote}</p>}
       </div>
     );
   } else {
     panel = (
       <div className="mt-6" aria-live="polite">
         <p className="text-xs text-muted-foreground">Danas ti je palo</p>
-        <p className={`text-2xl font-semibold mt-1 ${result.reward === "studio_50" ? "text-primary" : ""}`}>{result.title}</p>
+        <p className={`text-2xl font-semibold mt-1 ${isBigWin(result.reward) || COIN_AMOUNT[result.reward] ? "text-primary" : ""} ${COIN_AMOUNT[result.reward] ? "font-mono" : ""}`}>{result.title}</p>
         <p className="text-sm text-muted-foreground mt-1">{result.detail}</p>
 
         {result.voucher && (
@@ -164,6 +166,9 @@ export default function PlocaPage() {
             <Link href="/kontakt"><Button size="sm" className="mt-3">Zakažite termin</Button></Link>
           </div>
         )}
+        {COIN_AMOUNT[result.reward] && on?.shopEnabled && (
+          <Link href="/prodavnica"><Button variant="outline" className="mt-5">Otvori prodavnicu <ArrowRight className="w-4 h-4" /></Button></Link>
+        )}
         {result.reward === "extra_listen" && <Link href="/igra"><Button variant="outline" className="mt-5">Idi na Pogodi Pesmu <ArrowRight className="w-4 h-4" /></Button></Link>}
         {result.reward === "feature_post" && <Link href="/zajednica"><Button variant="outline" className="mt-5">Pogledaj zajednicu <ArrowRight className="w-4 h-4" /></Button></Link>}
 
@@ -180,12 +185,9 @@ export default function PlocaPage() {
     );
   }
 
-  const studioOn = on ? on.studioPrizeEnabled : true;
-  const prizes = PRIZES.filter(p => !p.studio || studioOn);
-
   return (
     <div className="min-h-screen bg-background">
-      <SEO title="Ploča dana - Studio LeFlow" description="Jednom dnevno zavrti ploču i osvoji nagradu - do 50% popusta na snimanje i mix/master." noIndex />
+      <SEO title="Ploča dana - Studio LeFlow" description="Jednom dnevno zavrti ploču i skupljaj Studio Coins za popuste u studiju." noIndex />
 
       <div className="container mx-auto px-4 max-w-5xl">
         {/* Stage */}
@@ -209,8 +211,15 @@ export default function PlocaPage() {
           <div>
             <h1 className="text-4xl md:text-5xl font-semibold">Ploča dana</h1>
             <p className="text-lg text-muted-foreground mt-3 max-w-md">
-              Jednom dnevno zavrti ploču. Igla bira nagradu - od dodatnog slušanja u igri do 50% popusta u studiju.
+              Jednom dnevno zavrti ploču i skupljaj Studio Coins (SC). U prodavnici ih menjaš za popuste u studiju i druge nagrade.
             </p>
+            {verified && balance !== null && (
+              <Link href="/prodavnica" className="inline-flex items-center gap-2 mt-5 rounded-full border border-border px-3.5 h-9 text-sm hover:border-primary/50 transition-colors">
+                <Coins className="w-4 h-4 text-primary" />
+                <span className="text-muted-foreground">Novčanik</span>
+                <span className="font-mono font-semibold">{balance} SC</span>
+              </Link>
+            )}
             {panel}
           </div>
         </section>
@@ -219,25 +228,22 @@ export default function PlocaPage() {
         <section className="py-10 border-t border-border/60" aria-labelledby="prizes-title">
           <h2 id="prizes-title" className="text-xl font-semibold">Šta može da padne</h2>
           <ul className="mt-6 grid sm:grid-cols-2 gap-3">
-            {prizes.map(p => {
+            {PRIZES.map(p => {
               const Icon = ICONS[p.reward];
-              const soldOut = p.studio && on && on.studioPrizesLeft <= 0;
               return (
-                <li key={p.reward} className={`rounded-xl border p-4 flex gap-3 ${p.studio ? "border-primary/40 bg-primary/5 sm:col-span-2" : "border-border/60 bg-card"}`}>
-                  <Icon className={`w-5 h-5 shrink-0 mt-0.5 ${p.studio ? "text-primary" : "text-muted-foreground"}`} />
+                <li key={p.reward} className={`rounded-xl border p-4 flex gap-3 ${p.big ? "border-primary/40 bg-primary/5" : "border-border/60 bg-card"}`}>
+                  <Icon className={`w-5 h-5 shrink-0 mt-0.5 ${p.big || COIN_AMOUNT[p.reward] ? "text-primary" : "text-muted-foreground"}`} />
                   <div className="min-w-0">
-                    <p className="font-medium">{p.title}</p>
+                    <p className={`font-medium ${COIN_AMOUNT[p.reward] ? "font-mono" : ""}`}>{p.title}</p>
                     <p className="text-sm text-muted-foreground mt-0.5">{p.detail}</p>
-                    {p.studio && on && (
-                      <p className="text-xs font-mono mt-2 text-muted-foreground">
-                        {soldOut ? "Ovog meseca su oba osvojena - novi od prvog u mesecu" : `Ovog meseca još ${on.studioPrizesLeft} od ${on.studioPrizesPerMonth}`}
-                      </p>
-                    )}
                   </div>
                 </li>
               );
             })}
           </ul>
+          <p className="text-sm text-muted-foreground mt-5">
+            Coine dobijaš i za svaku pogođenu pesmu u igri <Link href="/igra" className="text-primary hover:underline underline-offset-4">Pogodi Pesmu</Link> (+10 SC).
+          </p>
         </section>
 
         {/* Personal history */}
@@ -269,8 +275,8 @@ export default function PlocaPage() {
             <li>Ploču vrtiš jednom dnevno. Nova te čeka posle ponoći.</li>
             <li>Sa istog interneta (iste kuće ili istog telefona) ploča može da se zavrti jednom dnevno, bez obzira na to koliko naloga imate.</li>
             <li>Nagrada se izvlači nasumično. Polja na ploči su tu zbog izgleda - ne pokazuju koliko je koja nagrada verovatna.</li>
-            <li>Popust od 50% može da osvoji nalog star bar 7 dana, i to jednom godišnje po osobi.</li>
-            <li>Vaučer važi samo za tvoj nalog - ne možeš da ga pokloniš drugome niti da ga zameniš za novac.</li>
+            <li>Studio Coins su samo za ovaj sajt: ne mogu da se kupe, prodaju, poklone drugome niti zamene za novac.</li>
+            <li>Popuste iz prodavnice mogu da kupe nalozi stari bar 7 dana. Vaučer važi samo za tvoj nalog.</li>
           </ul>
           <Link href="/pravila#ploca-dana" className="inline-flex items-center gap-1 text-sm text-primary hover:underline underline-offset-4 mt-4">
             Sva pravila <ArrowRight className="w-3.5 h-3.5" />

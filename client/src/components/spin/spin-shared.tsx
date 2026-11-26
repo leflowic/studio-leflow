@@ -1,34 +1,41 @@
-import { Headphones, TrendingUp, Minus, Pin, Ticket } from "lucide-react";
+import { Headphones, TrendingUp, Minus, Pin, Ticket, Coins } from "lucide-react";
 import leflowLogo from "@/assets/leflow-logo.png";
 
 // Shared bits for the "Ploča dana" page (/ploca). The server decides every
 // reward (POST /api/spin, see server/spin.ts); the record here is only the
 // animation. Its 8 sectors are visual and do NOT reflect the real odds.
 
-export type Reward = "studio_50" | "extra_listen" | "feature_post" | "points" | "nothing";
+export type Reward =
+  | "coins_5" | "coins_10" | "coins_25" | "coins_50" | "coins_100"
+  | "extra_listen" | "feature_post" | "nothing"
+  | "studio_50" | "points"; // retired, history only
 export type SpinResult = { reward: Reward; title: string; detail: string; voucher: { code: string; expiresAt: string } | null };
 export type SpinToday =
   | { enabled: false }
-  | {
-      enabled: true; date: string; spun: boolean; result: SpinResult | null;
-      studioPrizeEnabled: boolean; studioPrizesLeft: number; studioPrizesPerMonth: number; studioNote: string | null;
-    };
+  | { enabled: true; date: string; spun: boolean; result: SpinResult | null; balance: number; shopEnabled: boolean };
+
+export const COIN_AMOUNT: Partial<Record<Reward, number>> = { coins_5: 5, coins_10: 10, coins_25: 25, coins_50: 50, coins_100: 100 };
+export const isCoin = (r: Reward) => r in COIN_AMOUNT;
+export const isBigWin = (r: Reward) => r === "coins_50" || r === "coins_100" || r === "studio_50";
 
 export const ICONS: Record<Reward, React.ElementType> = {
+  coins_5: Coins, coins_10: Coins, coins_25: Coins, coins_50: Coins, coins_100: Coins,
   extra_listen: Headphones, points: TrendingUp, nothing: Minus, feature_post: Pin, studio_50: Ticket,
 };
 
 /** Prize list shown on the page - keep in sync with BASE_WEIGHTS in server/spin.ts. */
-export const PRIZES: Array<{ reward: Reward; title: string; detail: string; studio?: boolean }> = [
-  { reward: "studio_50", title: "50% popusta na snimanje + mix/master", detail: "Vaučer za jedan projekat, važi 60 dana. Retko - najviše 2 mesečno na celom sajtu.", studio: true },
+export const PRIZES: Array<{ reward: Reward; title: string; detail: string; big?: boolean }> = [
+  { reward: "coins_100", title: "+100 SC", detail: "Glavni dobitak. Retko.", big: true },
+  { reward: "coins_50", title: "+50 SC", detail: "Odličan dobitak." },
+  { reward: "coins_25", title: "+25 SC", detail: "Lep dobitak." },
+  { reward: "coins_10", title: "+10 SC", detail: "Studio Coins za prodavnicu." },
+  { reward: "coins_5", title: "+5 SC", detail: "Studio Coins za prodavnicu." },
   { reward: "extra_listen", title: "+1 slušanje u Pogodi Pesmu", detail: "Jedno slušanje više u današnjoj igri." },
   { reward: "feature_post", title: "Istaknuta objava", detail: "Tvoja poslednja objava stoji na vrhu zajednice 24 sata." },
   { reward: "nothing", title: "Prazna strana", detail: "Ovaj put ništa. Ploča se okreće ponovo sutra." },
 ];
 
-export function sectorsFor(studioOn: boolean): Reward[] {
-  return ["extra_listen", "nothing", "feature_post", "nothing", "extra_listen", "nothing", "feature_post", studioOn ? "studio_50" : "nothing"];
-}
+export const SECTORS: Reward[] = ["coins_5", "coins_25", "nothing", "coins_10", "extra_listen", "coins_50", "feature_post", "coins_100"];
 
 export const fmtDate = (d: string) => {
   const x = new Date(d);
@@ -92,11 +99,20 @@ export function RecordDisc({ sectors, rotation, spinMs, highlight }: {
           const Icon = ICONS[r];
           const mid = i * deg + deg / 2 - 90;
           const a = mid * (Math.PI / 180);
+          const coins = COIN_AMOUNT[r];
+          const color = isBigWin(r) ? "hsl(32 42% 62%)" : "rgba(255,255,255,0.6)";
           return (
-            <g key={i} transform={`translate(${Math.cos(a) * 112} ${Math.sin(a) * 112}) rotate(${mid + 90})`}>
-              <foreignObject x="-11" y="-11" width="22" height="22">
-                <Icon width={22} height={22} strokeWidth={1.75} color={r === "studio_50" ? "hsl(32 42% 62%)" : "rgba(255,255,255,0.55)"} />
-              </foreignObject>
+            <g key={i} transform={`translate(${Math.cos(a) * 110} ${Math.sin(a) * 110}) rotate(${mid + 90})`}>
+              {coins ? (
+                <>
+                  <text y="2" textAnchor="middle" fontSize="19" fontWeight="600" fill={color} fontFamily="'Geist Mono', ui-monospace, monospace">{coins}</text>
+                  <text y="15" textAnchor="middle" fontSize="8" fontWeight="600" letterSpacing="1" fill={color} fillOpacity="0.75" fontFamily="'Geist Mono', ui-monospace, monospace">SC</text>
+                </>
+              ) : (
+                <foreignObject x="-11" y="-11" width="22" height="22">
+                  <Icon width={22} height={22} strokeWidth={1.75} color={color} />
+                </foreignObject>
+              )}
             </g>
           );
         })}

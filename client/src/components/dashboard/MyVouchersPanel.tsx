@@ -7,7 +7,7 @@ import { PanelCard } from "@/components/ui/panel-card";
 const fmtDate = (d: string) => { const x = new Date(d); const p = (n: number) => String(n).padStart(2, "0"); return `${p(x.getDate())}.${p(x.getMonth() + 1)}.${x.getFullYear()}.`; };
 
 
-type MyVoucher = { id: number; code: string; type: string; expiresAt: string; redeemedAt: string | null; createdAt: string };
+type MyVoucher = { id: number; code: string; type: string; title?: string | null; expiresAt: string; redeemedAt: string | null; createdAt: string };
 
 const TYPE_LABEL: Record<string, string> = { studio_50: "50% popusta na snimanje + mix/master" };
 
@@ -27,7 +27,7 @@ export function MyVouchersPanel() {
           return (
             <li key={v.id} className="flex flex-wrap items-center gap-3 px-6 py-4">
               <div className="flex-1 min-w-0">
-                <p className={`text-sm font-medium ${active ? "" : "text-muted-foreground"}`}>{TYPE_LABEL[v.type] ?? v.type}</p>
+                <p className={`text-sm font-medium ${active ? "" : "text-muted-foreground"}`}>{v.title ?? TYPE_LABEL[v.type] ?? "Vaučer"}</p>
                 <p className="text-xs text-muted-foreground mt-0.5">{status}</p>
               </div>
               <div className="flex items-center gap-1">
