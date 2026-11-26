@@ -1,23 +1,25 @@
 // Trusted client IP for anti-abuse limits (Ploča dana, Pogodi Pesmu, rate limits).
 //
-// The leftmost X-Forwarded-For entry is whatever the browser sent, so anyone
-// can forge it. Proxies *append*, so we walk the list from the right and skip
-// hops that are our own infrastructure: private/CGNAT ranges (Railway's
-// internal network) and Cloudflare's published edge ranges (when the domain is
-// proxied through Cloudflare, Railway sees a Cloudflare address, and Cloudflare
-// has appended the real visitor just left of it). The first hop that is neither
-// is the visitor.
+// How Railway forwards a request (measured in production 2026-11-26 with a
+// temporary echo endpoint):
+//   - Railway's edge DROPS any X-Forwarded-For the visitor sends and writes its
+//     own: "<address that connected to Railway>, <Railway's own edge address>".
+//     The last hop is Railway's edge (public addresses, e.g. AS60068) - not the
+//     visitor. The old "rightmost public hop" rule therefore returned Railway's
+//     edge for everyone, lumping visitors together in every per-IP limit.
+//   - So the visitor (or whoever connected) is the hop LEFT of the last one.
+//   - Behind Cloudflare, the address that connected to Railway is a Cloudflare
+//     edge; the real visitor is in the CF-Connecting-IP header. That header is
+//     only trusted when the connecting address really is a Cloudflare edge -
+//     sent straight to Railway it is ignored (anyone can set it).
 //
-// A visitor can't promote a forged hop: whatever they send stays left of the
-// address our edge appends for them, and their own address is not in a
-// trusted range.
-//
-// Express uses the same rule (`app.set("trust proxy", isTrustedProxy)` in
-// index.ts), so `req.ip` - and every express-rate-limit limiter keyed on it -
-// gets the same visitor address as getTrustedClientIp().
+// index.ts overrides req.ip with this value, so express-rate-limit and every
+// other req.ip user get the same visitor address.
 //
 // Cloudflare ranges: https://www.cloudflare.com/ips-v4 and /ips-v6 (checked
 // 2026-11-26). They change rarely; update this list if Cloudflare announces new ones.
+
+import net from "node:net";
 
 const PRIVATE_V4 = [/^10\./, /^127\./, /^192\.168\./, /^172\.(1[6-9]|2\d|3[01])\./, /^100\.(6[4-9]|[7-9]\d|1[01]\d|12[0-7])\./, /^169\.254\./, /^0\./];
 
@@ -65,8 +67,7 @@ function v6ToBigInt(ip: string): bigint | null {
 
 const CF_V4 = CLOUDFLARE_V4.map(c => {
   const [base, bits] = c.split("/");
-  const b = Number(bits);
-  return { base: v4ToInt(base!)!, size: 2 ** (32 - b) };
+  return { base: v4ToInt(base!)!, size: 2 ** (32 - Number(bits)) };
 });
 const CF_V6 = CLOUDFLARE_V6.map(c => {
   const [base, bits] = c.split("/");
@@ -90,18 +91,29 @@ function isPrivate(raw: string): boolean {
   return lower === "::1" || lower.startsWith("fc") || lower.startsWith("fd") || lower.startsWith("fe80");
 }
 
-/** Our own infrastructure: Railway's internal network or a Cloudflare edge. */
-export function isTrustedProxy(raw: string): boolean {
-  return isPrivate(raw) || isCloudflareIp(raw);
-}
-
 export function getTrustedClientIp(req: any): string | null {
   const xff = req.headers?.["x-forwarded-for"];
-  const hops = typeof xff === "string" ? xff.split(",").map((h: string) => h.trim()).filter(Boolean) : [];
-  for (let i = hops.length - 1; i >= 0; i--) {
-    const hop = hops[i]!;
-    if (!isTrustedProxy(hop)) return normalize(hop);
+  const hops: string[] = typeof xff === "string" ? xff.split(",").map((h: string) => normalize(h)).filter(Boolean) : [];
+
+  // Drop the last hop (Railway's own edge) when there is more than one, then
+  // skip any internal hops: what remains on the right is who connected.
+  const candidates = hops.length > 1 ? hops.slice(0, -1) : hops;
+  let peer: string | null = null;
+  for (let i = candidates.length - 1; i >= 0; i--) {
+    if (!isPrivate(candidates[i]!)) { peer = candidates[i]!; break; }
   }
-  const direct = String(req.socket?.remoteAddress ?? "");
-  return direct && !isTrustedProxy(direct) ? normalize(direct) : null;
+  if (!peer) {
+    const direct = normalize(String(req.socket?.remoteAddress ?? ""));
+    peer = direct && !isPrivate(direct) ? direct : null;
+  }
+  if (!peer) return null;
+
+  // Through Cloudflare: the real visitor is in CF-Connecting-IP - trusted only
+  // when the connection really came from a Cloudflare edge.
+  if (isCloudflareIp(peer)) {
+    const cf = req.headers?.["cf-connecting-ip"];
+    const ip = typeof cf === "string" ? normalize(cf) : "";
+    return ip && net.isIP(ip) && !isPrivate(ip) ? ip : null;
+  }
+  return peer;
 }

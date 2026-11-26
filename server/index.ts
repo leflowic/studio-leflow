@@ -1,5 +1,5 @@
 import express, { type Request, Response, NextFunction } from "express";
-import { isTrustedProxy } from "./client-ip";
+import { getTrustedClientIp } from "./client-ip";
 import compression from "compression";
 import path from "path";
 import { registerRoutes } from "./routes";
@@ -703,11 +703,16 @@ app.use('/public', express.static(path.join(process.cwd(), 'public'), {
   }
 }));
 
-// Trust proxy: req.ip is the first X-Forwarded-For hop (from the right) that is
-// not our own infrastructure - Railway's internal network or a Cloudflare edge.
-// Same rule as getTrustedClientIp(), so every rate limiter keys on the real
-// visitor with or without Cloudflare in front.
-app.set('trust proxy', (addr: string) => isTrustedProxy(addr));
+app.set('trust proxy', 1);
+// Express's own req.ip would be Railway's edge (it appends itself as the last
+// X-Forwarded-For hop), so every visitor would share a handful of addresses.
+// Replace it with the real visitor (handles Cloudflare too) before any route
+// or rate limiter reads it.
+app.use((req, _res, next) => {
+  const ip = getTrustedClientIp(req) ?? String(req.socket?.remoteAddress ?? "unknown");
+  Object.defineProperty(req, "ip", { value: ip, configurable: true, enumerable: true });
+  next();
+});
 
 declare module 'http' {
   interface IncomingMessage {

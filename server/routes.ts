@@ -229,14 +229,10 @@ const COMMUNITY_MESSAGE_COOLDOWN = 10 * 1000; // 10 sekundi u milisekundama
 
 // Funkcija za dobijanje prave IP adrese klijenta
 function getClientIp(req: any): string | null {
-  // Parsiraj X-Forwarded-For direktno umesto da se oslanjamo samo na Express-ov
-  // req.ip (koji zavisi od tačnog broja "trust proxy" hop-ova). Na Railway-u
-  // req.ip je znao da padne nazad na loopback socket adresu (127.0.0.1/::1),
-  // pa je svaki klik snimao ipAddress: null i "unique clicks" je uvek bio 0.
-  // Prvi IP u X-Forwarded-For listi je pravi klijent.
-  const xff = req.headers?.['x-forwarded-for'];
-  const forwardedIp = typeof xff === 'string' ? (xff.split(',')[0] ?? '').trim() || null : null;
-  const ip = forwardedIp || req.ip || req.socket?.remoteAddress || null;
+  // Same visitor address as every limit uses (client-ip.ts). The old "first
+  // X-Forwarded-For entry" rule would count a Cloudflare edge as the visitor
+  // once the domain is proxied, merging unique smart link clicks.
+  const ip = getTrustedClientIp(req) || null;
 
   // Ignoriši localhost adrese
   if (!ip || ip === '::1' || ip === '127.0.0.1' || ip === '::ffff:127.0.0.1') {
