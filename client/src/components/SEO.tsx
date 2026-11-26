@@ -88,7 +88,7 @@ export function SEO({
     "trap beat srbija",
     "rap snimanje beograd"
   ],
-  ogImage = "/og-image.png",
+  ogImage = "/og-image.png?v=2",
   ogType = "website",
   canonicalUrl,
   structuredData,

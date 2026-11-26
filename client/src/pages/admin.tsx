@@ -1059,7 +1059,7 @@ function MessagesTab() {
     <div className="space-y-6">
       {/* Statistics Cards */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-        <StatTile icon={MessageCircle} iconBg="bg-blue-500/10" iconColor="text-blue-500" label="Ukupno Poruka" value={stats?.totalMessages || 0} loading={statsLoading} />
+        <StatTile icon={MessageCircle} iconBg="bg-primary/10" iconColor="text-primary" label="Ukupno poruka" value={stats?.totalMessages || 0} loading={statsLoading} />
         <StatTile icon={Users} iconBg="bg-primary/10" iconColor="text-primary" label="Ukupno Konverzacija" value={stats?.totalConversations || 0} loading={statsLoading} />
         <StatTile icon={Heart} iconBg="bg-green-500/10" iconColor="text-green-500" label="Aktivne (30 dana)" value={stats?.activeConversations || 0} loading={statsLoading} />
         <StatTile icon={Trash2} iconBg="bg-destructive/10" iconColor="text-destructive" label="Obrisane Poruke" value={stats?.deletedMessages || 0} loading={statsLoading} />
@@ -1659,7 +1659,7 @@ function DashboardTab() {
           />
           <StatTile
             data-testid="card-stat-new-users"
-            icon={UserPlus} iconBg="bg-blue-500/10" iconColor="text-blue-500"
+            icon={UserPlus} iconBg="bg-primary/10" iconColor="text-primary"
             label="Nove Registracije" value={analytics?.newUsers.today || 0}
             sub={`Danas • ${analytics?.newUsers.week || 0} ove nedelje • ${analytics?.newUsers.month || 0} ovog meseca`}
           />
@@ -1757,7 +1757,7 @@ function DashboardTab() {
 function rankMeta(rank: string) {
   const map: Record<string, { label: string; icon: LucideIcon; className: string }> = {
     user: { label: "Korisnik", icon: Users, className: "bg-muted text-muted-foreground border-border" },
-    vip: { label: "VIP", icon: Crown, className: "bg-blue-500/15 text-blue-400 border-blue-500/30" },
+    vip: { label: "VIP", icon: Crown, className: "bg-primary/15 text-primary border-primary/30" },
     legend: { label: "Legenda", icon: Trophy, className: "bg-yellow-500/15 text-yellow-400 border-yellow-500/30" },
     admin: { label: "Admin", icon: Shield, className: "bg-red-500/15 text-red-400 border-red-500/30" },
   };
@@ -1968,7 +1968,7 @@ function UsersTab() {
         <StatTile icon={Users} iconBg="bg-primary/15" iconColor="text-primary" label="Ukupno" value={totalUsers} />
         <StatTile icon={Shield} iconBg="bg-red-500/15" iconColor="text-red-400" label="Admini" value={adminCount} />
         <StatTile icon={ShieldAlert} iconBg="bg-muted" iconColor="text-muted-foreground" label="Banovani" value={bannedCount} />
-        <StatTile icon={BadgeCheck} iconBg="bg-blue-500/15" iconColor="text-blue-400" label="Verifikovani Umetnici" value={verifiedArtistCount} />
+        <StatTile icon={BadgeCheck} iconBg="bg-primary/15" iconColor="text-primary" label="Verifikovani umetnici" value={verifiedArtistCount} />
       </div>
 
       <div className="flex gap-2 flex-wrap items-center">
@@ -2117,7 +2117,7 @@ function UserDetailPanel({
                 )}
                 {user.banned && <Badge variant="destructive" className="text-xs">Banovan</Badge>}
                 {user.isVerifiedArtist && (
-                  <Badge className="bg-blue-500/15 text-blue-400 border-blue-500/30 text-xs">
+                  <Badge className="bg-primary/15 text-primary border-primary/30 text-xs">
                     <BadgeCheck className="w-3 h-3 mr-1" />Verifikovan
                   </Badge>
                 )}

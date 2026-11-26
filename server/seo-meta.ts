@@ -23,7 +23,7 @@ interface PageMeta {
 }
 
 const BASE_URL = "https://studioleflow.com";
-const DEFAULT_IMAGE = `${BASE_URL}/og-image.png`;
+const DEFAULT_IMAGE = `${BASE_URL}/og-image.png?v=2`;
 
 // Must stay in sync with the <SEO> props on each page component
 const STATIC_PAGE_META: Record<string, PageMeta> = {

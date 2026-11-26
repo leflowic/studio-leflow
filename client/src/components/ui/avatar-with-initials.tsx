@@ -21,15 +21,16 @@ function generateColorFromId(id?: number): { bg: string; text: string; bgDark: s
     };
   }
 
+  // Muted studio tones (2026-11 palette) - distinct per user, but no bright blue/purple.
   const colors = [
-    { bg: "hsl(220, 85%, 92%)", bgDark: "hsl(220, 70%, 20%)", text: "hsl(220, 90%, 35%)", textDark: "hsl(220, 85%, 85%)" },  // Blue
-    { bg: "hsl(280, 85%, 92%)", bgDark: "hsl(280, 70%, 20%)", text: "hsl(280, 90%, 35%)", textDark: "hsl(280, 85%, 85%)" },  // Purple
-    { bg: "hsl(340, 85%, 92%)", bgDark: "hsl(340, 70%, 20%)", text: "hsl(340, 90%, 35%)", textDark: "hsl(340, 85%, 85%)" },  // Pink
-    { bg: "hsl(30, 85%, 92%)", bgDark: "hsl(30, 70%, 20%)", text: "hsl(30, 90%, 35%)", textDark: "hsl(30, 85%, 85%)" },   // Orange
-    { bg: "hsl(160, 85%, 92%)", bgDark: "hsl(160, 70%, 20%)", text: "hsl(160, 90%, 30%)", textDark: "hsl(160, 85%, 85%)" },  // Teal
-    { bg: "hsl(120, 85%, 92%)", bgDark: "hsl(120, 70%, 20%)", text: "hsl(120, 90%, 30%)", textDark: "hsl(120, 85%, 85%)" },  // Green
-    { bg: "hsl(50, 85%, 92%)", bgDark: "hsl(50, 70%, 25%)", text: "hsl(50, 90%, 30%)", textDark: "hsl(50, 85%, 85%)" },   // Yellow
-    { bg: "hsl(10, 85%, 92%)", bgDark: "hsl(10, 70%, 20%)", text: "hsl(10, 90%, 35%)", textDark: "hsl(10, 85%, 85%)" },   // Red
+    { bg: "hsl(32, 42%, 90%)", bgDark: "hsl(32, 36%, 19%)", text: "hsl(32, 52%, 30%)", textDark: "hsl(32, 50%, 76%)" },  // hrast
+    { bg: "hsl(14, 40%, 90%)", bgDark: "hsl(14, 34%, 19%)", text: "hsl(14, 50%, 30%)", textDark: "hsl(14, 48%, 76%)" },  // terakota
+    { bg: "hsl(72, 24%, 90%)", bgDark: "hsl(72, 18%, 19%)", text: "hsl(72, 34%, 30%)", textDark: "hsl(72, 32%, 76%)" },  // maslina
+    { bg: "hsl(210, 14%, 90%)", bgDark: "hsl(210, 10%, 19%)", text: "hsl(210, 24%, 30%)", textDark: "hsl(210, 22%, 76%)" },  // škriljac
+    { bg: "hsl(44, 34%, 90%)", bgDark: "hsl(44, 28%, 19%)", text: "hsl(44, 44%, 30%)", textDark: "hsl(44, 42%, 76%)" },  // pesak
+    { bg: "hsl(22, 48%, 90%)", bgDark: "hsl(22, 42%, 19%)", text: "hsl(22, 58%, 30%)", textDark: "hsl(22, 56%, 76%)" },  // rđa
+    { bg: "hsl(145, 16%, 90%)", bgDark: "hsl(145, 10%, 19%)", text: "hsl(145, 26%, 30%)", textDark: "hsl(145, 24%, 76%)" },  // žalfija
+    { bg: "hsl(335, 14%, 90%)", bgDark: "hsl(335, 10%, 19%)", text: "hsl(335, 24%, 30%)", textDark: "hsl(335, 22%, 76%)" },  // šljiva
   ];
 
   const index = id % colors.length;

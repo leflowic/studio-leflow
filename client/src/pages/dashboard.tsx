@@ -82,7 +82,7 @@ type DashboardOverview = {
 
 const statusConfig = {
   waiting:     { label: "Čekanje",  Icon: Clock,        bg: "bg-yellow-500/10", text: "text-yellow-500", dot: "bg-yellow-500" },
-  in_progress: { label: "U toku",   Icon: Loader2,      bg: "bg-blue-500/10",   text: "text-blue-500",   dot: "bg-blue-500" },
+  in_progress: { label: "U toku",   Icon: Loader2,      bg: "bg-primary/10",    text: "text-primary",    dot: "bg-primary" },
   completed:   { label: "Završeno", Icon: CheckCircle2, bg: "bg-green-500/10",  text: "text-green-500",  dot: "bg-green-500" },
   cancelled:   { label: "Otkazano", Icon: XCircle,      bg: "bg-red-500/10",    text: "text-red-500",    dot: "bg-red-500" },
 };

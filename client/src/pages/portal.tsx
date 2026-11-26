@@ -188,7 +188,7 @@ function WaveformPlayer({ version, comments, onAddComment, addingComment, onSeek
               className="absolute top-1/2 -translate-y-1/2 -translate-x-1/2 group z-10"
               style={{ left: `${(c.timestampSeconds / duration) * 100}%` }}
             >
-              <div className={`w-3 h-3 rounded-full border-2 border-zinc-900 transition-transform group-hover:scale-150 ${c.authorType === "producer" ? "bg-amber-500" : c.resolved ? "bg-zinc-500" : "bg-blue-500"}`} />
+              <div className={`w-3 h-3 rounded-full border-2 border-zinc-900 transition-transform group-hover:scale-150 ${c.authorType === "producer" ? "bg-amber-500" : c.resolved ? "bg-zinc-500" : "bg-primary"}`} />
               <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-3 hidden group-hover:block z-20 pointer-events-none">
                 <div className="bg-zinc-800 border border-zinc-700 rounded-lg px-2.5 py-1.5 text-xs whitespace-nowrap max-w-[200px] text-left shadow-xl">
                   <span className="font-mono text-amber-400">{formatTime(c.timestampSeconds)}</span>
@@ -272,7 +272,7 @@ function WaveformPlayer({ version, comments, onAddComment, addingComment, onSeek
 function CommentRow({ comment, onJump }: { comment: PortalComment; onJump: (ts: number) => void }) {
   return (
     <div className={`flex gap-3 p-3 rounded-xl border transition-colors hover:border-zinc-700 ${comment.resolved ? "border-zinc-800/50 opacity-60" : "border-zinc-800"}`}>
-      <div className={`w-2.5 h-2.5 rounded-full mt-1 flex-shrink-0 ${comment.authorType === "producer" ? "bg-amber-500" : "bg-blue-500"}`} />
+      <div className={`w-2.5 h-2.5 rounded-full mt-1 flex-shrink-0 ${comment.authorType === "producer" ? "bg-amber-500" : "bg-primary"}`} />
       <div className="flex-1 min-w-0">
         <div className="flex items-center gap-2 mb-1 flex-wrap">
           <button

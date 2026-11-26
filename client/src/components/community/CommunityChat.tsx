@@ -35,7 +35,7 @@ type CommunityMessageWithUser = {
 const RANK_CONFIG = {
   admin:  { color: "text-red-500",    bg: "bg-red-500",    light: "bg-red-500/10",   icon: Shield,  label: "Admin"  },
   legend: { color: "text-amber-500",  bg: "bg-amber-500",  light: "bg-amber-500/10", icon: Trophy,  label: "Legenda" },
-  vip:    { color: "text-blue-500",   bg: "bg-blue-500",   light: "bg-blue-500/10",  icon: Crown,   label: "VIP"    },
+  vip:    { color: "text-primary",    bg: "bg-primary",    light: "bg-primary/10",  icon: Crown,   label: "VIP"    },
   user:   { color: "text-slate-500",  bg: "bg-slate-400",  light: "bg-muted",        icon: null,    label: ""       },
 };
 
