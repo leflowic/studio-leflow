@@ -49,6 +49,7 @@ import { computeFingerprint, compareFingerprint } from "./audio-fingerprint";
 import rateLimit from "express-rate-limit";
 import { fileTypeFromBuffer } from "file-type";
 import { safeFetchHtml } from "./safe-fetch";
+import { generatePhoneCode, extractPhoneCode, hashPhone, verifyMetaSignature, parseInboundMessages, whatsappConfig, whatsappLink, PHONE_CODE_TTL_MS, SETTING_PHONE_REQUIRED } from "./phone-verify";
 
 // Rate limiters for security
 const loginRateLimiter = rateLimit({
@@ -202,9 +203,10 @@ function setCachedData<T>(key: string, data: T): void {
 }
 
 // Sanitize user object by removing sensitive fields
-function sanitizeUser<T extends Record<string, any>>(user: T): Omit<T, 'password' | 'verificationCode' | 'passwordResetToken' | 'passwordResetExpiry' | 'adminLoginToken' | 'adminLoginExpiry'> {
+function sanitizeUser<T extends Record<string, any>>(user: T): Omit<T, 'password' | 'verificationCode' | 'passwordResetToken' | 'passwordResetExpiry' | 'adminLoginToken' | 'adminLoginExpiry' | 'phoneHash'> {
   const {
     password,
+    phoneHash,
     verificationCode,
     passwordResetToken,
     passwordResetExpiry,
@@ -403,6 +405,7 @@ async function checkMaintenanceMode(req: any, res: any, next: any) {
     '/portal',    // Public client portal links must work even in maintenance
     '/l/',        // Public smart link pages must work even in maintenance
     '/smart-links', // Public music.studioleflow.com hub list must work even in maintenance
+    '/whatsapp/webhook', // Meta delivers account-verification messages at any time
     '/messages',  // Messaging must work in maintenance
     '/ws',        // WebSocket auth must work in maintenance
     '/newsletter/u/', // Unsubscribe links in sent emails must always work
@@ -766,7 +769,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const token = generateToken(user.id);
       
       // SECURITY: Don't expose password hash
-      const { password, ...userWithoutPassword } = user;
+      const { password, phoneHash, ...userWithoutPassword } = user as any;
       res.json({ success: true, user: userWithoutPassword, token });
     } catch (error) {
       console.error("[VERIFY] Verification error:", error);
@@ -919,7 +922,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const { generateToken } = await import("./jwt-auth");
       const token = generateToken(user.id);
       
-      const { password, verificationCode, adminLoginToken, ...userWithoutSensitiveData } = user;
+      const { password, verificationCode, adminLoginToken, phoneHash, ...userWithoutSensitiveData } = user as any;
       res.json({ success: true, user: userWithoutSensitiveData, token });
     } catch (error) {
       console.error("Admin login verify error:", error);
@@ -1624,7 +1627,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.get("/api/admin/users", requireRole("producer"), async (_req, res) => {
     try {
       const allUsers = await storage.getAllUsers();
-      res.json(allUsers.map(({ password, adminLoginToken, adminLoginExpiry, ...safe }) => safe));
+      res.json(allUsers.map(({ password, adminLoginToken, adminLoginExpiry, phoneHash, ...safe }: any) => safe));
     } catch (error) {
       res.status(500).json({ error: "Greška na serveru" });
     }
@@ -3083,7 +3086,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       if (!user) return res.status(404).json({ error: "Korisnik nije pronađen" });
 
-      res.json({ user, projects: userProjects, contracts: userContracts, invoices: userInvoices });
+      res.json({ user: sanitizeUser(user), projects: userProjects, contracts: userContracts, invoices: userInvoices });
     } catch (error: any) {
       console.error("[KATASTAR] Get client profile error:", error);
       res.status(500).json({ error: "Greška pri učitavanju profila klijenta" });
@@ -4313,7 +4316,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   const clipFetchCounts = new Map<string, number>();
 
   // GET /api/game/clip - proxy today's audio clip through the server to avoid browser CORS on Cloudinary
-  app.get("/api/game/clip", requireVerifiedEmail, async (req, res) => {
+  app.get("/api/game/clip", requireVerifiedEmail, requirePhoneForGames, async (req, res) => {
     try {
       const userId = req.jwtUser!.id;
       const today = new Intl.DateTimeFormat('sv', { timeZone: 'Europe/Belgrade' }).format(new Date());
@@ -4422,7 +4425,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.post("/api/spin", spinRateLimiter, requireVerifiedEmail, async (req, res) => {
+  app.post("/api/spin", spinRateLimiter, requireVerifiedEmail, requirePhoneForGames, async (req, res) => {
     try {
       const userId = req.jwtUser!.id;
       const today = belgradeToday();
@@ -4712,6 +4715,99 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // ─── WhatsApp account verification (prize games) ─────────────────────────
+  // See server/phone-verify.ts. The gate only blocks when the admin switch is on
+  // AND the WhatsApp side is configured, so a half-finished setup never locks
+  // players out.
+  // function declarations (hoisted): the game/spin routes above use them
+  async function phoneRequired() {
+    return whatsappConfig().configured && (await storage.getSetting(SETTING_PHONE_REQUIRED))?.value === "true";
+  }
+
+  async function requirePhoneForGames(req: any, res: any, next: any) {
+    try {
+      if (!(await phoneRequired())) return next();
+      const u = await storage.getUser(req.jwtUser!.id);
+      if (u?.phoneVerifiedAt) return next();
+      return res.status(403).json({ error: "Za igre sa nagradama potvrdi nalog preko WhatsApp-a. Traje par sekundi.", needsPhone: true });
+    } catch (e) {
+      console.error("[Phone] gate error:", e);
+      return next(); // never lock players out because of our own error
+    }
+  }
+
+  const phoneStartLimiter = rateLimit({
+    windowMs: 60 * 60 * 1000,
+    max: 10,
+    keyGenerator: (req: any) => `phone:${req.jwtUser?.id ?? "anon"}`,
+    message: { error: "Previše pokušaja. Pokušajte ponovo za sat vremena." },
+    standardHeaders: true,
+    legacyHeaders: false,
+  });
+
+  app.get("/api/phone-verify/status", requireVerifiedEmail, async (req, res) => {
+    try {
+      const u = await storage.getUser(req.jwtUser!.id);
+      res.json({ required: await phoneRequired(), configured: whatsappConfig().configured, verified: !!u?.phoneVerifiedAt });
+    } catch (e) {
+      console.error("[Phone] status error:", e);
+      res.status(500).json({ error: "Greška na serveru" });
+    }
+  });
+
+  app.post("/api/phone-verify/start", requireVerifiedEmail, phoneStartLimiter, async (req, res) => {
+    try {
+      const cfg = whatsappConfig();
+      if (!cfg.configured) return res.status(503).json({ error: "Potvrda preko WhatsApp-a trenutno nije dostupna." });
+      const userId = req.jwtUser!.id;
+      const u = await storage.getUser(userId);
+      if (u?.phoneVerifiedAt) return res.json({ verified: true });
+      let code = generatePhoneCode();
+      const expiresAt = new Date(Date.now() + PHONE_CODE_TTL_MS);
+      for (let i = 0; i < 3; i++) {
+        try { await storage.createPhoneCode(userId, code, expiresAt); break; }
+        catch (e: any) { if (e?.code !== "23505" || i === 2) throw e; code = generatePhoneCode(); }
+      }
+      res.json({ verified: false, code, link: whatsappLink(cfg.number, code), expiresAt });
+    } catch (e) {
+      console.error("[Phone] start error:", e);
+      res.status(500).json({ error: "Kod nije napravljen. Pokušajte ponovo." });
+    }
+  });
+
+  // Meta webhook verification handshake (done once when the webhook is set up)
+  app.get("/api/whatsapp/webhook", (req, res) => {
+    const cfg = whatsappConfig();
+    if (cfg.verifyToken && req.query["hub.mode"] === "subscribe" && req.query["hub.verify_token"] === cfg.verifyToken) {
+      return res.status(200).send(String(req.query["hub.challenge"] ?? ""));
+    }
+    res.sendStatus(403);
+  });
+
+  // Incoming WhatsApp messages. Always answer 200 quickly (Meta retries otherwise);
+  // anything without a valid signature is ignored.
+  app.post("/api/whatsapp/webhook", async (req, res) => {
+    const cfg = whatsappConfig();
+    if (!cfg.configured || !verifyMetaSignature(req.rawBody as Buffer, req.get("x-hub-signature-256") ?? undefined, cfg.appSecret)) {
+      return res.sendStatus(cfg.configured ? 401 : 404);
+    }
+    res.sendStatus(200);
+    try {
+      for (const m of parseInboundMessages(req.body)) {
+        const code = extractPhoneCode(m.text);
+        if (!code) continue;
+        const r = await storage.consumePhoneCode(code, hashPhone(m.from, process.env.SESSION_SECRET || "dev-secret"));
+        if (r.userId && (r.status === "ok" || r.status === "already")) {
+          broadcastToUser(r.userId, { type: "phone_verified" });
+        } else if (r.userId && r.status === "phone_taken") {
+          broadcastToUser(r.userId, { type: "phone_verify_failed", reason: "phone_taken" });
+        }
+      }
+    } catch (e) {
+      console.error("[Phone] webhook error:", e);
+    }
+  });
+
   // ─── Admin "Zaštita igara" (anti-abuse for Pogodi Pesmu + Ploča dana) ─────
   const maskIp = (ip: string) => ip.includes(":")
     ? ip.split(":").slice(0, 2).join(":") + ":…"
@@ -4719,6 +4815,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
   const ipLimitSwitches = async () => ({
     gameIpLimit: (await storage.getSetting(SETTING_GAME_IP_LIMIT))?.value !== "false",
     spinIpLimit: (await storage.getSetting(SETTING_SPIN_IP_LIMIT))?.value !== "false",
+    phoneRequired: (await storage.getSetting(SETTING_PHONE_REQUIRED))?.value === "true",
+    phoneConfigured: whatsappConfig().configured,
   });
 
   app.get("/api/admin/anti-abuse/overview", requireRole("producer"), async (_req, res) => {
@@ -4747,9 +4845,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.put("/api/admin/anti-abuse/settings", requireAdmin, async (req, res) => {
     try {
-      const { gameIpLimit, spinIpLimit } = req.body ?? {};
+      const { gameIpLimit, spinIpLimit, phoneRequired: wantPhone } = req.body ?? {};
       if (typeof gameIpLimit === "boolean") await storage.setSetting(SETTING_GAME_IP_LIMIT, String(gameIpLimit));
       if (typeof spinIpLimit === "boolean") await storage.setSetting(SETTING_SPIN_IP_LIMIT, String(spinIpLimit));
+      if (typeof wantPhone === "boolean") await storage.setSetting(SETTING_PHONE_REQUIRED, String(wantPhone));
       res.json(await ipLimitSwitches());
     } catch {
       res.status(500).json({ error: "Greška na serveru" });
@@ -4832,7 +4931,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   // POST /api/game/listen - spend one listen before the client plays the snippet.
   // The counter lives in the DB, so clearing browser storage gives nothing.
-  app.post("/api/game/listen", requireVerifiedEmail, async (req, res) => {
+  app.post("/api/game/listen", requireVerifiedEmail, requirePhoneForGames, async (req, res) => {
     try {
       const userId = req.jwtUser!.id;
       const today = new Intl.DateTimeFormat('sv', { timeZone: 'Europe/Belgrade' }).format(new Date());
@@ -4855,7 +4954,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // POST /api/game/guess
-  app.post("/api/game/guess", requireVerifiedEmail, async (req, res) => {
+  app.post("/api/game/guess", requireVerifiedEmail, requirePhoneForGames, async (req, res) => {
     try {
       const { answer } = req.body;
       if (!answer || typeof answer !== 'string' || !answer.trim()) {

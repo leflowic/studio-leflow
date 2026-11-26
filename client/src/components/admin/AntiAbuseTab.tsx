@@ -23,7 +23,7 @@ type Overview = {
   players: Array<{ userId: number; username: string; listensUsed: number; answered: boolean; correct: boolean | null; answer: string | null; guessedAt: string | null }>;
   spins: Array<{ userId: number; username: string; reward: string; title: string; createdAt: string }>;
   sharedIps: Array<{ ip: string; lastSeen: string; users: Array<{ id: number; username: string }> }>;
-  switches: { gameIpLimit: boolean; spinIpLimit: boolean };
+  switches: { gameIpLimit: boolean; spinIpLimit: boolean; phoneRequired?: boolean; phoneConfigured?: boolean };
 };
 
 const KEY = ["/api/admin/anti-abuse/overview"];
@@ -71,6 +71,9 @@ export function AntiAbuseTab() {
         {([
           { key: "gameIpLimit", title: "Pogodi Pesmu: jedan odgovor po mreži", desc: "Sprečava da neko proba više odgovora preko dodatnih naloga. Isključite ako se javljaju ljudi sa iste kućne mreže." },
           { key: "spinIpLimit", title: "Ploča dana: jedno okretanje po mreži", desc: "Sprečava vrtenje ploče sa više naloga iz iste kuće ili telefona." },
+          { key: "phoneRequired", title: "Nagradne igre samo za naloge potvrđene preko WhatsApp-a", desc: data.switches.phoneConfigured
+            ? "Ploča dana i Pogodi Pesmu traže da korisnik jednom potvrdi nalog porukom na WhatsApp. Jedan broj = jedan nalog."
+            : "WhatsApp još nije povezan sa sajtom - dok se ne poveže, ovaj prekidač ne blokira nikoga." },
         ] as const).map(r => (
           <label key={r.key} className={`flex items-start justify-between gap-6 px-5 py-4 ${isSuper ? "cursor-pointer" : ""}`}>
             <span>
@@ -78,7 +81,7 @@ export function AntiAbuseTab() {
               <span className="block text-xs text-muted-foreground mt-0.5 max-w-xl">{r.desc}</span>
             </span>
             <Switch
-              checked={data.switches[r.key]} disabled={!isSuper || switchMut.isPending}
+              checked={!!data.switches[r.key]} disabled={!isSuper || switchMut.isPending}
               onCheckedChange={v => switchMut.mutate({ [r.key]: v })} aria-label={r.title}
             />
           </label>

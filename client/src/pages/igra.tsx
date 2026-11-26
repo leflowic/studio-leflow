@@ -12,6 +12,7 @@ import { useToast } from "@/hooks/use-toast";
 import { motion, AnimatePresence } from "framer-motion";
 import { Play, Trophy, Clock, CheckCircle2, XCircle, Lock, Info, ChevronDown, Headphones, Zap, Flame, ArrowRight, Coins } from "lucide-react";
 import { ShareResultButton } from "@/components/game/ShareResultButton";
+import { PhoneVerifyCard, usePhoneGate } from "@/components/phone/PhoneVerifyCard";
 import { cn } from "@/lib/utils";
 
 function getBelgradeMinutes(): number {
@@ -47,6 +48,8 @@ const SOUND_BAR_HEIGHTS = [14, 28, 20, 36, 22, 32, 16, 26, 18];
 
 export default function IgraPage() {
   const { user } = useAuth();
+  // Prize games can require a WhatsApp-verified account (admin switch)
+  const { needsPhone } = usePhoneGate(!!user?.emailVerified);
   // Rank perk: VIP 4, Legenda 5 listens (mirrors RANK_PERKS in server/activity.ts)
   const rankPlays = user?.rank === "legend" || user?.rank === "admin" ? 5 : user?.rank === "vip" ? 4 : 3;
   const queryClient = useQueryClient();
@@ -563,6 +566,7 @@ export default function IgraPage() {
 
           {/* Left: game - 3/5 */}
           <div className="lg:col-span-3 space-y-4">
+            {needsPhone && <PhoneVerifyCard onVerified={() => queryClient.invalidateQueries({ queryKey: ["/api/game/today"] })} />}
 
             {/* Instructions accordion */}
             <div className="rounded-2xl border border-border/60 bg-card overflow-hidden">

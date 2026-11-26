@@ -286,7 +286,7 @@ export function setupAuth(app: Express) {
       console.log('[AUTH] Login successful for user:', user.username);
 
       const token = generateToken(user.id);
-      const { password: _, ...userWithoutPassword } = user;
+      const { password: _, phoneHash: _ph, ...userWithoutPassword } = user as any;
 
       res.status(200).json({
         ...userWithoutPassword,
@@ -330,7 +330,7 @@ export function setupAuth(app: Express) {
       }
 
       const token = generateToken(user.id);
-      const { password: _, ...userWithoutPassword } = user;
+      const { password: _, phoneHash: _ph, ...userWithoutPassword } = user as any;
 
       res.status(200).json({
         ...userWithoutPassword,
@@ -352,8 +352,9 @@ export function setupAuth(app: Express) {
   app.get("/api/user", (req, res) => {
     if (!req.jwtUser) return res.status(401).json({ error: "Niste prijavljeni. Osvežite stranicu i prijavite se ponovo." });
     
-    const { password, ...userWithoutPassword } = req.jwtUser;
-    res.json(userWithoutPassword);
+    // phoneHash never leaves the server - the client only needs to know whether it's verified
+    const { password, phoneHash, ...userWithoutPassword } = req.jwtUser as any;
+    res.json({ ...userWithoutPassword, phoneVerified: !!userWithoutPassword.phoneVerifiedAt });
   });
 
   app.post("/api/forgot-password", async (req, res) => {

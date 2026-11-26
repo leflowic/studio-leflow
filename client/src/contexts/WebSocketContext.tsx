@@ -28,6 +28,8 @@ function showBrowserNotification(title: string, body: string, senderUsername?: s
 
 export type WebSocketMessage =
   | { type: 'online_status'; userId: number; online: boolean }
+  | { type: 'phone_verified' }
+  | { type: 'phone_verify_failed'; reason: string }
   | { type: 'typing_start'; userId: number }
   | { type: 'typing_stop'; userId: number }
   | { type: 'new_message'; message: any }

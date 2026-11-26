@@ -62,6 +62,7 @@ import {
   messageReads,
   messageReactions,
   userBlocks,
+  phoneVerificationCodes,
   userReports,
   adminMessageAudit,
   contracts,
@@ -174,6 +175,8 @@ export interface IStorage {
   updateUserRole(id: number, role: string): Promise<void>;
   banUser(id: number): Promise<void>;
   blockUser(blockerId: number, blockedId: number): Promise<void>;
+  createPhoneCode(userId: number, code: string, expiresAt: Date): Promise<void>;
+  consumePhoneCode(code: string, phoneHash: string): Promise<{ status: "ok" | "invalid" | "phone_taken" | "already"; userId?: number }>;
   unblockUser(blockerId: number, blockedId: number): Promise<void>;
   getBlockState(me: number, other: number): Promise<{ blockedByMe: boolean; blockedMe: boolean }>;
   createUserReport(data: { reporterId: number; reportedId: number; reason: string; note: string | null }): Promise<void>;
@@ -593,6 +596,28 @@ export class DatabaseStorage implements IStorage {
 
   async updateUserRole(id: number, role: string): Promise<void> {
     await db.update(users).set({ role }).where(eq(users.id, id));
+  }
+
+  async createPhoneCode(userId: number, code: string, expiresAt: Date): Promise<void> {
+    // one live code per user - older unused ones stop working
+    await db.delete(phoneVerificationCodes).where(and(eq(phoneVerificationCodes.userId, userId), sql`${phoneVerificationCodes.usedAt} IS NULL`));
+    await db.insert(phoneVerificationCodes).values({ userId, code, expiresAt });
+  }
+
+  async consumePhoneCode(code: string, phoneHash: string): Promise<{ status: "ok" | "invalid" | "phone_taken" | "already"; userId?: number }> {
+    return await db.transaction(async (tx) => {
+      const [row] = await tx.select().from(phoneVerificationCodes)
+        .where(and(eq(phoneVerificationCodes.code, code), sql`${phoneVerificationCodes.usedAt} IS NULL`, sql`${phoneVerificationCodes.expiresAt} > NOW()`))
+        .for("update");
+      if (!row) return { status: "invalid" as const };
+      const [owner] = await tx.select({ id: users.id }).from(users).where(eq(users.phoneHash, phoneHash));
+      if (owner && owner.id !== row.userId) return { status: "phone_taken" as const, userId: row.userId };
+      const [me] = await tx.select({ verified: users.phoneVerifiedAt }).from(users).where(eq(users.id, row.userId));
+      await tx.update(phoneVerificationCodes).set({ usedAt: new Date() }).where(eq(phoneVerificationCodes.id, row.id));
+      if (me?.verified && owner?.id === row.userId) return { status: "already" as const, userId: row.userId };
+      await tx.update(users).set({ phoneVerifiedAt: new Date(), phoneHash }).where(eq(users.id, row.userId));
+      return { status: "ok" as const, userId: row.userId };
+    });
   }
 
   async blockUser(blockerId: number, blockedId: number): Promise<void> {

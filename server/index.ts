@@ -492,6 +492,20 @@ async function runMigrations() {
     await clientSpin.query(`CREATE UNIQUE INDEX IF NOT EXISTS daily_spins_ip_date_unique ON daily_spins(ip_address, spin_date) WHERE ip_address IS NOT NULL;`);
     // Studio Coins + shop
     await clientSpin.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS avatar_frame_until TIMESTAMP;`);
+    // WhatsApp account verification
+    await clientSpin.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS phone_verified_at TIMESTAMP;`);
+    await clientSpin.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS phone_hash TEXT;`);
+    await clientSpin.query(`CREATE UNIQUE INDEX IF NOT EXISTS users_phone_hash_unique ON users(phone_hash) WHERE phone_hash IS NOT NULL;`);
+    await clientSpin.query(`
+      CREATE TABLE IF NOT EXISTS phone_verification_codes (
+        id SERIAL PRIMARY KEY,
+        user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+        code TEXT NOT NULL UNIQUE,
+        expires_at TIMESTAMP NOT NULL,
+        used_at TIMESTAMP,
+        created_at TIMESTAMP NOT NULL DEFAULT NOW()
+      );
+    `);
     await clientSpin.query(`ALTER TABLE vouchers ADD COLUMN IF NOT EXISTS title TEXT;`);
     await clientSpin.query(`ALTER TABLE vouchers ADD COLUMN IF NOT EXISTS percent_off INTEGER;`);
     await clientSpin.query(`
@@ -719,6 +733,14 @@ declare module 'http' {
     rawBody: unknown
   }
 }
+// Meta's WhatsApp webhook can batch several messages - give it more room than
+// the site-wide 10kb (body-parser skips the second parser once a body is read).
+app.use('/api/whatsapp/webhook', express.json({
+  limit: '512kb',
+  verify: (req, _res, buf) => {
+    req.rawBody = buf;
+  }
+}));
 app.use(express.json({
   limit: '10kb',
   verify: (req, _res, buf) => {

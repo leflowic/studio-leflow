@@ -77,6 +77,9 @@ export const users = pgTable("users", {
   notificationPrefs: json("notification_prefs").$type<Record<string, boolean>>(), // per-category opt-outs (see NOTIFICATION_CATEGORIES); missing key = on
   referralCode: text("referral_code").unique(), // "Pozovi prijatelja" link code, created on first request
   lastSeen: timestamp("last_seen"),
+  // WhatsApp account verification (prize games). Only an HMAC of the number is kept.
+  phoneVerifiedAt: timestamp("phone_verified_at"),
+  phoneHash: text("phone_hash").unique(),
   isVerifiedArtist: boolean("is_verified_artist").notNull().default(false),
   availableForCollab: boolean("available_for_collab").notNull().default(false),
   // Opt-in public artist page at /izvodjac/:username (verified artists only)
@@ -325,6 +328,16 @@ export const messages = pgTable("messages", {
   // Composite index for conversation + timestamp (most common query)
   conversationCreatedIdx: index("messages_conversation_created_idx").on(table.conversationId, table.createdAt),
 }));
+
+// One-time codes for WhatsApp account verification (server/phone-verify.ts)
+export const phoneVerificationCodes = pgTable("phone_verification_codes", {
+  id: serial("id").primaryKey(),
+  userId: integer("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  code: text("code").notNull().unique(),
+  expiresAt: timestamp("expires_at").notNull(),
+  usedAt: timestamp("used_at"),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
 
 // Blocks: the blocker no longer receives messages from the blocked user (either
 // direction is refused). Reports: staff review queue in admin → Poruke.

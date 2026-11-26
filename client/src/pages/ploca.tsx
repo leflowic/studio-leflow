@@ -8,6 +8,7 @@ import { SEO } from "@/components/SEO";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { MyVouchersPanel } from "@/components/dashboard/MyVouchersPanel";
+import { PhoneVerifyCard, usePhoneGate } from "@/components/phone/PhoneVerifyCard";
 import { Copy, Check, Loader2, ArrowRight, Volume2, VolumeX, Coins } from "lucide-react";
 import { playSpin, playResult, primeAudio, isSoundOn, setSoundOn } from "@/components/spin/spin-sound";
 import {
@@ -40,6 +41,8 @@ export default function PlocaPage() {
   const { user, isLoading: authLoading } = useAuth();
   const { toast } = useToast();
   const verified = !!user?.emailVerified;
+  // Prize games can require a WhatsApp-verified account (admin switch)
+  const { needsPhone } = usePhoneGate(verified);
 
   const { data, isLoading } = useQuery<SpinToday>({ queryKey: ["/api/spin/today"], enabled: verified });
   const { data: history } = useQuery<Array<{ date: string; reward: Reward; title: string }>>({ queryKey: ["/api/spin/history"], enabled: verified });
@@ -121,7 +124,9 @@ export default function PlocaPage() {
 
   // ── Right-hand panel, by state ──
   let panel: React.ReactNode;
-  if (authLoading || (verified && isLoading)) {
+  if (verified && needsPhone && !(on && on.spun)) {
+    panel = <PhoneVerifyCard />;
+  } else if (authLoading || (verified && isLoading)) {
     panel = <div className="space-y-3 mt-6"><Skeleton className="h-10 w-40 rounded-full" /><Skeleton className="h-4 w-64" /></div>;
   } else if (!user) {
     panel = (
