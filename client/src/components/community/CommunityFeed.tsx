@@ -6,7 +6,7 @@ import { useAuth } from "@/hooks/use-auth";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import { formatDistanceToNow } from "date-fns";
-import { sr } from "date-fns/locale";
+import { srLatn } from "date-fns/locale";
 import { motion, AnimatePresence } from "framer-motion";
 import { Heart, MessageCircle, Music, Image, Users, FileText, Send, Trash2, ChevronDown, ChevronUp, Play, Pause, Upload, X, Share2, BadgeCheck } from "lucide-react";
 import { Link } from "wouter";
@@ -58,10 +58,10 @@ function renderTextWithMentions(text: string) {
 const COLLAB_TAGS = ["Tražim repera", "Tražim vokal", "Tražim beatmakera", "Tražim feat", "Tražim tekstopisca", "Tražim gitaristu"];
 
 const POST_TYPES = [
-  { key: "status", label: "Status", icon: FileText, color: "text-blue-500" },
+  { key: "status", label: "Status", icon: FileText, color: "text-muted-foreground" },
   { key: "audio", label: "Demo", icon: Music, color: "text-primary" },
-  { key: "image", label: "Foto", icon: Image, color: "text-emerald-500" },
-  { key: "collab", label: "Kolaboracija", icon: Users, color: "text-violet-500" },
+  { key: "image", label: "Foto", icon: Image, color: "text-muted-foreground" },
+  { key: "collab", label: "Kolaboracija", icon: Users, color: "text-primary" },
 ];
 
 function AvatarImg({ avatarUrl, username, frameUntil }: { avatarUrl: string | null; username: string; frameUntil?: string | null }) {
@@ -259,7 +259,7 @@ function PostCard({ post, currentUserId, onDeleted, onLikeChanged, onCommentCoun
               {post.isVerifiedArtist && <BadgeCheck className="w-3.5 h-3.5 text-primary flex-shrink-0" aria-label="Verifikovani artist" />}
             </div>
             <p className="text-xs text-muted-foreground">
-              {formatDistanceToNow(new Date(post.createdAt), { addSuffix: true, locale: sr })}
+              {formatDistanceToNow(new Date(post.createdAt), { addSuffix: true, locale: srLatn })}
               {post.featuredUntil && new Date(post.featuredUntil) > new Date() && (
                 <span className="text-primary"> · Istaknuto</span>
               )}
@@ -286,8 +286,8 @@ function PostCard({ post, currentUserId, onDeleted, onLikeChanged, onCommentCoun
       {/* Collab tag */}
       {post.type === "collab" && post.collabTag && (
         <div className="flex items-center gap-1.5">
-          <Users className="w-3.5 h-3.5 text-violet-500" />
-          <span className="text-xs font-semibold text-violet-500">Tražim: {post.collabTag}</span>
+          <Users className="w-3.5 h-3.5 text-primary" />
+          <span className="text-xs font-semibold text-primary">{/^Tražim/.test(post.collabTag) ? post.collabTag : `Tražim: ${post.collabTag}`}</span>
         </div>
       )}
 
@@ -615,7 +615,7 @@ function CreatePost({ userId, onCreated }: { userId: number; onCreated: (post: F
               className={cn(
                 "px-2.5 py-1 rounded-lg text-xs font-semibold transition-all border",
                 collabTag === tag
-                  ? "bg-violet-500/15 border-violet-500/50 text-violet-400"
+                  ? "bg-primary/15 border-primary/50 text-primary"
                   : "border-border/60 text-muted-foreground hover:border-border"
               )}
             >

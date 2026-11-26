@@ -228,7 +228,7 @@ export default function MaintenancePage() {
               onClick={() => setShowLoginDialog(true)}
               className="text-sm text-muted-foreground hover:text-primary transition-colors"
             >
-              Admin Prijava
+              Admin prijava
             </button>
           </div>
         </motion.div>
@@ -267,7 +267,7 @@ export default function MaintenancePage() {
               <DialogHeader>
                 <DialogTitle className="flex items-center gap-2">
                   <Lock className="w-5 h-5" />
-                  Admin Prijava
+                  Admin prijava
                 </DialogTitle>
                 <DialogDescription>
                   Unesite kredencijale. Verifikacioni kod će biti poslat na vaš email.
@@ -281,7 +281,7 @@ export default function MaintenancePage() {
                     name="username"
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel>Korisničko ime ili Email</FormLabel>
+                        <FormLabel>Korisničko ime ili email</FormLabel>
                         <FormControl>
                           <div className="relative">
                             <User className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
@@ -340,7 +340,7 @@ export default function MaintenancePage() {
               <DialogHeader>
                 <DialogTitle className="flex items-center gap-2">
                   <KeyRound className="w-5 h-5" />
-                  Verifikacioni Kod
+                  Verifikacioni kod
                 </DialogTitle>
                 <DialogDescription>
                   Unesite 6-cifreni kod koji smo poslali na vaš email.

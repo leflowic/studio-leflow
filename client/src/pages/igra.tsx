@@ -264,15 +264,15 @@ export default function IgraPage() {
                     initial={{ scale: 0 }}
                     animate={{ scale: 1 }}
                     transition={{ delay: 0.1, type: "spring", stiffness: 200 }}
-                    className="w-28 h-28 rounded-full bg-green-500/15 ring-4 ring-green-500/30 flex items-center justify-center mx-auto"
+                    className="w-28 h-28 rounded-full bg-primary/15 ring-4 ring-primary/30 flex items-center justify-center mx-auto"
                   >
-                    <CheckCircle2 className="w-16 h-16 text-green-500" />
+                    <CheckCircle2 className="w-16 h-16 text-primary" />
                   </motion.div>
                   <motion.div initial={{ y: 10, opacity: 0 }} animate={{ y: 0, opacity: 1 }} transition={{ delay: 0.2 }}>
-                    <p className="text-4xl font-black text-green-500">Tačno!</p>
-                    <div className="inline-flex items-center gap-2 mt-3 bg-green-500/10 border border-green-500/20 rounded-full px-5 py-2">
-                      <Zap className="w-4 h-4 text-green-500" />
-                      <span className="font-bold text-green-500 text-lg">+10 poena</span>
+                    <p className="text-4xl font-semibold text-primary">Tačno!</p>
+                    <div className="inline-flex items-center gap-2 mt-3 bg-primary/10 border border-primary/20 rounded-full px-5 py-2">
+                      <Zap className="w-4 h-4 text-primary" />
+                      <span className="font-semibold text-primary text-lg font-mono">+10 poena</span>
                     </div>
                     <div className="mt-2">
                       <Link href="/prodavnica" className="inline-flex items-center gap-1.5 text-sm text-primary hover:underline underline-offset-4">
@@ -292,7 +292,7 @@ export default function IgraPage() {
                     <XCircle className="w-16 h-16 text-destructive" />
                   </motion.div>
                   <motion.div initial={{ y: 10, opacity: 0 }} animate={{ y: 0, opacity: 1 }} transition={{ delay: 0.2 }}>
-                    <p className="text-4xl font-black text-destructive">Netačno</p>
+                    <p className="text-4xl font-semibold">Netačno</p>
                     <p className="text-muted-foreground mt-1">Bolje sreće sutra.</p>
                   </motion.div>
                 </>
@@ -539,14 +539,6 @@ export default function IgraPage() {
           </div>
         </div>
         <div className="relative container mx-auto px-4 max-w-4xl py-10 md:py-14 text-center">
-          <motion.div
-            initial={{ opacity: 0, y: -10 }}
-            animate={{ opacity: 1, y: 0 }}
-            className="inline-flex items-center gap-2 mb-4"
-          >
-            <span className="w-2 h-2 bg-green-400 rounded-full animate-pulse" />
-            <span className="text-xs font-semibold text-green-400 uppercase tracking-widest">Dnevna igra</span>
-          </motion.div>
           <motion.h1
             initial={{ opacity: 0, y: 10 }}
             animate={{ opacity: 1, y: 0 }}
@@ -629,9 +621,8 @@ export default function IgraPage() {
                   <span className="font-bold text-sm">Dnevni izazov</span>
                 </div>
                 {data?.available && !alreadyPlayed && (
-                  <Badge className="bg-green-500 hover:bg-green-500 text-white text-xs gap-1.5">
-                    <span className="w-1.5 h-1.5 bg-white rounded-full animate-pulse" />
-                    Live
+                  <Badge className="bg-primary/15 hover:bg-primary/15 text-primary border border-primary/30 text-xs">
+                    Otvoreno
                   </Badge>
                 )}
                 {alreadyPlayed && (
@@ -651,8 +642,8 @@ export default function IgraPage() {
                 <div className="rounded-2xl border border-border/60 bg-card overflow-hidden">
                   <div className="px-5 py-4 border-b border-border/40 flex items-center justify-between">
                     <div className="flex items-center gap-2">
-                      <Trophy className="w-4 h-4 text-yellow-500" />
-                      <span className="font-bold text-sm">Nedeljni leaderboard</span>
+                      <Trophy className="w-4 h-4 text-primary" />
+                      <span className="font-bold text-sm">Nedeljna tabela</span>
                     </div>
                     {leaderboardData.prize ? (
                       <span className="text-[11px] text-muted-foreground bg-muted/60 rounded-full px-2.5 py-1 font-medium">
@@ -690,7 +681,7 @@ export default function IgraPage() {
                             >
                               <span className={cn(
                                 "w-6 text-center font-black text-sm flex-shrink-0",
-                                i === 0 && "text-yellow-500",
+                                i === 0 && "text-primary",
                                 i === 1 && "text-slate-400",
                                 i === 2 && "text-amber-600",
                                 i >= 3 && "text-muted-foreground text-xs"
@@ -710,7 +701,7 @@ export default function IgraPage() {
                               </span>
                               <span className={cn(
                                 "text-sm font-bold flex-shrink-0",
-                                i === 0 ? "text-yellow-500" : i < 3 ? "text-primary" : "text-muted-foreground"
+                                i < 3 ? "text-primary" : "text-muted-foreground"
                               )}>
                                 {entry.points}
                                 <span className="text-xs font-normal ml-0.5">pt</span>
@@ -724,7 +715,7 @@ export default function IgraPage() {
                 </div>
               ) : (
                 <div className="rounded-2xl border border-border/40 bg-card/50 p-5 text-center text-muted-foreground text-sm">
-                  Leaderboard se učitava...
+                  Tabela se učitava...
                 </div>
               )}
               <Link href="/igra/arhiva" className="mt-3 flex items-center justify-between gap-3 rounded-2xl border border-border/60 bg-card px-5 py-4 hover:border-primary/40 transition-colors">

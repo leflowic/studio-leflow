@@ -26,7 +26,7 @@ export function NotificationPrefs() {
     },
   });
 
-  if (!data) return null;
+  if (!data?.categories?.length) return null;
   return (
     <div className="mt-6 pt-6 border-t border-border/60">
       <p className="text-sm font-medium">Šta želiš da dobijaš</p>

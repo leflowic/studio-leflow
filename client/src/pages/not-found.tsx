@@ -33,9 +33,9 @@ export default function NotFound() {
                 transition={{ delay: i * 0.025, duration: 0.35, ease: "easeOut" }}
                 className={
                   i % 3 === 0
-                    ? "flex-1 rounded-full bg-destructive/35"
+                    ? "flex-1 rounded-full bg-primary/40"
                     : i % 3 === 1
-                    ? "flex-1 rounded-full bg-destructive/15"
+                    ? "flex-1 rounded-full bg-primary/15"
                     : "flex-1 rounded-full bg-muted/40"
                 }
               />

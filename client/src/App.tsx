@@ -55,8 +55,9 @@ class ChunkErrorBoundary extends Component<{ children: ReactNode }, { failed: bo
     if (this.state.failed) {
       return (
         <div className="flex flex-col items-center justify-center min-h-screen gap-6 text-center px-4">
-          <p className="text-muted-foreground">Došlo je do greške pri učitavanju stranice.</p>
-          {this.state.errorMsg && (
+          <p className="text-lg font-semibold">Stranica se nije učitala</p>
+          <p className="text-muted-foreground -mt-4 max-w-sm">Najčešće pomaže da je osvežite. Ako se ponovi, javite nam se.</p>
+          {import.meta.env.DEV && this.state.errorMsg && (
             <p className="text-xs text-red-400 font-mono max-w-md break-all bg-zinc-900 px-3 py-2 rounded">
               {this.state.errorMsg}
             </p>

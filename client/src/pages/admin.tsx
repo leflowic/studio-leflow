@@ -290,9 +290,9 @@ export default function AdminPage() {
     <div className="min-h-screen bg-background py-8 md:py-12">
       <div className="max-w-7xl mx-auto px-4 md:px-6">
         <div className="mb-6 md:mb-8">
-          <h1 className="text-2xl md:text-4xl font-bold mb-2" data-testid="heading-admin-panel">Admin Panel</h1>
+          <h1 className="text-2xl md:text-4xl font-bold mb-2" data-testid="heading-admin-panel">Admin panel</h1>
           <p className="text-sm md:text-base text-muted-foreground" data-testid="text-admin-description">
-            Upravljanje korisnicima, projektima i komentarima
+            Klijenti, sadržaj, prodavnica i podešavanja sajta.
           </p>
         </div>
 
@@ -469,7 +469,7 @@ function SettingsTab() {
         <CardHeader>
           <div className="flex items-center gap-2">
             <Construction className="w-5 h-5 text-primary" />
-            <CardTitle>Aktivnost Sajta</CardTitle>
+            <CardTitle>Aktivnost sajta</CardTitle>
           </div>
           <CardDescription>
             Kontrolišite dostupnost sajta za korisnike
@@ -479,7 +479,7 @@ function SettingsTab() {
           <div className="flex items-center justify-between">
             <div className="space-y-0.5">
               <Label htmlFor="maintenance-mode" className="text-base">
-                Maintenance Mode
+                Maintenance mode
               </Label>
               <p className="text-sm text-muted-foreground">
                 Kada je aktivno, samo administratori mogu pristupiti sajtu. Ostali korisnici će videti poruku da je sajt u pripremi.
@@ -499,7 +499,7 @@ function SettingsTab() {
                 <Construction className="w-5 h-5 text-orange-600 dark:text-orange-400 mt-0.5" />
                 <div>
                   <h4 className="font-medium text-orange-900 dark:text-orange-100">
-                    Sajt je trenutno u Maintenance Modu
+                    Sajt je trenutno u maintenance modu
                   </h4>
                   <p className="text-sm text-orange-800 dark:text-orange-200 mt-1">
                     Samo administratori mogu pristupiti sajtu. Ostali korisnici vide stranicu "Sajt je u pripremi".
@@ -537,7 +537,7 @@ function SettingsTab() {
               className="gap-2"
             >
               <Mail className="w-4 h-4" />
-              Otvori Inbox
+              Otvori inbox
             </Button>
           </div>
         </CardContent>
@@ -547,7 +547,7 @@ function SettingsTab() {
         <CardHeader>
           <div className="flex items-center gap-2">
             <Settings className="w-5 h-5 text-primary" />
-            <CardTitle>Giveaway Podešavanja</CardTitle>
+            <CardTitle>Giveaway podešavanja</CardTitle>
           </div>
           <CardDescription>
             Kontrolišite aktivnost mesečnog giveaway sistema
@@ -832,7 +832,7 @@ function NewsletterTab() {
           <div className="flex items-center gap-2">
             <Mail className="w-5 h-5 text-primary" />
             <div>
-              <CardTitle>Pošalji Newsletter</CardTitle>
+              <CardTitle>Pošalji newsletter</CardTitle>
               <CardDescription>Kreirajte i pošaljite email kampanju svim potvrđenim pretplatnicima</CardDescription>
             </div>
           </div>
@@ -1311,7 +1311,7 @@ function MessagesTab() {
         <CardHeader>
           <div className="flex items-center gap-2">
             <Eye className="w-5 h-5 text-primary" />
-            <CardTitle>Audit Log - Pregled Poruka</CardTitle>
+            <CardTitle>Audit log - Pregled poruka</CardTitle>
           </div>
           <CardDescription>
             Evidencija svih administratorskih pregleda privatnih konverzacija
@@ -1334,8 +1334,8 @@ function MessagesTab() {
                 <TableHeader>
                   <TableRow>
                     <TableHead>Admin</TableHead>
-                    <TableHead>Pregledane Konverzacije</TableHead>
-                    <TableHead>Vreme Pregleda</TableHead>
+                    <TableHead>Pregledane konverzacije</TableHead>
+                    <TableHead>Vreme pregleda</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -1399,7 +1399,7 @@ function GiveawaySettingsSection() {
     <div className="flex items-center justify-between">
       <div className="space-y-0.5">
         <Label htmlFor="giveaway-active" className="text-base">
-          Aktiviraj Giveaway
+          Aktiviraj giveaway
         </Label>
         <p className="text-sm text-muted-foreground">
           Omogućite korisnicima da uploaduju projekte i učestvuju u glasanju
@@ -1518,7 +1518,7 @@ function SiteAnnouncementCard() {
   return (
     <Card data-testid="card-site-announcement">
       <CardHeader>
-        <CardTitle>Obaveštenje na Sajtu</CardTitle>
+        <CardTitle>Obaveštenje na sajtu</CardTitle>
         <CardDescription>Prikažite važne informacije na početnoj strani</CardDescription>
       </CardHeader>
       <CardContent className="space-y-4">
@@ -1623,7 +1623,7 @@ function DashboardTab() {
     <div className="space-y-8" data-testid="content-dashboard">
       <Card data-testid="card-giveaway-toggle">
         <CardHeader>
-          <CardTitle>Giveaway Kontrola</CardTitle>
+          <CardTitle>Giveaway kontrola</CardTitle>
           <CardDescription>Uključite ili isključite giveaway</CardDescription>
         </CardHeader>
         <CardContent>
@@ -1955,7 +1955,7 @@ function UsersTab() {
   return (
     <div data-testid="content-users" className="space-y-6">
       <div>
-        <h2 className="text-xl font-semibold">Upravljanje Korisnicima</h2>
+        <h2 className="text-xl font-semibold">Upravljanje korisnicima</h2>
         <p className="text-sm text-muted-foreground">Pregled i upravljanje svim korisnicima</p>
       </div>
 
@@ -2428,7 +2428,7 @@ function ProjectsTab() {
     <div data-testid="content-projects" className="space-y-8">
       {/* Pending Projects Section */}
       <div>
-        <h2 className="text-2xl font-bold mb-4">Projekti na Čekanju</h2>
+        <h2 className="text-2xl font-bold mb-4">Projekti na čekanju</h2>
         <p className="text-muted-foreground mb-6">
           Projekti koje korisnici uploaduju moraju biti odobreni pre nego što budu vidljivi ostalim korisnicima.
         </p>
@@ -2488,7 +2488,7 @@ function ProjectsTab() {
                       disabled={approveMutation.isPending}
                       data-testid={`button-approve-project-${project.id}`}
                     >
-                      Odobri Projekat
+                      Odobri projekat
                     </Button>
                     <AlertDialog>
                       <AlertDialogTrigger asChild>
@@ -2499,7 +2499,7 @@ function ProjectsTab() {
                           data-testid={`button-reject-project-${project.id}`}
                         >
                           <Trash2 className="h-4 w-4 mr-2" />
-                          Odbij i Obriši
+                          Odbij i obriši
                         </Button>
                       </AlertDialogTrigger>
                       <AlertDialogContent data-testid={`dialog-reject-project-${project.id}`}>
@@ -2517,7 +2517,7 @@ function ProjectsTab() {
                             onClick={() => deleteMutation.mutate(project.id)}
                             data-testid={`button-confirm-reject-project-${project.id}`}
                           >
-                            Odbij i Obriši
+                            Odbij i obriši
                           </AlertDialogAction>
                         </AlertDialogFooter>
                       </AlertDialogContent>
@@ -2540,7 +2540,7 @@ function ProjectsTab() {
 
       {/* Approved Projects Section */}
       <div>
-        <h2 className="text-2xl font-bold mb-4">Odobreni Projekti</h2>
+        <h2 className="text-2xl font-bold mb-4">Odobreni projekti</h2>
         <p className="text-muted-foreground mb-6">
           Projekti koji su odobreni i vidljivi svim korisnicima.
         </p>
@@ -2585,7 +2585,7 @@ function ProjectsTab() {
                         data-testid={`button-delete-approved-project-${project.id}`}
                       >
                         <Trash2 className="h-4 w-4 mr-2" />
-                        Obriši Projekat
+                        Obriši projekat
                       </Button>
                     </AlertDialogTrigger>
                     <AlertDialogContent data-testid={`dialog-delete-approved-project-${project.id}`}>
@@ -3060,7 +3060,7 @@ function InvoicesTab() {
       {showCreateForm && (
         <Card>
           <CardHeader>
-            <CardTitle>Nova Faktura</CardTitle>
+            <CardTitle>Nova faktura</CardTitle>
           </CardHeader>
           <CardContent>
             <form onSubmit={handleCreateInvoice} className="space-y-4">
@@ -3106,7 +3106,7 @@ function InvoicesTab() {
                   </select>
                 </div>
                 <div>
-                  <Label htmlFor="dueDate">Rok Plaćanja *</Label>
+                  <Label htmlFor="dueDate">Rok plaćanja *</Label>
                   <Input
                     id="dueDate"
                     name="dueDate"
@@ -3208,7 +3208,7 @@ function InvoicesTab() {
                               disabled={updateStatusMutation.isPending}
                               data-testid={`button-mark-paid-${invoice.id}`}
                             >
-                              Označi kao Plaćeno
+                              Označi kao plaćeno
                             </Button>
                           )}
                           <Button

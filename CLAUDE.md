@@ -395,6 +395,12 @@ The owner explicitly dislikes these patterns. Never introduce them:
 - **Inline-styled colors don't get dark-mode variants for free** — Tailwind's `dark:` prefix only works on className-based styles, not on inline `style={{ color: ... }}`. `AvatarWithInitials` (`client/src/components/ui/avatar-with-initials.tsx`) picks per-user colors and switches between light/dark HSL pairs by reading `resolvedTheme` from `next-themes`' `useTheme()` — follow this pattern for any other component that sets colors via inline style.
 - **PWA safe-area (iOS notch/home indicator):** the site is installable as a standalone PWA (`display: standalone` + `viewport-fit=cover`), where content renders under the status bar and home indicator. Every `fixed` element touching a screen edge must respect `env(safe-area-inset-*)`: the header uses `pt-[env(safe-area-inset-top)]` (and `<main>` in `App.tsx` compensates with `pt-[calc(4rem+env(safe-area-inset-top))]`); bottom-fixed elements (`WhatsAppButton`, `CookieConsent`, `InstallPrompt`) add `safe-area-inset-bottom` to their bottom offset. Follow this for any new fixed/floating UI. Note: full-screen overlays that must beat the header need `z-[60]` — the header itself is `z-50` and wins DOM order against other `z-50` elements.
 
+**Polish rules (2026-11-26 pass):**
+- **Dates: always `srLatn` from `date-fns/locale`, never `sr`** - `sr` is Cyrillic and rendered "пре преко 1 годину" on profiles/feed/notifications. Same for `toLocaleString`: use `sr-Latn`. Month names in sentences take the genitive ("30. novembra"), weekdays "u nedelju" - see `NextGameBanner` in `home.tsx`.
+- The route `ChunkErrorBoundary` shows the raw JS error only in dev (`import.meta.env.DEV`); visitors get a plain Serbian message.
+- Decorative accents use theme tokens (`primary`, `muted-foreground`), not Tailwind blue/violet/emerald. Green/amber/red stay only where they carry meaning (verified, pending, error).
+- UI text is sentence case. A one-off script lowercased ~125 Title Case JSX strings; keep new strings sentence case (proper nouns: Studio LeFlow, Pogodi Pesmu, Ploča dana, brand names).
+
 **Copy rules (owner decisions — hard constraints):**
 - **Never show prices anywhere.** Pricing questions are answered with "pošaljite upit — tačna ponuda u roku od 24h."
 - **Revision policy is exactly 2 free revisions for every service** — home, usluge, team, FAQ, terms, and the FAQPage structured data in `SEO.tsx` must all agree. Never claim unlimited revisions.

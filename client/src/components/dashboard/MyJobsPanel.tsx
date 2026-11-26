@@ -191,7 +191,7 @@ export function MyJobsPanel() {
 
   if (isLoading) {
     return (
-      <PanelCard icon={Music} iconBg="bg-blue-500/10" iconColor="text-blue-500" title="Gde je moja pesma" desc="Status tvog posla u studiju">
+      <PanelCard icon={Music} iconBg="bg-primary/10" iconColor="text-primary" title="Gde je moja pesma" desc="Status tvog posla u studiju">
         <Skeleton className="h-16 rounded-xl" />
       </PanelCard>
     );
@@ -204,8 +204,8 @@ export function MyJobsPanel() {
   return (
     <PanelCard
       icon={Music}
-      iconBg="bg-blue-500/10"
-      iconColor="text-blue-500"
+      iconBg="bg-primary/10"
+      iconColor="text-primary"
       title="Gde je moja pesma"
       desc="Status tvog posla u studiju, uživo"
     >

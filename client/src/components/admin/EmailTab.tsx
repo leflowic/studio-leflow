@@ -39,7 +39,7 @@ export function EmailTab() {
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
             <Mail className="w-5 h-5" />
-            Pošalji Email
+            Pošalji email
           </CardTitle>
           <CardDescription>
             Šalje se iz <strong>podrska@studioleflow.com</strong> sa LeFlow dizajnom

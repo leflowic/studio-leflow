@@ -43,7 +43,7 @@ function RankMedal({ index }: { index: number }) {
   return <div className="w-7 h-7 rounded-full bg-muted flex items-center justify-center text-muted-foreground text-xs font-bold">#{index + 1}</div>;
 }
 
-type LeaderboardEntry = { userId: number; username: string; avatarUrl: string | null; totalPoints: number; correctAnswers: number };
+type LeaderboardEntry = { userId: number; username: string; avatarUrl: string | null; points: number; correctCount: number };
 type CollabUser = { id: number; username: string; avatarUrl: string | null; isVerifiedArtist: boolean };
 
 function GameLeaderboardWidget() {
@@ -60,10 +60,10 @@ function GameLeaderboardWidget() {
         {entries.slice(0, 5).map((entry, i) => (
           <Link key={entry.userId} href={`/u/${entry.username}`} className="flex items-center gap-2.5 hover:bg-muted/50 rounded-xl px-2 py-1.5 transition-colors">
             <span className={cn("w-5 h-5 rounded-full flex items-center justify-center text-[10px] font-bold flex-shrink-0",
-              i === 0 ? "bg-amber-500 text-white" : i === 1 ? "bg-slate-400 text-white" : i === 2 ? "bg-amber-700 text-white" : "bg-muted text-muted-foreground"
+              i < 3 ? "bg-primary/15 text-primary" : "bg-muted text-muted-foreground"
             )}>{i + 1}</span>
             <span className="flex-1 text-sm font-medium truncate">{entry.username}</span>
-            <span className="text-xs text-muted-foreground font-semibold">{entry.totalPoints}pt</span>
+            <span className="text-xs text-muted-foreground font-mono">{entry.points} pt</span>
           </Link>
         ))}
       </div>
@@ -77,7 +77,7 @@ function CollabUsersWidget() {
   return (
     <div className="rounded-2xl border border-border/60 bg-card p-4">
       <div className="flex items-center gap-2 mb-3">
-        <Users className="w-4 h-4 text-violet-500" />
+        <Users className="w-4 h-4 text-primary" />
         <h2 className="font-semibold text-sm">Traže saradnju</h2>
       </div>
       <div className="flex flex-wrap gap-2">
@@ -136,7 +136,7 @@ export default function Zajednica() {
                 <div>
                   <div className="flex items-center gap-2 mb-2">
                     <Flame className="w-5 h-5 text-primary" />
-                    <span className="text-xs font-semibold text-primary uppercase tracking-widest">Muzička Zajednica</span>
+                    <span className="text-xs font-semibold text-primary uppercase tracking-widest">Muzička zajednica</span>
                   </div>
                   <h1 className="text-3xl md:text-4xl font-bold tracking-tight mb-2">Zajednica</h1>
                   <p className="text-muted-foreground text-sm md:text-base max-w-md">
@@ -225,7 +225,7 @@ export default function Zajednica() {
                       <p className="text-sm text-muted-foreground mb-4">Budite prvi koji će podeliti pesmu!</p>
                       <Link href="/moje-pesme">
                         <Button size="sm" className="gap-2" data-testid="button-submit-first-song">
-                          <Youtube className="w-4 h-4" /> Dodaj Pesmu
+                          <Youtube className="w-4 h-4" /> Dodaj pesmu
                         </Button>
                       </Link>
                     </div>
@@ -320,8 +320,7 @@ export default function Zajednica() {
                 {/* Live Chat */}
                 <div>
                   <div className="flex items-center gap-2 mb-3">
-                    <span className="w-1.5 h-1.5 bg-green-500 rounded-full animate-pulse" />
-                    <h2 className="font-semibold text-sm">Live Chat</h2>
+                    <h2 className="font-semibold text-sm">Live chat</h2>
                   </div>
                   <FadeInWhenVisible>
                     <CommunityChat />

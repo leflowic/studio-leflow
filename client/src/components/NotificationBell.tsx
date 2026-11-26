@@ -4,7 +4,7 @@ import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useWebSocketContext } from "@/contexts/WebSocketContext";
 import { Bell, Heart, MessageCircle, AtSign } from "lucide-react";
 import { formatDistanceToNow } from "date-fns";
-import { sr } from "date-fns/locale";
+import { srLatn } from "date-fns/locale";
 import { Link } from "wouter";
 import { cn } from "@/lib/utils";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
@@ -141,7 +141,7 @@ export function NotificationBell() {
                   <div className="flex-1 min-w-0">
                     <p className="text-sm leading-snug">{n.message}</p>
                     <p className="text-xs text-muted-foreground mt-0.5">
-                      {formatDistanceToNow(new Date(n.createdAt), { addSuffix: true, locale: sr })}
+                      {formatDistanceToNow(new Date(n.createdAt), { addSuffix: true, locale: srLatn })}
                     </p>
                   </div>
                   {!n.read && <span className="w-2 h-2 rounded-full bg-primary flex-shrink-0 mt-1.5" />}

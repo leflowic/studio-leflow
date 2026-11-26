@@ -10,7 +10,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Badge } from "@/components/ui/badge";
 import { Music, MessageCircle, Heart, FileText, Image, Users, Play, Pause, Calendar } from "lucide-react";
 import { formatDistanceToNow } from "date-fns";
-import { sr } from "date-fns/locale";
+import { srLatn } from "date-fns/locale";
 import { useState, useRef, useEffect } from "react";
 import { cn } from "@/lib/utils";
 import { apiRequest, queryClient } from "@/lib/queryClient";
@@ -41,10 +41,10 @@ type FeedPost = {
 };
 
 const POST_TYPE_META: Record<string, { label: string; icon: any; color: string }> = {
-  status: { label: "Status", icon: FileText, color: "text-blue-500" },
+  status: { label: "Status", icon: FileText, color: "text-muted-foreground" },
   audio: { label: "Demo", icon: Music, color: "text-primary" },
-  image: { label: "Foto", icon: Image, color: "text-emerald-500" },
-  collab: { label: "Kolaboracija", icon: Users, color: "text-violet-500" },
+  image: { label: "Foto", icon: Image, color: "text-muted-foreground" },
+  collab: { label: "Kolaboracija", icon: Users, color: "text-primary" },
 };
 
 function AudioPlayer({ url }: { url: string }) {
@@ -91,7 +91,7 @@ function AudioPlayer({ url }: { url: string }) {
 
 function MiniPostCard({ post, currentUserId }: { post: FeedPost; currentUserId?: number }) {
   const { toast } = useToast();
-  const meta = POST_TYPE_META[post.type] ?? { label: "Status", icon: FileText, color: "text-blue-500" };
+  const meta = POST_TYPE_META[post.type] ?? { label: "Status", icon: FileText, color: "text-muted-foreground" };
   const TypeIcon = meta.icon;
 
   const likeMutation = useMutation({
@@ -113,13 +113,13 @@ function MiniPostCard({ post, currentUserId }: { post: FeedPost; currentUserId?:
           {meta.label}
         </Badge>
         <span className="text-xs text-muted-foreground">
-          {formatDistanceToNow(new Date(post.createdAt), { addSuffix: true, locale: sr })}
+          {formatDistanceToNow(new Date(post.createdAt), { addSuffix: true, locale: srLatn })}
         </span>
       </div>
 
       {post.type === "collab" && post.collabTag && (
-        <p className="text-xs font-semibold text-violet-500 flex items-center gap-1">
-          <Users className="w-3 h-3" /> Tražim: {post.collabTag}
+        <p className="text-xs font-semibold text-primary flex items-center gap-1">
+          <Users className="w-3 h-3" /> {/^Tražim/.test(post.collabTag) ? post.collabTag : `Tražim: ${post.collabTag}`}
         </p>
       )}
 
@@ -228,7 +228,7 @@ export default function UserProfile() {
                   <h1 className="text-2xl md:text-3xl font-bold tracking-tight">{profileUser.username}</h1>
                   <p className="text-muted-foreground text-sm flex items-center gap-1.5 mt-1">
                     <Calendar className="w-3.5 h-3.5" />
-                    Član od {formatDistanceToNow(new Date(profileUser.createdAt), { addSuffix: true, locale: sr })}
+                    Član od {formatDistanceToNow(new Date(profileUser.createdAt), { addSuffix: true, locale: srLatn })}
                   </p>
                 </div>
                 {currentUser && currentUser.id !== profileUser.id && (

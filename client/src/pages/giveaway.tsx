@@ -312,7 +312,7 @@ export default function Giveaway() {
         <AlertDialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto" data-testid="dialog-terms">
           <AlertDialogHeader>
             <AlertDialogTitle className="text-2xl font-bold" data-testid="text-terms-title">
-              Pravila Korišćenja Giveaway Platforme
+              Pravila korišćenja giveaway platforme
             </AlertDialogTitle>
             <AlertDialogDescription className="text-base">
               Pre nego što nastavite, morate prihvatiti pravila:
@@ -346,7 +346,7 @@ export default function Giveaway() {
                 Za detaljne informacije pročitajte:{" "}
                 <Link href="/uslovi-koriscenja" data-testid="link-full-terms">
                   <span className="text-primary hover:underline font-medium cursor-pointer">
-                    Kompletne Uslove Korišćenja
+                    Kompletne uslove korišćenja
                   </span>
                 </Link>
               </p>
@@ -414,7 +414,7 @@ export default function Giveaway() {
             <DialogContent className="max-w-lg" data-testid="dialog-upload">
               <DialogHeader>
                 <DialogTitle className="text-2xl font-bold" data-testid="text-upload-title">
-                  Uploaduj Projekat
+                  Uploaduj projekat
                 </DialogTitle>
                 <DialogDescription>
                   Popunite formu da dodate vaš projekat u mesečni konkurs.
@@ -424,7 +424,7 @@ export default function Giveaway() {
               <div className="space-y-6 py-4">
                 <div className="space-y-2">
                   <Label htmlFor="file" className="text-sm font-medium">
-                    MP3 Fajl <span className="text-destructive">*</span>
+                    MP3 fajl <span className="text-destructive">*</span>
                   </Label>
                   <Input
                     id="file"
@@ -443,7 +443,7 @@ export default function Giveaway() {
 
                 <div className="space-y-2">
                   <Label htmlFor="title" className="text-sm font-medium">
-                    Naslov Projekta <span className="text-destructive">*</span>
+                    Naslov projekta <span className="text-destructive">*</span>
                   </Label>
                   <Input
                     id="title"
@@ -484,7 +484,7 @@ export default function Giveaway() {
                       <SelectValue placeholder="Izaberite žanr..." />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="Hip Hop" data-testid="genre-option-hiphop">Hip Hop</SelectItem>
+                      <SelectItem value="Hip Hop" data-testid="genre-option-hiphop">Hip hop</SelectItem>
                       <SelectItem value="Trap" data-testid="genre-option-trap">Trap</SelectItem>
                       <SelectItem value="R&B" data-testid="genre-option-rnb">R&B</SelectItem>
                       <SelectItem value="Pop" data-testid="genre-option-pop">Pop</SelectItem>
@@ -534,7 +534,7 @@ export default function Giveaway() {
         <div className="max-w-7xl mx-auto px-4 md:px-6">
           <div className="mb-12">
             <h2 className="text-3xl md:text-4xl font-bold mb-4 tracking-tight" data-testid="text-projects-title">
-              Konkursni Projekti
+              Konkursni projekti
             </h2>
             <p className="text-muted-foreground">
               Slušajte i glasajte za vaše omiljene projekte. Projekat sa najviše glasova osvaja!

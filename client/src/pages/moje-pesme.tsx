@@ -135,7 +135,7 @@ export default function MojePesme() {
     <>
       <SEO
         title="Moje Pesme"
-        description="Podelite vaše omiljene YouTube pesme sa Studio LeFlow zajednicom"
+        description="Podelite svoju objavljenu pesmu sa Studio LeFlow zajednicom"
         keywords={["pesme", "muzika", "youtube", "studio leflow"]}
       />
 
@@ -146,13 +146,9 @@ export default function MojePesme() {
           <div className="relative container mx-auto px-4 max-w-4xl py-10 md:py-12">
             <div className="flex items-start justify-between gap-4 flex-wrap">
               <div>
-                <div className="flex items-center gap-2 mb-2">
-                  <Youtube className="w-4 h-4 text-primary" />
-                  <span className="text-xs font-semibold text-primary uppercase tracking-widest">Moje Pesme</span>
-                </div>
-                <h1 className="text-3xl md:text-4xl font-bold tracking-tight mb-2">Moje Pesme</h1>
+                <h1 className="text-3xl md:text-4xl font-bold tracking-tight mb-2">Moje pesme</h1>
                 <p className="text-muted-foreground text-sm max-w-md">
-                  Podelite vaše omiljene YouTube pesme sa zajednicom - jedna pesma na 36 sati
+                  Podelite svoju objavljenu pesmu sa zajednicom - dovoljan je YouTube link. Jedna nova pesma na 36 sati.
                 </p>
               </div>
               <Button
@@ -161,7 +157,7 @@ export default function MojePesme() {
                 data-testid="button-submit-song"
               >
                 <Plus className="w-4 h-4" />
-                Dodaj Pesmu
+                Dodaj pesmu
               </Button>
             </div>
           </div>
@@ -179,14 +175,14 @@ export default function MojePesme() {
                 <Music className="w-8 h-8 text-muted-foreground/40" />
               </div>
               <p className="font-semibold text-lg mb-1">Niste još dodali nijednu pesmu</p>
-              <p className="text-sm text-muted-foreground mb-5">Kliknite na "Dodaj Pesmu" da počnete</p>
+              <p className="text-sm text-muted-foreground mb-5">Kliknite na "Dodaj pesmu" da počnete</p>
               <Button
                 onClick={() => setSubmitDialogOpen(true)}
                 className="gap-2 rounded-xl"
                 data-testid="button-submit-first-song"
               >
                 <Plus className="w-4 h-4" />
-                Dodaj Prvu Pesmu
+                Dodaj prvu pesmu
               </Button>
             </div>
           ) : (
@@ -290,7 +286,7 @@ export default function MojePesme() {
       <Dialog open={submitDialogOpen} onOpenChange={setSubmitDialogOpen}>
         <DialogContent className="sm:max-w-[460px] rounded-2xl">
           <DialogHeader>
-            <DialogTitle>Dodaj Novu Pesmu</DialogTitle>
+            <DialogTitle>Dodaj novu pesmu</DialogTitle>
             <DialogDescription>
               Unesite YouTube link pesme koju želite da podelite. Možete dodati novu pesmu svakih 36 sati.
             </DialogDescription>

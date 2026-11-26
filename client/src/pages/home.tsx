@@ -60,7 +60,8 @@ function GameAnnouncement() {
     return () => clearInterval(id);
   }, [data]);
 
-  if (!data) return null;
+  // Hide unless the server actually returned a scheduled game (no challenge = {} / null).
+  if (!data?.challengeDate || data.openHour == null || data.openMinute == null) return null;
 
   const openTime = `${String(data.openHour).padStart(2,'0')}:${String(data.openMinute).padStart(2,'0')}`;
 
@@ -69,9 +70,9 @@ function GameAnnouncement() {
   const dateLabel = (() => {
     if (data.isToday) return `danas u ${openTime}`;
     const d = new Date(data.challengeDate + "T12:00:00Z");
-    const days = ["nedeljom","ponedeljkom","utorkom","sredom","četvrtkom","petkom","subotom"];
-    const day = days[d.getUTCDay()];
-    return `${day} ${d.getUTCDate()}. ${d.toLocaleString('sr-Latn', { month: 'long', timeZone: 'UTC' })} u ${openTime}`;
+    const days = ["u nedelju", "u ponedeljak", "u utorak", "u sredu", "u četvrtak", "u petak", "u subotu"];
+    const months = ["januara", "februara", "marta", "aprila", "maja", "juna", "jula", "avgusta", "septembra", "oktobra", "novembra", "decembra"];
+    return `${days[d.getUTCDay()]} ${d.getUTCDate()}. ${months[d.getUTCMonth()]} u ${openTime}`;
   })();
 
   return (

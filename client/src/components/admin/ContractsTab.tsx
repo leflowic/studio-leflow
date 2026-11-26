@@ -164,14 +164,14 @@ export function ContractsTab() {
     <div className="space-y-6">
       <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as any)}>
         <TabsList>
-          <TabsTrigger value="new">Kreiraj Novu Licencu</TabsTrigger>
-          <TabsTrigger value="history">Istorija Licenci</TabsTrigger>
+          <TabsTrigger value="new">Kreiraj novu licencu</TabsTrigger>
+          <TabsTrigger value="history">Istorija licenci</TabsTrigger>
         </TabsList>
 
         <TabsContent value="new" className="space-y-4">
           <Card>
             <CardHeader>
-              <CardTitle>Kreiraj Novu Licencu</CardTitle>
+              <CardTitle>Kreiraj novu licencu</CardTitle>
               <CardDescription>
                 Popunite formu i automatski generiši PDF licencu sa verifikacionim kodom
               </CardDescription>
@@ -214,7 +214,7 @@ export function ContractsTab() {
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
                 <FileText className="w-5 h-5" />
-                Istorija Licenci
+                Istorija licenci
               </CardTitle>
               <CardDescription>
                 Sve generisane licence sa opcijama za download, verifikaciju i slanje emailom
@@ -349,7 +349,7 @@ export function ContractsTab() {
                         <TableRow>
                           <TableHead>Broj</TableHead>
                           <TableHead>Tip</TableHead>
-                          <TableHead>Dodeljen Korisniku</TableHead>
+                          <TableHead>Dodeljen korisniku</TableHead>
                           <TableHead>Datum</TableHead>
                           <TableHead className="text-right">Akcije</TableHead>
                         </TableRow>
@@ -497,7 +497,7 @@ function AssignUserDialog({
       <Modal open={open} onClose={() => setOpen(false)}>
         <div className="flex items-center justify-between px-6 pt-6 pb-4 border-b shrink-0" style={{ borderColor: "rgba(255,255,255,0.06)" }}>
           <div>
-            <h2 className="text-[15px] font-bold text-white">Dodeli Licencu Korisniku</h2>
+            <h2 className="text-[15px] font-bold text-white">Dodeli licencu korisniku</h2>
             <p className="text-[11px] mt-0.5" style={{ color: "rgba(255,255,255,0.35)" }}>
               Licenca {contractNumber} - Izaberite korisnika koji će videti ovu licencu u svom dashboard-u
             </p>
@@ -587,7 +587,7 @@ function SendEmailDialog({ contractId, contractNumber }: { contractId: number; c
       <Modal open={open} onClose={() => setOpen(false)}>
         <div className="flex items-center justify-between px-6 pt-6 pb-4 border-b shrink-0" style={{ borderColor: "rgba(255,255,255,0.06)" }}>
           <div>
-            <h2 className="text-[15px] font-bold text-white">Pošalji Licencu Email-om</h2>
+            <h2 className="text-[15px] font-bold text-white">Pošalji licencu Email-om</h2>
             <p className="text-[11px] mt-0.5" style={{ color: "rgba(255,255,255,0.35)" }}>
               Unesite email adresu klijenta za licencu {contractNumber}
             </p>
@@ -603,7 +603,7 @@ function SendEmailDialog({ contractId, contractNumber }: { contractId: number; c
         </div>
         <div className="px-6 py-5 space-y-4">
           <div className="space-y-2">
-            <Label htmlFor="email">Email Adresa</Label>
+            <Label htmlFor="email">Email adresa</Label>
             <Input
               id="email"
               type="email"
@@ -676,61 +676,61 @@ function MixMasterForm({ onSubmit, isSubmitting }: { onSubmit: (data: any) => vo
       </div>
 
       <div className="space-y-4">
-        <h3 className="font-semibold">Studio Podaci</h3>
+        <h3 className="font-semibold">Studio podaci</h3>
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           <div className="space-y-2">
-            <Label>Naziv Studija</Label>
+            <Label>Naziv studija</Label>
             <Input value={formData.studioName} onChange={(e) => handleChange("studioName", e.target.value)} data-testid="input-studio-name" />
           </div>
           <div className="space-y-2">
-            <Label>Adresa Studija</Label>
+            <Label>Adresa studija</Label>
             <Input value={formData.studioAddress} onChange={(e) => handleChange("studioAddress", e.target.value)} data-testid="input-studio-address" />
           </div>
         </div>
       </div>
 
       <div className="space-y-4">
-        <h3 className="font-semibold">Podaci Klijenta</h3>
+        <h3 className="font-semibold">Podaci klijenta</h3>
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           <div className="space-y-2">
-            <Label>Ime i Prezime / Poslovno Ime</Label>
+            <Label>Ime i prezime / Poslovno ime</Label>
             <Input value={formData.clientName} onChange={(e) => handleChange("clientName", e.target.value)} data-testid="input-client-name" required />
           </div>
           <div className="space-y-2">
-            <Label>Adresa Klijenta</Label>
+            <Label>Adresa klijenta</Label>
             <Input value={formData.clientAddress} onChange={(e) => handleChange("clientAddress", e.target.value)} data-testid="input-client-address" required />
           </div>
           <div className="space-y-2">
-            <Label>Matični Broj Klijenta</Label>
+            <Label>Matični broj klijenta</Label>
             <Input value={formData.clientMaticniBroj} onChange={(e) => handleChange("clientMaticniBroj", e.target.value)} data-testid="input-client-mb" />
           </div>
         </div>
       </div>
 
       <div className="space-y-4">
-        <h3 className="font-semibold">Detalji Projekta</h3>
+        <h3 className="font-semibold">Detalji projekta</h3>
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           <div className="space-y-2">
-            <Label>Naziv Pesme / Projekta</Label>
+            <Label>Naziv pesme / Projekta</Label>
             <Input value={formData.projectName} onChange={(e) => handleChange("projectName", e.target.value)} data-testid="input-project-name" required />
           </div>
           <div className="space-y-2">
-            <Label>Broj Kanala / Stemova</Label>
+            <Label>Broj kanala / Stemova</Label>
             <Input value={formData.channelCount} onChange={(e) => handleChange("channelCount", e.target.value)} data-testid="input-channel-count" required />
           </div>
           <div className="space-y-2">
-            <Label>Format Isporuke</Label>
+            <Label>Format isporuke</Label>
             <Input value={formData.deliveryFormat} onChange={(e) => handleChange("deliveryFormat", e.target.value)} data-testid="input-delivery-format" />
           </div>
           <div className="space-y-2">
-            <Label>Rok Isporuke</Label>
+            <Label>Rok isporuke</Label>
             <Input value={formData.deliveryDate} onChange={(e) => handleChange("deliveryDate", e.target.value)} placeholder="DD/MM/YYYY" data-testid="input-delivery-date" required />
           </div>
         </div>
       </div>
 
       <div className="space-y-4">
-        <h3 className="font-semibold">Snimanje Vokala</h3>
+        <h3 className="font-semibold">Snimanje vokala</h3>
         <RadioGroup value={formData.vocalRecording} onValueChange={(v) => handleChange("vocalRecording", v)}>
           <div className="flex items-center space-x-2">
             <RadioGroupItem value="yes" id="vocal-yes" data-testid="radio-vocal-yes" />
@@ -746,7 +746,7 @@ function MixMasterForm({ onSubmit, isSubmitting }: { onSubmit: (data: any) => vo
           <RadioGroup value={formData.vocalRights} onValueChange={(v) => handleChange("vocalRights", v)}>
             <div className="flex items-center space-x-2">
               <RadioGroupItem value="client" id="rights-client" data-testid="radio-rights-client" />
-              <Label htmlFor="rights-client">Sva prava prenose se na Naručioca</Label>
+              <Label htmlFor="rights-client">Sva prava prenose se na naručioca</Label>
             </div>
             <div className="flex items-center space-x-2">
               <RadioGroupItem value="studio" id="rights-studio" data-testid="radio-rights-studio" />
@@ -843,7 +843,7 @@ function CopyrightTransferForm({ onSubmit, isSubmitting }: { onSubmit: (data: an
         <h3 className="font-semibold">Autor/Prodavac</h3>
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           <div className="space-y-2">
-            <Label>Ime i Prezime</Label>
+            <Label>Ime i prezime</Label>
             <Input value={formData.authorName} onChange={(e) => handleChange("authorName", e.target.value)} data-testid="input-author-name" required />
           </div>
           <div className="space-y-2">
@@ -851,7 +851,7 @@ function CopyrightTransferForm({ onSubmit, isSubmitting }: { onSubmit: (data: an
             <Input value={formData.authorAddress} onChange={(e) => handleChange("authorAddress", e.target.value)} data-testid="input-author-address" required />
           </div>
           <div className="space-y-2">
-            <Label>Matični Broj</Label>
+            <Label>Matični broj</Label>
             <Input value={formData.authorMaticniBroj} onChange={(e) => handleChange("authorMaticniBroj", e.target.value)} data-testid="input-author-mb" />
           </div>
         </div>
@@ -861,7 +861,7 @@ function CopyrightTransferForm({ onSubmit, isSubmitting }: { onSubmit: (data: an
         <h3 className="font-semibold">Kupac</h3>
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           <div className="space-y-2">
-            <Label>Ime i Prezime</Label>
+            <Label>Ime i prezime</Label>
             <Input value={formData.buyerName} onChange={(e) => handleChange("buyerName", e.target.value)} data-testid="input-buyer-name" required />
           </div>
           <div className="space-y-2">
@@ -869,7 +869,7 @@ function CopyrightTransferForm({ onSubmit, isSubmitting }: { onSubmit: (data: an
             <Input value={formData.buyerAddress} onChange={(e) => handleChange("buyerAddress", e.target.value)} data-testid="input-buyer-address" required />
           </div>
           <div className="space-y-2">
-            <Label>Matični Broj</Label>
+            <Label>Matični broj</Label>
             <Input value={formData.buyerMaticniBroj} onChange={(e) => handleChange("buyerMaticniBroj", e.target.value)} data-testid="input-buyer-mb" />
           </div>
         </div>
@@ -878,11 +878,11 @@ function CopyrightTransferForm({ onSubmit, isSubmitting }: { onSubmit: (data: an
       <div className="space-y-4">
         <h3 className="font-semibold">Delo</h3>
         <div className="space-y-2">
-          <Label>Naziv Pesme</Label>
+          <Label>Naziv pesme</Label>
           <Input value={formData.songTitle} onChange={(e) => handleChange("songTitle", e.target.value)} data-testid="input-song-title" required />
         </div>
         <div className="space-y-2">
-          <Label>Komponente Dela</Label>
+          <Label>Komponente dela</Label>
           <div className="space-y-2">
             <div className="flex items-center space-x-2">
               <Checkbox checked={formData.components.text} onCheckedChange={(v) => handleChange("components", { ...formData.components, text: !!v })} data-testid="checkbox-component-text" />
@@ -918,7 +918,7 @@ function CopyrightTransferForm({ onSubmit, isSubmitting }: { onSubmit: (data: an
         </RadioGroup>
 
         <div className="space-y-2">
-          <Label>Obuhvat Prenosa Prava</Label>
+          <Label>Obuhvat prenosa prava</Label>
           <div className="space-y-2">
             <div className="flex items-center space-x-2">
               <Checkbox checked={formData.rightsScope.reproduction} onCheckedChange={(v) => handleChange("rightsScope", { ...formData.rightsScope, reproduction: !!v })} data-testid="checkbox-scope-reproduction" />
@@ -941,11 +941,11 @@ function CopyrightTransferForm({ onSubmit, isSubmitting }: { onSubmit: (data: an
 
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           <div className="space-y-2">
-            <Label>Teritorija Korišćenja</Label>
+            <Label>Teritorija korišćenja</Label>
             <Input value={formData.territory} onChange={(e) => handleChange("territory", e.target.value)} data-testid="input-territory" />
           </div>
           <div className="space-y-2">
-            <Label>Trajanje Prenosa Prava</Label>
+            <Label>Trajanje prenosa prava</Label>
             <Input value={formData.duration} onChange={(e) => handleChange("duration", e.target.value)} data-testid="input-duration" />
           </div>
         </div>
@@ -953,7 +953,7 @@ function CopyrightTransferForm({ onSubmit, isSubmitting }: { onSubmit: (data: an
 
       <div className="space-y-4">
         <div className="space-y-2">
-          <Label>Podela Streaming Prihoda</Label>
+          <Label>Podela streaming prihoda</Label>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div className="space-y-2">
               <Label>Autor (%)</Label>
@@ -1040,7 +1040,7 @@ function InstrumentalSaleForm({ onSubmit, isSubmitting }: { onSubmit: (data: any
         <h3 className="font-semibold">Autor/Prodavac (Studio)</h3>
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           <div className="space-y-2">
-            <Label>Ime i Prezime</Label>
+            <Label>Ime i prezime</Label>
             <Input value={formData.authorName} onChange={(e) => handleChange("authorName", e.target.value)} data-testid="input-author-name-instrumental" required />
           </div>
           <div className="space-y-2">
@@ -1048,7 +1048,7 @@ function InstrumentalSaleForm({ onSubmit, isSubmitting }: { onSubmit: (data: any
             <Input value={formData.authorAddress} onChange={(e) => handleChange("authorAddress", e.target.value)} data-testid="input-author-address-instrumental" required />
           </div>
           <div className="space-y-2">
-            <Label>Matični Broj</Label>
+            <Label>Matični broj</Label>
             <Input value={formData.authorMaticniBroj} onChange={(e) => handleChange("authorMaticniBroj", e.target.value)} data-testid="input-author-mb-instrumental" />
           </div>
         </div>
@@ -1058,7 +1058,7 @@ function InstrumentalSaleForm({ onSubmit, isSubmitting }: { onSubmit: (data: any
         <h3 className="font-semibold">Kupac</h3>
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           <div className="space-y-2">
-            <Label>Ime i Prezime</Label>
+            <Label>Ime i prezime</Label>
             <Input value={formData.buyerName} onChange={(e) => handleChange("buyerName", e.target.value)} data-testid="input-buyer-name-instrumental" required />
           </div>
           <div className="space-y-2">
@@ -1066,7 +1066,7 @@ function InstrumentalSaleForm({ onSubmit, isSubmitting }: { onSubmit: (data: any
             <Input value={formData.buyerAddress} onChange={(e) => handleChange("buyerAddress", e.target.value)} data-testid="input-buyer-address-instrumental" required />
           </div>
           <div className="space-y-2">
-            <Label>Matični Broj</Label>
+            <Label>Matični broj</Label>
             <Input value={formData.buyerMaticniBroj} onChange={(e) => handleChange("buyerMaticniBroj", e.target.value)} data-testid="input-buyer-mb-instrumental" />
           </div>
         </div>
@@ -1076,7 +1076,7 @@ function InstrumentalSaleForm({ onSubmit, isSubmitting }: { onSubmit: (data: any
         <h3 className="font-semibold">Instrumental</h3>
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           <div className="space-y-2">
-            <Label>Naziv Instrumentala</Label>
+            <Label>Naziv instrumentala</Label>
             <Input value={formData.instrumentalName} onChange={(e) => handleChange("instrumentalName", e.target.value)} data-testid="input-instrumental-name" required />
           </div>
           <div className="space-y-2">
@@ -1100,7 +1100,7 @@ function InstrumentalSaleForm({ onSubmit, isSubmitting }: { onSubmit: (data: any
         </RadioGroup>
 
         <div className="space-y-2">
-          <Label>Obuhvat Prenosa Prava</Label>
+          <Label>Obuhvat prenosa prava</Label>
           <div className="space-y-2">
             <div className="flex items-center space-x-2">
               <Checkbox checked={formData.rightsScope.reproduction} onCheckedChange={(v) => handleChange("rightsScope", { ...formData.rightsScope, reproduction: !!v })} data-testid="checkbox-scope-reproduction-instrumental" />
@@ -1123,11 +1123,11 @@ function InstrumentalSaleForm({ onSubmit, isSubmitting }: { onSubmit: (data: any
 
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           <div className="space-y-2">
-            <Label>Teritorija Korišćenja</Label>
+            <Label>Teritorija korišćenja</Label>
             <Input value={formData.territory} onChange={(e) => handleChange("territory", e.target.value)} data-testid="input-territory-instrumental" />
           </div>
           <div className="space-y-2">
-            <Label>Trajanje Prenosa Prava</Label>
+            <Label>Trajanje prenosa prava</Label>
             <Input value={formData.durationPeriod} onChange={(e) => handleChange("durationPeriod", e.target.value)} data-testid="input-duration-period-instrumental" />
           </div>
         </div>
@@ -1135,7 +1135,7 @@ function InstrumentalSaleForm({ onSubmit, isSubmitting }: { onSubmit: (data: any
 
       <div className="space-y-4">
         <div className="space-y-2">
-          <Label>Podela Streaming Prihoda</Label>
+          <Label>Podela streaming prihoda</Label>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div className="space-y-2">
               <Label>Autor (%)</Label>

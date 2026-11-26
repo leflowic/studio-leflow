@@ -3,7 +3,7 @@ import { useRoute, useLocation } from "wouter";
 import { useQuery } from "@tanstack/react-query";
 import { CheckCircle2, XCircle, Shield, Loader2, Search } from "lucide-react";
 import { format } from "date-fns";
-import { sr } from "date-fns/locale";
+import { srLatn } from "date-fns/locale";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { SEO } from "@/components/SEO";
@@ -137,7 +137,7 @@ export default function VerifyLicensePage() {
                   {data.issuedAt && (
                     <Detail
                       label="Datum izdavanja"
-                      value={format(new Date(data.issuedAt), "dd. MMMM yyyy.", { locale: sr })}
+                      value={format(new Date(data.issuedAt), "dd. MMMM yyyy.", { locale: srLatn })}
                     />
                   )}
                 </div>

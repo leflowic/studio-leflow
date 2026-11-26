@@ -8,7 +8,7 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { insertCommunityMessageSchema, type InsertCommunityMessage } from "@shared/schema";
 import { formatDistanceToNow } from "date-fns";
-import { sr } from "date-fns/locale";
+import { srLatn } from "date-fns/locale";
 import { Crown, Trophy, Shield, Trash2, Send, MessageSquare, Radio, Smile } from "lucide-react";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Button } from "@/components/ui/button";
@@ -34,7 +34,7 @@ type CommunityMessageWithUser = {
 
 const RANK_CONFIG = {
   admin:  { color: "text-red-500",    bg: "bg-red-500",    light: "bg-red-500/10",   icon: Shield,  label: "Admin"  },
-  legend: { color: "text-amber-500",  bg: "bg-amber-500",  light: "bg-amber-500/10", icon: Trophy,  label: "Legend" },
+  legend: { color: "text-amber-500",  bg: "bg-amber-500",  light: "bg-amber-500/10", icon: Trophy,  label: "Legenda" },
   vip:    { color: "text-blue-500",   bg: "bg-blue-500",   light: "bg-blue-500/10",  icon: Crown,   label: "VIP"    },
   user:   { color: "text-slate-500",  bg: "bg-slate-400",  light: "bg-muted",        icon: null,    label: ""       },
 };
@@ -92,7 +92,7 @@ function MessageItem({
           <span className={cn("text-xs font-semibold", cfg.color)}>{message.username}</span>
           <RankBadge rank={message.rank} />
           <span className="text-[10px] text-muted-foreground/60">
-            {formatDistanceToNow(new Date(message.createdAt), { addSuffix: true, locale: sr })}
+            {formatDistanceToNow(new Date(message.createdAt), { addSuffix: true, locale: srLatn })}
           </span>
         </div>
 
@@ -316,7 +316,7 @@ export function CommunityChat() {
             <MessageSquare className="w-4 h-4 text-primary" />
           </div>
           <div>
-            <h3 className="font-semibold text-sm">Chat Zajednice</h3>
+            <h3 className="font-semibold text-sm">Chat zajednice</h3>
             <p className="text-xs text-muted-foreground">Real-time razgovor</p>
           </div>
           <div className="ml-auto flex items-center gap-1.5 text-xs text-green-500 font-medium">
@@ -344,7 +344,7 @@ export function CommunityChat() {
           <MessageSquare className="w-4 h-4 text-primary" />
         </div>
         <div>
-          <h3 className="font-semibold text-sm">Chat Zajednice</h3>
+          <h3 className="font-semibold text-sm">Chat zajednice</h3>
           <p className="text-[11px] text-muted-foreground">{messages.length} poruk{messages.length === 1 ? "a" : "a"}</p>
         </div>
         <div className="ml-auto flex items-center gap-3">
@@ -367,7 +367,7 @@ export function CommunityChat() {
                 <AlertDialogFooter>
                   <AlertDialogCancel data-testid="button-cancel-clear">Otkaži</AlertDialogCancel>
                   <AlertDialogAction onClick={() => clearAllMutation.mutate()} className="bg-destructive text-destructive-foreground hover:bg-destructive/90" data-testid="button-confirm-clear">
-                    Obriši Sve
+                    Obriši sve
                   </AlertDialogAction>
                 </AlertDialogFooter>
               </AlertDialogContent>

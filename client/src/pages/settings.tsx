@@ -70,8 +70,8 @@ function CollabToggle() {
     <div className="rounded-2xl border border-border/60 bg-card p-6">
       <div className="flex items-center justify-between gap-4">
         <div className="flex items-center gap-3">
-          <div className="w-10 h-10 rounded-xl bg-violet-500/10 flex items-center justify-center flex-shrink-0">
-            <Users className="w-5 h-5 text-violet-500" />
+          <div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center flex-shrink-0">
+            <Users className="w-5 h-5 text-primary" />
           </div>
           <div>
             <p className="font-semibold text-sm">Dostupan za saradnju</p>
@@ -338,7 +338,7 @@ export default function Settings() {
 
           {/* Profile form */}
           <FadeInWhenVisible>
-            <PanelCard title="Podaci o nalogu" icon={User} iconBg="bg-blue-500/10" iconColor="text-blue-500">
+            <PanelCard title="Podaci o nalogu" icon={User} iconBg="bg-primary/10" iconColor="text-primary">
               <div className="space-y-4">
                 {!canChangeUsername && daysSinceUsernameChange !== null && (
                   <Alert className="border-amber-500/30 bg-amber-500/5">
@@ -350,7 +350,7 @@ export default function Settings() {
                 )}
 
                 <div className="space-y-1.5">
-                  <Label htmlFor="username" className="text-xs font-medium uppercase tracking-wide text-muted-foreground">Korisničko ime</Label>
+                  <Label htmlFor="username" className="text-xs font-medium text-muted-foreground">Korisničko ime</Label>
                   <Input
                     id="username"
                     value={profileForm.username}
@@ -362,7 +362,7 @@ export default function Settings() {
                 </div>
 
                 <div className="space-y-1.5">
-                  <Label htmlFor="email" className="text-xs font-medium uppercase tracking-wide text-muted-foreground">Email adresa</Label>
+                  <Label htmlFor="email" className="text-xs font-medium text-muted-foreground">Email adresa</Label>
                   <div className="relative">
                     <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
                     <Input
@@ -393,10 +393,10 @@ export default function Settings() {
 
           {/* Password form */}
           <FadeInWhenVisible>
-            <PanelCard title="Promena lozinke" icon={Lock} iconBg="bg-purple-500/10" iconColor="text-purple-500">
+            <PanelCard title="Promena lozinke" icon={Lock} iconBg="bg-primary/10" iconColor="text-primary">
               <div className="space-y-4">
                 <div className="space-y-1.5">
-                  <Label htmlFor="currentPassword" className="text-xs font-medium uppercase tracking-wide text-muted-foreground">Trenutna lozinka</Label>
+                  <Label htmlFor="currentPassword" className="text-xs font-medium text-muted-foreground">Trenutna lozinka</Label>
                   <PasswordInput
                     id="currentPassword"
                     value={passwordForm.currentPassword}
@@ -410,7 +410,7 @@ export default function Settings() {
                 <Separator />
 
                 <div className="space-y-1.5">
-                  <Label htmlFor="newPassword" className="text-xs font-medium uppercase tracking-wide text-muted-foreground">Nova lozinka</Label>
+                  <Label htmlFor="newPassword" className="text-xs font-medium text-muted-foreground">Nova lozinka</Label>
                   <PasswordInput
                     id="newPassword"
                     value={passwordForm.newPassword}
@@ -422,7 +422,7 @@ export default function Settings() {
                 </div>
 
                 <div className="space-y-1.5">
-                  <Label htmlFor="confirmPassword" className="text-xs font-medium uppercase tracking-wide text-muted-foreground">Potvrda lozinke</Label>
+                  <Label htmlFor="confirmPassword" className="text-xs font-medium text-muted-foreground">Potvrda lozinke</Label>
                   <PasswordInput
                     id="confirmPassword"
                     value={passwordForm.confirmPassword}
@@ -495,7 +495,7 @@ export default function Settings() {
               <div className="flex flex-col gap-1 p-3 rounded-xl bg-muted/40 border border-border/30 hover-elevate transition-all">
                 <span className="text-xs text-muted-foreground">Uloga</span>
                 <span className="text-sm font-semibold flex items-center gap-1.5">
-                  {isAdmin ? <><Crown className="w-4 h-4 text-amber-500" /> Administrator</> : <><User className="w-4 h-4 text-blue-500" /> Korisnik</>}
+                  {isAdmin ? <><Crown className="w-4 h-4 text-amber-500" /> Administrator</> : <><User className="w-4 h-4 text-muted-foreground" /> Korisnik</>}
                 </span>
               </div>
               <div className="flex flex-col gap-1 p-3 rounded-xl bg-muted/40 border border-border/30 hover-elevate transition-all">

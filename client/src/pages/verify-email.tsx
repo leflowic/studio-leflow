@@ -114,7 +114,7 @@ export default function VerifyEmailPage() {
             Studio LeFlow
           </CardTitle>
           <CardDescription className="text-base">
-            Verifikujte Vašu Email Adresu
+            Verifikujte vašu email adresu
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
@@ -130,7 +130,7 @@ export default function VerifyEmailPage() {
 
           <form onSubmit={handleVerify} className="space-y-4">
             <div className="space-y-2">
-              <label className="text-sm font-medium">Verifikacioni Kod</label>
+              <label className="text-sm font-medium">Verifikacioni kod</label>
               <Input
                 type="text"
                 placeholder="123456"

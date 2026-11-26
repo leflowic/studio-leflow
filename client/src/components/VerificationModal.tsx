@@ -102,7 +102,7 @@ export function VerificationModal({
             </div>
           </div>
           <DialogTitle className="text-center text-2xl">
-            Verifikujte Email
+            Verifikujte email
           </DialogTitle>
           <DialogDescription className="text-center">
             Poslali smo 6-cifreni kod na:<br />
@@ -112,7 +112,7 @@ export function VerificationModal({
 
         <form onSubmit={handleVerify} className="space-y-4 pt-2">
           <div className="space-y-2">
-            <label className="text-sm font-medium">Verifikacioni Kod</label>
+            <label className="text-sm font-medium">Verifikacioni kod</label>
             <Input
               type="text"
               placeholder="123456"
