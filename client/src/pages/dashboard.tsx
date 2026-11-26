@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
 import { useAuth } from "@/hooks/use-auth";
@@ -30,6 +30,8 @@ import { MySmartLinkPanel } from "@/components/dashboard/MySmartLinkPanel";
 import { MyJobsPanel } from "@/components/dashboard/MyJobsPanel";
 import { RankPanel } from "@/components/dashboard/RankPanel";
 import { GettingStarted } from "@/components/dashboard/GettingStarted";
+import { DailySpin } from "@/components/dashboard/DailySpin";
+import { MyVouchersPanel } from "@/components/dashboard/MyVouchersPanel";
 import { useForYouItems } from "@/components/home/ForYouToday";
 
 type Project = {
@@ -115,7 +117,19 @@ export default function Dashboard() {
     staleTime: 30000,
   });
   // The job stepper is right below, so the job item would just repeat it.
-  const { items: today } = useForYouItems(gameData, { includeJob: false });
+  const { items: today } = useForYouItems(gameData, { includeJob: false, includeSpin: false });
+
+  // Links like /dashboard#ploca (from the home "Za tebe danas" strip) - wouter doesn't scroll to anchors.
+  useEffect(() => {
+    const id = window.location.hash.slice(1);
+    if (!id) return;
+    let tries = 0;
+    const t = setInterval(() => {
+      const el = document.getElementById(id);
+      if (el || ++tries > 30) { clearInterval(t); el?.scrollIntoView({ behavior: "smooth", block: "start" }); }
+    }, 100);
+    return () => clearInterval(t);
+  }, []);
 
   const handleDownloadContract = async (contractId: number, contractNumber: string) => {
     setDownloadingId(contractId);
@@ -224,6 +238,10 @@ export default function Dashboard() {
             </div>
           </section>
         )}
+
+        <DailySpin />
+
+        <MyVouchersPanel />
 
         {/* Live panels - each hides itself when it has nothing */}
         <FadeInWhenVisible>

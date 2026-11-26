@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { Link } from "wouter";
-import { Gamepad2, Bell, MessageCircle, Music, Trophy, Flame, ChevronRight } from "lucide-react";
+import { Gamepad2, Bell, MessageCircle, Music, Trophy, Flame, ChevronRight, Disc3 } from "lucide-react";
 import { JOB_STAGES } from "@/lib/job-stages";
 import { useMonthlyChallenge, useChallengeCountdown } from "@/components/ChallengeBanner";
 import { PushToggle } from "@/components/PushToggle";
@@ -16,11 +16,12 @@ export type ForYouItem = { key: string; href: string; icon: React.ElementType; t
 
 /** Live "what's happening for you" items - shared by the home strip and the Dashboard.
  *  Pass includeJob=false where the job stepper is already on screen (Dashboard). */
-export function useForYouItems(gameData: any, { includeJob = true }: { includeJob?: boolean } = {}) {
+export function useForYouItems(gameData: any, { includeJob = true, includeSpin = true }: { includeJob?: boolean; includeSpin?: boolean } = {}) {
   const { data: unreadNotifs } = useQuery<{ count: number }>({ queryKey: ["/api/notifications/unread-count"] });
   const { data: unreadMsgs } = useQuery<{ count: number }>({ queryKey: ["/api/messages/unread-count"] });
   const { data: jobs } = useQuery<Array<{ id: number; title: string; stage: string }>>({ queryKey: ["/api/user/jobs"] });
   const { data: challenge } = useMonthlyChallenge();
+  const { data: spin } = useQuery<{ spun: boolean }>({ queryKey: ["/api/spin/today"], enabled: includeSpin });
   const { label: challengeLabel, ended: challengeEnded } = useChallengeCountdown(challenge?.deadline);
   const [pushOff, setPushOff] = useState(false);
 
@@ -47,6 +48,10 @@ export function useForYouItems(gameData: any, { includeJob = true }: { includeJo
   if (activeJob) {
     const stage = JOB_STAGES.find(s => s.value === activeJob.stage)?.label ?? activeJob.stage;
     items.push({ key: "job", href: "/dashboard", icon: Music, title: activeJob.title, detail: `Faza: ${stage}` });
+  }
+
+  if (includeSpin && spin && !spin.spun) {
+    items.push({ key: "spin", href: "/dashboard#ploca", icon: Disc3, title: "Ploča dana te čeka", detail: "Jedno okretanje dnevno", highlight: true });
   }
 
   if (unreadMsgs?.count) {

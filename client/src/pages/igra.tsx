@@ -47,7 +47,7 @@ const SOUND_BAR_HEIGHTS = [14, 28, 20, 36, 22, 32, 16, 26, 18];
 export default function IgraPage() {
   const { user } = useAuth();
   // Rank perk: VIP 4, Legenda 5 listens (mirrors RANK_PERKS in server/activity.ts)
-  const maxPlays = user?.rank === "legend" || user?.rank === "admin" ? 5 : user?.rank === "vip" ? 4 : 3;
+  const rankPlays = user?.rank === "legend" || user?.rank === "admin" ? 5 : user?.rank === "vip" ? 4 : 3;
   const queryClient = useQueryClient();
   const { toast } = useToast();
 
@@ -57,7 +57,7 @@ export default function IgraPage() {
   const [audioError, setAudioError] = useState(false);
   const [noClip, setNoClip] = useState(false);
   const [playing, setPlaying] = useState(false);
-  const [playsLeft, setPlaysLeft] = useState(maxPlays);
+  const [playsLeft, setPlaysLeft] = useState(rankPlays);
   const [answer, setAnswer] = useState("");
   const [submitted, setSubmitted] = useState(false);
   const [result, setResult] = useState<{ correct: boolean; points: number } | null>(null);
@@ -76,6 +76,9 @@ export default function IgraPage() {
   });
 
   const challenge = data?.challenge;
+  // "Ploča dana" can add a listen for today on top of the rank perk.
+  const bonusListens: number = data?.bonusListens ?? 0;
+  const maxPlays = rankPlays + bonusListens;
   const openHour: number = data?.openHour ?? challenge?.openHour ?? 17;
   const openMinute: number = data?.openMinute ?? challenge?.openMinute ?? 0;
   const { isOpen, minutesLeft } = useCountdown(openHour, openMinute);
@@ -90,9 +93,23 @@ export default function IgraPage() {
   useEffect(() => {
     const date = challenge?.challengeDate;
     if (!date || !user?.id) return;
-    const stored = localStorage.getItem(`igra_plays_${user.id}_${date}`);
-    setPlaysLeft(stored !== null ? Math.max(0, parseInt(stored, 10)) : maxPlays);
-  }, [challenge?.challengeDate, user?.id, maxPlays]);
+    const key = `igra_plays_${user.id}_${date}`;
+    const bonusKey = `igra_bonus_${user.id}_${date}`;
+    const stored = localStorage.getItem(key);
+    if (stored === null) {
+      if (bonusListens) localStorage.setItem(bonusKey, "1");
+      setPlaysLeft(maxPlays);
+      return;
+    }
+    let left = Math.max(0, parseInt(stored, 10));
+    // Bonus won after some listens were already used: add it once.
+    if (bonusListens && !localStorage.getItem(bonusKey)) {
+      left += bonusListens;
+      localStorage.setItem(bonusKey, "1");
+      localStorage.setItem(key, String(left));
+    }
+    setPlaysLeft(left);
+  }, [challenge?.challengeDate, user?.id, maxPlays, bonusListens]);
 
   useEffect(() => {
     if (!data?.available || !challenge?.challengeDate) return;
@@ -589,7 +606,7 @@ export default function IgraPage() {
                       <ol className="space-y-0">
                         {[
                           { text: <>Svaki dan nova pesma. Igra se otvara u određeno vreme.</> },
-                          { text: <>Pritisni <strong className="text-foreground">▶ Pusti</strong> - čuješ <strong className="text-foreground">1 sekundu</strong>. Imaš <strong className="text-foreground">{maxPlays} slušanja</strong>{maxPlays > 3 ? " (prednost ranga)" : ""}.</> },
+                          { text: <>Pritisni <strong className="text-foreground">▶ Pusti</strong> - čuješ <strong className="text-foreground">1 sekundu</strong>. Imaš <strong className="text-foreground">{maxPlays} slušanja</strong>{rankPlays > 3 && bonusListens ? " (prednost ranga + Ploča dana)" : rankPlays > 3 ? " (prednost ranga)" : bonusListens ? " (+1 sa Ploče dana)" : ""}.</> },
                           { text: <>Upiši naziv pesme i potvrdi. Imaš samo <strong className="text-foreground">1 pokušaj</strong>.</> },
                           { text: <>Tačno = <strong className="text-foreground">+10 poena</strong>. Nedeljni lider osvaja nagradu!</> },
                         ].map(({ text }, i) => (

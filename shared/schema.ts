@@ -1135,6 +1135,7 @@ export const posts = pgTable("posts", {
   audioUrl: text("audio_url"),
   imageUrl: text("image_url"),
   collabTag: text("collab_tag"), // beatmaker | vokal | tekstar | producent
+  featuredUntil: timestamp("featured_until"), // "Ploča dana" reward - sorts first in the feed until this time
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });
 
@@ -1190,3 +1191,37 @@ export const pushSubscriptions = pgTable("push_subscriptions", {
 }));
 
 export type PushSubscriptionRow = typeof pushSubscriptions.$inferSelect;
+
+// ─── Ploča dana (daily spin) ────────────────────────────────────────────────
+// One spin per user per Belgrade day; the reward is decided server-side.
+// Reward keys: see SPIN_REWARDS in server/spin.ts.
+export const dailySpins = pgTable("daily_spins", {
+  id: serial("id").primaryKey(),
+  userId: integer("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  spinDate: text("spin_date").notNull(), // YYYY-MM-DD, Europe/Belgrade
+  reward: text("reward").notNull(),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+}, (table) => ({
+  userDateUnique: unique("daily_spins_user_date_unique").on(table.userId, table.spinDate),
+  dateIdx: index("daily_spins_date_idx").on(table.spinDate),
+}));
+
+export type DailySpin = typeof dailySpins.$inferSelect;
+
+// Studio vouchers won on the Ploča dana (e.g. 50% off recording + mix/master).
+// Non-transferable, tied to the account; staff marks them redeemed in the admin "Vaučeri" tab.
+export const vouchers = pgTable("vouchers", {
+  id: serial("id").primaryKey(),
+  code: text("code").notNull().unique(),
+  userId: integer("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  type: text("type").notNull(), // studio_50
+  spinId: integer("spin_id").references(() => dailySpins.id, { onDelete: "set null" }),
+  expiresAt: timestamp("expires_at").notNull(),
+  redeemedAt: timestamp("redeemed_at"),
+  redeemedBy: integer("redeemed_by").references(() => users.id, { onDelete: "set null" }),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+}, (table) => ({
+  userIdx: index("vouchers_user_idx").on(table.userId),
+}));
+
+export type Voucher = typeof vouchers.$inferSelect;

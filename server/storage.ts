@@ -98,7 +98,12 @@ import {
   type RightsProtection,
   type InsertRightsProtection,
   rightsProtections,
+  dailySpins,
+  vouchers,
+  type DailySpin,
+  type Voucher,
 } from "@shared/schema";
+import { pickReward, generateVoucherCode, daysLeftInMonth, VOUCHER_VALID_DAYS, STUDIO_PRIZES_PER_MONTH, type SpinReward } from "./spin";
 import { db, pool } from "./db";
 import { eq, and, or, desc, sql, notInArray, inArray, gte, lte, count, countDistinct, isNotNull } from "drizzle-orm";
 import session from "express-session";
@@ -438,6 +443,14 @@ export interface IStorage {
   getGameStreak(userId: number, today: string): Promise<{ current: number; best: number; totalCorrect: number; challengeNumber: number }>;
   getPublicArtist(username: string): Promise<{ username: string; avatarUrl: string | null; bio: string | null; createdAt: Date; releases: Array<{ slug: string; title: string; artist: string; coverUrl: string | null; createdAt: Date }> } | null>;
   getCollabUsers(): Promise<Array<{ id: number; username: string; avatarUrl: string | null; availableForCollab: boolean; isVerifiedArtist: boolean }>>;
+
+  // Ploča dana (daily spin) + vouchers
+  getSpin(userId: number, date: string): Promise<DailySpin | undefined>;
+  performSpin(userId: number, date: string, opts: { canExtraListen: boolean }): Promise<{ spin: DailySpin; voucher: Voucher | null; created: boolean }>;
+  getStudioPrizesLeft(date: string): Promise<number>;
+  getUserVouchers(userId: number): Promise<Voucher[]>;
+  getAllVouchers(): Promise<Array<Voucher & { username: string; email: string }>>;
+  setVoucherRedeemed(id: number, redeemed: boolean, staffId: number): Promise<Voucher | undefined>;
 
   // Session store
   sessionStore: Store;
@@ -3382,6 +3395,7 @@ export class DatabaseStorage implements IStorage {
         audioUrl: posts.audioUrl,
         imageUrl: posts.imageUrl,
         collabTag: posts.collabTag,
+        featuredUntil: posts.featuredUntil,
         createdAt: posts.createdAt,
         username: users.username,
         avatarUrl: users.avatarUrl,
@@ -3394,7 +3408,8 @@ export class DatabaseStorage implements IStorage {
       })
       .from(posts)
       .innerJoin(users, eq(posts.userId, users.id))
-      .orderBy(desc(posts.createdAt))
+      // "Ploča dana" featured posts float to the top while their 24h lasts.
+      .orderBy(sql`(${posts.featuredUntil} IS NOT NULL AND ${posts.featuredUntil} > NOW()) DESC`, desc(posts.createdAt))
       .limit(limit)
       .offset(offset);
     return rows;
@@ -3410,6 +3425,7 @@ export class DatabaseStorage implements IStorage {
         audioUrl: posts.audioUrl,
         imageUrl: posts.imageUrl,
         collabTag: posts.collabTag,
+        featuredUntil: posts.featuredUntil,
         createdAt: posts.createdAt,
         username: users.username,
         avatarUrl: users.avatarUrl,
@@ -3579,6 +3595,95 @@ export class DatabaseStorage implements IStorage {
       .from(users)
       .where(eq(users.availableForCollab, true))
       .orderBy(users.username);
+  }
+
+  // ─── Ploča dana ───────────────────────────────────────────────────────────
+  async getSpin(userId: number, date: string): Promise<DailySpin | undefined> {
+    const [row] = await db.select().from(dailySpins).where(and(eq(dailySpins.userId, userId), eq(dailySpins.spinDate, date)));
+    return row;
+  }
+
+  async getStudioPrizesLeft(date: string): Promise<number> {
+    const month = date.slice(0, 7);
+    const [row] = await db.select({ n: count() }).from(dailySpins)
+      .where(and(eq(dailySpins.reward, "studio_50"), sql`${dailySpins.spinDate} LIKE ${month + "-%"}`));
+    return Math.max(0, STUDIO_PRIZES_PER_MONTH - Number(row?.n ?? 0));
+  }
+
+  // The whole spin (eligibility, cap check, reward, side effects) runs in one
+  // transaction behind a global advisory lock, so two people can't both take
+  // the last studio prize and one user can't spin twice by double-clicking.
+  async performSpin(userId: number, date: string, opts: { canExtraListen: boolean }): Promise<{ spin: DailySpin; voucher: Voucher | null; created: boolean }> {
+    return db.transaction(async (tx) => {
+      await tx.execute(sql`SELECT pg_advisory_xact_lock(735102)`);
+
+      const [existing] = await tx.select().from(dailySpins).where(and(eq(dailySpins.userId, userId), eq(dailySpins.spinDate, date)));
+      if (existing) {
+        const [v] = await tx.select().from(vouchers).where(eq(vouchers.spinId, existing.id));
+        return { spin: existing, voucher: v ?? null, created: false };
+      }
+
+      const month = date.slice(0, 7);
+      const [won] = await tx.select({ n: count() }).from(dailySpins)
+        .where(and(eq(dailySpins.reward, "studio_50"), sql`${dailySpins.spinDate} LIKE ${month + "-%"}`));
+      const studioPrizesLeft = Math.max(0, STUDIO_PRIZES_PER_MONTH - Number(won?.n ?? 0));
+
+      // Expected spins for the rest of the month, from the average of the last
+      // 7 days that had any spins. Until there are 3 such days (right after
+      // launch) assume at least 10/day, so both prizes don't go on day one.
+      const [recent] = await tx.select({ n: count(), days: countDistinct(dailySpins.spinDate) }).from(dailySpins)
+        .where(sql`${dailySpins.spinDate} >= to_char((${date}::date - INTERVAL '7 days'), 'YYYY-MM-DD') AND ${dailySpins.spinDate} < ${date}`);
+      const histDays = Number(recent?.days ?? 0);
+      const observed = histDays ? Number(recent?.n ?? 0) / histDays : 0;
+      const avgPerDay = histDays < 3 ? Math.max(10, observed) : Math.max(1, observed);
+      const expectedSpinsLeft = Math.round(avgPerDay * daysLeftInMonth(date));
+
+      const [latestPost] = await tx.select({ id: posts.id }).from(posts).where(eq(posts.userId, userId)).orderBy(desc(posts.createdAt)).limit(1);
+
+      const reward: SpinReward = pickReward({
+        canExtraListen: opts.canExtraListen,
+        hasPosts: !!latestPost,
+        studioPrizesLeft,
+        expectedSpinsLeft,
+      });
+
+      const [spin] = await tx.insert(dailySpins).values({ userId, spinDate: date, reward }).returning();
+
+      let voucher: Voucher | null = null;
+      if (reward === "studio_50") {
+        const expiresAt = new Date(Date.now() + VOUCHER_VALID_DAYS * 86400_000);
+        for (let attempt = 0; attempt < 5 && !voucher; attempt++) {
+          const rows = await tx.insert(vouchers)
+            .values({ code: generateVoucherCode(), userId, type: "studio_50", spinId: spin!.id, expiresAt })
+            .onConflictDoNothing({ target: vouchers.code })
+            .returning();
+          voucher = rows[0] ?? null;
+        }
+        if (!voucher) throw new Error("Voucher code generation failed");
+      } else if (reward === "feature_post" && latestPost) {
+        await tx.update(posts).set({ featuredUntil: new Date(Date.now() + 24 * 3600_000) }).where(eq(posts.id, latestPost.id));
+      }
+
+      return { spin: spin!, voucher, created: true };
+    });
+  }
+
+  async getUserVouchers(userId: number): Promise<Voucher[]> {
+    return db.select().from(vouchers).where(eq(vouchers.userId, userId)).orderBy(desc(vouchers.createdAt));
+  }
+
+  async getAllVouchers(): Promise<Array<Voucher & { username: string; email: string }>> {
+    const rows = await db.select({ v: vouchers, username: users.username, email: users.email })
+      .from(vouchers).innerJoin(users, eq(vouchers.userId, users.id))
+      .orderBy(desc(vouchers.createdAt));
+    return rows.map(r => ({ ...r.v, username: r.username, email: r.email }));
+  }
+
+  async setVoucherRedeemed(id: number, redeemed: boolean, staffId: number): Promise<Voucher | undefined> {
+    const [row] = await db.update(vouchers)
+      .set(redeemed ? { redeemedAt: new Date(), redeemedBy: staffId } : { redeemedAt: null, redeemedBy: null })
+      .where(eq(vouchers.id, id)).returning();
+    return row;
   }
 }
 

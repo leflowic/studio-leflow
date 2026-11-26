@@ -11,6 +11,7 @@ import { db } from "./db";
 //   like received from someone else  1
 //   approved giveaway project       15
 //   vote received on a project       1
+//   "Ploča dana" points reward        5  (max once a day by construction)
 //
 // Ranks only ever go UP automatically (user -> vip -> legend). Staff-set ranks
 // and the "admin" rank are never lowered or touched by this.
@@ -37,6 +38,7 @@ export const POINT_RULES = [
   { label: "Lajk na tvoju objavu", points: 1 },
   { label: "Odobren projekat na giveaway-u", points: 15 },
   { label: "Glas za tvoj projekat", points: 1 },
+  { label: "Bodovi sa Ploče dana", points: 5 },
 ];
 
 const POINTS_SQL = sql`
@@ -46,7 +48,8 @@ const POINTS_SQL = sql`
     + COALESCE(c.days, 0) * 1
     + COALESCE(l.likes, 0) * 1
     + COALESCE(pr.approved, 0) * 15
-    + COALESCE(pr.votes, 0) * 1 AS points
+    + COALESCE(pr.votes, 0) * 1
+    + COALESCE(sp.n, 0) * 5 AS points
   FROM users u
   LEFT JOIN (SELECT user_id, COUNT(*) FILTER (WHERE correct) AS correct FROM daily_guesses GROUP BY user_id) g ON g.user_id = u.id
   LEFT JOIN (SELECT user_id, COUNT(DISTINCT created_at::date) AS days FROM posts GROUP BY user_id) p ON p.user_id = u.id
@@ -59,6 +62,7 @@ const POINTS_SQL = sql`
     SELECT user_id, COUNT(*) FILTER (WHERE approved) AS approved, COALESCE(SUM(votes_count) FILTER (WHERE approved), 0) AS votes
     FROM projects GROUP BY user_id
   ) pr ON pr.user_id = u.id
+  LEFT JOIN (SELECT user_id, COUNT(*) AS n FROM daily_spins WHERE reward = 'points' GROUP BY user_id) sp ON sp.user_id = u.id
 `;
 
 export async function getActivityPoints(userId: number): Promise<number> {

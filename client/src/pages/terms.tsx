@@ -1,3 +1,4 @@
+import { useEffect, useState } from "react";
 import { Link } from "wouter";
 import { ArrowRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -84,6 +85,18 @@ const rulesSections = [
       "Revizije moraju biti konkretne i jasno definisane. Redefinisanje celokupnog kreativnog pravca smatra se novim projektom.",
     ],
   },
+  {
+    id: "ploca-dana",
+    title: "Ploča dana",
+    items: [
+      "Ploču dana može da zavrti svaki korisnik sa potvrđenom email adresom, jednom dnevno (dan se računa po beogradskom vremenu). Učešće je besplatno.",
+      "Nagradu određuje server nasumično u trenutku okretanja. Raspored polja na ploči je samo prikaz i ne odgovara stvarnim šansama.",
+      "<strong>Vaučer za 50% popusta na snimanje + mix/master:</strong> na celom sajtu se mesečno mogu osvojiti najviše 2 ovakva vaučera. Vaučer je vezan za nalog koji ga je osvojio, ne može se preneti na drugu osobu niti zameniti za novac, važi 60 dana od osvajanja i koristi se za jedan projekat. Ne kombinuje se sa drugim popustima.",
+      "Vaučer se koristi tako što pri zakazivanju termina navedete kod (LF-...). Studio proverava kod i označava ga kao iskorišćen.",
+      "Nagrade na sajtu (dodatno slušanje u igri Pogodi Pesmu, istaknuta objava, bodovi za rang) važe samo na sajtu i nemaju novčanu vrednost.",
+      "Studio LeFlow zadržava pravo da poništi nagradu osvojenu zloupotrebom (više naloga iste osobe, automatizovano okretanje i slično).",
+    ],
+  },
 ];
 
 const faqs = [
@@ -120,6 +133,16 @@ const faqs = [
 ];
 
 export default function Terms() {
+  // Deep links like /pravila#ploca-dana open and scroll to that rule.
+  const [openRule, setOpenRule] = useState<string>("");
+  useEffect(() => {
+    const id = window.location.hash.slice(1);
+    if (!id || !rulesSections.some(r => r.id === id)) return;
+    setOpenRule(id);
+    const t = setTimeout(() => document.getElementById(id)?.scrollIntoView({ behavior: "smooth", block: "start" }), 300);
+    return () => clearTimeout(t);
+  }, []);
+
   return (
     <>
       <SEO
@@ -147,9 +170,9 @@ export default function Terms() {
             <FadeInWhenVisible delay={0.1}>
               <div className="mb-16">
                 <h2 className="text-2xl font-bold mb-6">Pravila i uslovi saradnje</h2>
-                <Accordion type="single" collapsible className="space-y-3">
+                <Accordion type="single" collapsible className="space-y-3" value={openRule} onValueChange={setOpenRule}>
                   {rulesSections.map((section) => (
-                    <AccordionItem key={section.id} value={section.id} className="border rounded-lg px-6">
+                    <AccordionItem key={section.id} id={section.id} value={section.id} className="border rounded-lg px-6 scroll-mt-24">
                       <AccordionTrigger className="text-left font-semibold hover:no-underline py-5">
                         {section.title}
                       </AccordionTrigger>

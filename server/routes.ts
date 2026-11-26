@@ -3,6 +3,7 @@ import { createServer, type Server } from "http";
 import { storage } from "./storage";
 import { wsHelpers, notifyUser, broadcastToUser, getOnlineUsersSnapshot } from "./websocket-helpers";
 import { getActivityPoints, rankForPoints, RANK_THRESHOLDS, POINT_RULES, RANK_PERKS, perksFor } from "./activity";
+import { SPIN_REWARDS, STUDIO_PRIZES_PER_MONTH, type SpinReward } from "./spin";
 import { getVapidPublicKey, saveSubscription, removeSubscription, hasSubscription, sendPushToUser, sendPushToUserIfOffline, sendPushToAll } from "./push";
 import { insertContactSubmissionSchema, insertCmsContentSchema, insertCmsMediaSchema, insertVideoSpotSchema, insertUserSongSchema, insertNewsletterSubscriberSchema, insertInvoiceSchema, insertCommunityMessageSchema, insertSiteAnnouncementSchema, mixMasterContractDataSchema, copyrightTransferContractDataSchema, instrumentalSaleContractDataSchema, insertSmartLinkSchema, insertStudioJobSchema, JOB_STAGES, insertNewsArticleSchema, insertRightsProtectionSchema, insertTestimonialSchema, upsertJobBriefSchema, type CmsContent, type CmsMedia, type VideoSpot, type UserSong } from "@shared/schema";
 import { sendEmail, getLastVerificationCode } from "./resend-client";
@@ -4182,6 +4183,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       const guess = await storage.getUserGuessForDate(req.jwtUser!.id as number, today);
       const streak = await storage.getGameStreak(req.jwtUser!.id as number, today);
+      const spin = await storage.getSpin(req.jwtUser!.id as number, today);
       const { correctAnswers, clipUrl, ...safeChallenge } = challenge;
       res.json({
         available: true,
@@ -4189,8 +4191,85 @@ export async function registerRoutes(app: Express): Promise<Server> {
         alreadyPlayed: !!guess,
         guess,
         streak,
+        bonusListens: spin?.reward === "extra_listen" ? 1 : 0, // "Ploča dana" reward
       });
     } catch (e) {
+      res.status(500).json({ error: "Greška na serveru" });
+    }
+  });
+
+  // ─── Ploča dana (daily spin) ──────────────────────────────────────────────
+  // Outcome is decided server-side in storage.performSpin(); the client only
+  // animates to the reward it receives. See server/spin.ts.
+  const belgradeToday = () => new Intl.DateTimeFormat('sv', { timeZone: 'Europe/Belgrade' }).format(new Date());
+  const spinPayload = (spin: { reward: string; createdAt: Date } | undefined, voucher: any) => spin ? {
+    reward: spin.reward,
+    ...SPIN_REWARDS[spin.reward as SpinReward],
+    voucher: voucher ? { code: voucher.code, expiresAt: voucher.expiresAt } : null,
+  } : null;
+
+  app.get("/api/spin/today", requireVerifiedEmail, async (req, res) => {
+    try {
+      const today = belgradeToday();
+      const spin = await storage.getSpin(req.jwtUser!.id, today);
+      let voucher = null;
+      if (spin?.reward === "studio_50") voucher = (await storage.getUserVouchers(req.jwtUser!.id)).find(v => v.spinId === spin.id) ?? null;
+      res.json({
+        date: today,
+        spun: !!spin,
+        result: spinPayload(spin, voucher),
+        studioPrizesLeft: await storage.getStudioPrizesLeft(today),
+        studioPrizesPerMonth: STUDIO_PRIZES_PER_MONTH,
+      });
+    } catch (e) {
+      console.error("[Spin] today error:", e);
+      res.status(500).json({ error: "Greška na serveru" });
+    }
+  });
+
+  app.post("/api/spin", requireVerifiedEmail, async (req, res) => {
+    try {
+      const userId = req.jwtUser!.id;
+      const today = belgradeToday();
+      const challenge = await storage.getTodayChallenge();
+      const guess = challenge ? await storage.getUserGuessForDate(userId, today) : null;
+      const { spin, voucher, created } = await storage.performSpin(userId, today, { canExtraListen: !!challenge && !guess });
+      if (created && voucher) {
+        console.log(`[Spin] Studio voucher ${voucher.code} won by user ${userId}`);
+      }
+      res.json({ created, result: spinPayload(spin, voucher) });
+    } catch (e) {
+      console.error("[Spin] error:", e);
+      res.status(500).json({ error: "Ploča trenutno ne radi. Pokušajte ponovo za minut." });
+    }
+  });
+
+  app.get("/api/me/vouchers", requireVerifiedEmail, async (req, res) => {
+    try {
+      const list = await storage.getUserVouchers(req.jwtUser!.id);
+      res.json(list.map(v => ({ id: v.id, code: v.code, type: v.type, expiresAt: v.expiresAt, redeemedAt: v.redeemedAt, createdAt: v.createdAt })));
+    } catch {
+      res.status(500).json({ error: "Greška na serveru" });
+    }
+  });
+
+  app.get("/api/admin/vouchers", requireRole("producer"), async (_req, res) => {
+    try {
+      res.json(await storage.getAllVouchers());
+    } catch {
+      res.status(500).json({ error: "Greška na serveru" });
+    }
+  });
+
+  app.patch("/api/admin/vouchers/:id", requireRole("producer"), async (req, res) => {
+    try {
+      const id = parseInt(req.params.id, 10);
+      if (isNaN(id)) return res.status(400).json({ error: "Nevažeći ID" });
+      if (typeof req.body?.redeemed !== "boolean") return res.status(400).json({ error: "Nevažeći podaci" });
+      const updated = await storage.setVoucherRedeemed(id, req.body.redeemed, req.jwtUser!.id);
+      if (!updated) return res.status(404).json({ error: "Vaučer nije pronađen" });
+      res.json(updated);
+    } catch {
       res.status(500).json({ error: "Greška na serveru" });
     }
   });

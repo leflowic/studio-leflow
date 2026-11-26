@@ -417,6 +417,42 @@ async function runMigrations() {
     client9.release();
   }
 
+  // ─── Ploča dana (daily spin) + vouchers + featured posts ────────────────
+  const clientSpin = await pool.connect();
+  try {
+    await clientSpin.query(`
+      CREATE TABLE IF NOT EXISTS daily_spins (
+        id SERIAL PRIMARY KEY,
+        user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+        spin_date TEXT NOT NULL,
+        reward TEXT NOT NULL,
+        created_at TIMESTAMP NOT NULL DEFAULT NOW(),
+        CONSTRAINT daily_spins_user_date_unique UNIQUE (user_id, spin_date)
+      );
+    `);
+    await clientSpin.query(`CREATE INDEX IF NOT EXISTS daily_spins_date_idx ON daily_spins(spin_date);`);
+    await clientSpin.query(`
+      CREATE TABLE IF NOT EXISTS vouchers (
+        id SERIAL PRIMARY KEY,
+        code TEXT NOT NULL UNIQUE,
+        user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+        type TEXT NOT NULL,
+        spin_id INTEGER REFERENCES daily_spins(id) ON DELETE SET NULL,
+        expires_at TIMESTAMP NOT NULL,
+        redeemed_at TIMESTAMP,
+        redeemed_by INTEGER REFERENCES users(id) ON DELETE SET NULL,
+        created_at TIMESTAMP NOT NULL DEFAULT NOW()
+      );
+    `);
+    await clientSpin.query(`CREATE INDEX IF NOT EXISTS vouchers_user_idx ON vouchers(user_id);`);
+    await clientSpin.query(`ALTER TABLE posts ADD COLUMN IF NOT EXISTS featured_until TIMESTAMP;`);
+    log('[Migrations] Daily spin / vouchers ready', 'express');
+  } catch (err: any) {
+    log(`[Migrations] Warning on daily spin tables: ${err.message}`, 'express');
+  } finally {
+    clientSpin.release();
+  }
+
   // ─── Testimonials (client-submitted, prompted after job delivery) ────────
   const client10 = await pool.connect();
   try {

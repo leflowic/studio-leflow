@@ -27,7 +27,7 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
-import { Users, Music, Heart, MessageCircle, Trash2, Shield, ShieldOff, ShieldCheck, Settings, Construction, Send, Mail, Eye, Search, Download, UserPlus, FileText, Crown, Trophy, BadgeCheck, LayoutDashboard, Radio, MessagesSquare, MessageSquareHeart, Receipt, CalendarDays, Archive, Gamepad2, Link2, FolderOpen, FolderKanban, Newspaper, CheckCircle2, Clock, ArrowLeft, CalendarClock, UserCog, ShieldAlert, IdCard, ArrowLeftRight, ExternalLink, type LucideIcon } from "lucide-react";
+import { Users, Music, Heart, MessageCircle, Trash2, Shield, ShieldOff, ShieldCheck, Settings, Construction, Send, Mail, Eye, Search, Download, UserPlus, FileText, Crown, Trophy, BadgeCheck, LayoutDashboard, Radio, MessagesSquare, MessageSquareHeart, Ticket, Receipt, CalendarDays, Archive, Gamepad2, Link2, FolderOpen, FolderKanban, Newspaper, CheckCircle2, Clock, ArrowLeft, CalendarClock, UserCog, ShieldAlert, IdCard, ArrowLeftRight, ExternalLink, type LucideIcon } from "lucide-react";
 import { format, formatDistanceToNow } from "date-fns";
 import { srLatn } from "date-fns/locale";
 import type { User } from "@shared/schema";
@@ -51,6 +51,7 @@ import { JobsBoard } from "@/components/admin/JobsBoard";
 import { NewsTab } from "@/components/admin/NewsTab";
 import { RightsProtectionTab } from "@/components/admin/RightsProtectionTab";
 import { TestimonialsTab } from "@/components/admin/TestimonialsTab";
+import { VouchersTab } from "@/components/admin/VouchersTab";
 import {
   Select,
   SelectContent,
@@ -92,6 +93,7 @@ const ADMIN_NAV: { group: string; items: { value: string; label: string; icon: L
     items: [
       { value: "jobs", label: "Radna tabla", icon: FolderKanban, roles: ["producer"] },
       { value: "testimonials", label: "Utisci", icon: MessageSquareHeart, roles: ["producer", "marketing"] },
+      { value: "vouchers", label: "Vaučeri", icon: Ticket, roles: ["producer"] },
       { value: "contracts", label: "Licence", icon: FileText, roles: ["producer"] },
       { value: "rights-protection", label: "Zaštita prava", icon: ShieldCheck, roles: ["producer"] },
       { value: "invoices", label: "Fakture", icon: Receipt, roles: ["producer"] },
@@ -364,6 +366,10 @@ export default function AdminPage() {
 
           <TabsContent value="testimonials">
             <TestimonialsTab />
+          </TabsContent>
+
+          <TabsContent value="vouchers">
+            <VouchersTab />
           </TabsContent>
 
           <TabsContent value="contracts">

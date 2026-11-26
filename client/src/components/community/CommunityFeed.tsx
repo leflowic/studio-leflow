@@ -24,6 +24,7 @@ type FeedPost = {
   audioUrl: string | null;
   imageUrl: string | null;
   collabTag: string | null;
+  featuredUntil?: string | null;
   createdAt: string;
   username: string;
   avatarUrl: string | null;
@@ -257,6 +258,9 @@ function PostCard({ post, currentUserId, onDeleted, onLikeChanged, onCommentCoun
             </div>
             <p className="text-xs text-muted-foreground">
               {formatDistanceToNow(new Date(post.createdAt), { addSuffix: true, locale: sr })}
+              {post.featuredUntil && new Date(post.featuredUntil) > new Date() && (
+                <span className="text-primary"> · Istaknuto</span>
+              )}
             </p>
           </div>
         </div>
