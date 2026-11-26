@@ -1,14 +1,11 @@
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
+import { apiRequest } from "@/lib/queryClient";
 import { useAuth } from "@/hooks/use-auth";
 import { useToast } from "@/hooks/use-toast";
 import { SEO } from "@/components/SEO";
-import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Skeleton } from "@/components/ui/skeleton";
-import { StatTile } from "@/components/ui/stat-tile";
 import { PanelCard } from "@/components/ui/panel-card";
-import { EmptyState } from "@/components/ui/empty-state";
 import { Link } from "wouter";
 import { format } from "date-fns";
 import {
@@ -23,18 +20,17 @@ import {
   AlertCircle,
   Loader2,
   ExternalLink,
-  Sparkles,
   Music2,
   Settings,
-  ArrowRight,
-  CalendarDays,
+  ChevronRight,
 } from "lucide-react";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 import { FadeInWhenVisible } from "@/components/motion/FadeIn";
-import { WaveDivider } from "@/components/WaveDivider";
 import { MySmartLinkPanel } from "@/components/dashboard/MySmartLinkPanel";
 import { MyJobsPanel } from "@/components/dashboard/MyJobsPanel";
 import { RankPanel } from "@/components/dashboard/RankPanel";
+import { GettingStarted } from "@/components/dashboard/GettingStarted";
+import { useForYouItems } from "@/components/home/ForYouToday";
 
 type Project = {
   id: number;
@@ -107,10 +103,19 @@ export default function Dashboard() {
   const { toast } = useToast();
   const [downloadingId, setDownloadingId] = useState<number | null>(null);
 
-  const { data: overview, isLoading: overviewLoading } = useQuery<DashboardOverview>({ queryKey: ["/api/dashboard/overview"] });
-  const { data: projects, isLoading: projectsLoading } = useQuery<Project[]>({ queryKey: ["/api/user/projects"] });
-  const { data: contracts, isLoading: contractsLoading } = useQuery<Contract[]>({ queryKey: ["/api/user/contracts"] });
-  const { data: invoices, isLoading: invoicesLoading } = useQuery<Invoice[]>({ queryKey: ["/api/user/invoices"] });
+  const { data: overview } = useQuery<DashboardOverview>({ queryKey: ["/api/dashboard/overview"] });
+  const { data: projects } = useQuery<Project[]>({ queryKey: ["/api/user/projects"] });
+  const { data: contracts } = useQuery<Contract[]>({ queryKey: ["/api/user/contracts"] });
+  const { data: invoices } = useQuery<Invoice[]>({ queryKey: ["/api/user/invoices"] });
+  const { data: gameData } = useQuery<any>({
+    queryKey: ["/api/game/today"],
+    queryFn: async () => (await apiRequest("GET", "/api/game/today")).json(),
+    enabled: !!user && user.emailVerified === true,
+    refetchInterval: 60000,
+    staleTime: 30000,
+  });
+  // The job stepper is right below, so the job item would just repeat it.
+  const { items: today } = useForYouItems(gameData, { includeJob: false });
 
   const handleDownloadContract = async (contractId: number, contractNumber: string) => {
     setDownloadingId(contractId);
@@ -146,238 +151,81 @@ export default function Dashboard() {
         <div className="w-16 h-16 rounded-2xl bg-muted flex items-center justify-center mx-auto mb-4">
           <Music2 className="w-8 h-8 text-muted-foreground" />
         </div>
-        <h2 className="text-2xl font-bold mb-2">Pristup Odbijen</h2>
-        <p className="text-muted-foreground mb-4">Morate biti ulogovani da pristupite dashboard-u.</p>
-        <Link href="/auth"><Button>Prijavi se</Button></Link>
+        <h2 className="text-2xl font-semibold mb-2">Morate biti prijavljeni</h2>
+        <p className="text-muted-foreground mb-4">Prijavite se da biste videli svoj nalog.</p>
+        <Link href="/prijava"><Button>Prijavite se</Button></Link>
       </div>
     );
   }
 
   const initials = user.username.slice(0, 2).toUpperCase();
+  const unread = overview?.unreadMessages ?? 0;
+  const hasContracts = !!contracts?.length;
+  const hasInvoices = !!invoices?.length;
+  const memberSince = (user as any).createdAt ? format(new Date((user as any).createdAt), "dd.MM.yyyy.") : null;
 
   return (
     <div className="min-h-screen bg-background">
       <SEO title="Dashboard - Studio LeFlow" description="Klijent dashboard" />
 
-      <div className="container mx-auto px-4 py-8 max-w-6xl space-y-6">
+      <div className="container mx-auto px-4 py-8 max-w-5xl space-y-6">
 
-        {/* Hero banner */}
-        <FadeInWhenVisible>
-          <div className="relative overflow-hidden rounded-2xl bg-card border border-border/60 p-6 md:p-8">
-            <div className="absolute inset-x-0 top-0 h-1 bg-gradient-to-r from-primary/60 via-primary to-primary/60" />
-            <div className="relative flex flex-col sm:flex-row items-start sm:items-center gap-4">
-              <Avatar className="w-14 h-14 ring-2 ring-primary/30 shadow-lg flex-shrink-0">
-                {user.avatarUrl
-                  ? <AvatarImage src={user.avatarUrl} alt={user.username} />
-                  : <AvatarFallback className="bg-primary text-primary-foreground text-xl font-bold">{initials}</AvatarFallback>
-                }
-              </Avatar>
-              <div className="flex-1 min-w-0">
-                <div className="flex items-center gap-2 mb-1">
-                  <Sparkles className="w-4 h-4 text-primary" />
-                  <span className="text-xs font-medium text-primary uppercase tracking-wider">Dobrodošli</span>
-                </div>
-                <h1 className="text-2xl md:text-3xl font-bold truncate">{user.username}</h1>
-                <p className="text-sm text-muted-foreground mt-1">Pratite projekte, licence i fakture sa Studio LeFlow</p>
-              </div>
-              <div className="flex gap-2 flex-shrink-0 flex-wrap">
-                <Link href="/inbox">
-                  <Button variant="outline" size="sm" className="gap-2 h-9">
-                    <MessageCircle className="w-4 h-4" />
-                    {(overview?.unreadMessages ?? 0) > 0 && (
-                      <span className="bg-primary text-primary-foreground text-xs rounded-full w-4 h-4 flex items-center justify-center">
-                        {overview!.unreadMessages}
-                      </span>
-                    )}
-                    Inbox
-                  </Button>
-                </Link>
-                <Link href="/settings">
-                  <Button variant="ghost" size="sm" className="gap-2 h-9 text-muted-foreground hover:text-foreground">
-                    <Settings className="w-4 h-4" />
-                    <span className="hidden sm:inline">Podešavanja</span>
-                  </Button>
-                </Link>
-              </div>
-            </div>
-
-            <div className="relative mt-5 pt-4">
-              <WaveDivider className="opacity-60 mb-4" />
-              <div className="flex flex-wrap gap-2">
-                <Link href="/kontakt">
-                  <Button size="sm" className="h-8 gap-1.5 text-xs">
-                    <CalendarDays className="w-3.5 h-3.5" /> Zakaži termin
-                  </Button>
-                </Link>
-                <Link href="/inbox">
-                  <Button variant="outline" size="sm" className="h-8 gap-1.5 text-xs">
-                    <MessageCircle className="w-3.5 h-3.5" /> Pošalji poruku
-                  </Button>
-                </Link>
-                <Link href="/giveaway">
-                  <Button variant="outline" size="sm" className="h-8 gap-1.5 text-xs">
-                    <FolderOpen className="w-3.5 h-3.5" /> Prijavi projekat
-                  </Button>
-                </Link>
-              </div>
-            </div>
+        {/* Header */}
+        <header className="flex flex-col sm:flex-row sm:items-center gap-4 sm:gap-5">
+          <Link href="/settings" aria-label="Promenite profilnu sliku" className="shrink-0 self-start sm:self-auto">
+            <Avatar className="w-16 h-16 border border-border">
+              {user.avatarUrl
+                ? <AvatarImage src={user.avatarUrl} alt={user.username} />
+                : <AvatarFallback className="bg-muted text-foreground text-lg font-semibold">{initials}</AvatarFallback>
+              }
+            </Avatar>
+          </Link>
+          <div className="flex-1 min-w-0">
+            <h1 className="text-2xl md:text-3xl font-semibold truncate">Zdravo, {user.username}</h1>
+            {memberSince && <p className="text-sm text-muted-foreground mt-1">Na sajtu od <span className="font-mono">{memberSince}</span></p>}
           </div>
-        </FadeInWhenVisible>
-
-        {/* Stats grid */}
-        <FadeInWhenVisible>
-          <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
-            <StatTile
-              icon={FolderOpen} iconBg="bg-blue-500/10" iconColor="text-blue-500"
-              label="Projekti" value={overview?.totalProjects ?? 0}
-              sub={`${overview?.projectsByStatus?.in_progress ?? 0} u toku`}
-              loading={overviewLoading}
-            />
-            <StatTile
-              icon={FileText} iconBg="bg-purple-500/10" iconColor="text-purple-500"
-              label="Licence" value={overview?.totalContracts ?? 0}
-              sub="Ukupno licenci" loading={overviewLoading}
-            />
-            <StatTile
-              icon={Receipt} iconBg="bg-amber-500/10" iconColor="text-amber-500"
-              label="Fakture" value={overview?.totalInvoices ?? 0}
-              sub={`${overview?.pendingInvoices ?? 0} na čekanju`}
-              loading={overviewLoading}
-            />
-            <StatTile
-              icon={MessageCircle} iconBg="bg-green-500/10" iconColor="text-green-500"
-              label="Poruke" value={overview?.unreadMessages ?? 0}
-              sub="Nepročitane" loading={overviewLoading}
-            />
+          <div className="flex items-center gap-2 flex-wrap">
+            <Link href="/inbox">
+              <Button variant="outline" size="sm" className="gap-2">
+                <MessageCircle className="w-4 h-4" />
+                Poruke
+                {unread > 0 && (
+                  <span className="bg-primary text-primary-foreground text-[11px] font-mono rounded-full min-w-5 h-5 px-1.5 flex items-center justify-center">{unread}</span>
+                )}
+              </Button>
+            </Link>
+            <Link href="/settings">
+              <Button variant="outline" size="icon" className="w-9 h-9" aria-label="Podešavanja" title="Podešavanja">
+                <Settings className="w-4 h-4" />
+              </Button>
+            </Link>
           </div>
-        </FadeInWhenVisible>
+        </header>
 
-        {/* Projects */}
-        <FadeInWhenVisible>
-          <PanelCard icon={FolderOpen} iconBg="bg-blue-500/10" iconColor="text-blue-500" title="Moji Projekti" desc="Status svih vaših projekata">
-            {projectsLoading ? (
-              <div className="space-y-3">
-                {[1, 2, 3].map(i => (
-                  <div key={i} className="flex items-center gap-4 p-4 rounded-xl border border-border/40">
-                    <Skeleton className="w-10 h-10 rounded-xl flex-shrink-0" />
-                    <div className="flex-1"><Skeleton className="h-4 w-40 mb-2" /><Skeleton className="h-3 w-28" /></div>
-                    <Skeleton className="h-6 w-20 rounded-full" />
+        <GettingStarted gameData={gameData} />
+
+        {/* What's live today */}
+        {today.length > 0 && (
+          <section aria-labelledby="today-title">
+            <h2 id="today-title" className="text-sm font-medium text-muted-foreground mb-3">Danas</h2>
+            <div className="grid sm:grid-cols-2 gap-3">
+              {today.map(({ key, href, icon: Icon, title, detail, highlight }) => (
+                <Link key={key} href={href}>
+                  <div className={`group flex items-center gap-3 rounded-xl border p-4 transition-colors cursor-pointer ${highlight ? "border-primary/40 bg-primary/5 hover:bg-primary/10" : "border-border/60 bg-card hover:border-primary/30"}`}>
+                    <Icon className={`w-5 h-5 shrink-0 ${highlight ? "text-primary" : "text-muted-foreground"}`} />
+                    <div className="min-w-0 flex-1">
+                      <p className="font-medium text-sm truncate">{title}</p>
+                      <p className="text-xs text-muted-foreground truncate">{detail}</p>
+                    </div>
+                    <ChevronRight className="w-4 h-4 text-muted-foreground group-hover:text-primary shrink-0" />
                   </div>
-                ))}
-              </div>
-            ) : projects && projects.length > 0 ? (
-              <div className="space-y-2">
-                {projects.map(project => {
-                  const s = statusConfig[project.status];
-                  return (
-                    <div key={project.id} className="flex items-center gap-4 p-4 rounded-xl border border-border/40 hover:border-border hover:bg-muted/30 transition-all">
-                      <div className={`w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0 ${s.bg}`}>
-                        <s.Icon className={`w-5 h-5 ${s.text}`} />
-                      </div>
-                      <div className="flex-1 min-w-0">
-                        <p className="font-medium truncate">{project.title}</p>
-                        <p className="text-xs text-muted-foreground">{project.genre} · {format(new Date(project.uploadDate), "dd.MM.yyyy.")}</p>
-                      </div>
-                      <div className={`flex items-center gap-1.5 text-xs font-medium px-2.5 py-1 rounded-full ${s.bg} ${s.text}`}>
-                        <span className={`w-1.5 h-1.5 rounded-full ${s.dot}`} />
-                        {s.label}
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
-            ) : (
-              <EmptyState icon={FolderOpen} text="Nemate još uvek nijedan projekat." action={
-                <Link href="/giveaway"><Button variant="outline" size="sm">Uploaduj projekat</Button></Link>
-              } />
-            )}
-          </PanelCard>
-        </FadeInWhenVisible>
+                </Link>
+              ))}
+            </div>
+          </section>
+        )}
 
-        {/* Contracts + Invoices side by side on large screens */}
-        <div className="grid md:grid-cols-2 gap-6">
-          {/* Contracts */}
-          <FadeInWhenVisible>
-            <PanelCard icon={FileText} iconBg="bg-purple-500/10" iconColor="text-purple-500" title="Licence" desc="Vaše licence od Studio LeFlow" className="h-full">
-              {contractsLoading ? (
-                <div className="space-y-3">
-                  {[1, 2].map(i => <div key={i} className="flex items-center gap-3 p-4 rounded-xl border border-border/40"><Skeleton className="w-9 h-9 rounded-xl" /><div className="flex-1"><Skeleton className="h-4 w-32 mb-1.5" /><Skeleton className="h-3 w-24" /></div></div>)}
-                </div>
-              ) : contracts && contracts.length > 0 ? (
-                <div className="space-y-2">
-                  {contracts.map(c => (
-                    <div key={c.id} className="flex items-center gap-3 p-4 rounded-xl border border-border/40 hover:border-border hover:bg-muted/30 transition-all">
-                      <div className="w-9 h-9 rounded-xl bg-purple-500/10 flex items-center justify-center flex-shrink-0">
-                        <FileText className="w-4 h-4 text-purple-500" />
-                      </div>
-                      <div className="flex-1 min-w-0">
-                        <p className="text-sm font-medium truncate">Licenca #{c.contractNumber}</p>
-                        <p className="text-xs text-muted-foreground">{contractTypeLabel[c.contractType] ?? c.contractType} · {format(new Date(c.createdAt), "dd.MM.yyyy.")}</p>
-                      </div>
-                      <div className="flex gap-1 flex-shrink-0">
-                        {c.verificationHash && (
-                          <Button variant="ghost" size="icon" className="w-8 h-8" asChild>
-                            <a href={`/proveri/${c.verificationHash}`} target="_blank" rel="noopener noreferrer" title="Proveri autentičnost">
-                              <ExternalLink className="w-3.5 h-3.5" />
-                            </a>
-                          </Button>
-                        )}
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          className="w-8 h-8"
-                          title="Preuzmi PDF"
-                          disabled={downloadingId === c.id}
-                          onClick={() => handleDownloadContract(c.id, c.contractNumber)}
-                        >
-                          {downloadingId === c.id
-                            ? <Loader2 className="w-3.5 h-3.5 animate-spin" />
-                            : <Download className="w-3.5 h-3.5" />
-                          }
-                        </Button>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              ) : <EmptyState icon={FileText} text="Nemate nijednu licencu." />}
-            </PanelCard>
-          </FadeInWhenVisible>
-
-          {/* Invoices */}
-          <FadeInWhenVisible>
-            <PanelCard icon={Receipt} iconBg="bg-amber-500/10" iconColor="text-amber-500" title="Fakture" desc="Pregled svih faktura" className="h-full">
-              {invoicesLoading ? (
-                <div className="space-y-3">
-                  {[1, 2].map(i => <div key={i} className="flex items-center gap-3 p-4 rounded-xl border border-border/40"><Skeleton className="w-9 h-9 rounded-xl" /><div className="flex-1"><Skeleton className="h-4 w-32 mb-1.5" /><Skeleton className="h-3 w-24" /></div><Skeleton className="h-6 w-16" /></div>)}
-                </div>
-              ) : invoices && invoices.length > 0 ? (
-                <div className="space-y-2">
-                  {invoices.map(inv => {
-                    const isOverdue = inv.status === "pending" && new Date(inv.dueDate) < new Date();
-                    const key = isOverdue ? "overdue" : inv.status;
-                    const s = invoiceStatusConfig[key];
-                    return (
-                      <div key={inv.id} className="flex items-center gap-3 p-4 rounded-xl border border-border/40 hover:border-border hover:bg-muted/30 transition-all">
-                        <div className={`w-9 h-9 rounded-xl flex items-center justify-center flex-shrink-0 ${s.bg}`}>
-                          {isOverdue ? <AlertCircle className={`w-4 h-4 ${s.text}`} /> : <Receipt className={`w-4 h-4 ${s.text}`} />}
-                        </div>
-                        <div className="flex-1 min-w-0">
-                          <p className="text-sm font-medium truncate">Faktura #{inv.invoiceNumber}</p>
-                          <p className="text-xs text-muted-foreground">Rok: {format(new Date(inv.dueDate), "dd.MM.yyyy.")}</p>
-                        </div>
-                        <div className="text-right flex-shrink-0">
-                          <p className="text-sm font-bold">{parseFloat(inv.amount).toLocaleString("sr-RS", { minimumFractionDigits: 2 })} {inv.currency}</p>
-                          <span className={`text-xs font-medium px-2 py-0.5 rounded-full ${s.bg} ${s.text}`}>{s.label}</span>
-                        </div>
-                      </div>
-                    );
-                  })}
-                </div>
-              ) : <EmptyState icon={Receipt} text="Nemate nijednu fakturu." />}
-            </PanelCard>
-          </FadeInWhenVisible>
-        </div>
-
+        {/* Live panels - each hides itself when it has nothing */}
         <FadeInWhenVisible>
           <MyJobsPanel />
         </FadeInWhenVisible>
@@ -390,40 +238,97 @@ export default function Dashboard() {
           <RankPanel />
         </FadeInWhenVisible>
 
-        {/* Bottom row: messages + settings shortcuts */}
-        <FadeInWhenVisible>
-          <div className="grid sm:grid-cols-2 gap-3">
-            <Link href="/inbox">
-              <div className="group rounded-2xl border border-border/60 bg-card hover:border-green-500/30 hover:bg-green-500/5 transition-all p-4 flex items-center gap-4 cursor-pointer">
-                <div className="w-10 h-10 rounded-xl bg-green-500/10 flex items-center justify-center flex-shrink-0">
-                  <MessageCircle className="w-5 h-5 text-green-500" />
-                </div>
-                <div className="flex-1 min-w-0">
-                  <p className="font-medium text-sm">Poruke</p>
-                  <p className="text-xs text-muted-foreground">
-                    {overviewLoading ? "Učitavanje..." : (overview?.unreadMessages ?? 0) > 0
-                      ? <><span className="font-semibold text-foreground">{overview!.unreadMessages}</span> nepročitanih</>
-                      : "Nema novih poruka"
-                    }
-                  </p>
-                </div>
-                <ArrowRight className="w-4 h-4 text-muted-foreground group-hover:text-foreground group-hover:translate-x-0.5 transition-all" />
+        {/* Client paperwork - only for people who actually have some */}
+        {(hasContracts || hasInvoices) && (
+          <FadeInWhenVisible>
+            <div className={`grid gap-6 ${hasContracts && hasInvoices ? "md:grid-cols-2" : ""}`}>
+              {hasContracts && (
+                <PanelCard icon={FileText} iconBg="bg-primary/10" iconColor="text-primary" title="Licence" desc="Preuzmite PDF ili proverite autentičnost" className="h-full">
+                  <div className="space-y-2">
+                    {contracts!.map(c => (
+                      <div key={c.id} className="flex items-center gap-3 p-3 rounded-xl border border-border/40 hover:border-border hover:bg-muted/30 transition-colors">
+                        <div className="flex-1 min-w-0">
+                          <p className="text-sm font-medium truncate">Licenca <span className="font-mono">#{c.contractNumber}</span></p>
+                          <p className="text-xs text-muted-foreground">{contractTypeLabel[c.contractType] ?? c.contractType} · <span className="font-mono">{format(new Date(c.createdAt), "dd.MM.yyyy.")}</span></p>
+                        </div>
+                        <div className="flex gap-1 shrink-0">
+                          {c.verificationHash && (
+                            <Button variant="ghost" size="icon" className="w-8 h-8" asChild>
+                              <a href={`/proveri/${c.verificationHash}`} target="_blank" rel="noopener noreferrer" title="Proveri autentičnost" aria-label="Proveri autentičnost">
+                                <ExternalLink className="w-3.5 h-3.5" />
+                              </a>
+                            </Button>
+                          )}
+                          <Button
+                            variant="ghost" size="icon" className="w-8 h-8" title="Preuzmi PDF" aria-label="Preuzmi PDF"
+                            disabled={downloadingId === c.id}
+                            onClick={() => handleDownloadContract(c.id, c.contractNumber)}
+                          >
+                            {downloadingId === c.id ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Download className="w-3.5 h-3.5" />}
+                          </Button>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </PanelCard>
+              )}
+
+              {hasInvoices && (
+                <PanelCard icon={Receipt} iconBg="bg-primary/10" iconColor="text-primary" title="Fakture" desc="Status vaših faktura" className="h-full">
+                  <div className="space-y-2">
+                    {invoices!.map(inv => {
+                      const isOverdue = inv.status === "pending" && new Date(inv.dueDate) < new Date();
+                      const key = isOverdue ? "overdue" : inv.status;
+                      const s = invoiceStatusConfig[key];
+                      return (
+                        <div key={inv.id} className="flex items-center gap-3 p-3 rounded-xl border border-border/40 hover:border-border hover:bg-muted/30 transition-colors">
+                          {isOverdue && <AlertCircle className={`w-4 h-4 shrink-0 ${s.text}`} />}
+                          <div className="flex-1 min-w-0">
+                            <p className="text-sm font-medium truncate">Faktura <span className="font-mono">#{inv.invoiceNumber}</span></p>
+                            <p className="text-xs text-muted-foreground">Rok: <span className="font-mono">{format(new Date(inv.dueDate), "dd.MM.yyyy.")}</span></p>
+                          </div>
+                          <div className="text-right shrink-0">
+                            <p className="text-sm font-semibold font-mono">{parseFloat(inv.amount).toLocaleString("sr-RS", { minimumFractionDigits: 2 })} {inv.currency}</p>
+                            <span className={`text-xs font-medium px-2 py-0.5 rounded-full ${s.bg} ${s.text}`}>{s.label}</span>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </PanelCard>
+              )}
+            </div>
+          </FadeInWhenVisible>
+        )}
+
+        {/* Giveaway submissions (the `projects` table) - only if the user has entered */}
+        {!!projects?.length && (
+          <FadeInWhenVisible>
+            <PanelCard
+              icon={FolderOpen} iconBg="bg-primary/10" iconColor="text-primary"
+              title="Moje prijave na giveaway" desc="Beatovi koje ste poslali"
+              action={<Link href="/giveaway" className="text-xs text-primary hover:underline underline-offset-4">Giveaway</Link>}
+            >
+              <div className="space-y-2">
+                {projects.map(project => {
+                  const s = statusConfig[project.status];
+                  return (
+                    <div key={project.id} className="flex items-center gap-3 p-3 rounded-xl border border-border/40">
+                      <div className="flex-1 min-w-0">
+                        <p className="text-sm font-medium truncate">{project.title}</p>
+                        <p className="text-xs text-muted-foreground">{project.genre} · <span className="font-mono">{format(new Date(project.uploadDate), "dd.MM.yyyy.")}</span></p>
+                      </div>
+                      <div className={`flex items-center gap-1.5 text-xs font-medium px-2.5 py-1 rounded-full ${s.bg} ${s.text}`}>
+                        <span className={`w-1.5 h-1.5 rounded-full ${s.dot}`} />
+                        {s.label}
+                      </div>
+                    </div>
+                  );
+                })}
               </div>
-            </Link>
-            <Link href="/settings">
-              <div className="group rounded-2xl border border-border/60 bg-card hover:border-blue-500/30 hover:bg-blue-500/5 transition-all p-4 flex items-center gap-4 cursor-pointer">
-                <div className="w-10 h-10 rounded-xl bg-blue-500/10 flex items-center justify-center flex-shrink-0">
-                  <Settings className="w-5 h-5 text-blue-500" />
-                </div>
-                <div className="flex-1 min-w-0">
-                  <p className="font-medium text-sm">Podešavanja</p>
-                  <p className="text-xs text-muted-foreground">Profil, avatar, lozinka</p>
-                </div>
-                <ArrowRight className="w-4 h-4 text-muted-foreground group-hover:text-foreground group-hover:translate-x-0.5 transition-all" />
-              </div>
-            </Link>
-          </div>
-        </FadeInWhenVisible>
+            </PanelCard>
+          </FadeInWhenVisible>
+        )}
 
       </div>
     </div>

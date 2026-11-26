@@ -12,9 +12,11 @@ import { getPushState } from "@/lib/push";
 // if nothing applies, the whole strip disappears. The hero stays as-is (it's
 // CMS-backed brand copy that guests and search engines need).
 
-type Item = { key: string; href: string; icon: React.ElementType; title: string; detail: string; highlight?: boolean };
+export type ForYouItem = { key: string; href: string; icon: React.ElementType; title: string; detail: string; highlight?: boolean };
 
-export function ForYouToday({ gameData }: { gameData: any }) {
+/** Live "what's happening for you" items - shared by the home strip and the Dashboard.
+ *  Pass includeJob=false where the job stepper is already on screen (Dashboard). */
+export function useForYouItems(gameData: any, { includeJob = true }: { includeJob?: boolean } = {}) {
   const { data: unreadNotifs } = useQuery<{ count: number }>({ queryKey: ["/api/notifications/unread-count"] });
   const { data: unreadMsgs } = useQuery<{ count: number }>({ queryKey: ["/api/messages/unread-count"] });
   const { data: jobs } = useQuery<Array<{ id: number; title: string; stage: string }>>({ queryKey: ["/api/user/jobs"] });
@@ -26,7 +28,7 @@ export function ForYouToday({ gameData }: { gameData: any }) {
     getPushState().then(s => setPushOff(s === "off")).catch(() => {});
   }, []);
 
-  const items: Item[] = [];
+  const items: ForYouItem[] = [];
 
   if (gameData) {
     const streak = gameData.streak?.current ?? 0;
@@ -41,7 +43,7 @@ export function ForYouToday({ gameData }: { gameData: any }) {
     }
   }
 
-  const activeJob = jobs?.find(j => j.stage !== "isporuceno");
+  const activeJob = includeJob ? jobs?.find(j => j.stage !== "isporuceno") : undefined;
   if (activeJob) {
     const stage = JOB_STAGES.find(s => s.value === activeJob.stage)?.label ?? activeJob.stage;
     items.push({ key: "job", href: "/dashboard", icon: Music, title: activeJob.title, detail: `Faza: ${stage}` });
@@ -56,6 +58,12 @@ export function ForYouToday({ gameData }: { gameData: any }) {
   if (challenge && challenge.isActive && !challengeEnded) {
     items.push({ key: "challenge", href: "/giveaway", icon: Trophy, title: challenge.theme, detail: challengeLabel ? `Izazov meseca · ${challengeLabel}` : "Izazov meseca" });
   }
+
+  return { items, pushOff };
+}
+
+export function ForYouToday({ gameData }: { gameData: any }) {
+  const { items, pushOff } = useForYouItems(gameData);
 
   if (!items.length && !pushOff) return null;
 

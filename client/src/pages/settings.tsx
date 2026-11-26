@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useAuth } from "@/hooks/use-auth";
 import { useMutation } from "@tanstack/react-query";
 import { apiRequest, queryClient } from "@/lib/queryClient";
@@ -140,6 +140,17 @@ function PublicProfileCard() {
 }
 
 export default function Settings() {
+  // wouter doesn't scroll to #anchors (links from the Dashboard's "Prvi koraci").
+  useEffect(() => {
+    const id = window.location.hash.slice(1);
+    if (!id) return;
+    let tries = 0;
+    const t = setInterval(() => {
+      const el = document.getElementById(id);
+      if (el || ++tries > 20) { clearInterval(t); el?.scrollIntoView({ behavior: "smooth", block: "start" }); }
+    }, 100);
+    return () => clearInterval(t);
+  }, []);
   const { user } = useAuth();
   const { toast } = useToast();
   const [isUploadingAvatar, setIsUploadingAvatar] = useState(false);
@@ -447,7 +458,7 @@ export default function Settings() {
 
         {/* Push notifications */}
         <FadeInWhenVisible>
-          <div className="rounded-2xl border border-border/60 bg-card p-6">
+          <div id="obavestenja" className="rounded-2xl border border-border/60 bg-card p-6 scroll-mt-24">
             <PushToggle />
           </div>
         </FadeInWhenVisible>
@@ -455,7 +466,7 @@ export default function Settings() {
         {/* Public artist profile (verified artists only) */}
         {(user as any)?.isVerifiedArtist && (
           <FadeInWhenVisible>
-            <PublicProfileCard />
+            <div id="javni-profil" className="scroll-mt-24"><PublicProfileCard /></div>
           </FadeInWhenVisible>
         )}
 
