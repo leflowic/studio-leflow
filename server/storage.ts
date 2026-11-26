@@ -154,6 +154,7 @@ export type EnrichedMessage = {
   // Snippet of the quoted message, so a reply still shows its quote when the
   // quoted message is older than the loaded page.
   replyTo?: { id: number; senderId: number; content: string; imageUrl: string | null; deleted: boolean } | null;
+  audioUrl?: string | null; audioName?: string | null; audioDuration?: number | null;
 };
 
 export interface IStorage {
@@ -288,7 +289,7 @@ export interface IStorage {
   getOrCreateConversation(user1Id: number, user2Id: number): Promise<Conversation>;
   getConversation(user1Id: number, user2Id: number): Promise<Conversation | undefined>;
   getUserConversations(userId: number): Promise<Array<Conversation & { otherUser: { id: number; username: string; avatarUrl: string | null }; lastMessage?: Message; unreadCount: number }>>;
-  sendMessage(senderId: number, receiverId: number, content: string, imageUrl?: string, replyToId?: number): Promise<Message>;
+  sendMessage(senderId: number, receiverId: number, content: string, imageUrl?: string, replyToId?: number, audio?: { url: string; name: string | null; duration: number | null }): Promise<Message>;
   deleteConversation(userId: number, otherUserId: number): Promise<void>;
   getMessageById(messageId: number): Promise<Message | undefined>;
   getConversationMessages(conversationId: number, userId: number, opts?: { beforeId?: number; limit?: number }): Promise<EnrichedMessage[]>;
@@ -1650,7 +1651,7 @@ export class DatabaseStorage implements IStorage {
     return results;
   }
 
-  async sendMessage(senderId: number, receiverId: number, content: string, imageUrl?: string, replyToId?: number): Promise<Message> {
+  async sendMessage(senderId: number, receiverId: number, content: string, imageUrl?: string, replyToId?: number, audio?: { url: string; name: string | null; duration: number | null }): Promise<Message> {
     const conversation = await this.getOrCreateConversation(senderId, receiverId);
 
     const [message] = await db
@@ -1662,6 +1663,9 @@ export class DatabaseStorage implements IStorage {
         content,
         imageUrl,
         replyToId: replyToId ?? null,
+        audioUrl: audio?.url ?? null,
+        audioName: audio?.name ?? null,
+        audioDuration: audio?.duration ?? null,
       })
       .returning();
 

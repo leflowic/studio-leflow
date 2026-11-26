@@ -43,7 +43,7 @@ import fs from "fs";
 import path from "path";
 import { z } from "zod";
 import { randomBytes, createHmac, createHash } from "crypto";
-import { upload, uploadLargeFile, uploadImageToCloudinary, uploadRawImageToCloudinary, uploadRawFileToCloudinary, uploadAudioToCloudinary } from "./cloudinary";
+import { upload, uploadLargeFile, uploadImageToCloudinary, uploadRawImageToCloudinary, uploadRawFileToCloudinary, uploadAudioToCloudinary, uploadAudioWithMeta } from "./cloudinary";
 import { generateMixMasterPDF, generateCopyrightTransferPDF, generateInstrumentalSalePDF, generateRightsProtectionCertificatePDF, type MixMasterContract, type CopyrightTransferContract, type InstrumentalSaleContract } from "./pdf-generators";
 import { computeFingerprint, compareFingerprint } from "./audio-fingerprint";
 import rateLimit from "express-rate-limit";
@@ -77,6 +77,13 @@ const reportRateLimiter = rateLimit({
   standardHeaders: true,
   legacyHeaders: false,
 });
+
+function isOwnMessageAudioUrl(url: string): boolean {
+  try {
+    const u = new URL(url);
+    return u.protocol === "https:" && u.hostname === "res.cloudinary.com" && u.pathname.includes("/studioleflow/messages-audio/");
+  } catch { return false; }
+}
 
 function isOwnMessageImageUrl(url: string): boolean {
   try {
@@ -591,6 +598,24 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (e: any) {
       console.error("[UPLOAD] Message image error:", e.message);
       res.status(500).json({ error: "Greška pri otpremanju slike" });
+    }
+  });
+
+  // Chat audio (demo, mix, voice). The hosting account caps a single file at ~10MB.
+  app.post("/api/upload/message-audio", uploadRateLimiter, requireVerifiedEmail, upload.single("file"), async (req, res) => {
+    try {
+      if (!req.file) return res.status(400).json({ error: "Fajl nije pronađen" });
+      if (req.file.size > 10 * 1024 * 1024) return res.status(400).json({ error: "Audio može imati najviše 10 MB. Pošaljite MP3 verziju." });
+      const ft = await fileTypeFromBuffer(req.file.buffer);
+      const allowed = ["audio/mpeg", "audio/wav", "audio/x-wav", "audio/ogg", "audio/aac", "audio/flac", "audio/x-flac", "audio/mp4", "audio/x-m4a", "video/mp4"];
+      if (!ft || !allowed.includes(ft.mime)) return res.status(400).json({ error: "Dozvoljeni su MP3, WAV, M4A, AAC, OGG i FLAC fajlovi" });
+      const { url, duration } = await uploadAudioWithMeta(req.file.buffer, "studioleflow/messages-audio", `msg_audio_${req.jwtUser!.id}_${Date.now()}`);
+      // multer hands over the filename as latin1 - decode so "Pesma č.mp3" stays readable
+      const name = Buffer.from(String(req.file.originalname || "audio"), "latin1").toString("utf8").replace(/[\u0000-\u001f]/g, "").slice(0, 120);
+      res.json({ url, duration, name });
+    } catch (e: any) {
+      console.error("[UPLOAD] Message audio error:", e);
+      res.status(500).json({ error: "Audio nije otpremljen. Pokušajte ponovo." });
     }
   });
 
@@ -2675,7 +2700,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Send a message
   app.post("/api/messages/send", requireVerifiedEmail, messageRateLimiter, async (req, res) => {
     try {
-      const { receiverId, content, imageUrl, replyToId } = req.body;
+      const { receiverId, content, imageUrl, replyToId, audioUrl, audioName, audioDuration } = req.body;
       
       if (!receiverId || typeof receiverId !== 'number') {
         return res.status(400).json({ error: "receiverId je obavezan" });
@@ -2713,6 +2738,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
       if (imageUrl != null && (typeof imageUrl !== "string" || !isOwnMessageImageUrl(imageUrl))) {
         return res.status(400).json({ error: "Slika mora biti otpremljena kroz dugme za slike" });
       }
+      if (audioUrl != null && (typeof audioUrl !== "string" || !isOwnMessageAudioUrl(audioUrl))) {
+        return res.status(400).json({ error: "Audio mora biti otpremljen kroz dugme za fajlove" });
+      }
 
       // A reply may only quote a message from this same conversation.
       if (replyToId != null) {
@@ -2729,6 +2757,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
         content.trim(),
         imageUrl,
         typeof replyToId === 'number' ? replyToId : undefined,
+        audioUrl ? {
+          url: audioUrl,
+          name: typeof audioName === "string" ? audioName.slice(0, 120) : null,
+          duration: typeof audioDuration === "number" && audioDuration > 0 && audioDuration < 36000 ? Math.round(audioDuration) : null,
+        } : undefined,
       );
       
       // Broadcast new_message event to receiver via WebSocket
@@ -2745,7 +2778,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
         });
       }
 
-      const preview = imageUrl && !content.trim().replace("📎", "") ? "Poslao/la ti je sliku" : content.trim().slice(0, 120);
+      const bare = content.trim().replace("📎", "").replace("🎵", "");
+      const preview = audioUrl && !bare ? "Poslao/la ti je audio" : imageUrl && !bare ? "Poslao/la ti je sliku" : content.trim().slice(0, 120);
       sendPushToUserIfOffline(receiverId, {
         title: `Nova poruka od ${req.jwtUser!.username}`,
         body: preview,

@@ -71,3 +71,8 @@ Feature reference split out of CLAUDE.md (2026-11-26). The cross-cutting rules i
 - Chat header "⋮" menu: Prijavi korisnika / Blokiraj (Odblokiraj) / Obriši moje poruke. Blocked → composer replaced by a banner.
 - Staff see reports at the top of admin → Poruke (`MessageReportsPanel`, `GET/PATCH /api/admin/reports`, `requireRole("producer")`), with "Banuj" (existing ban route) and the number of distinct reporters.
 - Privacy section on /pravila mentions blocks/reports.
+
+**Audio in messages (2026-11-26):**
+- `messages.audio_url / audio_name / audio_duration` (also in `runMigrations()`). Audio-only messages store content `"🎵"` (`AUDIO_PLACEHOLDER`), like `"📎"` for images - previews show `<AudioLabel />`, push/browser notifications say "Poslao/la ti je audio", the edit button is hidden for attachment-only messages, forward keeps the attachment.
+- Upload: `POST /api/upload/message-audio` (verified, `uploadRateLimiter`, magic-bytes check: MP3/WAV/M4A/AAC/OGG/FLAC, **max 10MB** - the hosting per-file cap) → `uploadAudioWithMeta()` (returns duration) into `studioleflow/messages-audio`. Filename is decoded from multer's latin1. `POST /api/messages/send` only accepts `audioUrl` from that folder (`isOwnMessageAudioUrl`).
+- Player: `AudioMessage.tsx`. `<audio preload="none">` (nothing downloads until play); the waveform is the host's generated PNG (`fl_waveform` transformation) used as a CSS mask over a two-tone fill that doubles as the progress bar; falls back to static bars if the picture fails. Click/arrow keys seek, one chat audio plays at a time (`chat-audio-play` window event), download via `fl_attachment`.

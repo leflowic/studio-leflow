@@ -174,6 +174,9 @@ async function runMigrations() {
   try {
     await client.query(`
       ALTER TABLE messages ADD COLUMN IF NOT EXISTS edited_at TIMESTAMP;
+      ALTER TABLE messages ADD COLUMN IF NOT EXISTS audio_url TEXT;
+      ALTER TABLE messages ADD COLUMN IF NOT EXISTS audio_name TEXT;
+      ALTER TABLE messages ADD COLUMN IF NOT EXISTS audio_duration INTEGER;
     `);
     await client.query(`
       CREATE TABLE IF NOT EXISTS message_reactions (

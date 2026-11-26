@@ -7,7 +7,7 @@ import { AvatarWithInitials } from "@/components/ui/avatar-with-initials";
 import { Skeleton } from "@/components/ui/skeleton";
 import { EmptyState } from "@/components/ui/empty-state";
 import { MessageCircle, SearchX } from "lucide-react";
-import { ImageLabel } from "@/components/messaging/ImageLabel";
+import { ImageLabel, AudioLabel } from "@/components/messaging/ImageLabel";
 import { isToday, isYesterday, format } from "date-fns";
 import { cn } from "@/lib/utils";
 import { useEffect } from "react";
@@ -71,6 +71,7 @@ export default function ConversationList({ selectedUserId, onSelectConversation,
     const content = conv.lastMessage.content;
     // "📎" is the stored placeholder content of an image-only message
     if (content === "📎") return <>{prefix}<ImageLabel /></>;
+    if (content === "🎵") return <>{prefix}<AudioLabel /></>;
     const truncated = content.length > 45 ? content.slice(0, 45) + "…" : content;
     return prefix + truncated;
   };

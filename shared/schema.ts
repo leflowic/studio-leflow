@@ -310,6 +310,10 @@ export const messages = pgTable("messages", {
   receiverId: integer("receiver_id").notNull().references(() => users.id, { onDelete: "cascade" }),
   content: text("content").notNull(),
   imageUrl: text("image_url"),
+  // Audio attachment (demo, mix...) - content is then the "🎵" placeholder, like "📎" for images
+  audioUrl: text("audio_url"),
+  audioName: text("audio_name"),
+  audioDuration: integer("audio_duration"), // seconds
   replyToId: integer("reply_to_id").references((): AnyPgColumn => messages.id, { onDelete: "set null" }),
   deleted: boolean("deleted").notNull().default(false),
   editedAt: timestamp("edited_at"),

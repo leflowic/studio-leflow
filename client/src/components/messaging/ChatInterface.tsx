@@ -26,7 +26,8 @@ import {
 } from "@/components/ui/dialog";
 import { ArrowLeft, Send, Loader2, Check, CheckCheck, Trash2, Smile, Paperclip, CornerUpLeft, X, ChevronDown, Pencil, Forward, ExternalLink, MoreVertical, Ban, Flag } from "lucide-react";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
-import { ImageLabel } from "@/components/messaging/ImageLabel";
+import { ImageLabel, AudioLabel } from "@/components/messaging/ImageLabel";
+import { AudioMessage, AUDIO_PLACEHOLDER } from "@/components/messaging/AudioMessage";
 import { format, isToday, isYesterday, isSameDay } from "date-fns";
 import { cn } from "@/lib/utils";
 import { apiRequest } from "@/lib/queryClient";
@@ -73,6 +74,9 @@ interface Message {
   receiverId: number;
   content: string;
   imageUrl: string | null;
+  audioUrl?: string | null;
+  audioName?: string | null;
+  audioDuration?: number | null;
   replyToId: number | null;
   deleted: boolean;
   createdAt: string;
@@ -569,8 +573,16 @@ export default function ChatInterface({ selectedUserId, onBack }: ChatInterfaceP
   const handleImageAttach = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
-    if (!["image/jpeg", "image/png", "image/webp"].includes(file.type)) {
-      toast({ title: "Greška", description: "Dozvoljeni su samo JPG, PNG i WebP", variant: "destructive" });
+    const isImage = ["image/jpeg", "image/png", "image/webp"].includes(file.type);
+    const isAudio = file.type.startsWith("audio/") || /\.(mp3|wav|m4a|aac|ogg|flac)$/i.test(file.name);
+    if (!isImage && !isAudio) {
+      toast({ title: "Ovaj fajl ne može da se pošalje", description: "Slike (JPG, PNG, WebP) ili audio (MP3, WAV, M4A...).", variant: "destructive" });
+      if (fileInputRef.current) fileInputRef.current.value = "";
+      return;
+    }
+    if (isAudio && file.size > 10 * 1024 * 1024) {
+      toast({ title: "Audio je prevelik", description: "Najviše 10 MB - pošaljite MP3 verziju.", variant: "destructive" });
+      if (fileInputRef.current) fileInputRef.current.value = "";
       return;
     }
     setUploadingImage(true);
@@ -578,17 +590,27 @@ export default function ChatInterface({ selectedUserId, onBack }: ChatInterfaceP
       const formData = new FormData();
       formData.append("file", file);
       const token = localStorage.getItem("auth_token");
-      const res = await fetch("/api/upload/message-image", {
+      const res = await fetch(isAudio ? "/api/upload/message-audio" : "/api/upload/message-image", {
         method: "POST",
         headers: token ? { Authorization: `Bearer ${token}` } : {},
         body: formData,
       });
-      if (!res.ok) throw new Error("Upload failed");
-      const { url } = await res.json();
-      const msgRes = await apiRequest("POST", "/api/messages/send", {
+      if (!res.ok) {
+        const err = await res.json().catch(() => null);
+        throw new Error(err?.error || "Upload failed");
+      }
+      const up = await res.json();
+      const msgRes = await apiRequest("POST", "/api/messages/send", isAudio ? {
+        receiverId: selectedUserId,
+        content: AUDIO_PLACEHOLDER,
+        audioUrl: up.url,
+        audioName: up.name ?? file.name,
+        audioDuration: up.duration ?? undefined,
+        replyToId: replyTo?.id,
+      } : {
         receiverId: selectedUserId,
         content: "📎",
-        imageUrl: url,
+        imageUrl: up.url,
         replyToId: replyTo?.id,
       });
       const newMsg: Message = await msgRes.json();
@@ -603,8 +625,8 @@ export default function ChatInterface({ selectedUserId, onBack }: ChatInterfaceP
       queryClient.invalidateQueries({ queryKey: ["/api/messages/conversation", selectedUserId] });
       setReplyTo(null);
       scrollToBottom();
-    } catch {
-      toast({ title: "Greška", description: "Nije moguće uploadovati sliku", variant: "destructive" });
+    } catch (err: any) {
+      toast({ title: "Fajl nije poslat", description: err?.message && err.message !== "Upload failed" ? err.message : "Pokušajte ponovo.", variant: "destructive" });
     } finally {
       setUploadingImage(false);
       if (fileInputRef.current) fileInputRef.current.value = "";
@@ -640,7 +662,14 @@ export default function ChatInterface({ selectedUserId, onBack }: ChatInterfaceP
   // Forward handler
   const handleForward = async (toUserId: number) => {
     if (!forwardMessage) return;
-    await apiRequest("POST", "/api/messages/send", { receiverId: toUserId, content: forwardMessage.content });
+    await apiRequest("POST", "/api/messages/send", {
+      receiverId: toUserId,
+      content: forwardMessage.content,
+      imageUrl: forwardMessage.imageUrl ?? undefined,
+      audioUrl: forwardMessage.audioUrl ?? undefined,
+      audioName: forwardMessage.audioName ?? undefined,
+      audioDuration: forwardMessage.audioDuration ?? undefined,
+    });
     setForwardMessage(null);
     toast({ title: "Poruka prosleđena" });
   };
@@ -678,6 +707,7 @@ export default function ChatInterface({ selectedUserId, onBack }: ChatInterfaceP
     if (!msg || msg.deleted) return "Obrisana poruka";
     // "📎" is the stored placeholder content of an image-only message - never shown as-is
     if (msg.imageUrl && msg.content === "📎") return <ImageLabel />;
+    if (msg.content === AUDIO_PLACEHOLDER) return <AudioLabel />;
     return msg.content.length > 60 ? msg.content.slice(0, 60) + "…" : msg.content;
   };
 
@@ -855,10 +885,13 @@ export default function ChatInterface({ selectedUserId, onBack }: ChatInterfaceP
                             onClick={() => { setReplyTo(message); textareaRef.current?.focus(); }} title="Odgovori" aria-label="Odgovori">
                             <CornerUpLeft className="h-3.5 w-3.5" />
                           </Button>
-                          <Button variant="ghost" size="icon" className="h-6 w-6 text-muted-foreground"
-                            onClick={() => startEdit(message)} title="Izmeni" aria-label="Izmeni poruku">
-                            <Pencil className="h-3 w-3" />
-                          </Button>
+                          {/* attachment-only messages have no text to edit */}
+                          {message.content !== "📎" && message.content !== AUDIO_PLACEHOLDER && (
+                            <Button variant="ghost" size="icon" className="h-6 w-6 text-muted-foreground"
+                              onClick={() => startEdit(message)} title="Izmeni" aria-label="Izmeni poruku">
+                              <Pencil className="h-3 w-3" />
+                            </Button>
+                          )}
                           <Button variant="ghost" size="icon" className="h-6 w-6 text-muted-foreground"
                             onClick={() => setForwardMessage(message)} title="Prosledi" aria-label="Prosledi poruku">
                             <Forward className="h-3.5 w-3.5" />
@@ -948,13 +981,16 @@ export default function ChatInterface({ selectedUserId, onBack }: ChatInterfaceP
                             </div>
                           ) : (
                             <>
-                              {!(message.imageUrl && message.content === "📎") && (
+                              {!(message.imageUrl && message.content === "📎") && !(message.audioUrl && message.content === AUDIO_PLACEHOLDER) && (
                                 <p className="text-sm whitespace-pre-wrap break-words leading-relaxed [word-break:break-word] [overflow-wrap:anywhere]">
                                   {message.content}
                                 </p>
                               )}
-                              {!(message.imageUrl && message.content === "📎") && (
+                              {!(message.imageUrl && message.content === "📎") && !(message.audioUrl && message.content === AUDIO_PLACEHOLDER) && (
                                 <LinkPreview text={message.content} />
+                              )}
+                              {message.audioUrl && (
+                                <AudioMessage url={message.audioUrl} name={message.audioName ?? null} duration={message.audioDuration ?? null} own={isOwn} />
                               )}
                               {message.imageUrl && (
                                 <img
@@ -1045,7 +1081,7 @@ export default function ChatInterface({ selectedUserId, onBack }: ChatInterfaceP
                 {replyTo.senderId === user?.id ? "Ti" : otherUser?.username}
               </span>
               <p className="text-muted-foreground truncate text-xs mt-0.5">
-                {replyTo.imageUrl && replyTo.content === "📎" ? <ImageLabel /> : replyTo.content}
+                {replyTo.imageUrl && replyTo.content === "📎" ? <ImageLabel /> : replyTo.content === AUDIO_PLACEHOLDER ? <AudioLabel /> : replyTo.content}
               </p>
             </div>
             <Button variant="ghost" size="icon" className="h-5 w-5 flex-shrink-0" onClick={() => setReplyTo(null)} aria-label="Otkaži odgovor">
@@ -1087,10 +1123,10 @@ export default function ChatInterface({ selectedUserId, onBack }: ChatInterfaceP
             </Button>
             <Button variant="ghost" size="icon"
               className="h-10 w-10 text-muted-foreground hover:text-foreground rounded-xl"
-              onClick={() => fileInputRef.current?.click()} disabled={uploadingImage} title="Priloži sliku">
+              onClick={() => fileInputRef.current?.click()} disabled={uploadingImage} title="Pošalji sliku ili audio (demo, mix)">
               {uploadingImage ? <Loader2 className="w-5 h-5 animate-spin" /> : <Paperclip className="w-5 h-5" />}
             </Button>
-            <input ref={fileInputRef} type="file" accept="image/jpeg,image/png,image/webp" className="hidden" onChange={handleImageAttach} />
+            <input ref={fileInputRef} type="file" accept="image/jpeg,image/png,image/webp,audio/*,.mp3,.wav,.m4a,.aac,.ogg,.flac" className="hidden" onChange={handleImageAttach} />
           </div>
 
           <Textarea

@@ -165,7 +165,7 @@ export function WebSocketProvider({ children }: { children: ReactNode }) {
             if (document.hidden) {
               showBrowserNotification(
                 `Nova poruka od ${senderUsername}`,
-                message.message?.content && message.message.content !== "📎" ? message.message.content : (message.message?.imageUrl ? "Poslao/la ti je sliku" : "Poslao/la ti je poruku"),
+                message.message?.content && message.message.content !== "📎" && message.message.content !== "🎵" ? message.message.content : (message.message?.audioUrl ? "Poslao/la ti je audio" : message.message?.imageUrl ? "Poslao/la ti je sliku" : "Poslao/la ti je poruku"),
                 senderUsername,
               );
               document.title = TAB_TITLE_UNREAD;
