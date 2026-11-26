@@ -1,19 +1,11 @@
-import { useQuery, useMutation } from "@tanstack/react-query";
-import { ArrowLeft } from "lucide-react";
+import { useQuery } from "@tanstack/react-query";
+import { ArrowRight, Check, Link2, Loader2, Music2, Instagram } from "lucide-react";
 import { useParams } from "wouter";
 import { useEffect, useState } from "react";
 import type { SmartLink } from "@shared/schema";
-import { SiSpotify, SiYoutube, SiApplemusic, SiSoundcloud, SiTidal } from "react-icons/si";
 import QRCode from "qrcode";
+import { SMART_LINK_PLATFORMS } from "@/lib/smart-link-platforms";
 
-const PLATFORMS = [
-  { key: "spotifyUrl" as keyof SmartLink, clickKey: "spotify", label: "Spotify", color: "#1DB954", Icon: SiSpotify },
-  { key: "youtubeUrl" as keyof SmartLink, clickKey: "youtube", label: "YouTube", color: "#FF0033", Icon: SiYoutube },
-  { key: "appleMusicUrl" as keyof SmartLink, clickKey: "apple_music", label: "Apple Music", color: "#FC3C44", Icon: SiApplemusic },
-  { key: "soundcloudUrl" as keyof SmartLink, clickKey: "soundcloud", label: "SoundCloud", color: "#FF5500", Icon: SiSoundcloud },
-  { key: "tidalUrl" as keyof SmartLink, clickKey: "tidal", label: "Tidal", color: "#00CFFF", Icon: SiTidal },
-  { key: "deezerUrl" as keyof SmartLink, clickKey: "deezer", label: "Deezer", color: "#9B59FF", Icon: () => <svg viewBox="0 0 24 24" fill="currentColor" width={18} height={18}><path d="M18.81 11.834h3.19v1.969h-3.19zm0-3.483h3.19v1.969h-3.19zm0 6.967h3.19v1.969h-3.19zm-4.271 3.483h3.19v1.969h-3.19zm0-3.483h3.19v1.969h-3.19zm0-3.484h3.19v1.969h-3.19zm0-3.483h3.19v1.969h-3.19zm-4.27 10.45h3.19v1.969h-3.19zm0-3.483h3.19v1.969h-3.19zm0-3.484h3.19v1.969h-3.19zm-4.271 6.967h3.19v1.969H6v-1.969zm0-3.483h3.19v1.969H6v-1.969zm-4.27 3.483H5v1.969H1.73v-1.969z"/></svg> },
-];
 
 function wrapText(ctx: CanvasRenderingContext2D, text: string, maxWidth: number): string[] {
   const words = text.split(" ");
@@ -353,10 +345,101 @@ async function shareToStory(link: SmartLink) {
   URL.revokeObjectURL(url);
 }
 
+// ─── Cover colour ─────────────────────────────────────────────────────────────
+// The page takes its accent from the cover art: a saturation-weighted average of
+// a 24x24 downscale, then clamped to a readable mid-tone. Falls back to oak when
+// the cover can't be read (no cover, CORS).
+type RGB = [number, number, number];
+const OAK: RGB = [201, 162, 122];
+
+function rgbToHsl([r, g, b]: RGB): [number, number, number] {
+  r /= 255; g /= 255; b /= 255;
+  const max = Math.max(r, g, b), min = Math.min(r, g, b);
+  let h = 0, s = 0;
+  const l = (max + min) / 2;
+  if (max !== min) {
+    const d = max - min;
+    s = l > 0.5 ? d / (2 - max - min) : d / (max + min);
+    h = max === r ? (g - b) / d + (g < b ? 6 : 0) : max === g ? (b - r) / d + 2 : (r - g) / d + 4;
+    h /= 6;
+  }
+  return [h * 360, s * 100, l * 100];
+}
+
+function useCoverAccent(url: string | null | undefined) {
+  const [hsl, setHsl] = useState<[number, number, number]>(() => rgbToHsl(OAK));
+  useEffect(() => {
+    if (!url) return;
+    let cancelled = false;
+    const img = new Image();
+    img.crossOrigin = "anonymous";
+    img.onload = () => {
+      if (cancelled) return;
+      try {
+        const c = document.createElement("canvas");
+        c.width = c.height = 24;
+        const x = c.getContext("2d", { willReadFrequently: true })!;
+        x.drawImage(img, 0, 0, 24, 24);
+        const d = x.getImageData(0, 0, 24, 24).data;
+        let r = 0, g = 0, b = 0, w = 0;
+        for (let i = 0; i < d.length; i += 4) {
+          const R = d[i]!, G = d[i + 1]!, B = d[i + 2]!;
+          const max = Math.max(R, G, B), min = Math.min(R, G, B);
+          const sat = max ? (max - min) / max : 0;
+          const lum = max / 255;
+          const wt = sat * sat * (lum > 0.18 && lum < 0.96 ? 1 : 0.08) + 0.01;
+          r += R * wt; g += G * wt; b += B * wt; w += wt;
+        }
+        const [h, s] = rgbToHsl([r / w, g / w, b / w]);
+        // readable on near-black: mid lightness, never neon, never grey mush
+        setHsl([h, Math.min(78, Math.max(s, 28)), 64]);
+      } catch { /* tainted canvas - keep oak */ }
+    };
+    img.src = url.includes("?") ? `${url}&_dc=1` : `${url}?_dc=1`;
+    return () => { cancelled = true; };
+  }, [url]);
+  const [h, s, l] = hsl;
+  return {
+    accent: `hsl(${h} ${s}% ${l}%)`,
+    accentSoft: `hsl(${h} ${s}% ${l}% / 0.16)`,
+    glow: `hsl(${h} ${Math.min(s + 10, 90)}% 45% / 0.55)`,
+    label: `hsl(${h} ${Math.max(s - 10, 20)}% 52%)`,
+  };
+}
+
+const VERB: Record<string, string> = { youtube: "Gledaj" };
+const reducedMotion = () => typeof window !== "undefined" && window.matchMedia?.("(prefers-reduced-motion: reduce)").matches;
+
+// ─── Vinyl behind the cover (brand motif) ──────────────────────────────────────
+function Record({ labelColor, spinning }: { labelColor: string; spinning: boolean }) {
+  return (
+    <svg viewBox="-100 -100 200 200" className={`w-full h-full ${spinning ? "animate-[spin_9s_linear_infinite]" : ""}`} aria-hidden="true">
+      <circle r="99" fill="#0b0b0c" />
+      {Array.from({ length: 22 }, (_, i) => (
+        <circle key={i} r={36 + i * 2.8} fill="none" stroke="#fff" strokeOpacity={i % 4 === 0 ? 0.07 : 0.03} strokeWidth="0.6" />
+      ))}
+      {/* light sheen across the grooves */}
+      <path d="M -99 0 A 99 99 0 0 1 0 -99 L 0 0 Z" fill="url(#sheen)" opacity="0.5" />
+      <defs>
+        <linearGradient id="sheen" x1="0" y1="0" x2="1" y2="1">
+          <stop offset="0" stopColor="#fff" stopOpacity="0" />
+          <stop offset="0.5" stopColor="#fff" stopOpacity="0.07" />
+          <stop offset="1" stopColor="#fff" stopOpacity="0" />
+        </linearGradient>
+      </defs>
+      <circle r="32" fill={labelColor} />
+      <circle r="31" fill="none" stroke="#000" strokeOpacity="0.2" />
+      <circle r="3.2" fill="#0b0b0c" />
+    </svg>
+  );
+}
+
 export default function SmartLinkPage() {
   const params = useParams<{ slug: string }>();
   const slug = params.slug;
   const [generatingStory, setGeneratingStory] = useState(false);
+  const [copied, setCopied] = useState(false);
+  const [coverReady, setCoverReady] = useState(false);
 
   const { data: link, isLoading, isError } = useQuery<SmartLink>({
     queryKey: [`/api/l/${slug}`],
@@ -368,22 +451,18 @@ export default function SmartLinkPage() {
     retry: false,
   });
 
-  const clickMutation = useMutation({
-    mutationFn: ({ platform, url }: { platform: string; url: string }) =>
-      fetch(`/api/l/${slug}/click`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ platform }),
-      }).then(() => url),
-  });
+  const { accent, accentSoft, glow, label } = useCoverAccent(link?.coverUrl);
 
-  function handlePlatformClick(platform: string, url: string) {
-    clickMutation.mutate({ platform, url }, {
-      onSuccess: (targetUrl) => window.open(targetUrl, "_blank", "noopener,noreferrer"),
-    });
+  // The platform opens straight from the click (a real <a target=_blank>), and the
+  // click is recorded in the background with keepalive. Opening only after an awaited
+  // fetch got the new tab blocked on iOS Safari (no longer a user gesture).
+  function trackClick(platform: string) {
+    try {
+      fetch(`/api/l/${slug}/click`, { method: "POST", keepalive: true, headers: { "Content-Type": "application/json" }, body: JSON.stringify({ platform }) }).catch(() => {});
+    } catch { /* tracking must never block the click */ }
   }
 
-  const canNativeShare = typeof navigator.share === "function";
+  const canNativeShare = typeof navigator !== "undefined" && typeof navigator.share === "function";
 
   async function handleShareStory() {
     if (!link || generatingStory) return;
@@ -391,194 +470,182 @@ export default function SmartLinkPage() {
     try {
       await shareToStory(link);
     } catch (e: any) {
-      // User cancelled share sheet - not an error
       if (e?.name !== "AbortError") console.error("Story share failed", e);
     } finally {
       setGeneratingStory(false);
     }
   }
 
+  async function handleCopy() {
+    const url = `https://music.studioleflow.com/${slug}`;
+    try {
+      if (canNativeShare && /Android|iPhone|iPad/i.test(navigator.userAgent)) {
+        await navigator.share({ title: link ? `${link.title} - ${link.artist}` : undefined, url });
+        return;
+      }
+      await navigator.clipboard.writeText(url);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 1800);
+    } catch { /* share sheet dismissed */ }
+  }
+
   useEffect(() => {
     if (link) document.title = `${link.title} - ${link.artist}`;
   }, [link]);
 
-  const activePlatforms = link ? PLATFORMS.filter(p => link[p.key]) : [];
+  const activePlatforms = link ? SMART_LINK_PLATFORMS.filter(p => link[p.key as keyof SmartLink]) : [];
 
   if (isLoading) {
     return (
-      <div className="min-h-screen bg-[#050505] flex items-center justify-center">
-        <div className="w-7 h-7 rounded-full border-[1.5px] border-white/10 border-t-white/60 animate-spin" />
+      <div className="min-h-[100svh] bg-[#0b0b0c] flex items-center justify-center px-6">
+        <div className="w-full max-w-4xl grid md:grid-cols-[minmax(0,1fr)_minmax(0,1fr)] gap-10 md:gap-16 items-center">
+          <div className="mx-auto w-full max-w-[300px] md:max-w-[400px] aspect-square rounded-2xl bg-white/[0.04] animate-pulse" />
+          <div className="space-y-4">
+            <div className="h-9 w-3/4 rounded-lg bg-white/[0.05] animate-pulse" />
+            <div className="h-5 w-1/3 rounded bg-white/[0.04] animate-pulse" />
+            <div className="h-56 rounded-2xl bg-white/[0.03] animate-pulse mt-8" />
+          </div>
+        </div>
       </div>
     );
   }
 
   if (isError || !link) {
     return (
-      <div className="min-h-screen bg-[#050505] flex flex-col items-center justify-center gap-3 text-center px-6">
-        <p className="text-xl font-bold text-white">Link nije pronađen</p>
-        <p className="text-sm text-white/40">Ovaj smart link ne postoji ili je obrisan.</p>
-        <a href="/" className="mt-3 text-xs text-white/30 hover:text-white/60 transition-colors tracking-widest uppercase inline-flex items-center gap-1.5">
-          <ArrowLeft className="w-3.5 h-3.5" />
-          Studio LeFlow
+      <div className="min-h-[100svh] bg-[#0b0b0c] flex flex-col items-center justify-center gap-3 text-center px-6">
+        <div className="w-24 h-24 mb-4 opacity-60"><Record labelColor="hsl(32 42% 62%)" spinning={false} /></div>
+        <p className="text-2xl font-semibold text-white">Pesma nije pronađena</p>
+        <p className="text-sm text-white/50 max-w-xs">Link je možda pogrešno prekucan ili je pesma uklonjena.</p>
+        <a href="/" className="mt-4 inline-flex items-center gap-2 rounded-full border border-white/15 px-5 h-10 text-sm text-white/80 hover:text-white hover:border-white/30 transition-colors">
+          Sve pesme iz studija <ArrowRight className="w-4 h-4" />
         </a>
       </div>
     );
   }
 
-  return (
-    <div className="min-h-screen bg-[#050505] relative overflow-hidden flex flex-col items-center justify-center">
+  const motion = !reducedMotion();
 
+  return (
+    <div className="min-h-[100svh] bg-[#0b0b0c] text-white relative overflow-hidden" style={{ ["--accent" as any]: accent }}>
+      {/* ── Ambient backdrop: blurred cover + accent glow + vignette + grain ── */}
       {link.coverUrl && (
-        <div className="absolute inset-0 scale-[1.4]" style={{
-          backgroundImage: `url(${link.coverUrl})`,
-          backgroundSize: "cover",
-          backgroundPosition: "center",
-          filter: "blur(90px)",
-          opacity: 0.28,
+        <div aria-hidden="true" className="absolute inset-0 scale-125 opacity-40" style={{
+          backgroundImage: `url(${link.coverUrl})`, backgroundSize: "cover", backgroundPosition: "center", filter: "blur(80px) saturate(1.3)",
         }} />
       )}
-      <div className="absolute inset-0 pointer-events-none"
-        style={{ background: "radial-gradient(ellipse 80% 60% at 50% 0%, rgba(99,82,255,0.12) 0%, transparent 70%)" }} />
-      <div className="absolute inset-0 pointer-events-none"
-        style={{ background: "radial-gradient(ellipse 120% 120% at 50% 50%, transparent 30%, rgba(0,0,0,0.65) 70%, rgba(0,0,0,0.95) 100%)" }} />
-      <div className="absolute inset-0 pointer-events-none bg-gradient-to-b from-black/70 via-transparent to-black/80" />
-      <div className="absolute inset-0 pointer-events-none" style={{
-        opacity: 0.035,
-        backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='300' height='300'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='300' height='300' filter='url(%23n)' opacity='1'/%3E%3C/svg%3E")`,
-        backgroundRepeat: "repeat",
-        backgroundSize: "200px 200px",
+      <div aria-hidden="true" className="absolute inset-0 pointer-events-none transition-[background] duration-700"
+        style={{ background: `radial-gradient(60% 50% at 30% 35%, ${glow}, transparent 70%)` }} />
+      <div aria-hidden="true" className="absolute inset-0 pointer-events-none"
+        style={{ background: "radial-gradient(120% 90% at 50% 40%, transparent 35%, rgba(11,11,12,0.85) 75%, #0b0b0c 100%)" }} />
+      <div aria-hidden="true" className="absolute inset-0 pointer-events-none opacity-[0.05] mix-blend-overlay" style={{
+        backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='200' height='200'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='200' height='200' filter='url(%23n)'/%3E%3C/svg%3E")`,
       }} />
 
-      <div className="relative z-10 w-full max-w-[360px] mx-auto px-5 py-14 flex flex-col items-center">
+      <main className="relative z-10 min-h-[100svh] flex flex-col">
+        <div className="flex-1 flex items-center justify-center px-6 pt-12 pb-10 md:py-16">
+          <div className="w-full max-w-5xl grid md:grid-cols-[minmax(0,1fr)_minmax(0,1fr)] gap-10 md:gap-24 lg:gap-28 items-center">
 
-        <div className="mb-7">
-          {link.coverUrl ? (
-            <img src={link.coverUrl} alt={link.title} className="w-[220px] h-[220px] object-cover"
-              style={{ borderRadius: "20px", boxShadow: "0 40px 100px rgba(0,0,0,0.85), 0 0 0 1px rgba(255,255,255,0.07)" }} />
-          ) : (
-            <div className="w-[220px] h-[220px] flex items-center justify-center bg-white/[0.04]"
-              style={{ borderRadius: "20px", boxShadow: "0 40px 100px rgba(0,0,0,0.85), 0 0 0 1px rgba(255,255,255,0.07)" }}>
-              <svg className="w-14 h-14 text-white/20" fill="currentColor" viewBox="0 0 24 24">
-                <path d="M12 3v10.55c-.59-.34-1.27-.55-2-.55-2.21 0-4 1.79-4 4s1.79 4 4 4 4-1.79 4-4V7h4V3h-6z" />
-              </svg>
+            {/* ── Artwork with the record sliding out behind it ── */}
+            <div className="relative mx-auto w-full max-w-[280px] sm:max-w-[330px] md:max-w-[380px] md:mr-[12%] lg:mr-[14%]">
+              <div className="relative aspect-square">
+                <div
+                  className="absolute inset-[4%] transition-transform ease-out"
+                  style={{
+                    transform: coverReady || !link.coverUrl ? "translateX(24%)" : "translateX(0)",
+                    transitionDuration: motion ? "1100ms" : "0ms",
+                  }}
+                >
+                  <Record labelColor={label} spinning={motion} />
+                </div>
+                <div className="absolute inset-0 rounded-[14px] overflow-hidden shadow-[0_40px_80px_-20px_rgba(0,0,0,0.85),0_0_0_1px_rgba(255,255,255,0.08)] bg-white/[0.04]">
+                  {link.coverUrl ? (
+                    <img
+                      src={link.coverUrl}
+                      alt={`${link.title} - ${link.artist}`}
+                      className="w-full h-full object-cover"
+                      // @ts-expect-error - fetchpriority is valid HTML, React 18 types lag behind
+                      fetchpriority="high"
+                      onLoad={() => setTimeout(() => setCoverReady(true), 150)}
+                    />
+                  ) : (
+                    <div className="w-full h-full flex items-center justify-center">
+                      <Music2 className="w-16 h-16 text-white/20" />
+                    </div>
+                  )}
+                  <div aria-hidden="true" className="absolute inset-0 bg-gradient-to-tr from-transparent via-transparent to-white/[0.06]" />
+                </div>
+              </div>
             </div>
-          )}
-        </div>
 
-        <h1 className="text-center text-white font-black leading-[1.15] mb-[6px]"
-          style={{ fontSize: "clamp(22px, 6vw, 28px)", letterSpacing: "-0.02em" }}>
-          {link.title}
-        </h1>
-        <p className="text-center text-white/40 text-[12px] tracking-[0.22em] uppercase font-medium mb-9">
-          {link.artist}
-        </p>
+            {/* ── Title + platforms ── */}
+            <div className="relative z-10 w-full max-w-md mx-auto md:mx-0">
+              <h1 className="text-[clamp(30px,5.5vw,52px)] font-semibold leading-[1.02] tracking-[-0.03em] text-center md:text-left text-balance">
+                {link.title}
+              </h1>
+              <p className="mt-3 text-lg text-white/60 text-center md:text-left">{link.artist}</p>
 
-        <div className="w-full flex items-center gap-3 mb-6">
-          <div className="flex-1 h-px bg-white/[0.07]" />
-          <span className="text-[10px] text-white/25 tracking-[0.25em] uppercase font-medium">Izaberi platformu</span>
-          <div className="flex-1 h-px bg-white/[0.07]" />
-        </div>
+              <div className="mt-8 md:mt-10 rounded-2xl border border-white/[0.09] bg-white/[0.035] backdrop-blur-xl overflow-hidden">
+                <ul className="divide-y divide-white/[0.07]">
+                  {activePlatforms.map(p => {
+                    const url = link[p.key as keyof SmartLink] as string;
+                    return (
+                      <li key={p.key}>
+                        <a
+                          href={url}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          onClick={() => trackClick(p.clickKey)}
+                          className="group flex items-center gap-4 px-5 h-[64px] transition-colors hover:bg-white/[0.05] focus-visible:outline-none focus-visible:bg-white/[0.06]"
+                        >
+                          <span className="w-9 h-9 rounded-xl flex items-center justify-center bg-white/[0.06] text-white/80 transition-colors group-hover:text-[var(--brand)]" style={{ ["--brand" as any]: p.color }}>
+                            <p.Icon size={18} />
+                          </span>
+                          <span className="flex-1 text-[15px] font-medium text-white/90">{p.label}</span>
+                          <span
+                            className="inline-flex items-center gap-1.5 h-8 px-3.5 rounded-full text-[13px] font-semibold border border-white/[0.12] text-white/80 transition-all group-hover:border-transparent group-hover:text-[#0b0b0c] group-hover:bg-[var(--accent)]"
+                          >
+                            {VERB[p.clickKey] ?? "Slušaj"}
+                          </span>
+                        </a>
+                      </li>
+                    );
+                  })}
+                  {activePlatforms.length === 0 && (
+                    <li className="px-5 py-8 text-center text-sm text-white/40">Pesma uskoro stiže na platforme.</li>
+                  )}
+                </ul>
+              </div>
 
-        <div className="w-full space-y-2.5">
-          {activePlatforms.map(p => (
-            <button
-              key={p.key}
-              onClick={() => handlePlatformClick(p.clickKey, link[p.key] as string)}
-              className="group w-full flex items-center gap-4 px-5 rounded-2xl transition-all duration-200 active:scale-[0.985]"
-              style={{ height: "58px", background: "rgba(255,255,255,0.055)", border: "1px solid rgba(255,255,255,0.08)", backdropFilter: "blur(12px)" }}
-              onMouseEnter={e => {
-                const el = e.currentTarget;
-                el.style.background = "rgba(255,255,255,0.10)";
-                el.style.border = "1px solid rgba(255,255,255,0.15)";
-                el.style.transform = "translateY(-2px)";
-                el.style.boxShadow = "0 12px 40px rgba(0,0,0,0.5)";
-              }}
-              onMouseLeave={e => {
-                const el = e.currentTarget;
-                el.style.background = "rgba(255,255,255,0.055)";
-                el.style.border = "1px solid rgba(255,255,255,0.08)";
-                el.style.transform = "";
-                el.style.boxShadow = "";
-              }}
-            >
-              <span className="flex-shrink-0 w-8 h-8 rounded-lg flex items-center justify-center"
-                style={{ background: `${p.color}18`, color: p.color }}>
-                <p.Icon size={18} />
-              </span>
-              <span className="flex-1 text-left text-[13.5px] font-semibold text-white/85 group-hover:text-white transition-colors">
-                {p.label}
-              </span>
-              <svg className="w-4 h-4 text-white/20 group-hover:text-white/40 transition-colors"
-                fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />
-              </svg>
-            </button>
-          ))}
-          {activePlatforms.length === 0 && (
-            <p className="text-center text-white/25 text-sm py-6">Nema dostupnih platformi.</p>
-          )}
-        </div>
-
-        {/* Instagram story download */}
-        <div className="w-full mt-8">
-          <div className="flex items-center gap-3 mb-4">
-            <div className="flex-1 h-px bg-white/[0.06]" />
-            <span className="text-[10px] text-white/20 tracking-[0.25em] uppercase font-medium">Podeli</span>
-            <div className="flex-1 h-px bg-white/[0.06]" />
+              <div className="mt-5 flex flex-wrap justify-center md:justify-start gap-2">
+                <button
+                  type="button"
+                  onClick={handleCopy}
+                  className="inline-flex items-center gap-2 h-10 px-4 rounded-full text-[13px] font-medium text-white/75 border border-white/[0.12] hover:text-white hover:border-white/25 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/40"
+                >
+                  {copied ? <Check className="w-4 h-4" style={{ color: accent }} /> : <Link2 className="w-4 h-4" />}
+                  {copied ? "Link je kopiran" : "Podeli pesmu"}
+                </button>
+                <button
+                  type="button"
+                  onClick={handleShareStory}
+                  aria-busy={generatingStory}
+                  className={`inline-flex items-center gap-2 h-10 px-4 rounded-full text-[13px] font-medium text-white/75 border border-white/[0.12] hover:text-white hover:border-white/25 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/40 ${generatingStory ? "opacity-60 pointer-events-none" : ""}`}
+                >
+                  {generatingStory ? <Loader2 className="w-4 h-4 animate-spin" /> : <Instagram className="w-4 h-4" />}
+                  {generatingStory ? "Pravim sliku..." : canNativeShare ? "Story za Instagram" : "Sačuvaj story sliku"}
+                </button>
+              </div>
+            </div>
           </div>
-
-          <button
-            onClick={handleShareStory}
-            disabled={generatingStory}
-            className="w-full flex items-center justify-center gap-2.5 h-12 rounded-2xl text-[13px] font-semibold transition-all disabled:opacity-50"
-            style={{
-              background: "linear-gradient(135deg, rgba(131,58,180,0.18) 0%, rgba(253,29,29,0.12) 50%, rgba(252,176,69,0.12) 100%)",
-              border: "1px solid rgba(131,58,180,0.25)",
-              color: "rgba(255,255,255,0.65)",
-            }}
-            onMouseEnter={e => {
-              e.currentTarget.style.background = "linear-gradient(135deg, rgba(131,58,180,0.30) 0%, rgba(253,29,29,0.20) 50%, rgba(252,176,69,0.18) 100%)";
-              e.currentTarget.style.color = "rgba(255,255,255,0.90)";
-              e.currentTarget.style.borderColor = "rgba(131,58,180,0.45)";
-            }}
-            onMouseLeave={e => {
-              e.currentTarget.style.background = "linear-gradient(135deg, rgba(131,58,180,0.18) 0%, rgba(253,29,29,0.12) 50%, rgba(252,176,69,0.12) 100%)";
-              e.currentTarget.style.color = "rgba(255,255,255,0.65)";
-              e.currentTarget.style.borderColor = "rgba(131,58,180,0.25)";
-            }}
-          >
-            {generatingStory ? (
-              <>
-                <svg className="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24">
-                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="3" />
-                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
-                </svg>
-                Generišem...
-              </>
-            ) : (
-              <>
-                {/* Instagram gradient camera icon */}
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                  <rect x="2" y="2" width="20" height="20" rx="5" />
-                  <circle cx="12" cy="12" r="4" />
-                  <circle cx="17.5" cy="6.5" r="1" fill="currentColor" stroke="none" />
-                </svg>
-                {canNativeShare ? "Okači na Instagram story" : "Sačuvaj story sliku"}
-              </>
-            )}
-          </button>
-          <p className="text-center text-[10px] mt-2" style={{ color: "rgba(255,255,255,0.18)" }}>
-            {canNativeShare ? "Otvara Instagram - izaberi Stories" : "1080×1920 PNG · spreman za Instagram priču"}
-          </p>
         </div>
 
-        <div className="mt-10 flex flex-col items-center gap-[6px]">
-          <a href="/" className="opacity-30 hover:opacity-60 transition-opacity">
-            <img src="/leflow-logo-white.png" alt="Studio LeFlow" className="h-[18px] object-contain" />
+        <footer className="relative z-10 pb-8 pt-2 flex items-center justify-center">
+          <a href="/" className="group inline-flex items-center gap-2.5 text-white/40 hover:text-white/80 transition-colors">
+            <img src="/leflow-logo-white.png" alt="" className="h-4 w-auto opacity-70 group-hover:opacity-100 transition-opacity" />
+            <span className="text-[13px] font-medium">Studio LeFlow</span>
           </a>
-          <p className="text-[9px] text-white/20 tracking-[0.3em] uppercase">Studio LeFlow</p>
-        </div>
-      </div>
+        </footer>
+      </main>
     </div>
   );
 }
