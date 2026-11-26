@@ -103,6 +103,8 @@ import {
   gameListens,
   coinLedger,
   referrals,
+  errorLogs,
+  type ErrorLog,
   shopItems,
   shopPurchases,
   type CoinLedgerEntry,
@@ -464,6 +466,10 @@ export interface IStorage {
   getSharedIpGroups(sinceDate: string): Promise<Array<{ ip: string; users: Array<{ id: number; username: string }>; lastSeen: string }>>;
   resetListens(userId: number, date: string): Promise<void>;
   purgeOldIps(days: number): Promise<Record<string, number>>;
+  upsertErrorLogs(entries: Array<{ fingerprint: string; source: string; message: string; stack: string | null; route: string | null; status: number | null; count: number; lastUserId: number | null; lastSeen: Date }>): Promise<void>;
+  getErrorLogs(includeResolved: boolean): Promise<ErrorLog[]>;
+  setErrorResolved(id: number, resolved: boolean): Promise<void>;
+  purgeOldErrors(): Promise<number>;
   resetSpin(userId: number, date: string): Promise<boolean>;
   deleteGuess(userId: number, date: string): Promise<boolean>;
   performSpin(userId: number, date: string, opts: { canExtraListen: boolean; ip: string | null; ipLimit?: boolean }): Promise<{ spin: DailySpin; voucher: Voucher | null; created: boolean; streak?: number; streakBonus?: number } | { blocked: "ip" }>;
@@ -4086,6 +4092,39 @@ export class DatabaseStorage implements IStorage {
     const refs = await db.execute(sql`UPDATE referrals SET claim_ip = NULL WHERE claim_ip IS NOT NULL AND status <> 'pending' AND created_at < NOW() - make_interval(days => ${days})`);
     const attempts = await db.execute(sql`DELETE FROM registration_attempts WHERE attempted_at < NOW() - make_interval(days => ${days})`);
     return { spins: n(spins), guesses: n(guesses), referrals: n(refs), registrationAttempts: n(attempts) };
+  }
+
+  // ─── Error log ────────────────────────────────────────────────────────────
+  // A recurring error re-opens itself (resolved_at cleared) so a "fixed" bug
+  // that comes back is visible again.
+  async upsertErrorLogs(entries: Array<{ fingerprint: string; source: string; message: string; stack: string | null; route: string | null; status: number | null; count: number; lastUserId: number | null; lastSeen: Date }>): Promise<void> {
+    for (const e of entries) {
+      await db.execute(sql`
+        INSERT INTO error_logs (fingerprint, source, message, stack, route, status, count, last_user_id, first_seen, last_seen)
+        VALUES (${e.fingerprint}, ${e.source}, ${e.message}, ${e.stack}, ${e.route}, ${e.status}, ${e.count}, ${e.lastUserId}, ${e.lastSeen}, ${e.lastSeen})
+        ON CONFLICT (fingerprint) DO UPDATE SET
+          count = error_logs.count + EXCLUDED.count,
+          last_seen = EXCLUDED.last_seen,
+          last_user_id = COALESCE(EXCLUDED.last_user_id, error_logs.last_user_id),
+          stack = COALESCE(EXCLUDED.stack, error_logs.stack),
+          resolved_at = NULL
+      `);
+    }
+  }
+
+  async getErrorLogs(includeResolved: boolean): Promise<ErrorLog[]> {
+    return db.select().from(errorLogs)
+      .where(includeResolved ? sql`TRUE` : sql`${errorLogs.resolvedAt} IS NULL`)
+      .orderBy(desc(errorLogs.lastSeen)).limit(200);
+  }
+
+  async setErrorResolved(id: number, resolved: boolean): Promise<void> {
+    await db.update(errorLogs).set({ resolvedAt: resolved ? new Date() : null }).where(eq(errorLogs.id, id));
+  }
+
+  async purgeOldErrors(): Promise<number> {
+    const r: any = await db.execute(sql`DELETE FROM error_logs WHERE (resolved_at IS NOT NULL AND resolved_at < NOW() - INTERVAL '30 days') OR last_seen < NOW() - INTERVAL '90 days'`);
+    return Number(r?.rowCount ?? 0);
   }
 
   async resetListens(userId: number, date: string): Promise<void> {

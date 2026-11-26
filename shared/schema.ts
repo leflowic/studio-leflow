@@ -1329,3 +1329,24 @@ export const NOTIFICATION_CATEGORIES = [
 ] as const;
 
 export type NotificationCategory = (typeof NOTIFICATION_CATEGORIES)[number]["key"];
+
+// ─── Error log (admin "Greške") ──────────────────────────────────────────────
+// Grouped by fingerprint: the same error bumps `count`/`lastSeen` instead of
+// adding rows. Fed by server/error-log.ts (5xx responses, console.error with an
+// Error, uncaught errors) and POST /api/client-errors (browser errors).
+export const errorLogs = pgTable("error_logs", {
+  id: serial("id").primaryKey(),
+  fingerprint: text("fingerprint").notNull().unique(),
+  source: text("source").notNull(), // server | client
+  message: text("message").notNull(),
+  stack: text("stack"),
+  route: text("route"),
+  status: integer("status"),
+  count: integer("count").notNull().default(1),
+  lastUserId: integer("last_user_id"),
+  firstSeen: timestamp("first_seen").defaultNow().notNull(),
+  lastSeen: timestamp("last_seen").defaultNow().notNull(),
+  resolvedAt: timestamp("resolved_at"),
+});
+
+export type ErrorLog = typeof errorLogs.$inferSelect;

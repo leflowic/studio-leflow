@@ -3,6 +3,7 @@ import App from "./App";
 import "./index.css";
 import { registerServiceWorker } from "./lib/registerServiceWorker";
 import { initAnalytics } from "./lib/analytics";
+import { installClientErrorReporting } from "./lib/error-reporting";
 import { disableReactDevTools } from "@fvilers/disable-react-devtools";
 import DisableDevtool from "disable-devtool";
 
@@ -11,6 +12,7 @@ registerServiceWorker();
 
 // Google Analytics (production only, requires VITE_GA_MEASUREMENT_ID)
 initAnalytics();
+installClientErrorReporting();
 
 // ===== DEBUG PROTECTION (Production Only) =====
 if (import.meta.env.PROD) {

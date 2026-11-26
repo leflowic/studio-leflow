@@ -11,6 +11,9 @@ import { setBroadcastFunction, setNotificationFunction, setOnlineUsersAccessor }
 import { pool } from "./db";
 import { initPush } from "./push";
 import { startEngagementJobs } from "./engagement-jobs";
+import { installErrorLogging, errorResponseLogger, recordError } from "./error-log";
+
+installErrorLogging();
 
 async function runMigrations() {
   const client = await pool.connect();
@@ -534,6 +537,22 @@ async function runMigrations() {
       ) AS v(kind, title, description, price_sc, percent_off, duration_days, monthly_stock, sort_order)
       WHERE NOT EXISTS (SELECT 1 FROM shop_items);
     `);
+    await clientSpin.query(`
+      CREATE TABLE IF NOT EXISTS error_logs (
+        id SERIAL PRIMARY KEY,
+        fingerprint TEXT NOT NULL UNIQUE,
+        source TEXT NOT NULL,
+        message TEXT NOT NULL,
+        stack TEXT,
+        route TEXT,
+        status INTEGER,
+        count INTEGER NOT NULL DEFAULT 1,
+        last_user_id INTEGER,
+        first_seen TIMESTAMP NOT NULL DEFAULT NOW(),
+        last_seen TIMESTAMP NOT NULL DEFAULT NOW(),
+        resolved_at TIMESTAMP
+      );
+    `);
     log('[Migrations] Daily spin / vouchers ready', 'express');
   } catch (err: any) {
     log(`[Migrations] Warning on daily spin tables: ${err.message}`, 'express');
@@ -673,6 +692,8 @@ app.use(express.json({
   }
 }));
 app.use(express.urlencoded({ limit: '10kb', extended: false }));
+// Admin "Greške": every 5xx response is recorded with its route (server/error-log.ts)
+app.use(errorResponseLogger);
 
 // Security headers
 app.use((req, res, next) => {
@@ -851,13 +872,17 @@ app.use((req, res, next) => {
 
     app.use((err: any, _req: Request, res: Response, _next: NextFunction) => {
       const status = err.status || err.statusCode || 500;
-      const message = err.message || "Internal Server Error";
+      log(`Error: ${err.message}`, 'express');
+      console.error('Unhandled route error:', err);
 
-      log(`Error: ${message}`, 'express');
-      console.error('Full error details:', err);
-      
+      // Never send raw error text to the client (English, and it leaks internals).
+      const friendly =
+        status === 413 ? "Poslati podaci su preveliki." :
+        status === 400 ? "Neispravan zahtev." :
+        status < 500 ? "Zahtev nije mogao da se obradi." :
+        "Greška na serveru. Pokušajte ponovo.";
       if (!res.headersSent) {
-        res.status(status).json({ message });
+        res.status(status).json({ error: friendly });
       }
     });
 

@@ -5,6 +5,7 @@ import { wsHelpers, notifyUser, broadcastToUser, getOnlineUsersSnapshot } from "
 import { getActivityPoints, rankForPoints, RANK_THRESHOLDS, POINT_RULES, RANK_PERKS, perksFor } from "./activity";
 import { getTrustedClientIp } from "./client-ip";
 import { getClipSlice } from "./game-clip";
+import { recordError } from "./error-log";
 import { TESTIMONIAL_COINS, REFERRAL_COINS, REFERRAL_ACTIVE_DAYS, LEADERBOARD_COINS, SPIN_STREAK_DAYS, SPIN_STREAK_COINS } from "./coins";
 import { NOTIFICATION_CATEGORIES } from "@shared/schema";
 import { SPIN_REWARDS, COIN_REWARDS, STUDIO_MIN_ACCOUNT_DAYS, SETTING_SPIN_ENABLED, SETTING_SHOP_ENABLED, SETTING_SPIN_IP_LIMIT, SETTING_GAME_IP_LIMIT, getSpinIp, type SpinReward } from "./spin";
@@ -4463,6 +4464,33 @@ export async function registerRoutes(app: Express): Promise<Server> {
       console.error("[Referral] claim error:", e);
       res.status(500).json({ error: "Greška na serveru" });
     }
+  });
+
+  // ─── Error log ("Greške") ─────────────────────────────────────────────────
+  // Browser errors from visitors. Public (errors happen before/without login),
+  // so it is rate limited and every field is trimmed.
+  const clientErrorLimiter = rateLimit({ windowMs: 10 * 60 * 1000, max: 20, standardHeaders: true, legacyHeaders: false, message: { error: "Previše zahteva." } });
+  app.post("/api/client-errors", clientErrorLimiter, (req, res) => {
+    const b = req.body ?? {};
+    const message = String(b.message ?? "").slice(0, 500);
+    const stack = b.stack ? String(b.stack).slice(0, 4000) : null;
+    // noise that isn't ours: browser extensions, cross-origin "Script error."
+    if (!message || /chrome-extension:|moz-extension:|safari-extension:/.test(stack ?? "") || message === "Script error.") return res.status(204).end();
+    recordError({ source: "client", message, stack, route: b.url ? `stranica ${String(b.url).slice(0, 200)}` : null, userId: req.jwtUser?.id ?? null });
+    res.status(204).end();
+  });
+
+  app.get("/api/admin/errors", requireAdmin, async (req, res) => {
+    try { res.json(await storage.getErrorLogs(req.query.all === "1")); } catch { res.status(500).json({ error: "Greška na serveru" }); }
+  });
+
+  app.patch("/api/admin/errors/:id", requireAdmin, async (req, res) => {
+    try {
+      const id = parseInt(req.params.id, 10);
+      if (isNaN(id) || typeof req.body?.resolved !== "boolean") return res.status(400).json({ error: "Nevažeći zahtev" });
+      await storage.setErrorResolved(id, req.body.resolved);
+      res.json({ ok: true });
+    } catch { res.status(500).json({ error: "Greška na serveru" }); }
   });
 
   // ─── Admin: economy overview ──────────────────────────────────────────────

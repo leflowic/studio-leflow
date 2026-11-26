@@ -42,7 +42,7 @@ const ADMIN_NAV = [
       { value: "email", label: "Email", icon: "send", roles: ["marketing"] },
     ],
   },
-  { group: "Sistem", items: [{ value: "settings", label: "Podešavanja", icon: "settings" }] },
+  { group: "Sistem", items: [{ value: "settings", label: "Podešavanja", icon: "settings" }, { value: "errors", label: "Greške", icon: "shield-check" }] },
 ];
 
 const ICONS = {

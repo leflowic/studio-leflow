@@ -139,7 +139,8 @@ async function purgeOldIps() {
   if (hour < 4) return;
   await once("privacy_ip_purge", today, async () => {
     const r = await storage.purgeOldIps(90);
-    console.log(`[Privacy] old IPs purged: ${JSON.stringify(r)}`);
+    const errors = await storage.purgeOldErrors();
+    console.log(`[Privacy] old IPs purged: ${JSON.stringify(r)}; old error log rows removed: ${errors}`);
   });
 }
 

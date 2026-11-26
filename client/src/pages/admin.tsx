@@ -27,7 +27,7 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
-import { Users, Music, Heart, MessageCircle, Trash2, Shield, ShieldOff, ShieldCheck, Settings, Construction, Send, Mail, Eye, Search, Download, UserPlus, FileText, Crown, Trophy, BadgeCheck, LayoutDashboard, Radio, MessagesSquare, MessageSquareHeart, Ticket, Receipt, CalendarDays, Archive, Gamepad2, Link2, FolderOpen, FolderKanban, Newspaper, CheckCircle2, Clock, ArrowLeft, CalendarClock, UserCog, ShieldAlert, IdCard, ArrowLeftRight, ExternalLink, type LucideIcon } from "lucide-react";
+import { Users, Music, Heart, MessageCircle, Trash2, Shield, ShieldOff, ShieldCheck, Settings, Construction, Send, Mail, Eye, Search, Download, UserPlus, FileText, Crown, Trophy, BadgeCheck, LayoutDashboard, Radio, MessagesSquare, MessageSquareHeart, Ticket, Bug, Receipt, CalendarDays, Archive, Gamepad2, Link2, FolderOpen, FolderKanban, Newspaper, CheckCircle2, Clock, ArrowLeft, CalendarClock, UserCog, ShieldAlert, IdCard, ArrowLeftRight, ExternalLink, type LucideIcon } from "lucide-react";
 import { format, formatDistanceToNow } from "date-fns";
 import { srLatn } from "date-fns/locale";
 import type { User } from "@shared/schema";
@@ -53,6 +53,7 @@ import { RightsProtectionTab } from "@/components/admin/RightsProtectionTab";
 import { TestimonialsTab } from "@/components/admin/TestimonialsTab";
 import { VouchersTab } from "@/components/admin/VouchersTab";
 import { AntiAbuseTab } from "@/components/admin/AntiAbuseTab";
+import { ErrorsTab } from "@/components/admin/ErrorsTab";
 import {
   Select,
   SelectContent,
@@ -111,7 +112,7 @@ const ADMIN_NAV: { group: string; items: { value: string; label: string; icon: L
   },
   {
     group: "Sistem",
-    items: [{ value: "settings", label: "Podešavanja", icon: Settings }],
+    items: [{ value: "settings", label: "Podešavanja", icon: Settings }, { value: "errors", label: "Greške", icon: Bug }],
   },
 ];
 
@@ -400,6 +401,10 @@ export default function AdminPage() {
 
           <TabsContent value="anti-abuse">
             <AntiAbuseTab />
+          </TabsContent>
+
+          <TabsContent value="errors">
+            <ErrorsTab />
           </TabsContent>
 
           <TabsContent value="smart-links" forceMount>

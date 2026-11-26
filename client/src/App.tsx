@@ -1,5 +1,6 @@
 import { lazy, Suspense, Component, ReactNode, useEffect } from "react";
 import { trackPageView } from "./lib/analytics";
+import { reportClientError } from "./lib/error-reporting";
 import { Switch, Route, Redirect, useLocation } from "wouter";
 import { queryClient } from "./lib/queryClient";
 import { QueryClientProvider } from "@tanstack/react-query";
@@ -34,6 +35,7 @@ class ChunkErrorBoundary extends Component<{ children: ReactNode }, { failed: bo
   componentDidCatch(error: Error) {
     const msg = `${error?.name}: ${error?.message}`;
     this.setState({ errorMsg: msg });
+    reportClientError(`Stranica pukla: ${msg}`, error?.stack ?? null);
 
     const isChunkError =
       error?.message?.includes("Failed to fetch dynamically imported module") ||
