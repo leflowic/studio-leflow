@@ -17,6 +17,7 @@ Disallow: /inbox/*
 Disallow: /moje-pesme
 Disallow: /moje-pesme/*
 Disallow: /igra
+Disallow: /ploca
 Disallow: /zajednica
 Disallow: /giveaway
 Disallow: /settings

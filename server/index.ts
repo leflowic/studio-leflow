@@ -446,6 +446,8 @@ async function runMigrations() {
     `);
     await clientSpin.query(`CREATE INDEX IF NOT EXISTS vouchers_user_idx ON vouchers(user_id);`);
     await clientSpin.query(`ALTER TABLE posts ADD COLUMN IF NOT EXISTS featured_until TIMESTAMP;`);
+    await clientSpin.query(`ALTER TABLE daily_spins ADD COLUMN IF NOT EXISTS ip_address TEXT;`);
+    await clientSpin.query(`CREATE UNIQUE INDEX IF NOT EXISTS daily_spins_ip_date_unique ON daily_spins(ip_address, spin_date) WHERE ip_address IS NOT NULL;`);
     log('[Migrations] Daily spin / vouchers ready', 'express');
   } catch (err: any) {
     log(`[Migrations] Warning on daily spin tables: ${err.message}`, 'express');

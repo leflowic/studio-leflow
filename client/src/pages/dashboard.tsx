@@ -30,7 +30,6 @@ import { MySmartLinkPanel } from "@/components/dashboard/MySmartLinkPanel";
 import { MyJobsPanel } from "@/components/dashboard/MyJobsPanel";
 import { RankPanel } from "@/components/dashboard/RankPanel";
 import { GettingStarted } from "@/components/dashboard/GettingStarted";
-import { DailySpin } from "@/components/dashboard/DailySpin";
 import { MyVouchersPanel } from "@/components/dashboard/MyVouchersPanel";
 import { useForYouItems } from "@/components/home/ForYouToday";
 
@@ -117,9 +116,9 @@ export default function Dashboard() {
     staleTime: 30000,
   });
   // The job stepper is right below, so the job item would just repeat it.
-  const { items: today } = useForYouItems(gameData, { includeJob: false, includeSpin: false });
+  const { items: today } = useForYouItems(gameData, { includeJob: false });
 
-  // Links like /dashboard#ploca (from the home "Za tebe danas" strip) - wouter doesn't scroll to anchors.
+  // Deep links like /dashboard#<section> - wouter doesn't scroll to anchors.
   useEffect(() => {
     const id = window.location.hash.slice(1);
     if (!id) return;
@@ -238,8 +237,6 @@ export default function Dashboard() {
             </div>
           </section>
         )}
-
-        <DailySpin />
 
         <MyVouchersPanel />
 

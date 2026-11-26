@@ -103,7 +103,7 @@ import {
   type DailySpin,
   type Voucher,
 } from "@shared/schema";
-import { pickReward, generateVoucherCode, daysLeftInMonth, VOUCHER_VALID_DAYS, STUDIO_PRIZES_PER_MONTH, type SpinReward } from "./spin";
+import { pickReward, generateVoucherCode, daysLeftInMonth, VOUCHER_VALID_DAYS, STUDIO_PRIZES_PER_MONTH, STUDIO_MIN_ACCOUNT_DAYS, STUDIO_WIN_COOLDOWN_DAYS, SETTING_STUDIO_PRIZE_ENABLED, type SpinReward } from "./spin";
 import { db, pool } from "./db";
 import { eq, and, or, desc, sql, notInArray, inArray, gte, lte, count, countDistinct, isNotNull } from "drizzle-orm";
 import session from "express-session";
@@ -446,9 +446,11 @@ export interface IStorage {
 
   // Ploča dana (daily spin) + vouchers
   getSpin(userId: number, date: string): Promise<DailySpin | undefined>;
-  performSpin(userId: number, date: string, opts: { canExtraListen: boolean }): Promise<{ spin: DailySpin; voucher: Voucher | null; created: boolean }>;
+  performSpin(userId: number, date: string, opts: { canExtraListen: boolean; ip: string | null }): Promise<{ spin: DailySpin; voucher: Voucher | null; created: boolean } | { blocked: "ip" }>;
+  getStudioEligibility(userId: number, ip: string | null): Promise<{ eligible: boolean; reason: "disabled" | "staff" | "new_account" | "already_won" | "no_ip" | null; eligibleFrom?: Date }>;
   getStudioPrizesLeft(date: string): Promise<number>;
   getUserVouchers(userId: number): Promise<Voucher[]>;
+  getUserSpins(userId: number, limit: number): Promise<DailySpin[]>;
   getAllVouchers(): Promise<Array<Voucher & { username: string; email: string }>>;
   setVoucherRedeemed(id: number, redeemed: boolean, staffId: number): Promise<Voucher | undefined>;
 
@@ -3613,7 +3615,26 @@ export class DatabaseStorage implements IStorage {
   // The whole spin (eligibility, cap check, reward, side effects) runs in one
   // transaction behind a global advisory lock, so two people can't both take
   // the last studio prize and one user can't spin twice by double-clicking.
-  async performSpin(userId: number, date: string, opts: { canExtraListen: boolean }): Promise<{ spin: DailySpin; voucher: Voucher | null; created: boolean }> {
+  // Studio voucher eligibility. Anyone verified may spin; only these may win the
+  // studio prize: switch on, regular user (not staff), account >= 7 days old,
+  // known IP, and no studio win by this account OR this IP in the last year.
+  async getStudioEligibility(userId: number, ip: string | null, exec: any = db): Promise<{ eligible: boolean; reason: "disabled" | "staff" | "new_account" | "already_won" | "no_ip" | null; eligibleFrom?: Date }> {
+    const [flag] = await exec.select().from(settings).where(eq(settings.key, SETTING_STUDIO_PRIZE_ENABLED));
+    if (flag?.value === "false") return { eligible: false, reason: "disabled" };
+    const [u] = await exec.select({ role: users.role, createdAt: users.createdAt }).from(users).where(eq(users.id, userId));
+    if (!u || u.role !== "user") return { eligible: false, reason: "staff" };
+    const eligibleFrom = new Date(new Date(u.createdAt).getTime() + STUDIO_MIN_ACCOUNT_DAYS * 86400_000);
+    if (eligibleFrom > new Date()) return { eligible: false, reason: "new_account", eligibleFrom };
+    if (!ip) return { eligible: false, reason: "no_ip" };
+    const since = new Intl.DateTimeFormat("sv", { timeZone: "Europe/Belgrade" }).format(new Date(Date.now() - STUDIO_WIN_COOLDOWN_DAYS * 86400_000));
+    const [prior] = await exec.select({ id: dailySpins.id }).from(dailySpins)
+      .where(and(eq(dailySpins.reward, "studio_50"), sql`${dailySpins.spinDate} >= ${since}`, or(eq(dailySpins.userId, userId), eq(dailySpins.ipAddress, ip))))
+      .limit(1);
+    if (prior) return { eligible: false, reason: "already_won" };
+    return { eligible: true, reason: null };
+  }
+
+  async performSpin(userId: number, date: string, opts: { canExtraListen: boolean; ip: string | null }): Promise<{ spin: DailySpin; voucher: Voucher | null; created: boolean } | { blocked: "ip" }> {
     return db.transaction(async (tx) => {
       await tx.execute(sql`SELECT pg_advisory_xact_lock(735102)`);
 
@@ -3623,10 +3644,19 @@ export class DatabaseStorage implements IStorage {
         return { spin: existing, voucher: v ?? null, created: false };
       }
 
+      // One spin per IP per day, whichever account it comes from.
+      if (opts.ip) {
+        const [sameIp] = await tx.select({ id: dailySpins.id }).from(dailySpins)
+          .where(and(eq(dailySpins.ipAddress, opts.ip), eq(dailySpins.spinDate, date))).limit(1);
+        if (sameIp) return { blocked: "ip" as const };
+      }
+
+      const studio = await this.getStudioEligibility(userId, opts.ip, tx);
+
       const month = date.slice(0, 7);
       const [won] = await tx.select({ n: count() }).from(dailySpins)
         .where(and(eq(dailySpins.reward, "studio_50"), sql`${dailySpins.spinDate} LIKE ${month + "-%"}`));
-      const studioPrizesLeft = Math.max(0, STUDIO_PRIZES_PER_MONTH - Number(won?.n ?? 0));
+      const studioPrizesLeft = studio.eligible ? Math.max(0, STUDIO_PRIZES_PER_MONTH - Number(won?.n ?? 0)) : 0;
 
       // Expected spins for the rest of the month, from the average of the last
       // 7 days that had any spins. Until there are 3 such days (right after
@@ -3647,7 +3677,7 @@ export class DatabaseStorage implements IStorage {
         expectedSpinsLeft,
       });
 
-      const [spin] = await tx.insert(dailySpins).values({ userId, spinDate: date, reward }).returning();
+      const [spin] = await tx.insert(dailySpins).values({ userId, spinDate: date, reward, ipAddress: opts.ip }).returning();
 
       let voucher: Voucher | null = null;
       if (reward === "studio_50") {
@@ -3666,6 +3696,10 @@ export class DatabaseStorage implements IStorage {
 
       return { spin: spin!, voucher, created: true };
     });
+  }
+
+  async getUserSpins(userId: number, limit: number): Promise<DailySpin[]> {
+    return db.select().from(dailySpins).where(eq(dailySpins.userId, userId)).orderBy(desc(dailySpins.spinDate)).limit(limit);
   }
 
   async getUserVouchers(userId: number): Promise<Voucher[]> {

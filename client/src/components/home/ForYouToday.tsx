@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { Link } from "wouter";
-import { Gamepad2, Bell, MessageCircle, Music, Trophy, Flame, ChevronRight, Disc3 } from "lucide-react";
+import { Gamepad2, Bell, MessageCircle, Music, Trophy, Flame, ChevronRight, Disc } from "lucide-react";
 import { JOB_STAGES } from "@/lib/job-stages";
 import { useMonthlyChallenge, useChallengeCountdown } from "@/components/ChallengeBanner";
 import { PushToggle } from "@/components/PushToggle";
@@ -21,7 +21,7 @@ export function useForYouItems(gameData: any, { includeJob = true, includeSpin =
   const { data: unreadMsgs } = useQuery<{ count: number }>({ queryKey: ["/api/messages/unread-count"] });
   const { data: jobs } = useQuery<Array<{ id: number; title: string; stage: string }>>({ queryKey: ["/api/user/jobs"] });
   const { data: challenge } = useMonthlyChallenge();
-  const { data: spin } = useQuery<{ spun: boolean }>({ queryKey: ["/api/spin/today"], enabled: includeSpin });
+  const { data: spin } = useQuery<{ enabled: boolean; spun?: boolean }>({ queryKey: ["/api/spin/today"], enabled: includeSpin });
   const { label: challengeLabel, ended: challengeEnded } = useChallengeCountdown(challenge?.deadline);
   const [pushOff, setPushOff] = useState(false);
 
@@ -50,8 +50,8 @@ export function useForYouItems(gameData: any, { includeJob = true, includeSpin =
     items.push({ key: "job", href: "/dashboard", icon: Music, title: activeJob.title, detail: `Faza: ${stage}` });
   }
 
-  if (includeSpin && spin && !spin.spun) {
-    items.push({ key: "spin", href: "/dashboard#ploca", icon: Disc3, title: "Ploča dana te čeka", detail: "Jedno okretanje dnevno", highlight: true });
+  if (includeSpin && spin?.enabled && !spin.spun) {
+    items.push({ key: "spin", href: "/ploca", icon: Disc, title: "Ploča dana te čeka", detail: "Jedno okretanje dnevno", highlight: true });
   }
 
   if (unreadMsgs?.count) {

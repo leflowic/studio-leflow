@@ -100,6 +100,7 @@ const MojePesmePage = lazy(() => import("@/pages/moje-pesme"));
 const ZajednicaPage = lazy(() => import("@/pages/zajednica"));
 const NotFoundPage = lazy(() => import("@/pages/not-found"));
 const IgraPage = lazy(() => import("@/pages/igra"));
+const PlocaPage = lazy(() => import("@/pages/ploca"));
 const VerifyLicensePage = lazy(() => import("@/pages/verify-license"));
 const MaintenancePage = lazy(() => import("@/pages/maintenance"));
 const NewsletterConfirmationPage = lazy(() => import("@/pages/newsletter-confirmation"));
@@ -237,6 +238,7 @@ function Router() {
                 <Route path="/news"><NewsPage /></Route>
                 <Route path="/news/:slug"><NewsArticlePage /></Route>
                 <Route path="/izvodjac/:username"><IzvodjacPage /></Route>
+                <Route path="/ploca"><PlocaPage /></Route>
                 <ProtectedRoute path="/u/:username" component={() => <UserProfilePage />} />
                 <ProtectedRoute path="/igra" component={() => <IgraPage />} />
                 <ProtectedRoute path="/zajednica" component={() => <ZajednicaPage />} />

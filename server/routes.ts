@@ -3,7 +3,7 @@ import { createServer, type Server } from "http";
 import { storage } from "./storage";
 import { wsHelpers, notifyUser, broadcastToUser, getOnlineUsersSnapshot } from "./websocket-helpers";
 import { getActivityPoints, rankForPoints, RANK_THRESHOLDS, POINT_RULES, RANK_PERKS, perksFor } from "./activity";
-import { SPIN_REWARDS, STUDIO_PRIZES_PER_MONTH, type SpinReward } from "./spin";
+import { SPIN_REWARDS, STUDIO_PRIZES_PER_MONTH, STUDIO_MIN_ACCOUNT_DAYS, SETTING_SPIN_ENABLED, SETTING_STUDIO_PRIZE_ENABLED, getSpinIp, type SpinReward } from "./spin";
 import { getVapidPublicKey, saveSubscription, removeSubscription, hasSubscription, sendPushToUser, sendPushToUserIfOffline, sendPushToAll } from "./push";
 import { insertContactSubmissionSchema, insertCmsContentSchema, insertCmsMediaSchema, insertVideoSpotSchema, insertUserSongSchema, insertNewsletterSubscriberSchema, insertInvoiceSchema, insertCommunityMessageSchema, insertSiteAnnouncementSchema, mixMasterContractDataSchema, copyrightTransferContractDataSchema, instrumentalSaleContractDataSchema, insertSmartLinkSchema, insertStudioJobSchema, JOB_STAGES, insertNewsArticleSchema, insertRightsProtectionSchema, insertTestimonialSchema, upsertJobBriefSchema, type CmsContent, type CmsMedia, type VideoSpot, type UserSong } from "@shared/schema";
 import { sendEmail, getLastVerificationCode } from "./resend-client";
@@ -57,6 +57,16 @@ const uploadRateLimiter = rateLimit({
   windowMs: 60 * 60 * 1000, // 1 sat
   max: 30, // max 30 upload-a po satu po IP
   message: { error: "Previše upload zahteva. Pokušajte ponovo kasnije." },
+  standardHeaders: true,
+  legacyHeaders: false,
+});
+
+// Ploča dana: the real limit is 1 spin per account and per IP per day (enforced
+// in storage.performSpin); this only stops request floods against the endpoint.
+const spinRateLimiter = rateLimit({
+  windowMs: 10 * 60 * 1000,
+  max: 10,
+  message: { error: "Previše pokušaja. Pokušajte ponovo za nekoliko minuta." },
   standardHeaders: true,
   legacyHeaders: false,
 });
@@ -4208,18 +4218,32 @@ export async function registerRoutes(app: Express): Promise<Server> {
     voucher: voucher ? { code: voucher.code, expiresAt: voucher.expiresAt } : null,
   } : null;
 
+  const spinSwitches = async () => ({
+    enabled: (await storage.getSetting(SETTING_SPIN_ENABLED))?.value !== "false",
+    studioPrizeEnabled: (await storage.getSetting(SETTING_STUDIO_PRIZE_ENABLED))?.value !== "false",
+  });
+
   app.get("/api/spin/today", requireVerifiedEmail, async (req, res) => {
     try {
       const today = belgradeToday();
+      const { enabled, studioPrizeEnabled } = await spinSwitches();
+      if (!enabled) return res.json({ enabled: false });
       const spin = await storage.getSpin(req.jwtUser!.id, today);
+      const studio = await storage.getStudioEligibility(req.jwtUser!.id, getSpinIp(req));
       let voucher = null;
       if (spin?.reward === "studio_50") voucher = (await storage.getUserVouchers(req.jwtUser!.id)).find(v => v.spinId === spin.id) ?? null;
       res.json({
+        enabled: true,
         date: today,
         spun: !!spin,
         result: spinPayload(spin, voucher),
+        studioPrizeEnabled,
         studioPrizesLeft: await storage.getStudioPrizesLeft(today),
         studioPrizesPerMonth: STUDIO_PRIZES_PER_MONTH,
+        // Only explain the reasons a person can act on / should know; never reveal IP matching details.
+        studioNote: studio.reason === "new_account"
+          ? `Popust mogu da osvoje nalozi stari bar ${STUDIO_MIN_ACCOUNT_DAYS} dana - za tebe od ${studio.eligibleFrom!.toLocaleDateString("sr-RS", { timeZone: "Europe/Belgrade" })}`
+          : studio.reason === "already_won" ? "Popust si već osvojio u poslednjih godinu dana" : null,
       });
     } catch (e) {
       console.error("[Spin] today error:", e);
@@ -4227,13 +4251,19 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.post("/api/spin", requireVerifiedEmail, async (req, res) => {
+  app.post("/api/spin", spinRateLimiter, requireVerifiedEmail, async (req, res) => {
     try {
       const userId = req.jwtUser!.id;
       const today = belgradeToday();
+      if (!(await spinSwitches()).enabled) return res.status(403).json({ error: "Ploča dana je trenutno isključena." });
+      const ip = getSpinIp(req);
       const challenge = await storage.getTodayChallenge();
       const guess = challenge ? await storage.getUserGuessForDate(userId, today) : null;
-      const { spin, voucher, created } = await storage.performSpin(userId, today, { canExtraListen: !!challenge && !guess });
+      const outcome = await storage.performSpin(userId, today, { canExtraListen: !!challenge && !guess, ip });
+      if ("blocked" in outcome) {
+        return res.status(429).json({ error: "Sa ove mreže je ploča danas već zavrtena. Pokušajte sutra ili sa druge mreže." });
+      }
+      const { spin, voucher, created } = outcome;
       if (created && voucher) {
         console.log(`[Spin] Studio voucher ${voucher.code} won by user ${userId}`);
       }
@@ -4244,10 +4274,35 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  app.get("/api/spin/history", requireVerifiedEmail, async (req, res) => {
+    try {
+      const rows = await storage.getUserSpins(req.jwtUser!.id, 30);
+      res.json(rows.map(r => ({ date: r.spinDate, reward: r.reward, title: SPIN_REWARDS[r.reward as SpinReward]?.title ?? r.reward })));
+    } catch {
+      res.status(500).json({ error: "Greška na serveru" });
+    }
+  });
+
   app.get("/api/me/vouchers", requireVerifiedEmail, async (req, res) => {
     try {
       const list = await storage.getUserVouchers(req.jwtUser!.id);
       res.json(list.map(v => ({ id: v.id, code: v.code, type: v.type, expiresAt: v.expiresAt, redeemedAt: v.redeemedAt, createdAt: v.createdAt })));
+    } catch {
+      res.status(500).json({ error: "Greška na serveru" });
+    }
+  });
+
+  // Ploča dana switches (Super Admin only - it's a business decision).
+  app.get("/api/admin/spin-settings", requireRole("producer"), async (_req, res) => {
+    try { res.json(await spinSwitches()); } catch { res.status(500).json({ error: "Greška na serveru" }); }
+  });
+
+  app.put("/api/admin/spin-settings", requireAdmin, async (req, res) => {
+    try {
+      const { enabled, studioPrizeEnabled } = req.body ?? {};
+      if (typeof enabled === "boolean") await storage.setSetting(SETTING_SPIN_ENABLED, String(enabled));
+      if (typeof studioPrizeEnabled === "boolean") await storage.setSetting(SETTING_STUDIO_PRIZE_ENABLED, String(studioPrizeEnabled));
+      res.json(await spinSwitches());
     } catch {
       res.status(500).json({ error: "Greška na serveru" });
     }

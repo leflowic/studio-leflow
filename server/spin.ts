@@ -10,6 +10,12 @@ import { randomInt } from "crypto";
 // spins) so both prizes don't get won in the first two days.
 
 export const STUDIO_PRIZES_PER_MONTH = 2;
+export const STUDIO_MIN_ACCOUNT_DAYS = 7;   // fresh accounts can spin, but can't win the studio voucher
+export const STUDIO_WIN_COOLDOWN_DAYS = 365; // one studio voucher per person (account AND IP) per year
+
+// settings-table keys for the admin switches (absent = on)
+export const SETTING_SPIN_ENABLED = "spin_enabled";
+export const SETTING_STUDIO_PRIZE_ENABLED = "spin_studio_prize_enabled";
 export const VOUCHER_VALID_DAYS = 60;
 export const SPIN_POINTS = 5; // must match the daily_spins term in server/activity.ts
 const STUDIO_MAX_CHANCE = 0.08;
@@ -20,15 +26,16 @@ export const SPIN_REWARDS: Record<SpinReward, { title: string; detail: string }>
   studio_50: { title: "50% popusta na snimanje + mix/master", detail: "Vaučer važi 60 dana, vezan je za tvoj nalog." },
   extra_listen: { title: "+1 slušanje u Pogodi Pesmu", detail: "Važi za današnju igru." },
   feature_post: { title: "Istaknuta objava", detail: "Tvoja poslednja objava stoji na vrhu zajednice 24 sata." },
+  // Retired 2026-11-26 (owner: no rank points from the spin). Kept only so old
+  // history rows still render; it is no longer in BASE_WEIGHTS.
   points: { title: `+${SPIN_POINTS} bodova za rang`, detail: "Već su dodati na tvoj nalog." },
   nothing: { title: "Prazna strana", detail: "Ovaj put ništa. Ploča se okreće ponovo sutra." },
 };
 
-const BASE_WEIGHTS: Record<Exclude<SpinReward, "studio_50">, number> = {
-  extra_listen: 30,
-  points: 25,
-  feature_post: 15,
-  nothing: 30,
+const BASE_WEIGHTS: Partial<Record<Exclude<SpinReward, "studio_50">, number>> & { nothing: number } = {
+  extra_listen: 35,
+  feature_post: 20,
+  nothing: 45,
 };
 
 export type SpinContext = {
@@ -50,12 +57,12 @@ export function pickReward(ctx: SpinContext): SpinReward {
 
   const weights = { ...BASE_WEIGHTS };
   // An ineligible reward falls through to "nothing" rather than inflating the others.
-  if (!ctx.canExtraListen) { weights.nothing += weights.extra_listen; weights.extra_listen = 0; }
-  if (!ctx.hasPosts) { weights.nothing += weights.feature_post; weights.feature_post = 0; }
+  if (!ctx.canExtraListen) { weights.nothing += weights.extra_listen ?? 0; weights.extra_listen = 0; }
+  if (!ctx.hasPosts) { weights.nothing += weights.feature_post ?? 0; weights.feature_post = 0; }
 
-  const total = Object.values(weights).reduce((a, b) => a + b, 0);
+  const total = Object.values(weights).reduce((a, b) => a + (b ?? 0), 0);
   let r = randomInt(0, total);
-  for (const [key, w] of Object.entries(weights) as Array<[SpinReward, number]>) {
+  for (const [key, w] of Object.entries(weights).map(([k, v]) => [k, v ?? 0]) as Array<[SpinReward, number]>) {
     if (r < w) return key;
     r -= w;
   }
@@ -73,4 +80,29 @@ export function daysLeftInMonth(today: string): number {
   const [y = 1970, m = 1, d = 1] = today.split("-").map(Number);
   const last = new Date(Date.UTC(y, m, 0)).getUTCDate();
   return last - d + 1;
+}
+
+// ── Client IP for the one-spin-per-IP rule ───────────────────────────────────
+// The leftmost X-Forwarded-For entry is whatever the browser sent, so anyone
+// can forge it. Proxies *append*, so we walk the list from the right and take
+// the first public address - that's the one Railway's edge saw. Private/CGNAT
+// ranges are skipped so an internal hop is never mistaken for the client
+// (which would put every visitor behind one shared IP).
+const PRIVATE_V4 = [/^10\./, /^127\./, /^192\.168\./, /^172\.(1[6-9]|2\d|3[01])\./, /^100\.(6[4-9]|[7-9]\d|1[01]\d|12[0-7])\./, /^169\.254\./, /^0\./];
+function isPrivate(ip: string): boolean {
+  const v = ip.replace(/^::ffff:/, "");
+  if (PRIVATE_V4.some(r => r.test(v))) return true;
+  const lower = v.toLowerCase();
+  return lower === "::1" || lower.startsWith("fc") || lower.startsWith("fd") || lower.startsWith("fe80");
+}
+
+export function getSpinIp(req: any): string | null {
+  const xff = req.headers?.["x-forwarded-for"];
+  const hops = typeof xff === "string" ? xff.split(",").map((h: string) => h.trim()).filter(Boolean) : [];
+  for (let i = hops.length - 1; i >= 0; i--) {
+    const hop = hops[i]!;
+    if (!isPrivate(hop)) return hop.replace(/^::ffff:/, "");
+  }
+  const direct = String(req.socket?.remoteAddress ?? "");
+  return direct && !isPrivate(direct) ? direct.replace(/^::ffff:/, "") : null;
 }

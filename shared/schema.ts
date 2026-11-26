@@ -1,5 +1,5 @@
 import { sql } from "drizzle-orm";
-import { pgTable, text, varchar, timestamp, serial, integer, boolean, unique, json, index, pgEnum, numeric, type AnyPgColumn } from "drizzle-orm/pg-core";
+import { pgTable, text, varchar, timestamp, serial, integer, boolean, unique, uniqueIndex, json, index, pgEnum, numeric, type AnyPgColumn } from "drizzle-orm/pg-core";
 import { relations } from "drizzle-orm";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod";
@@ -1200,10 +1200,12 @@ export const dailySpins = pgTable("daily_spins", {
   userId: integer("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
   spinDate: text("spin_date").notNull(), // YYYY-MM-DD, Europe/Belgrade
   reward: text("reward").notNull(),
+  ipAddress: text("ip_address"), // one spin per IP per day (see getSpinIp in server/spin.ts)
   createdAt: timestamp("created_at").defaultNow().notNull(),
 }, (table) => ({
   userDateUnique: unique("daily_spins_user_date_unique").on(table.userId, table.spinDate),
   dateIdx: index("daily_spins_date_idx").on(table.spinDate),
+  ipDateUnique: uniqueIndex("daily_spins_ip_date_unique").on(table.ipAddress, table.spinDate).where(sql`ip_address IS NOT NULL`),
 }));
 
 export type DailySpin = typeof dailySpins.$inferSelect;

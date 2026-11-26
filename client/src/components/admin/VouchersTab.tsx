@@ -2,6 +2,8 @@ import { useMemo, useState } from "react";
 import { useMutation, useQuery } from "@tanstack/react-query";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
+import { useAuth } from "@/hooks/use-auth";
+import { Switch } from "@/components/ui/switch";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -19,8 +21,47 @@ const TYPE_LABEL: Record<string, string> = { studio_50: "50% snimanje + mix/mast
 // Vouchers won on the "Ploča dana". Staff checks the code a client quotes when
 // booking, then marks it redeemed here. Read-only list + one toggle, so no
 // forceMount needed on its TabsContent.
+// Super Admin switches for the Ploča dana (PUT /api/admin/spin-settings is requireAdmin).
+function SpinSwitches() {
+  const { toast } = useToast();
+  const { data } = useQuery<{ enabled: boolean; studioPrizeEnabled: boolean }>({ queryKey: ["/api/admin/spin-settings"] });
+  const save = useMutation({
+    mutationFn: async (patch: Partial<{ enabled: boolean; studioPrizeEnabled: boolean }>) =>
+      (await apiRequest("PUT", "/api/admin/spin-settings", patch)).json(),
+    onSuccess: (next) => {
+      queryClient.setQueryData(["/api/admin/spin-settings"], next);
+      queryClient.invalidateQueries({ queryKey: ["/api/spin/today"] });
+      toast({ title: "Sačuvano" });
+    },
+    onError: () => toast({ title: "Izmena nije sačuvana", variant: "destructive" }),
+  });
+  if (!data) return null;
+  const rows = [
+    { key: "enabled" as const, title: "Ploča dana", desc: "Kad je isključena, stranica /ploca prikazuje da je ploča pauzirana i niko ne može da vrti." },
+    { key: "studioPrizeEnabled" as const, title: "Studijski popust na ploči", desc: "Kad je isključen, 50% popust ne može da padne; ostale nagrade rade normalno. Već osvojeni vaučeri ostaju važeći." },
+  ];
+  return (
+    <div className="rounded-2xl border border-border bg-card divide-y divide-border">
+      {rows.map(r => (
+        <label key={r.key} className="flex items-start justify-between gap-6 px-5 py-4 cursor-pointer">
+          <span>
+            <span className="block text-sm font-medium">{r.title}</span>
+            <span className="block text-xs text-muted-foreground mt-0.5 max-w-xl">{r.desc}</span>
+          </span>
+          <Switch
+            checked={data[r.key]} disabled={save.isPending}
+            onCheckedChange={v => save.mutate({ [r.key]: v })}
+            aria-label={r.title}
+          />
+        </label>
+      ))}
+    </div>
+  );
+}
+
 export function VouchersTab() {
   const { toast } = useToast();
+  const { user } = useAuth();
   const [q, setQ] = useState("");
   const { data, isLoading, isError } = useQuery<AdminVoucher[]>({ queryKey: ["/api/admin/vouchers"] });
 
@@ -46,6 +87,8 @@ export function VouchersTab() {
           Dobici sa Ploče dana. Kad klijent navede kod, proverite ga ovde i označite kao iskorišćen. Najviše 2 studijska vaučera mesečno.
         </p>
       </div>
+
+      {user?.role === "admin" && <SpinSwitches />}
 
       <div className="relative max-w-md">
         <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground pointer-events-none" />
