@@ -180,13 +180,16 @@
         rel="stylesheet"
     /></noscript>
 
-    <!-- Preload critical hero image for LCP optimization -->
+    <!-- Preload the homepage hero (its LCP element) so it starts before the JS runs.
+         Same WebP variants as ParallaxHero's srcset; this preload applies to every
+         page, which is why it must stay small (18KB mobile / 32KB desktop). -->
     <link
       rel="preload"
       as="image"
-      href="/equipment/hero-studio-background.jpg"
+      type="image/webp"
+      href="/equipment/hero-studio-background-1080.webp"
       fetchpriority="high"
-      imagesrcset="/equipment/hero-studio-background.jpg"
+      imagesrcset="/equipment/hero-studio-background-720.webp 720w, /equipment/hero-studio-background-1080.webp 1080w"
       imagesizes="100vw"
     />
 

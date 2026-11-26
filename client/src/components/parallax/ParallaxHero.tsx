@@ -35,9 +35,16 @@ export function ParallaxHero({ children }: ParallaxHeroProps) {
       style={{ perspective: "1000px" }}
     >
       <div className="absolute inset-0 z-0">
+        {/* LCP element on the homepage: small WebP variants (18/32KB vs a 182KB JPG),
+            fetched with high priority. The JPG stays as the fallback src. */}
         <img
           src="/equipment/hero-studio-background.jpg"
-          alt="Studio LeFlow Background"
+          srcSet="/equipment/hero-studio-background-720.webp 720w, /equipment/hero-studio-background-1080.webp 1080w"
+          sizes="100vw"
+          alt=""
+          // @ts-expect-error - fetchpriority is valid HTML, React 18 types lag behind
+          fetchpriority="high"
+          decoding="async"
           className="w-full h-full object-cover blur-[2px] saturate-[0.25]"
         />
       </div>

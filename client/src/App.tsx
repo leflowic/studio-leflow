@@ -203,7 +203,9 @@ function Router() {
     return (
       <ChunkErrorBoundary>
         <Suspense fallback={<div className="min-h-screen bg-background" />}>
-          <AuthPageComponent />
+          <MaybeGoogleOAuthProvider>
+            <AuthPageComponent />
+          </MaybeGoogleOAuthProvider>
         </Suspense>
       </ChunkErrorBoundary>
     );
@@ -212,7 +214,8 @@ function Router() {
   return (
     <>
       <Header />
-      <main className="min-h-[calc(100vh-200px)] pt-[calc(4rem+env(safe-area-inset-top))]">
+      {/* min-h-screen: while a lazy route loads, the footer must stay below the fold - otherwise it flashes up under the header and then gets pushed down (CLS ~0.24 on every page). */}
+      <main className="min-h-screen pt-[calc(4rem+env(safe-area-inset-top))]">
         <ChunkErrorBoundary>
         <Suspense fallback={
           <div className="flex items-center justify-center min-h-[60vh]">
@@ -227,9 +230,9 @@ function Router() {
                 <Route path="/tim"><TeamPage /></Route>
                 <Route path="/kontakt"><ContactPage /></Route>
                 <Route path="/projekti"><VideoSpotsPage /></Route>
-                <Route path="/auth"><AuthPageComponent /></Route>
-                <Route path="/prijava"><AuthPageComponent /></Route>
-                <Route path="/registracija"><AuthPageComponent /></Route>
+                <Route path="/auth"><MaybeGoogleOAuthProvider><AuthPageComponent /></MaybeGoogleOAuthProvider></Route>
+                <Route path="/prijava"><MaybeGoogleOAuthProvider><AuthPageComponent /></MaybeGoogleOAuthProvider></Route>
+                <Route path="/registracija"><MaybeGoogleOAuthProvider><AuthPageComponent /></MaybeGoogleOAuthProvider></Route>
                 <Route path="/verify-email"><VerifyEmailPageComponent /></Route>
                 <Route path="/proveri/:hash"><VerifyLicensePage /></Route>
                 <Route path="/proveri"><VerifyLicensePage /></Route>
@@ -267,6 +270,8 @@ function Router() {
 
 // @react-oauth/google throws synchronously on mount if clientId is empty, which would
 // crash the entire app tree. Only wrap with the real provider when it's configured.
+// Wraps ONLY the auth pages: GoogleOAuthProvider injects Google's GSI script
+// (~105KB) on mount, which used to load on every page for every visitor.
 function MaybeGoogleOAuthProvider({ children }: { children: ReactNode }) {
   const clientId = import.meta.env.VITE_GOOGLE_CLIENT_ID;
   if (!clientId) return <>{children}</>;
@@ -277,7 +282,6 @@ function App() {
   return (
     <HelmetProvider>
       <QueryClientProvider client={queryClient}>
-        <MaybeGoogleOAuthProvider>
           <ThemeProvider>
             <AuthProvider>
               <WebSocketProvider>
@@ -295,7 +299,6 @@ function App() {
               </WebSocketProvider>
             </AuthProvider>
           </ThemeProvider>
-        </MaybeGoogleOAuthProvider>
       </QueryClientProvider>
     </HelmetProvider>
   );
