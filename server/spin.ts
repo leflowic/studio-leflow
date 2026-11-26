@@ -46,7 +46,7 @@ export const SPIN_REWARDS: Record<SpinReward, { title: string; detail: string }>
 
 // Expected payout ≈ 8.75 SC per spin; with correct game answers a regular
 // player earns roughly 300-450 SC a month. Shop prices were set against that.
-const BASE_WEIGHTS: Partial<Record<SpinReward, number>> & { nothing: number } = {
+export const BASE_WEIGHTS: Partial<Record<SpinReward, number>> & { nothing: number } = {
   coins_5: 25,
   coins_10: 20,
   coins_25: 10,

@@ -79,8 +79,8 @@ export default function TermsOfUsePage() {
                 <ul className="list-disc list-inside space-y-2 text-muted-foreground ml-4">
                   <li>Svaki korisnik može glasati za <strong>više različitih projekata</strong></li>
                   <li>Zabranjeno je glasati više puta za isti projekat</li>
-                  <li>Sistem automatski prati IP adrese kako bi sprečio zloupotrebe</li>
-                  <li>Pokušaji manipulacije glasovima (korišćenje više naloga, VPN, proxy servisi) rezultovaće <strong>trajnim banom</strong></li>
+                  <li>Sistem automatski sprečava zloupotrebe glasanja</li>
+                  <li>Pokušaji manipulacije glasovima rezultovaće <strong>trajnim banom</strong></li>
                 </ul>
               </div>
 

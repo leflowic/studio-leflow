@@ -411,7 +411,7 @@ export function weeklySmartLinkReportEmail(data: {
     ${paragraph(`Ćao ${esc(data.username)}, tvoji smart linkovi su prošle nedelje imali ${total} ${posetilaca(total)}.`)}
     <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="margin:4px 0 22px;border-collapse:collapse;">${rows}</table>
     ${button('Pogledaj detalje', `${BASE_URL}/dashboard`)}
-    ${small(`Brojimo jednu posetu po mreži, pa je broj realan. Izveštaj možeš da isključiš u ${link(`${BASE_URL}/settings#obavestenja`, 'Podešavanjima')}.`)}
+    ${small(`Brojimo jedinstvene posetioce, ne klikove. Izveštaj možeš da isključiš u ${link(`${BASE_URL}/settings#obavestenja`, 'Podešavanjima')}.`)}
     ${signoff()}
   `, {
     preheader: `Prošle nedelje: ${total} ${posetilaca(total)} na tvojim linkovima.`,

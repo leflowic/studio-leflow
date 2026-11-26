@@ -287,10 +287,10 @@ export default function PlocaPage() {
           <h2 id="rules-title" className="text-xl font-semibold">Kako funkcioniše</h2>
           <ul className="mt-4 space-y-2 text-sm text-muted-foreground max-w-2xl list-disc pl-5">
             <li>Ploču vrtiš jednom dnevno. Nova te čeka posle ponoći.</li>
-            <li>Sa istog interneta (iste kuće ili istog telefona) ploča može da se zavrti jednom dnevno, bez obzira na to koliko naloga imate.</li>
+            <li>Jedna osoba, jedno okretanje dnevno. Više naloga se ne računa.</li>
             <li>Nagrada se izvlači nasumično. Polja na ploči su tu zbog izgleda - ne pokazuju koliko je koja nagrada verovatna.</li>
             <li>Studio Coins su samo za ovaj sajt: ne mogu da se kupe, prodaju, poklone drugome niti zamene za novac.</li>
-            <li>Popuste iz prodavnice mogu da kupe nalozi stari bar 7 dana. Vaučer važi samo za tvoj nalog.</li>
+            <li>Vaučer važi samo za tvoj nalog.</li>
           </ul>
           <Link href="/pravila#ploca-dana" className="inline-flex items-center gap-1 text-sm text-primary hover:underline underline-offset-4 mt-4">
             Sva pravila <ArrowRight className="w-3.5 h-3.5" />

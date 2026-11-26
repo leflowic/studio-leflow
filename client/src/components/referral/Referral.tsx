@@ -55,7 +55,7 @@ export function InviteFriendCard() {
         <div className="min-w-0">
           <h2 id="invite-title" className="font-semibold">Pozovi prijatelja</h2>
           <p className="text-sm text-muted-foreground mt-1">
-            Kad se prijatelj prijavi preko tvog linka i bude aktivan {data.activeDays} različita dana (ploča ili igra), oboje dobijate po <span className="font-mono text-foreground">{data.coins} SC</span>.
+            Kad se prijatelj prijavi preko tvog linka i bude aktivan na sajtu, oboje dobijate po <span className="font-mono text-foreground">{data.coins} SC</span>.
           </p>
         </div>
       </div>
@@ -83,7 +83,7 @@ export function InviteFriendCard() {
           {data.pending > 0 && <>{" · "}čeka aktivnost: <span className="font-mono text-foreground">{data.pending}</span></>}
         </p>
       )}
-      <p className="text-[11px] text-muted-foreground/80 mt-3">Pozivi sa iste mreže (iste kuće ili istog telefona) se ne računaju.</p>
+      <p className="text-[11px] text-muted-foreground/80 mt-3">Nagrađuju se samo pravi novi korisnici - više naloga iste osobe se ne računa.</p>
     </section>
   );
 }

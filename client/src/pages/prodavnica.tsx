@@ -204,7 +204,7 @@ export default function ProdavnicaPage() {
 
         <section className="text-sm text-muted-foreground max-w-2xl space-y-1.5 border-t border-border/60 pt-8">
           <p>Studio Coins važe samo na ovom sajtu. Ne mogu da se kupe, prodaju, poklone niti zamene za novac.</p>
-          <p>Popuste mogu da kupe nalozi stari bar 7 dana, i to jedan po jedan - novi tek kad iskoristiš prethodni. Količine popusta su ograničene na mesečnom nivou.</p>
+          <p>Popusti se kupuju jedan po jedan - novi tek kad iskoristiš prethodni. Količine popusta su ograničene na mesečnom nivou.</p>
           <Link href="/pravila#ploca-dana" className="inline-flex items-center gap-1 text-primary hover:underline underline-offset-4">Sva pravila <ArrowRight className="w-3.5 h-3.5" /></Link>
         </section>
       </div>

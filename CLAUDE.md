@@ -152,6 +152,10 @@ The owner explicitly dislikes these patterns. Never introduce them:
 - forceMount'ed admin tabs (Prodavnica's `EconomyOverview`, `ShopCatalogue`, JobsBoard's `BottleneckPanel`) render even while another tab is open, so they must guard against a malformed response (`Array.isArray`, optional fields) - one bad payload otherwise takes the whole admin panel down through the error boundary.
 - Founding year is **2020** (owner, 2026-11-26): hero "Od 2020.", footer, and `foundingDate` in the org JSON-LD in `client/index.html`; matches `/zastita-brenda`.
 
+**Discretion rule (owner, 2026-11-26) - say WHAT, never HOW:**
+- Public copy (pages, rules, toasts, server error messages, emails) states what the user gets and what is allowed. It never explains how the site works internally: no vendor names (Railway, Cloudinary, Resend, Google Analytics...), no anti-abuse mechanics (IP / "same network" / VPN detection, thresholds like account age or active days, how referrals are verified), no odds or algorithms. "Više naloga iste osobe se ne računa" - yes; "jedan po IP adresi" - no. A blocked user gets a neutral message ("Ploča je za danas već iskorišćena").
+- Exceptions: game rules players need (1 second clip, number of listens), honest "the wheel's sectors don't show the odds" disclaimer, and the privacy section, which names data *categories* (not vendors). The internal mechanics stay documented only in CLAUDE.md / `docs/features/`.
+
 **Copy rules (owner decisions — hard constraints):**
 - **Never show prices anywhere.** Pricing questions are answered with "pošaljite upit — tačna ponuda u roku od 24h."
 - **Revision policy is exactly 2 free revisions for every service** — home, usluge, team, FAQ, terms, and the FAQPage structured data in `SEO.tsx` must all agree. Never claim unlimited revisions.

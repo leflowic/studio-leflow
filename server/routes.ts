@@ -4275,7 +4275,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const ipLimit = (await storage.getSetting(SETTING_SPIN_IP_LIMIT))?.value !== "false";
       const outcome = await storage.performSpin(userId, today, { canExtraListen: !!challenge && !guess, ip, ipLimit });
       if ("blocked" in outcome) {
-        return res.status(429).json({ error: "Sa ovog interneta je ploča danas već zavrtena (možda neko iz iste kuće). Pokušaj ponovo sutra." });
+        return res.status(429).json({ error: "Ploča je za danas već iskorišćena. Pokušaj ponovo sutra." });
       }
       const { spin, voucher, created } = outcome;
       res.json({
@@ -4692,7 +4692,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       // One answer per network per day - stops trying several answers through extra accounts.
       const ip = getTrustedClientIp(req);
-      const ipTaken = "Sa ovog interneta je danas već poslat odgovor (možda neko iz iste kuće). Pokušaj ponovo sutra.";
+      const ipTaken = "Odgovor za današnju igru je već poslat. Pokušaj ponovo sutra.";
       const gameIpLimit = (await storage.getSetting(SETTING_GAME_IP_LIMIT))?.value !== "false";
       if (gameIpLimit && ip && await storage.hasGuessFromIp(ip, today)) return res.status(429).json({ error: ipTaken });
 
@@ -4706,7 +4706,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Unique violations from parallel requests (same account or same IP): never reveal correctness.
       if (e?.code === '23505') {
         const onIp = String(e?.constraint ?? '').includes('ip');
-        return res.status(onIp ? 429 : 409).json({ error: onIp ? "Sa ovog interneta je danas već poslat odgovor (možda neko iz iste kuće). Pokušaj ponovo sutra." : "Već ste odigrali danas" });
+        return res.status(onIp ? 429 : 409).json({ error: onIp ? "Odgovor za današnju igru je već poslat. Pokušaj ponovo sutra." : "Već ste odigrali danas" });
       }
       if (e.message === 'Challenge not found') return res.status(404).json({ error: "Nema izazova za danas" });
       res.status(500).json({ error: "Greška na serveru" });
