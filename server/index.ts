@@ -447,6 +447,18 @@ async function runMigrations() {
     await clientSpin.query(`CREATE INDEX IF NOT EXISTS vouchers_user_idx ON vouchers(user_id);`);
     await clientSpin.query(`ALTER TABLE posts ADD COLUMN IF NOT EXISTS featured_until TIMESTAMP;`);
     await clientSpin.query(`ALTER TABLE daily_spins ADD COLUMN IF NOT EXISTS ip_address TEXT;`);
+    // Pogodi Pesmu anti-cheat: one answer per IP per day + server-side listen counter
+    await clientSpin.query(`ALTER TABLE daily_guesses ADD COLUMN IF NOT EXISTS ip_address TEXT;`);
+    await clientSpin.query(`CREATE UNIQUE INDEX IF NOT EXISTS daily_guesses_ip_date_unique ON daily_guesses(ip_address, challenge_date) WHERE ip_address IS NOT NULL;`);
+    await clientSpin.query(`
+      CREATE TABLE IF NOT EXISTS game_listens (
+        id SERIAL PRIMARY KEY,
+        user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+        challenge_date TEXT NOT NULL,
+        count INTEGER NOT NULL DEFAULT 0,
+        CONSTRAINT game_listens_user_date_unique UNIQUE (user_id, challenge_date)
+      );
+    `);
     await clientSpin.query(`CREATE UNIQUE INDEX IF NOT EXISTS daily_spins_ip_date_unique ON daily_spins(ip_address, spin_date) WHERE ip_address IS NOT NULL;`);
     log('[Migrations] Daily spin / vouchers ready', 'express');
   } catch (err: any) {

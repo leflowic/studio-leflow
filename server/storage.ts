@@ -100,6 +100,7 @@ import {
   rightsProtections,
   dailySpins,
   vouchers,
+  gameListens,
   type DailySpin,
   type Voucher,
 } from "@shared/schema";
@@ -384,7 +385,10 @@ export interface IStorage {
   getTodayChallenge(): Promise<{ id: number; challengeDate: string; clipStartSeconds: number; clipUrl: string | null; openHour: number; openMinute: number; correctAnswers: string } | null>;
   getNextUpcomingChallenge(): Promise<{ challengeDate: string; openHour: number; openMinute: number } | null>;
   getUserGuessForDate(userId: number, date: string): Promise<{ answer: string; correct: boolean } | null>;
-  submitGuess(userId: number, challengeDate: string, answer: string): Promise<{ correct: boolean; points: number }>;
+  hasGuessFromIp(ip: string, date: string): Promise<boolean>;
+  getListensUsed(userId: number, date: string): Promise<number>;
+  useListen(userId: number, date: string, max: number): Promise<number | null>;
+  submitGuess(userId: number, challengeDate: string, answer: string, ipAddress?: string | null): Promise<{ correct: boolean; points: number }>;
   getWeeklyLeaderboard(weekStart: string): Promise<Array<{ userId: number; username: string; avatarUrl: string | null; correctCount: number; points: number }>>;
   getWeeklyPrize(weekStart: string): Promise<{ discountPct: number; prizeDescription: string; promoCode: string | null; winnerUserId: number | null } | null>;
   adminGetChallenges(): Promise<Array<{ id: number; challengeDate: string; clipUrl: string | null; correctAnswers: string; clipStartSeconds: number; openHour: number; openMinute: number }>>;
@@ -3123,7 +3127,34 @@ export class DatabaseStorage implements IStorage {
     return { answer: row.answer, correct: row.correct };
   }
 
-  async submitGuess(userId: number, challengeDate: string, answer: string): Promise<{ correct: boolean; points: number }> {
+  async hasGuessFromIp(ip: string, date: string): Promise<boolean> {
+    const [row] = await db.select({ id: dailyGuesses.id }).from(dailyGuesses)
+      .where(and(eq(dailyGuesses.ipAddress, ip), eq(dailyGuesses.challengeDate, date))).limit(1);
+    return !!row;
+  }
+
+  async getListensUsed(userId: number, date: string): Promise<number> {
+    const [row] = await db.select({ count: gameListens.count }).from(gameListens)
+      .where(and(eq(gameListens.userId, userId), eq(gameListens.challengeDate, date)));
+    return row?.count ?? 0;
+  }
+
+  // Atomic "use one listen if any are left": the conditional upsert only bumps
+  // the counter while it's below max, so parallel requests can't overshoot.
+  // Returns the new used count, or null when the limit was already reached.
+  async useListen(userId: number, date: string, max: number): Promise<number | null> {
+    if (max <= 0) return null;
+    const result: any = await db.execute(sql`
+      INSERT INTO game_listens (user_id, challenge_date, count) VALUES (${userId}, ${date}, 1)
+      ON CONFLICT (user_id, challenge_date) DO UPDATE SET count = game_listens.count + 1
+      WHERE game_listens.count < ${max}
+      RETURNING count
+    `);
+    const row = (result.rows ?? result)[0];
+    return row ? Number(row.count) : null;
+  }
+
+  async submitGuess(userId: number, challengeDate: string, answer: string, ipAddress: string | null = null): Promise<{ correct: boolean; points: number }> {
     const [challenge] = await db.select().from(dailyChallenges).where(eq(dailyChallenges.challengeDate, challengeDate));
     if (!challenge) throw new Error('Challenge not found');
 
@@ -3131,7 +3162,7 @@ export class DatabaseStorage implements IStorage {
     const correct = accepted.some(a => a === answer.trim().toLowerCase());
     const points = correct ? 10 : 0;
 
-    await db.insert(dailyGuesses).values({ userId, challengeDate, answer: answer.trim(), correct });
+    await db.insert(dailyGuesses).values({ userId, challengeDate, answer: answer.trim(), correct, ipAddress });
     return { correct, points };
   }
 

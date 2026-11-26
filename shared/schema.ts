@@ -372,9 +372,22 @@ export const dailyGuesses = pgTable("daily_guesses", {
   challengeDate: text("challenge_date").notNull(),
   answer: text("answer").notNull(),
   correct: boolean("correct").notNull(),
+  ipAddress: text("ip_address"), // one answer per IP per day (server/client-ip.ts)
   guessedAt: timestamp("guessed_at").defaultNow().notNull(),
 }, (table) => ({
   uniqueUserDate: unique().on(table.userId, table.challengeDate),
+  ipDateUnique: uniqueIndex("daily_guesses_ip_date_unique").on(table.ipAddress, table.challengeDate).where(sql`ip_address IS NOT NULL`),
+}));
+
+// Server-side listen counter for "Pogodi Pesmu" (the client used to count in
+// localStorage, which anyone could reset). Max = rank perk + Ploča dana bonus.
+export const gameListens = pgTable("game_listens", {
+  id: serial("id").primaryKey(),
+  userId: integer("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  challengeDate: text("challenge_date").notNull(),
+  count: integer("count").notNull().default(0),
+}, (table) => ({
+  userDateUnique: unique("game_listens_user_date_unique").on(table.userId, table.challengeDate),
 }));
 
 export const weeklyPrizes = pgTable("weekly_prizes", {

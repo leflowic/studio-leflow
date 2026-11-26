@@ -3,6 +3,8 @@ import { createServer, type Server } from "http";
 import { storage } from "./storage";
 import { wsHelpers, notifyUser, broadcastToUser, getOnlineUsersSnapshot } from "./websocket-helpers";
 import { getActivityPoints, rankForPoints, RANK_THRESHOLDS, POINT_RULES, RANK_PERKS, perksFor } from "./activity";
+import { getTrustedClientIp } from "./client-ip";
+import { getClipSlice } from "./game-clip";
 import { SPIN_REWARDS, STUDIO_PRIZES_PER_MONTH, STUDIO_MIN_ACCOUNT_DAYS, SETTING_SPIN_ENABLED, SETTING_STUDIO_PRIZE_ENABLED, getSpinIp, type SpinReward } from "./spin";
 import { getVapidPublicKey, saveSubscription, removeSubscription, hasSubscription, sendPushToUser, sendPushToUserIfOffline, sendPushToAll } from "./push";
 import { insertContactSubmissionSchema, insertCmsContentSchema, insertCmsMediaSchema, insertVideoSpotSchema, insertUserSongSchema, insertNewsletterSubscriberSchema, insertInvoiceSchema, insertCommunityMessageSchema, insertSiteAnnouncementSchema, mixMasterContractDataSchema, copyrightTransferContractDataSchema, instrumentalSaleContractDataSchema, insertSmartLinkSchema, insertStudioJobSchema, JOB_STAGES, insertNewsArticleSchema, insertRightsProtectionSchema, insertTestimonialSchema, upsertJobBriefSchema, type CmsContent, type CmsMedia, type VideoSpot, type UserSong } from "@shared/schema";
@@ -4142,7 +4144,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   const clipFetchCounts = new Map<string, number>();
 
   // GET /api/game/clip - proxy today's audio clip through the server to avoid browser CORS on Cloudinary
-  app.get("/api/game/clip", requireNotBanned, async (req, res) => {
+  app.get("/api/game/clip", requireVerifiedEmail, async (req, res) => {
     try {
       const userId = req.jwtUser!.id;
       const today = new Intl.DateTimeFormat('sv', { timeZone: 'Europe/Belgrade' }).format(new Date());
@@ -4162,20 +4164,18 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(403).send("Not open yet");
       }
 
-      const upstream = await fetch(challenge.clipUrl);
-      if (!upstream.ok) return res.status(502).send("Upstream error");
-
-      const buffer = await upstream.arrayBuffer();
+      // Only the playable snippet ever leaves the server (see server/game-clip.ts).
+      const slice = await getClipSlice(challenge.clipUrl, challenge.clipStartSeconds ?? 0);
       res.setHeader('Content-Type', 'audio/mpeg');
       res.setHeader('Cache-Control', 'no-store');
-      res.send(Buffer.from(buffer));
+      res.send(slice);
     } catch (e) {
       res.status(500).send("Server error");
     }
   });
 
   // GET /api/game/today - challenge info for current user (no correct answers)
-  app.get("/api/game/today", requireNotBanned, async (req, res) => {
+  app.get("/api/game/today", requireVerifiedEmail, async (req, res) => {
     try {
       const today = new Intl.DateTimeFormat('sv', { timeZone: 'Europe/Belgrade' }).format(new Date());
       const challenge = await storage.getTodayChallenge();
@@ -4194,6 +4194,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const guess = await storage.getUserGuessForDate(req.jwtUser!.id as number, today);
       const streak = await storage.getGameStreak(req.jwtUser!.id as number, today);
       const spin = await storage.getSpin(req.jwtUser!.id as number, today);
+      const bonusListens = spin?.reward === "extra_listen" ? 1 : 0;
+      const maxListens = perksFor(req.jwtUser!.rank).gameListens + bonusListens;
+      const listensUsed = await storage.getListensUsed(req.jwtUser!.id as number, today);
       const { correctAnswers, clipUrl, ...safeChallenge } = challenge;
       res.json({
         available: true,
@@ -4201,7 +4204,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
         alreadyPlayed: !!guess,
         guess,
         streak,
-        bonusListens: spin?.reward === "extra_listen" ? 1 : 0, // "Ploča dana" reward
+        bonusListens, // "Ploča dana" reward
+        maxListens,
+        listensLeft: Math.max(0, maxListens - listensUsed),
       });
     } catch (e) {
       res.status(500).json({ error: "Greška na serveru" });
@@ -4329,8 +4334,32 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // POST /api/game/listen - spend one listen before the client plays the snippet.
+  // The counter lives in the DB, so clearing browser storage gives nothing.
+  app.post("/api/game/listen", requireVerifiedEmail, async (req, res) => {
+    try {
+      const userId = req.jwtUser!.id;
+      const today = new Intl.DateTimeFormat('sv', { timeZone: 'Europe/Belgrade' }).format(new Date());
+      const challenge = await storage.getTodayChallenge();
+      if (!challenge) return res.status(404).json({ error: "Nema izazova za danas" });
+      const belgNow = new Date(new Date().toLocaleString('en-US', { timeZone: 'Europe/Belgrade' }));
+      if (belgNow.getHours() * 60 + belgNow.getMinutes() < challenge.openHour * 60 + challenge.openMinute) {
+        return res.status(403).json({ error: "Igra još nije otvorena" });
+      }
+      if (await storage.getUserGuessForDate(userId, today)) return res.status(409).json({ error: "Već ste odigrali danas" });
+      const spin = await storage.getSpin(userId, today);
+      const max = perksFor(req.jwtUser!.rank).gameListens + (spin?.reward === "extra_listen" ? 1 : 0);
+      const used = await storage.useListen(userId, today, max);
+      if (used === null) return res.status(429).json({ error: "Iskoristili ste sva slušanja za danas", listensLeft: 0 });
+      res.json({ listensLeft: Math.max(0, max - used), maxListens: max });
+    } catch (e) {
+      console.error("[Game] listen error:", e);
+      res.status(500).json({ error: "Greška na serveru" });
+    }
+  });
+
   // POST /api/game/guess
-  app.post("/api/game/guess", requireNotBanned, async (req, res) => {
+  app.post("/api/game/guess", requireVerifiedEmail, async (req, res) => {
     try {
       const { answer } = req.body;
       if (!answer || typeof answer !== 'string' || !answer.trim()) {
@@ -4350,16 +4379,26 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const existing = await storage.getUserGuessForDate(req.jwtUser!.id as number, today);
       if (existing) return res.status(409).json({ error: "Već ste odigrali danas" });
 
-      const result = await storage.submitGuess(req.jwtUser!.id as number, today, answer);
+      // One answer per network per day - stops trying several answers through extra accounts.
+      const ip = getTrustedClientIp(req);
+      const ipTaken = "Sa ove mreže je danas već poslat odgovor. Pokušajte sutra.";
+      if (ip && await storage.hasGuessFromIp(ip, today)) return res.status(429).json({ error: ipTaken });
+
+      const result = await storage.submitGuess(req.jwtUser!.id as number, today, answer, ip);
       res.json(result);
     } catch (e: any) {
+      // Unique violations from parallel requests (same account or same IP): never reveal correctness.
+      if (e?.code === '23505') {
+        const onIp = String(e?.constraint ?? '').includes('ip');
+        return res.status(onIp ? 429 : 409).json({ error: onIp ? "Sa ove mreže je danas već poslat odgovor. Pokušajte sutra." : "Već ste odigrali danas" });
+      }
       if (e.message === 'Challenge not found') return res.status(404).json({ error: "Nema izazova za danas" });
       res.status(500).json({ error: "Greška na serveru" });
     }
   });
 
   // GET /api/game/leaderboard
-  app.get("/api/game/leaderboard", requireNotBanned, async (req, res) => {
+  app.get("/api/game/leaderboard", requireVerifiedEmail, async (req, res) => {
     try {
       const weekStart = getWeekStart();
       const [leaderboard, prize] = await Promise.all([

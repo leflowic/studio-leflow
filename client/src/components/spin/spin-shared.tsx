@@ -1,4 +1,5 @@
 import { Headphones, TrendingUp, Minus, Pin, Ticket } from "lucide-react";
+import leflowLogo from "@/assets/leflow-logo.png";
 
 // Shared bits for the "Ploča dana" page (/ploca). The server decides every
 // reward (POST /api/spin, see server/spin.ts); the record here is only the
@@ -98,9 +99,8 @@ export function RecordDisc({ sectors, rotation, spinMs, highlight }: {
         })}
         <circle r="52" fill="hsl(32 42% 62%)" />
         <circle r="50" fill="none" stroke="#000" strokeOpacity="0.15" />
-        <text y="-6" textAnchor="middle" fontSize="13" fontWeight="600" fill="#1b1c1e" fontFamily="Geist, system-ui, sans-serif">Studio</text>
-        <text y="10" textAnchor="middle" fontSize="13" fontWeight="600" fill="#1b1c1e" fontFamily="Geist, system-ui, sans-serif">LeFlow</text>
-        <circle r="4" fill="#111214" />
+        {/* Studio logo on the label (black mark, 1321x1014) */}
+        <image href={leflowLogo} x={-24} y={-18.4} width={48} height={36.8} preserveAspectRatio="xMidYMid meet" />
       </svg>
     </div>
   );

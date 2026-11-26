@@ -76,9 +76,9 @@ export default function IgraPage() {
   });
 
   const challenge = data?.challenge;
-  // "Ploča dana" can add a listen for today on top of the rank perk.
+  // Listens are counted on the server (POST /api/game/listen); "Ploča dana" can add one.
   const bonusListens: number = data?.bonusListens ?? 0;
-  const maxPlays = rankPlays + bonusListens;
+  const maxPlays: number = data?.maxListens ?? rankPlays + bonusListens;
   const openHour: number = data?.openHour ?? challenge?.openHour ?? 17;
   const openMinute: number = data?.openMinute ?? challenge?.openMinute ?? 0;
   const { isOpen, minutesLeft } = useCountdown(openHour, openMinute);
@@ -91,25 +91,8 @@ export default function IgraPage() {
   }, [isOpen, data?.available]); // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => {
-    const date = challenge?.challengeDate;
-    if (!date || !user?.id) return;
-    const key = `igra_plays_${user.id}_${date}`;
-    const bonusKey = `igra_bonus_${user.id}_${date}`;
-    const stored = localStorage.getItem(key);
-    if (stored === null) {
-      if (bonusListens) localStorage.setItem(bonusKey, "1");
-      setPlaysLeft(maxPlays);
-      return;
-    }
-    let left = Math.max(0, parseInt(stored, 10));
-    // Bonus won after some listens were already used: add it once.
-    if (bonusListens && !localStorage.getItem(bonusKey)) {
-      left += bonusListens;
-      localStorage.setItem(bonusKey, "1");
-      localStorage.setItem(key, String(left));
-    }
-    setPlaysLeft(left);
-  }, [challenge?.challengeDate, user?.id, maxPlays, bonusListens]);
+    if (typeof data?.listensLeft === "number") setPlaysLeft(data.listensLeft);
+  }, [data?.listensLeft]);
 
   useEffect(() => {
     if (!data?.available || !challenge?.challengeDate) return;
@@ -151,28 +134,33 @@ export default function IgraPage() {
     };
   }, [data?.available, challenge?.challengeDate]);
 
-  const playClip = useCallback(() => {
+  const playClip = useCallback(async () => {
     const ctx = audioCtxRef.current;
     const buffer = audioBufferRef.current;
-    const clipStart = challenge?.clipStartSeconds ?? 0;
-    const date = challenge?.challengeDate;
     if (!ctx || !buffer || playsLeft <= 0 || playing) return;
     if (ctx.state === "suspended") ctx.resume();
-
-    const newPlaysLeft = playsLeft - 1;
     setPlaying(true);
-    setPlaysLeft(newPlaysLeft);
-    if (user?.id && date) {
-      localStorage.setItem(`igra_plays_${user.id}_${date}`, String(newPlaysLeft));
+
+    // Spend the listen on the server first; it is the source of truth.
+    try {
+      const res = await apiRequest("POST", "/api/game/listen");
+      const body = await res.json();
+      setPlaysLeft(body.listensLeft);
+    } catch (e: any) {
+      setPlaying(false);
+      if (String(e?.message ?? "").includes("slušanja")) setPlaysLeft(0);
+      toast({ title: "Slušanje nije uspelo", description: e?.message, variant: "destructive" });
+      return;
     }
 
+    // The server only sends the playable snippet, so play the whole buffer.
     const source = ctx.createBufferSource();
     source.buffer = buffer;
     source.connect(ctx.destination);
-    source.start(0, clipStart, 1);
+    source.start(0);
 
-    setTimeout(() => setPlaying(false), 1100);
-  }, [challenge?.clipStartSeconds, challenge?.challengeDate, playsLeft, playing, user?.id]);
+    setTimeout(() => setPlaying(false), Math.ceil(buffer.duration * 1000) + 100);
+  }, [playsLeft, playing, toast]);
 
   const guessMutation = useMutation({
     mutationFn: async (ans: string) => {
