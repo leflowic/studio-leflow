@@ -445,13 +445,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
     legacyHeaders: false,
   }));
 
-  // TEMPORARY (Cloudflare rollout check, remove right after): shows the caller only
-  // their own address as the server resolves it.
-  app.get("/api/_whoami-ip", (req, res) => {
-    res.set("Cache-Control", "no-store");
-    res.json({ ip: req.ip, trusted: getTrustedClientIp(req), xff: req.headers["x-forwarded-for"] ?? null, cf: req.headers["cf-connecting-ip"] ?? null });
-  });
-
   // Setup authentication routes: /api/register, /api/login, /api/logout, /api/user
   setupAuth(app);
 
