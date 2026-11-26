@@ -395,7 +395,7 @@ export interface IStorage {
   getAllSmartLinks(): Promise<Array<SmartLink & { totalClicks: number; clicksByPlatform: Record<string, number>; uniqueClicks: number }>>;
   getSmartLinkById(id: number): Promise<SmartLink | undefined>;
   getSmartLinkBySlug(slug: string): Promise<SmartLink | undefined>;
-  getSmartLinksByUserId(userId: number): Promise<Array<SmartLink & { uniqueClicks: number }>>;
+  getSmartLinksByUserId(userId: number): Promise<Array<SmartLink & { uniqueClicks: number; uniqueByPlatform: Record<string, number> }>>;
   updateSmartLink(id: number, data: Partial<InsertSmartLink>): Promise<SmartLink>;
   deleteSmartLink(id: number): Promise<void>;
   recordSmartLinkClick(smartLinkId: number, platform: string, ipAddress?: string | null): Promise<void>;
@@ -3334,10 +3334,24 @@ export class DatabaseStorage implements IStorage {
     return link || undefined;
   }
 
-  async getSmartLinksByUserId(userId: number): Promise<Array<SmartLink & { uniqueClicks: number }>> {
+  // Owner-facing: only distinct-IP (unique) numbers, never raw click totals
+  // (owner preference - see CLAUDE.md "Unique click tracking").
+  async getSmartLinksByUserId(userId: number): Promise<Array<SmartLink & { uniqueClicks: number; uniqueByPlatform: Record<string, number> }>> {
     const links = await db.select().from(smartLinks).where(eq(smartLinks.userId, userId)).orderBy(desc(smartLinks.createdAt));
+    if (!links.length) return [];
     const uniqueByLink = await this.getUniqueSmartLinkClickCounts();
-    return links.map(link => ({ ...link, uniqueClicks: uniqueByLink.get(link.id) ?? 0 }));
+    const perPlatform = await db.select({
+      smartLinkId: smartLinkClicks.smartLinkId,
+      platform: smartLinkClicks.platform,
+      uniqueCnt: countDistinct(smartLinkClicks.ipAddress),
+    }).from(smartLinkClicks)
+      .where(and(isNotNull(smartLinkClicks.ipAddress), inArray(smartLinkClicks.smartLinkId, links.map(l => l.id))))
+      .groupBy(smartLinkClicks.smartLinkId, smartLinkClicks.platform);
+    return links.map(link => {
+      const uniqueByPlatform: Record<string, number> = {};
+      for (const r of perPlatform) if (r.smartLinkId === link.id) uniqueByPlatform[r.platform] = Number(r.uniqueCnt);
+      return { ...link, uniqueClicks: uniqueByLink.get(link.id) ?? 0, uniqueByPlatform };
+    });
   }
 
   async updateSmartLink(id: number, data: Partial<InsertSmartLink>): Promise<SmartLink> {

@@ -17,32 +17,11 @@ import {
   Link2, Plus, Trash2, Pencil, Copy, Check, ExternalLink, Music2, Upload, X, Wand2, Loader2,
   UserPlus, Search, MoreHorizontal, ChevronDown, ArrowUpRight,
 } from "lucide-react";
-import { SiSpotify, SiYoutube, SiApplemusic, SiSoundcloud, SiTidal } from "react-icons/si";
+import { SMART_LINK_PLATFORMS as PLATFORMS, SMART_LINK_HUB as HUB, PlatformBars, nfSr as nf, type SmartLinkPlatformKey as PlatformKey } from "@/lib/smart-link-platforms";
 import { Modal } from "./AdminModal";
 import type { SmartLink } from "@shared/schema";
 
 type SmartLinkWithStats = SmartLink & { totalClicks: number; clicksByPlatform: Record<string, number>; uniqueClicks: number };
-
-const HUB = "music.studioleflow.com";
-
-function DeezerIcon({ size = 13, style }: { size?: number; style?: React.CSSProperties }) {
-  return (
-    <svg viewBox="0 0 24 24" fill="currentColor" width={size} height={size} style={style}>
-      <path d="M18.81 11.834h3.19v1.969h-3.19zm0-3.483h3.19v1.969h-3.19zm0 6.967h3.19v1.969h-3.19zm-4.271 3.483h3.19v1.969h-3.19zm0-3.483h3.19v1.969h-3.19zm0-3.484h3.19v1.969h-3.19zm0-3.483h3.19v1.969h-3.19zm-4.27 10.45h3.19v1.969h-3.19zm0-3.483h3.19v1.969h-3.19zm0-3.484h3.19v1.969h-3.19zm-4.271 6.967h3.19v1.969H6v-1.969zm0-3.483h3.19v1.969H6v-1.969zm-4.27 3.483H5v1.969H1.73v-1.969z" />
-    </svg>
-  );
-}
-
-const PLATFORMS = [
-  { key: "spotifyUrl", label: "Spotify", color: "#1DB954", clickKey: "spotify", Icon: SiSpotify, placeholder: "https://open.spotify.com/track/..." },
-  { key: "youtubeUrl", label: "YouTube", color: "#FF0033", clickKey: "youtube", Icon: SiYoutube, placeholder: "https://youtu.be/..." },
-  { key: "appleMusicUrl", label: "Apple Music", color: "#FC3C44", clickKey: "apple_music", Icon: SiApplemusic, placeholder: "https://music.apple.com/..." },
-  { key: "soundcloudUrl", label: "SoundCloud", color: "#FF5500", clickKey: "soundcloud", Icon: SiSoundcloud, placeholder: "https://soundcloud.com/..." },
-  { key: "tidalUrl", label: "Tidal", color: "#00CFFF", clickKey: "tidal", Icon: SiTidal, placeholder: "https://tidal.com/track/..." },
-  { key: "deezerUrl", label: "Deezer", color: "#A259FF", clickKey: "deezer", Icon: DeezerIcon, placeholder: "https://www.deezer.com/track/..." },
-] as const;
-
-type PlatformKey = (typeof PLATFORMS)[number]["key"];
 
 const emptyForm = {
   slug: "", title: "", artist: "", coverUrl: "",
@@ -65,8 +44,6 @@ function formatDate(d: string | Date) {
   const p = (n: number) => String(n).padStart(2, "0");
   return `${p(date.getDate())}.${p(date.getMonth() + 1)}.${date.getFullYear()}.`;
 }
-
-const nf = new Intl.NumberFormat("sr-RS");
 
 // ── sessionStorage helpers (form survives a remount, see CLAUDE.md) ─────────────
 function ssGet<T>(key: string, fallback: T): T {
@@ -249,8 +226,6 @@ export function SmartLinksTab() {
   const filledPlatforms = PLATFORMS.filter(p => form[p.key].trim()).length;
   const slugTaken = !!links?.some(l => l.slug === form.slug && l.id !== editingId);
   const canSave = !!form.title.trim() && !!form.artist.trim() && !!form.slug && !slugTaken && !saveMutation.isPending;
-
-  const maxPlatformClicks = Math.max(1, ...Object.values(totals.byPlatform));
 
   return (
     <>
@@ -552,7 +527,7 @@ export function SmartLinksTab() {
                 {totals.clicks === 0 ? (
                   <p className="text-xs text-muted-foreground py-6 text-center">Klikovi će se pojaviti kad neko otvori link i izabere platformu.</p>
                 ) : (
-                  <PlatformBars byPlatform={totals.byPlatform} max={maxPlatformClicks} total={totals.clicks} />
+                  <PlatformBars byPlatform={totals.byPlatform} total={totals.clicks} />
                 )}
               </div>
             </div>
@@ -688,7 +663,6 @@ export function SmartLinksTab() {
 
 // ── Pieces ───────────────────────────────────────────────────────────────────
 function LinkDetails({ link, owner, onAssign }: { link: SmartLinkWithStats; owner: string | null; onAssign: () => void }) {
-  const max = Math.max(1, ...Object.values(link.clicksByPlatform));
   const missing = PLATFORMS.filter(p => !link[p.key as PlatformKey]);
   return (
     <div className="px-4 pb-5 pt-1 md:pl-[4.75rem] grid gap-6 md:grid-cols-[minmax(0,1.4fr)_minmax(0,1fr)] bg-muted/20 border-t border-border/60">
@@ -697,7 +671,7 @@ function LinkDetails({ link, owner, onAssign }: { link: SmartLinkWithStats; owne
         {link.totalClicks === 0 ? (
           <p className="text-xs text-muted-foreground">Još niko nije kliknuo ni na jednu platformu.</p>
         ) : (
-          <PlatformBars byPlatform={link.clicksByPlatform} max={max} total={link.totalClicks} />
+          <PlatformBars byPlatform={link.clicksByPlatform} total={link.totalClicks} />
         )}
       </div>
       <dl className="pt-4 space-y-3 text-sm">
@@ -730,31 +704,6 @@ function LinkDetails({ link, owner, onAssign }: { link: SmartLinkWithStats; owne
         )}
       </dl>
     </div>
-  );
-}
-
-function PlatformBars({ byPlatform, max, total }: { byPlatform: Record<string, number>; max: number; total: number }) {
-  const rows = PLATFORMS
-    .map(p => ({ ...p, n: byPlatform[p.clickKey] ?? 0 }))
-    .filter(p => p.n > 0)
-    .sort((a, b) => b.n - a.n);
-  return (
-    <ul className="space-y-2.5">
-      {rows.map(p => (
-        <li key={p.key} className="grid grid-cols-[6.5rem_minmax(0,1fr)_4.5rem] items-center gap-3">
-          <span className="flex items-center gap-2 text-xs min-w-0">
-            <p.Icon size={13} style={{ color: p.color }} />
-            <span className="truncate">{p.label}</span>
-          </span>
-          <span className="h-1.5 rounded-full bg-muted overflow-hidden">
-            <span className="block h-full rounded-full bg-primary" style={{ width: `${(p.n / max) * 100}%` }} />
-          </span>
-          <span className="text-xs font-mono tabular-nums text-right">
-            {nf.format(p.n)} <span className="text-muted-foreground">{Math.round((p.n / total) * 100)}%</span>
-          </span>
-        </li>
-      ))}
-    </ul>
   );
 }
 
