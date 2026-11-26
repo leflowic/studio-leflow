@@ -50,7 +50,7 @@ export default function ConversationList({ selectedUserId, onSelectConversation,
       const res = await apiRequest("GET", "/api/conversations");
       return res.json();
     },
-    refetchInterval: 5000,
+    refetchInterval: 60_000, // WebSocket events refetch this; polling is only a safety net
     staleTime: 0,
   });
 

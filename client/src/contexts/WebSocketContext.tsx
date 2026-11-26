@@ -57,6 +57,7 @@ export function WebSocketProvider({ children }: { children: ReactNode }) {
   const [isConnected, setIsConnected] = useState(false);
   const reconnectTimeout = useRef<NodeJS.Timeout>();
   const reconnectDelay = useRef(3000);
+  const hasConnectedOnce = useRef(false);
   const messageListeners = useRef<Set<(message: WebSocketMessage) => void>>(new Set());
   const userRef = useRef(user); // Track current user to prevent stale reconnects
   const audioCtxRef = useRef<AudioContext | null>(null);
@@ -107,8 +108,19 @@ export function WebSocketProvider({ children }: { children: ReactNode }) {
     ws.current.onopen = () => {
       console.log('[WebSocket] Connected');
       reconnectDelay.current = 3000; // reset backoff on successful connect
+      const wasReconnect = hasConnectedOnce.current;
+      hasConnectedOnce.current = true;
       setIsConnected(true);
       requestNotificationPermission();
+      // Messages sent while the socket was down were missed - catch up once
+      // (chat no longer polls every few seconds).
+      if (wasReconnect) {
+        import('@/lib/queryClient').then(({ queryClient }) => {
+          queryClient.invalidateQueries({ queryKey: ['/api/messages/conversation'] });
+          queryClient.invalidateQueries({ queryKey: ['/api/conversations'] });
+          queryClient.invalidateQueries({ queryKey: ['/api/messages/unread-count'] });
+        });
+      }
 
       const authUser = userRef.current;
       if (authUser) {

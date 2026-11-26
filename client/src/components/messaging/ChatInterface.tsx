@@ -191,7 +191,9 @@ export default function ChatInterface({ selectedUserId, onBack }: ChatInterfaceP
       const res = await apiRequest("GET", `/api/messages/conversation/${selectedUserId}`);
       return res.json();
     },
-    refetchInterval: 3000,
+    // New messages arrive over the WebSocket; this is only a safety net (and the
+    // socket refetches on reconnect), so it doesn't hit the DB every few seconds.
+    refetchInterval: 60_000,
     staleTime: 0,
   });
 

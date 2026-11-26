@@ -25,9 +25,14 @@ function addDays(date: string, days: number) {
   return d.toISOString().slice(0, 10);
 }
 
+// Remembers in memory what already ran today, so the minute tick doesn't re-read
+// the same setting from the DB all day (the DB stays the source of truth after a restart).
+const doneCache = new Map<string, string>();
 async function once(key: string, value: string, fn: () => Promise<void>) {
+  if (doneCache.get(key) === value) return;
   const prev = await storage.getSetting(key);
-  if (prev?.value === value) return;
+  if (prev?.value === value) { doneCache.set(key, value); return; }
+  doneCache.set(key, value);
   await storage.setSetting(key, value);
   await fn();
 }
