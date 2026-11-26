@@ -13,6 +13,8 @@ export function WhatsAppButton() {
 
   // /inbox: the floating button sat on top of the chat's send button
   if (location.startsWith("/l/") || location.startsWith("/portal/") || location.startsWith("/inbox")) return null;
+  // Smart link pages (music.studioleflow.com, any path) are the artist's page, not the studio's
+  if (typeof window !== "undefined" && window.location.hostname === "music.studioleflow.com") return null;
   // Sign-in / sign-up pages are kept distraction-free
   if (location === "/prijava" || location === "/registracija" || location === "/auth") return null;
   if (hidden) return null;
