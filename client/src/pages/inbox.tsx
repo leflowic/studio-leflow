@@ -2,7 +2,7 @@ import { useState, useEffect } from "react";
 import { useAuth } from "@/hooks/use-auth";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-import { MessageCircle, Search, ShieldAlert, Check } from "lucide-react";
+import { MessageCircle, Search, ShieldAlert } from "lucide-react";
 import ConversationList from "@/components/messaging/ConversationList";
 import ChatInterface from "@/components/messaging/ChatInterface";
 import { SEO } from "@/components/SEO";
@@ -45,75 +45,55 @@ export default function Inbox() {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-background via-background to-muted/20 py-6 px-4">
+    <div className="px-0 md:px-6 pt-0 md:pt-6 pb-0 md:pb-6">
       <SEO title="Poruke - Studio LeFlow" description="Poruke" noIndex />
 
-      <div className="max-w-5xl mx-auto">
-
-        {/* Page header */}
-        <div className="mb-4 flex items-center justify-between">
-          <div>
-            <h1 className="text-2xl font-bold">Poruke</h1>
-            <p className="text-sm text-muted-foreground">
-              {(unreadData?.count ?? 0) > 0
-                ? <><span className="text-primary font-semibold">{unreadData!.count}</span> nepročitanih</>
-                : "Sve pročitano"
-              }
-            </p>
-          </div>
+      <div className="max-w-6xl mx-auto">
+        {/* Page header - desktop only; on phones the list/chat use the whole screen */}
+        <div className="hidden md:flex items-baseline gap-3 mb-4">
+          <h1 className="text-2xl font-semibold">Poruke</h1>
+          {(unreadData?.count ?? 0) > 0 && (
+            <span className="text-sm text-muted-foreground"><span className="font-mono text-primary">{unreadData!.count}</span> nepročitanih</span>
+          )}
         </div>
 
-        {/* Main card */}
         <div
-          className="rounded-2xl border border-border/60 bg-card shadow-xl overflow-hidden flex"
-          style={{ height: "calc(100vh - 180px)", minHeight: 500 }}
+          className="md:rounded-2xl md:border border-border/70 bg-card overflow-hidden flex h-[calc(100svh-4rem-env(safe-area-inset-top))] md:h-[calc(100svh-4rem-env(safe-area-inset-top)-6.5rem)] min-h-[480px]"
           data-testid="inbox-card"
         >
           {/* Sidebar */}
-          <div className={`
-            flex flex-col border-r border-border/50
-            w-full md:w-72 lg:w-80 flex-shrink-0
-            ${selectedUserId ? "hidden md:flex" : "flex"}
-          `} data-testid="inbox-sidebar">
-
-            {/* Sidebar header */}
-            <div className="px-4 pt-4 pb-3 space-y-3">
-              <div className="flex items-center gap-2">
-                <div className="w-7 h-7 rounded-lg bg-primary/10 flex items-center justify-center">
-                  <MessageCircle className="w-4 h-4 text-primary" />
-                </div>
-                <span className="font-semibold text-sm">Konverzacije</span>
+          <aside className={`flex flex-col border-r border-border/60 w-full md:w-80 lg:w-[22rem] flex-shrink-0 ${selectedUserId ? "hidden md:flex" : "flex"}`} data-testid="inbox-sidebar">
+            <div className="px-4 pt-4 pb-3 space-y-3 border-b border-border/60">
+              <div className="flex items-center justify-between md:hidden">
+                <h1 className="text-xl font-semibold">Poruke</h1>
                 {(unreadData?.count ?? 0) > 0 && (
-                  <span className="ml-auto text-[10px] font-bold bg-primary text-primary-foreground rounded-full px-1.5 py-0.5 min-w-[18px] text-center">
-                    {unreadData!.count > 99 ? "99+" : unreadData!.count}
-                  </span>
+                  <span className="text-xs text-muted-foreground"><span className="font-mono text-primary">{unreadData!.count}</span> nepročitanih</span>
                 )}
               </div>
               <div className="relative">
-                <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-muted-foreground pointer-events-none" />
+                <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground pointer-events-none" />
                 <Input
-                  type="text"
-                  placeholder="Pretraži..."
+                  type="search"
+                  placeholder="Pretraži razgovore i ljude"
                   value={searchQuery}
                   onChange={e => setSearchQuery(e.target.value)}
-                  className="pl-8 h-8 text-sm rounded-xl bg-muted/50 border-0 focus-visible:ring-1"
+                  className="pl-10 h-10 text-sm rounded-full bg-muted/60 border-transparent focus-visible:bg-background"
                   data-testid="input-search-conversations"
                 />
               </div>
             </div>
 
-            {/* Conversation list */}
-            <div className="flex-1 overflow-hidden border-t border-border/30">
+            <div className="flex-1 overflow-hidden">
               <ConversationList
                 selectedUserId={selectedUserId}
-                onSelectConversation={setSelectedUserId}
+                onSelectConversation={id => { setSelectedUserId(id); setSearchQuery(""); }}
                 searchQuery={searchQuery}
               />
             </div>
-          </div>
+          </aside>
 
           {/* Chat panel */}
-          <div className={`flex-1 flex flex-col min-w-0 ${selectedUserId ? "flex" : "hidden md:flex"}`} data-testid="chat-area">
+          <section className={`flex-1 flex flex-col min-w-0 ${selectedUserId ? "flex" : "hidden md:flex"}`} data-testid="chat-area">
             {selectedUserId ? (
               <ChatInterface
                 key={selectedUserId}
@@ -121,22 +101,17 @@ export default function Inbox() {
                 onBack={() => setSelectedUserId(null)}
               />
             ) : (
-              <div className="flex-1 flex flex-col items-center justify-center bg-gradient-to-br from-muted/20 to-transparent text-center px-6">
-                <div className="relative mb-5">
-                  <div className="w-20 h-20 rounded-3xl bg-primary/10 flex items-center justify-center">
-                    <MessageCircle className="w-10 h-10 text-primary/50" />
-                  </div>
-                  <div className="absolute -top-1 -right-1 w-5 h-5 bg-primary rounded-full flex items-center justify-center">
-                    <Check className="w-3 h-3 text-primary-foreground" strokeWidth={3} />
-                  </div>
+              <div className="flex-1 flex flex-col items-center justify-center text-center px-6">
+                <div className="w-14 h-14 rounded-full bg-muted flex items-center justify-center mb-4">
+                  <MessageCircle className="w-6 h-6 text-muted-foreground" />
                 </div>
-                <h2 className="text-base font-semibold mb-1">Izaberi konverzaciju</h2>
-                <p className="text-xs text-muted-foreground max-w-[200px]">
-                  Klikni na konverzaciju ili pretražite korisnika da počnete chat
+                <h2 className="text-base font-semibold">Izaberite razgovor</h2>
+                <p className="text-sm text-muted-foreground mt-1 max-w-[260px]">
+                  Ili potražite nekoga po korisničkom imenu i započnite novi.
                 </p>
               </div>
             )}
-          </div>
+          </section>
         </div>
       </div>
     </div>

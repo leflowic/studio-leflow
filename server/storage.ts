@@ -285,7 +285,7 @@ export interface IStorage {
   hasUserVotedForSong(userId: number, songId: number): Promise<boolean>;
 
   // Messaging
-  searchUsers(query: string, currentUserId: number): Promise<Array<{ id: number; username: string }>>;
+  searchUsers(query: string, currentUserId: number): Promise<Array<{ id: number; username: string; avatarUrl: string | null }>>;
   getOrCreateConversation(user1Id: number, user2Id: number): Promise<Conversation>;
   getConversation(user1Id: number, user2Id: number): Promise<Conversation | undefined>;
   getUserConversations(userId: number): Promise<Array<Conversation & { otherUser: { id: number; username: string; avatarUrl: string | null }; lastMessage?: Message; unreadCount: number }>>;
@@ -1567,11 +1567,12 @@ export class DatabaseStorage implements IStorage {
   }
 
   // Messaging methods
-  async searchUsers(query: string, currentUserId: number): Promise<Array<{ id: number; username: string }>> {
+  async searchUsers(query: string, currentUserId: number): Promise<Array<{ id: number; username: string; avatarUrl: string | null }>> {
     const results = await db
       .select({
         id: users.id,
         username: users.username,
+        avatarUrl: users.avatarUrl,
       })
       .from(users)
       .where(

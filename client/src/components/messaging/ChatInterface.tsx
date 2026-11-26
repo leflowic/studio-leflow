@@ -198,6 +198,18 @@ export default function ChatInterface({ selectedUserId, onBack }: ChatInterfaceP
   // Forward state
   const [forwardMessage, setForwardMessage] = useState<Message | null>(null);
 
+  // Message toolbar (reactions + actions): hover on desktop, tap on touch screens
+  const [activeMsgId, setActiveMsgId] = useState<number | null>(null);
+  const [deleteTargetId, setDeleteTargetId] = useState<number | null>(null);
+  useEffect(() => {
+    if (activeMsgId == null) return;
+    const close = (e: PointerEvent) => {
+      if (!(e.target as HTMLElement).closest?.(`[data-msg-id="${activeMsgId}"]`)) setActiveMsgId(null);
+    };
+    document.addEventListener("pointerdown", close);
+    return () => document.removeEventListener("pointerdown", close);
+  }, [activeMsgId]);
+
   // Unread divider
   const firstUnreadIdRef = useRef<number | null>(null);
   const hasScrolledToUnreadRef = useRef(false);
@@ -319,6 +331,7 @@ export default function ChatInterface({ selectedUserId, onBack }: ChatInterfaceP
       setMessageText("");
       localStorage.removeItem(DRAFT_KEY);
       setReplyTo(null);
+      if (textareaRef.current) textareaRef.current.style.height = "";
       scrollToBottom();
     },
     onError: (e: any) => {
@@ -721,39 +734,39 @@ export default function ChatInterface({ selectedUserId, onBack }: ChatInterfaceP
   return (
     <div className="flex-1 flex flex-col h-full relative overflow-hidden">
       {/* Header */}
-      <div className="flex items-center gap-3 px-4 py-3 border-b border-border/60 bg-card/80 backdrop-blur-sm flex-shrink-0">
-        <Button variant="ghost" size="icon" onClick={onBack} className="md:hidden -ml-1">
+      <div className="flex items-center gap-3 h-16 px-3 md:px-5 border-b border-border/60 bg-card flex-shrink-0">
+        <Button variant="ghost" size="icon" onClick={onBack} className="md:hidden -ml-1 shrink-0" aria-label="Nazad na razgovore">
           <ArrowLeft className="w-5 h-5" />
         </Button>
-        <div className="relative">
-          <AvatarWithInitials
-            src={otherUser?.avatarUrl}
-            alt={otherUser?.username || "User"}
-            name={otherUser?.username || "User"}
-            userId={selectedUserId}
-            className="w-10 h-10 flex-shrink-0"
-          />
-          {otherUser?.online && (
-            <span className="absolute bottom-0 right-0 w-2.5 h-2.5 bg-green-500 rounded-full border-2 border-card" />
-          )}
-        </div>
-        <div className="flex-1 min-w-0">
-          <h3 className="font-semibold text-sm truncate leading-tight">{otherUser?.username || "Učitavanje..."}</h3>
-          {otherUserTyping ? (
-            <div className="flex items-center gap-1">
-              <span className="text-xs text-primary">kuca</span>
-              <span className="flex gap-0.5 items-end pb-0.5">
-                {[0, 1, 2].map(i => (
-                  <span key={i} className="w-1 h-1 bg-primary rounded-full animate-bounce" style={{ animationDelay: `${i * 0.15}s` }} />
-                ))}
-              </span>
-            </div>
-          ) : otherUser?.online ? (
-            <p className="text-xs text-muted-foreground leading-tight">Online</p>
-          ) : otherUser?.lastSeen ? (
-            <p className="text-xs text-muted-foreground leading-tight">{formatLastSeen(otherUser.lastSeen)}</p>
-          ) : null}
-        </div>
+        <a href={otherUser ? `/u/${otherUser.username}` : undefined} className="flex items-center gap-3 min-w-0 flex-1 rounded-xl -my-1 py-1 pr-2 hover:opacity-90">
+          <span className="relative shrink-0">
+            <AvatarWithInitials
+              src={otherUser?.avatarUrl}
+              alt={otherUser?.username || "Korisnik"}
+              name={otherUser?.username || "Korisnik"}
+              userId={selectedUserId}
+              className="w-10 h-10"
+            />
+            {otherUser?.online && (
+              <span className="absolute bottom-0 right-0 w-3 h-3 bg-green-500 rounded-full border-2 border-card" aria-label="Online" />
+            )}
+          </span>
+          <span className="min-w-0">
+            <span className="block font-semibold text-[15px] truncate leading-tight">{otherUser?.username || "Učitavanje..."}</span>
+            <span className="block text-xs text-muted-foreground leading-tight mt-0.5 h-4">
+              {otherUserTyping ? (
+                <span className="inline-flex items-center gap-1 text-primary">
+                  piše
+                  <span className="inline-flex gap-0.5 items-end">
+                    {[0, 1, 2].map(i => (
+                      <span key={i} className="w-1 h-1 bg-primary rounded-full animate-bounce" style={{ animationDelay: `${i * 0.15}s` }} />
+                    ))}
+                  </span>
+                </span>
+              ) : otherUser?.online ? "Online" : otherUser?.lastSeen ? formatLastSeen(otherUser.lastSeen) : ""}
+            </span>
+          </span>
+        </a>
         {/* Conversation menu: report / block / delete my messages */}
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
@@ -800,7 +813,8 @@ export default function ChatInterface({ selectedUserId, onBack }: ChatInterfaceP
         <div className="absolute bottom-24 right-4 z-10">
           <button
             onClick={scrollToBottom}
-            className="flex items-center justify-center w-9 h-9 rounded-full bg-primary text-primary-foreground shadow-lg hover:bg-primary/90 transition-all"
+            aria-label="Na najnovije poruke"
+            className="flex items-center justify-center w-10 h-10 rounded-full bg-card border border-border text-foreground shadow-lg hover:bg-muted transition-colors"
           >
             <ChevronDown className="w-5 h-5" />
           </button>
@@ -808,8 +822,8 @@ export default function ChatInterface({ selectedUserId, onBack }: ChatInterfaceP
       )}
 
       {/* Messages */}
-      <ScrollArea className="flex-1 px-3 md:px-4" ref={scrollAreaRef}>
-        <div className="flex flex-col gap-0.5 py-4">
+      <ScrollArea className="flex-1 px-3 md:px-6 [&_[data-radix-scroll-area-viewport]>div]:!block" ref={scrollAreaRef}>
+        <div className="flex flex-col py-4 max-w-3xl mx-auto w-full">
           {hasMoreOlder && messages && messages.length > 0 && (
             <div className="flex justify-center pb-3">
               <button
@@ -827,228 +841,195 @@ export default function ChatInterface({ selectedUserId, onBack }: ChatInterfaceP
             messages.map((message, index) => {
               const isOwn = message.senderId === user?.id;
               const currentDate = new Date(message.createdAt);
-              const previousMessage = index > 0 ? messages[index - 1] : null;
-              const previousDate = previousMessage ? new Date(previousMessage.createdAt) : null;
-              const showDateHeader = !previousDate || !isSameDay(currentDate, previousDate);
-              const isGrouped = !showDateHeader && !!previousMessage &&
-                previousMessage.senderId === message.senderId &&
-                (currentDate.getTime() - new Date(previousMessage.createdAt).getTime()) < 60000;
+              const prev = index > 0 ? messages[index - 1] : null;
+              const next = index < messages.length - 1 ? messages[index + 1] : null;
+              const showDateHeader = !prev || !isSameDay(currentDate, new Date(prev.createdAt));
+              const GROUP_MS = 5 * 60 * 1000;
+              const groupedWithPrev = !showDateHeader && !!prev && prev.senderId === message.senderId &&
+                currentDate.getTime() - new Date(prev.createdAt).getTime() < GROUP_MS && firstUnreadIdRef.current !== message.id;
+              const groupedWithNext = !!next && next.senderId === message.senderId && isSameDay(currentDate, new Date(next.createdAt)) &&
+                new Date(next.createdAt).getTime() - currentDate.getTime() < GROUP_MS && firstUnreadIdRef.current !== next.id;
+              const lastInGroup = !groupedWithNext;
+              const isAttachmentOnly = (message.imageUrl && message.content === "📎") || (message.audioUrl && message.content === AUDIO_PLACEHOLDER);
+              const toolbarOpen = activeMsgId === message.id;
 
               return (
-                <div key={message.id} id={`msg-${message.id}`} className={cn(
-                  "rounded-xl transition-colors duration-700",
+                <div key={message.id} id={`msg-${message.id}`} data-msg-id={message.id} className={cn(
+                  "rounded-2xl transition-colors duration-700",
                   highlightedMsgId === message.id && "bg-primary/10"
                 )}>
                   {showDateHeader && (
-                    <div className="flex items-center justify-center my-5">
-                      <div className="bg-muted px-3 py-1 rounded-full">
-                        <span className="text-xs font-medium text-muted-foreground">{formatDateHeader(currentDate)}</span>
-                      </div>
+                    <div className="flex justify-center my-5">
+                      <span className="text-[11px] font-medium text-muted-foreground px-3 py-1 rounded-full bg-muted/60">{formatDateHeader(currentDate)}</span>
                     </div>
                   )}
 
-                  {/* Unread divider */}
                   {firstUnreadIdRef.current === message.id && (
-                    <div id="unread-divider" className="flex items-center gap-3 my-3">
+                    <div id="unread-divider" className="flex items-center gap-3 my-4">
                       <div className="flex-1 h-px bg-primary/30" />
-                      <span className="text-xs text-primary font-medium px-2 py-0.5 rounded-full bg-primary/10">
-                        Nepročitano
-                      </span>
+                      <span className="text-[11px] text-primary font-medium">Nove poruke</span>
                       <div className="flex-1 h-px bg-primary/30" />
                     </div>
                   )}
 
-                  <div className={cn(
-                    "flex gap-2 items-end",
-                    isOwn ? "justify-end" : "justify-start",
-                    isGrouped ? "mt-0.5" : "mt-3"
-                  )}>
-                    {/* Avatar */}
+                  <div className={cn("flex gap-2 items-end", isOwn ? "justify-end" : "justify-start", groupedWithPrev ? "mt-[3px]" : "mt-3")}>
                     {!isOwn && (
-                      isGrouped
-                        ? <div className="w-7 flex-shrink-0" />
-                        : <AvatarWithInitials
+                      lastInGroup
+                        ? <AvatarWithInitials
                             src={otherUser?.avatarUrl}
-                            alt={otherUser?.username || "User"}
-                            name={otherUser?.username || "User"}
+                            alt={otherUser?.username || "Korisnik"}
+                            name={otherUser?.username || "Korisnik"}
                             userId={selectedUserId}
-                            className="w-7 h-7 flex-shrink-0 mb-0.5"
+                            className="w-7 h-7 flex-shrink-0"
                           />
+                        : <div className="w-7 flex-shrink-0" />
                     )}
 
-                    <div className="flex items-end gap-1 group max-w-[80vw] md:max-w-[65%]">
-
-                      {/* Action buttons (own, left of bubble) */}
-                      {isOwn && !message.deleted && (
-                        <div className="flex gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity order-first">
-                          <Button variant="ghost" size="icon" className="h-6 w-6 text-muted-foreground"
-                            onClick={() => { setReplyTo(message); textareaRef.current?.focus(); }} title="Odgovori" aria-label="Odgovori">
-                            <CornerUpLeft className="h-3.5 w-3.5" />
-                          </Button>
-                          {/* attachment-only messages have no text to edit */}
-                          {message.content !== "📎" && message.content !== AUDIO_PLACEHOLDER && (
-                            <Button variant="ghost" size="icon" className="h-6 w-6 text-muted-foreground"
-                              onClick={() => startEdit(message)} title="Izmeni" aria-label="Izmeni poruku">
-                              <Pencil className="h-3 w-3" />
-                            </Button>
+                    <div className={cn("relative group/msg flex flex-col max-w-[82%] md:max-w-[68%]", isOwn ? "items-end" : "items-start")}>
+                      {/* Toolbar: reactions + actions */}
+                      {!message.deleted && editingMessageId !== message.id && (
+                        <div
+                          className={cn(
+                            "absolute -top-10 z-20 flex items-center gap-0.5 rounded-full border border-border bg-popover px-1.5 py-1 shadow-lg transition-opacity",
+                            isOwn ? "right-0" : "left-0",
+                            toolbarOpen ? "opacity-100" : "opacity-0 pointer-events-none [@media(hover:hover)]:group-hover/msg:opacity-100 [@media(hover:hover)]:group-hover/msg:pointer-events-auto",
                           )}
-                          <Button variant="ghost" size="icon" className="h-6 w-6 text-muted-foreground"
-                            onClick={() => setForwardMessage(message)} title="Prosledi" aria-label="Prosledi poruku">
-                            <Forward className="h-3.5 w-3.5" />
-                          </Button>
-                          <AlertDialog>
-                            <AlertDialogTrigger asChild>
-                              <Button variant="ghost" size="icon" className="h-6 w-6 text-muted-foreground hover:text-destructive" aria-label="Obriši poruku">
-                                <Trash2 className="h-3 w-3" />
-                              </Button>
-                            </AlertDialogTrigger>
-                            <AlertDialogContent>
-                              <AlertDialogHeader>
-                                <AlertDialogTitle>Obriši poruku</AlertDialogTitle>
-                                <AlertDialogDescription>Poruka će biti označena kao obrisana za obe strane.</AlertDialogDescription>
-                              </AlertDialogHeader>
-                              <AlertDialogFooter>
-                                <AlertDialogCancel>Otkaži</AlertDialogCancel>
-                                <AlertDialogAction onClick={() => deleteMessageMutation.mutate(message.id)} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">Obriši</AlertDialogAction>
-                              </AlertDialogFooter>
-                            </AlertDialogContent>
-                          </AlertDialog>
+                        >
+                          {QUICK_REACTIONS.map(emoji => (
+                            <button key={emoji} type="button" onClick={() => { toggleReaction(message.id, emoji); setActiveMsgId(null); }}
+                              className="w-7 h-7 rounded-full text-[15px] leading-none hover:bg-muted hover:scale-110 transition" aria-label={`Reakcija ${emoji}`}>
+                              {emoji}
+                            </button>
+                          ))}
+                          <span className="w-px h-5 bg-border mx-1" />
+                          <button type="button" onClick={() => { setReplyTo(message); setActiveMsgId(null); textareaRef.current?.focus(); }}
+                            className="w-7 h-7 rounded-full flex items-center justify-center text-muted-foreground hover:text-foreground hover:bg-muted" title="Odgovori" aria-label="Odgovori">
+                            <CornerUpLeft className="w-3.5 h-3.5" />
+                          </button>
+                          <button type="button" onClick={() => { setForwardMessage(message); setActiveMsgId(null); }}
+                            className="w-7 h-7 rounded-full flex items-center justify-center text-muted-foreground hover:text-foreground hover:bg-muted" title="Prosledi" aria-label="Prosledi poruku">
+                            <Forward className="w-3.5 h-3.5" />
+                          </button>
+                          {isOwn && !isAttachmentOnly && (
+                            <button type="button" onClick={() => { startEdit(message); setActiveMsgId(null); }}
+                              className="w-7 h-7 rounded-full flex items-center justify-center text-muted-foreground hover:text-foreground hover:bg-muted" title="Izmeni" aria-label="Izmeni poruku">
+                              <Pencil className="w-3.5 h-3.5" />
+                            </button>
+                          )}
+                          {isOwn && (
+                            <button type="button" onClick={() => { setDeleteTargetId(message.id); setActiveMsgId(null); }}
+                              className="w-7 h-7 rounded-full flex items-center justify-center text-muted-foreground hover:text-destructive hover:bg-muted" title="Obriši" aria-label="Obriši poruku">
+                              <Trash2 className="w-3.5 h-3.5" />
+                            </button>
+                          )}
                         </div>
                       )}
 
                       {/* Bubble */}
-                      <div className="relative group/bubble">
-                        {/* Quick reaction bar on hover */}
-                        {!message.deleted && (
-                          <div className={cn(
-                            "absolute -top-8 z-20 flex gap-0.5 bg-popover border border-border/60 rounded-full px-1.5 py-1 shadow-lg opacity-0 group-hover/bubble:opacity-100 transition-opacity pointer-events-none group-hover/bubble:pointer-events-auto",
-                            isOwn ? "right-0" : "left-0"
-                          )}>
-                            {QUICK_REACTIONS.map(emoji => (
-                              <button
-                                key={emoji}
-                                onClick={() => toggleReaction(message.id, emoji)}
-                                className="text-sm hover:scale-125 transition-transform leading-none px-0.5"
-                                title={emoji}
-                              >
-                                {emoji}
-                              </button>
-                            ))}
-                          </div>
+                      <div
+                        onClick={e => {
+                          // touch screens have no hover: a tap opens the toolbar
+                          if (!window.matchMedia("(hover: none)").matches) return;
+                          if ((e.target as HTMLElement).closest("button,a,audio,img,textarea,[role=slider]")) return;
+                          setActiveMsgId(id => (id === message.id ? null : message.id));
+                        }}
+                        title={format(currentDate, "d.M.yyyy. HH:mm")}
+                        className={cn(
+                          "rounded-[20px] px-3.5 py-2 text-[14.5px] leading-snug",
+                          isOwn ? "bg-primary text-primary-foreground" : "bg-muted text-foreground",
+                          isOwn ? (groupedWithPrev ? "rounded-tr-md" : "") + (groupedWithNext ? " rounded-br-md" : " rounded-br-[6px]")
+                                : (groupedWithPrev ? "rounded-tl-md" : "") + (groupedWithNext ? " rounded-bl-md" : " rounded-bl-[6px]"),
+                          message.deleted && "bg-transparent border border-border text-muted-foreground",
+                          message.imageUrl && message.content === "📎" && !message.replyToId && "p-1",
+                          toolbarOpen && "ring-2 ring-primary/40",
+                        )}
+                      >
+                        {!message.deleted && message.replyToId && (
+                          <button
+                            type="button"
+                            onClick={() => jumpToMessage(message.replyToId!)}
+                            className={cn(
+                              "mb-1.5 mt-0.5 px-2.5 py-1.5 rounded-xl text-xs border-l-2 w-full text-left transition-opacity hover:opacity-80",
+                              isOwn ? "border-primary-foreground/60 bg-primary-foreground/10" : "border-primary bg-background/60"
+                            )}
+                          >
+                            <p className="font-semibold mb-0.5 opacity-80">{getReplyUsername(message.replyToId)}</p>
+                            <p className="truncate opacity-75">{getReplyPreview(message.replyToId)}</p>
+                          </button>
                         )}
 
-                        <div className={cn(
-                          "rounded-2xl px-3.5 py-2.5 shadow-sm",
-                          isOwn
-                            ? "bg-primary text-primary-foreground rounded-br-md"
-                            : "bg-card border border-border/60 text-foreground rounded-bl-md",
-                          message.deleted && "opacity-50"
-                        )}>
-                          {/* Reply quote - clickable, jumps to original */}
-                          {!message.deleted && message.replyToId && (
-                            <button
-                              type="button"
-                              onClick={() => jumpToMessage(message.replyToId!)}
-                              className={cn(
-                                "mb-2 px-2.5 py-1.5 rounded-xl text-xs border-l-[3px] w-full text-left transition-opacity hover:opacity-80 active:opacity-60",
-                                isOwn ? "border-primary-foreground/50 bg-primary-foreground/10" : "border-primary bg-primary/10"
-                              )}
-                            >
-                              <p className="font-semibold mb-0.5 opacity-80">{getReplyUsername(message.replyToId)}</p>
-                              <p className="truncate opacity-70">{getReplyPreview(message.replyToId)}</p>
-                            </button>
-                          )}
-
-                          {message.deleted ? (
-                            <p className="text-sm italic opacity-60">Poruka obrisana</p>
-                          ) : editingMessageId === message.id ? (
-                            <div className="space-y-1.5">
-                              <textarea
-                                ref={editTextareaRef}
-                                value={editText}
-                                onChange={e => setEditText(e.target.value)}
-                                onKeyDown={e => {
-                                  if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); saveEdit(); }
-                                  if (e.key === "Escape") cancelEdit();
-                                }}
-                                className="w-full bg-transparent border border-primary-foreground/30 rounded-lg px-2 py-1 text-sm resize-none focus:outline-none min-h-[60px]"
-                                rows={2}
-                              />
-                              <div className="flex gap-1 justify-end">
-                                <button onClick={cancelEdit} className="text-[10px] px-2 py-0.5 rounded-md bg-primary-foreground/10 hover:bg-primary-foreground/20">Otkaži</button>
-                                <button onClick={saveEdit} className="text-[10px] px-2 py-0.5 rounded-md bg-primary-foreground/20 hover:bg-primary-foreground/30 font-semibold">Sačuvaj</button>
-                              </div>
+                        {message.deleted ? (
+                          <p className="text-sm italic">Poruka je obrisana</p>
+                        ) : editingMessageId === message.id ? (
+                          <div className="space-y-1.5 min-w-[220px]">
+                            <textarea
+                              ref={editTextareaRef}
+                              value={editText}
+                              onChange={e => setEditText(e.target.value)}
+                              onKeyDown={e => {
+                                if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); saveEdit(); }
+                                if (e.key === "Escape") cancelEdit();
+                              }}
+                              className="w-full bg-transparent border border-current/30 rounded-lg px-2 py-1 text-sm resize-none focus:outline-none min-h-[60px]"
+                              rows={2}
+                            />
+                            <div className="flex gap-1 justify-end">
+                              <button onClick={cancelEdit} className="text-xs px-2.5 py-1 rounded-full hover:bg-black/10">Otkaži</button>
+                              <button onClick={saveEdit} className="text-xs px-2.5 py-1 rounded-full bg-black/10 hover:bg-black/20 font-semibold">Sačuvaj</button>
                             </div>
-                          ) : (
-                            <>
-                              {!(message.imageUrl && message.content === "📎") && !(message.audioUrl && message.content === AUDIO_PLACEHOLDER) && (
-                                <p className="text-sm whitespace-pre-wrap break-words leading-relaxed [word-break:break-word] [overflow-wrap:anywhere]">
-                                  {message.content}
-                                </p>
-                              )}
-                              {!(message.imageUrl && message.content === "📎") && !(message.audioUrl && message.content === AUDIO_PLACEHOLDER) && (
-                                <LinkPreview text={message.content} />
-                              )}
-                              {message.audioUrl && (
-                                <AudioMessage url={message.audioUrl} name={message.audioName ?? null} duration={message.audioDuration ?? null} own={isOwn} />
-                              )}
-                              {message.imageUrl && (
-                                <img
-                                  src={message.imageUrl}
-                                  alt="attachment"
-                                  className="mt-1 rounded-xl max-w-full h-auto cursor-pointer max-h-72 object-cover"
-                                  onClick={() => setLightboxSrc(message.imageUrl!)}
-                                />
-                              )}
-                            </>
-                          )}
-
-                          {/* Reactions */}
-                          {message.reactions && message.reactions.length > 0 && (
-                            <div className="flex flex-wrap gap-1 mt-1.5">
-                              {message.reactions.map(r => (
-                                <button key={r.emoji} onClick={() => toggleReaction(message.id, r.emoji)}
-                                  className={cn(
-                                    "flex items-center gap-1 px-1.5 py-0.5 rounded-full text-xs border transition-all",
-                                    r.userIds.includes(user?.id ?? -1)
-                                      ? "bg-primary/20 border-primary/40 text-primary"
-                                      : isOwn ? "bg-primary-foreground/10 border-primary-foreground/20 text-primary-foreground" : "bg-muted border-border text-foreground"
-                                  )}>
-                                  {r.emoji} <span className="font-medium">{r.count}</span>
-                                </button>
-                              ))}
-                            </div>
-                          )}
-
-                          <div className={cn("flex items-center gap-1 mt-1", isOwn ? "justify-end" : "justify-start")}>
-                            <span className={cn("text-[10px] leading-none tabular-nums", isOwn ? "text-primary-foreground/55" : "text-muted-foreground/60")}>
-                              {format(new Date(message.createdAt), "HH:mm")}
-                            </span>
-                            {message.editedAt && !message.deleted && (
-                              <span className={cn("text-[9px]", isOwn ? "text-primary-foreground/40" : "text-muted-foreground/50")}>(izmenjeno)</span>
-                            )}
-                            {isOwn && (
-                              message.isRead
-                                ? <CheckCheck className="w-3 h-3 text-primary-foreground/55" />
-                                : <Check className="w-3 h-3 text-primary-foreground/55" />
-                            )}
                           </div>
-                        </div>
+                        ) : (
+                          <>
+                            {!isAttachmentOnly && (
+                              <p className="whitespace-pre-wrap [overflow-wrap:anywhere]">{message.content}</p>
+                            )}
+                            {!isAttachmentOnly && <LinkPreview text={message.content} />}
+                            {message.audioUrl && (
+                              <AudioMessage url={message.audioUrl} name={message.audioName ?? null} duration={message.audioDuration ?? null} own={isOwn} />
+                            )}
+                            {message.imageUrl && (
+                              <img
+                                src={message.imageUrl}
+                                alt="Slika iz poruke"
+                                loading="lazy"
+                                className="rounded-[16px] max-w-full h-auto cursor-zoom-in max-h-80 object-cover"
+                                onClick={() => setLightboxSrc(message.imageUrl!)}
+                              />
+                            )}
+                          </>
+                        )}
                       </div>
 
-                      {/* Action buttons (other user's messages, right side) */}
-                      {!isOwn && !message.deleted && (
-                        <div className="flex gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity">
-                          <Button variant="ghost" size="icon"
-                            className="h-6 w-6 text-muted-foreground rounded-lg flex-shrink-0"
-                            onClick={() => { setReplyTo(message); textareaRef.current?.focus(); }} title="Odgovori">
-                            <CornerUpLeft className="h-3.5 w-3.5" />
-                          </Button>
-                          <Button variant="ghost" size="icon"
-                            className="h-6 w-6 text-muted-foreground rounded-lg flex-shrink-0"
-                            onClick={() => setForwardMessage(message)} title="Prosledi">
-                            <Forward className="h-3.5 w-3.5" />
-                          </Button>
+                      {/* Reactions: small pills hanging off the bubble */}
+                      {message.reactions && message.reactions.length > 0 && (
+                        <div className={cn("flex flex-wrap gap-1 -mt-1.5 relative z-10", isOwn ? "justify-end pr-2" : "pl-2")}>
+                          {message.reactions.map(r => {
+                            const mine = r.userIds.includes(user?.id ?? -1);
+                            return (
+                              <button key={r.emoji} type="button" onClick={() => toggleReaction(message.id, r.emoji)}
+                                className={cn(
+                                  "flex items-center gap-1 h-6 px-1.5 rounded-full text-xs border bg-card shadow-sm transition-colors",
+                                  mine ? "border-primary/60" : "border-border hover:bg-muted"
+                                )}
+                                aria-label={`${r.emoji} ${r.count}${mine ? ", vaša reakcija" : ""}`}>
+                                <span className="leading-none">{r.emoji}</span>
+                                {r.count > 1 && <span className="font-mono text-[10px] text-muted-foreground">{r.count}</span>}
+                              </button>
+                            );
+                          })}
+                        </div>
+                      )}
+
+                      {/* Time + read receipt: once per group */}
+                      {lastInGroup && (
+                        <div className={cn("flex items-center gap-1 mt-1 px-1 text-[11px] text-muted-foreground", isOwn ? "justify-end" : "justify-start")}>
+                          <span className="font-mono">{format(currentDate, "HH:mm")}</span>
+                          {message.editedAt && !message.deleted && <span>· izmenjeno</span>}
+                          {isOwn && !message.deleted && (
+                            message.isRead
+                              ? <span className="inline-flex items-center gap-0.5 text-primary"><CheckCheck className="w-3.5 h-3.5" /> Viđeno</span>
+                              : <Check className="w-3.5 h-3.5" aria-label="Poslato" />
+                          )}
                         </div>
                       )}
                     </div>
@@ -1058,11 +1039,15 @@ export default function ChatInterface({ selectedUserId, onBack }: ChatInterfaceP
             })
           ) : (
             <div className="flex flex-col items-center justify-center py-16 text-center">
-              <div className="w-14 h-14 rounded-2xl bg-muted flex items-center justify-center mb-3">
-                <Send className="w-6 h-6 text-muted-foreground/40" />
-              </div>
-              <p className="text-sm font-medium mb-1">Nema poruka</p>
-              <p className="text-xs text-muted-foreground">Pošaljite prvu poruku ispod</p>
+              <AvatarWithInitials
+                src={otherUser?.avatarUrl}
+                alt={otherUser?.username || "Korisnik"}
+                name={otherUser?.username || "Korisnik"}
+                userId={selectedUserId}
+                className="w-16 h-16 mb-3"
+              />
+              <p className="font-semibold">{otherUser?.username}</p>
+              <p className="text-sm text-muted-foreground mt-1">Pošaljite prvu poruku.</p>
             </div>
           )}
           <div ref={bottomSentinelRef} className="h-1" />
@@ -1070,11 +1055,11 @@ export default function ChatInterface({ selectedUserId, onBack }: ChatInterfaceP
       </ScrollArea>
 
       {/* Input area */}
-      <div className="border-t border-border/60 bg-card/80 backdrop-blur-sm px-3 md:px-4 pt-2.5 pb-3 space-y-2 flex-shrink-0">
+      <div className="border-t border-border/60 bg-card px-3 md:px-5 pt-2.5 pb-[max(0.75rem,env(safe-area-inset-bottom))] space-y-2 flex-shrink-0">
 
         {/* Reply bar */}
         {replyTo && (
-          <div className="flex items-center gap-2 px-3 py-2 bg-primary/8 border border-primary/20 rounded-xl text-sm">
+          <div className="flex items-center gap-2 px-3 py-2 bg-muted/60 border-l-2 border-primary rounded-xl text-sm max-w-3xl mx-auto">
             <CornerUpLeft className="w-3.5 h-3.5 text-primary flex-shrink-0" />
             <div className="flex-1 min-w-0">
               <span className="font-semibold text-primary text-xs">
@@ -1092,7 +1077,7 @@ export default function ChatInterface({ selectedUserId, onBack }: ChatInterfaceP
 
         {/* Emoji picker */}
         {showEmojiPicker && (
-          <div ref={emojiPickerRef} className="grid grid-cols-10 gap-1 p-3 bg-popover border border-border/60 rounded-2xl shadow-xl">
+          <div ref={emojiPickerRef} className="grid grid-cols-8 sm:grid-cols-10 gap-1 p-3 bg-popover border border-border rounded-2xl shadow-xl max-w-3xl mx-auto max-h-56 overflow-y-auto">
             {EMOJI_LIST.map(emoji => (
               <button key={emoji} type="button" onClick={() => insertEmoji(emoji)}
                 className="text-xl hover:bg-muted rounded-lg p-1 transition-colors leading-none aspect-square flex items-center justify-center">
@@ -1103,7 +1088,7 @@ export default function ChatInterface({ selectedUserId, onBack }: ChatInterfaceP
         )}
 
         {blocked && (
-          <div className="flex flex-wrap items-center justify-between gap-2 px-3 py-2.5 rounded-xl bg-muted/60 text-sm">
+          <div className="flex flex-wrap items-center justify-between gap-2 px-4 py-3 rounded-2xl bg-muted/60 text-sm max-w-3xl mx-auto">
             <span className="text-muted-foreground">
               {otherUser?.blockedByMe ? "Blokirali ste ovog korisnika. Ne može da vam piše." : "Ne možete odgovoriti u ovom razgovoru."}
             </span>
@@ -1113,46 +1098,48 @@ export default function ChatInterface({ selectedUserId, onBack }: ChatInterfaceP
           </div>
         )}
 
-        {/* Input row */}
-        <div className={cn("flex gap-2 items-end", blocked && "hidden")}>
-          <div className="flex gap-0.5 flex-shrink-0">
-            <Button variant="ghost" size="icon"
-              className="h-10 w-10 text-muted-foreground hover:text-foreground rounded-xl"
-              onClick={() => setShowEmojiPicker(p => !p)} title="Emoji">
+        {/* Composer */}
+        <div className={cn("flex gap-2 items-end max-w-3xl mx-auto", blocked && "hidden")}>
+          <div className="flex-1 min-w-0 flex items-end gap-0.5 rounded-[22px] bg-muted/70 border border-transparent focus-within:border-border focus-within:bg-background transition-colors px-1.5">
+            <button type="button" onClick={() => setShowEmojiPicker(p => !p)} aria-label="Emoji"
+              className={cn("w-9 h-9 my-[3px] rounded-full flex items-center justify-center shrink-0 transition-colors", showEmojiPicker ? "text-primary" : "text-muted-foreground hover:text-foreground")}>
               <Smile className="w-5 h-5" />
-            </Button>
-            <Button variant="ghost" size="icon"
-              className="h-10 w-10 text-muted-foreground hover:text-foreground rounded-xl"
-              onClick={() => fileInputRef.current?.click()} disabled={uploadingImage} title="Pošalji sliku ili audio (demo, mix)">
+            </button>
+            <Textarea
+              ref={textareaRef}
+              value={messageText}
+              onChange={e => {
+                setMessageText(e.target.value);
+                handleTyping();
+                const el = e.currentTarget;
+                el.style.height = "auto";
+                el.style.height = `${Math.min(el.scrollHeight, 140)}px`;
+              }}
+              onKeyDown={handleKeyDown}
+              placeholder="Napišite poruku..."
+              rows={1}
+              className="min-h-[42px] max-h-[140px] resize-none flex-1 bg-transparent border-0 shadow-none focus-visible:ring-0 focus-visible:ring-offset-0 text-[15px] py-[11px] px-1"
+            />
+            <button type="button" onClick={() => fileInputRef.current?.click()} aria-label="Pošalji sliku ili audio"
+              title="Slika ili audio (demo, mix)" aria-busy={uploadingImage}
+              className={cn("w-9 h-9 my-[3px] rounded-full flex items-center justify-center shrink-0 text-muted-foreground hover:text-foreground transition-colors", uploadingImage && "pointer-events-none")}>
               {uploadingImage ? <Loader2 className="w-5 h-5 animate-spin" /> : <Paperclip className="w-5 h-5" />}
-            </Button>
+            </button>
             <input ref={fileInputRef} type="file" accept="image/jpeg,image/png,image/webp,audio/*,.mp3,.wav,.m4a,.aac,.ogg,.flac" className="hidden" onChange={handleImageAttach} />
           </div>
 
-          <Textarea
-            ref={textareaRef}
-            value={messageText}
-            onChange={e => { setMessageText(e.target.value); handleTyping(); }}
-            onKeyDown={handleKeyDown}
-            placeholder="Poruka..."
-            className="min-h-[42px] max-h-[120px] resize-none flex-1 rounded-2xl bg-muted/60 border-0 focus-visible:ring-1 focus-visible:bg-background text-sm py-2.5 px-4"
-            disabled={sendMessageMutation.isPending}
-          />
-
-          <Button
+          <button
+            type="button"
             onClick={handleSendMessage}
-            disabled={!messageText.trim() || sendMessageMutation.isPending}
-            size="icon"
+            aria-label="Pošalji"
+            aria-busy={sendMessageMutation.isPending}
             className={cn(
-              "h-10 w-10 flex-shrink-0 rounded-xl transition-all",
-              messageText.trim() ? "bg-primary hover:bg-primary/90 scale-100" : "opacity-50 scale-95"
+              "h-12 w-12 flex-shrink-0 rounded-full flex items-center justify-center transition-all",
+              messageText.trim() ? "bg-primary text-primary-foreground hover:bg-primary/90 active:scale-95" : "bg-muted text-muted-foreground pointer-events-none",
             )}
           >
-            {sendMessageMutation.isPending
-              ? <Loader2 className="w-4 h-4 animate-spin" />
-              : <Send className="w-4 h-4" />
-            }
-          </Button>
+            {sendMessageMutation.isPending ? <Loader2 className="w-5 h-5 animate-spin" /> : <Send className="w-5 h-5 -translate-x-[1px] translate-y-[1px]" />}
+          </button>
         </div>
       </div>
 
@@ -1176,6 +1163,24 @@ export default function ChatInterface({ selectedUserId, onBack }: ChatInterfaceP
           />
         </div>
       )}
+
+      <AlertDialog open={deleteTargetId != null} onOpenChange={o => { if (!o) setDeleteTargetId(null); }}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Obriši poruku</AlertDialogTitle>
+            <AlertDialogDescription>Poruka će biti obrisana za obe strane.</AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Otkaži</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={() => { if (deleteTargetId != null) deleteMessageMutation.mutate(deleteTargetId); setDeleteTargetId(null); }}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              Obriši
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
 
       {/* Report dialog */}
       <Dialog open={showReport} onOpenChange={setShowReport}>

@@ -11,7 +11,8 @@ export function WhatsAppButton() {
   const dragOrigin = useRef<{ mx: number; my: number; ox: number; oy: number } | null>(null);
   const moved = useRef(false);
 
-  if (location.startsWith("/l/") || location.startsWith("/portal/")) return null;
+  // /inbox: the floating button sat on top of the chat's send button
+  if (location.startsWith("/l/") || location.startsWith("/portal/") || location.startsWith("/inbox")) return null;
   // Sign-in / sign-up pages are kept distraction-free
   if (location === "/prijava" || location === "/registracija" || location === "/auth") return null;
   if (hidden) return null;

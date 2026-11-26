@@ -6,12 +6,11 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { AvatarWithInitials } from "@/components/ui/avatar-with-initials";
 import { Skeleton } from "@/components/ui/skeleton";
 import { EmptyState } from "@/components/ui/empty-state";
-import { MessageCircle, SearchX } from "lucide-react";
+import { MessageCircle, SearchX, Loader2 } from "lucide-react";
 import { ImageLabel, AudioLabel } from "@/components/messaging/ImageLabel";
 import { isToday, isYesterday, format } from "date-fns";
 import { cn } from "@/lib/utils";
-import { useEffect } from "react";
-import UserSearch from "./UserSearch";
+import { useEffect, useState } from "react";
 
 interface ConversationData {
   id: number;
@@ -54,9 +53,22 @@ export default function ConversationList({ selectedUserId, onSelectConversation,
     staleTime: 0,
   });
 
+  const q = searchQuery.trim().toLowerCase();
   const filteredConversations = conversations?.filter(conv =>
-    conv.otherUser.username.toLowerCase().includes(searchQuery.toLowerCase())
+    conv.otherUser.username.toLowerCase().includes(q)
   ) ?? [];
+
+  // People search (new conversation) runs from the same box once 2+ characters are typed
+  const [debounced, setDebounced] = useState(q);
+  useEffect(() => { const t = setTimeout(() => setDebounced(q), 250); return () => clearTimeout(t); }, [q]);
+  const { data: people, isFetching: peopleLoading } = useQuery<Array<{ id: number; username: string; avatarUrl: string | null }>>({
+    queryKey: ["/api/users/search", debounced],
+    queryFn: async () => (await apiRequest("GET", `/api/users/search?q=${encodeURIComponent(debounced)}`)).json(),
+    enabled: debounced.length >= 2,
+    staleTime: 30_000,
+  });
+  const knownIds = new Set((conversations ?? []).map(c => c.otherUser.id));
+  const newPeople = q.length >= 2 ? (Array.isArray(people) ? people : []).filter(p => !knownIds.has(p.id)) : [];
 
   useEffect(() => {
     return subscribe(message => {
@@ -96,89 +108,87 @@ export default function ConversationList({ selectedUserId, onSelectConversation,
   }
 
   return (
-    <div className="flex flex-col h-full" data-testid="conversation-list">
-
-      {/* New conversation search */}
-      <div className="px-4 py-2 border-b border-border/30">
-        <UserSearch onSelectUser={onSelectConversation} />
-      </div>
-
-      <ScrollArea className="flex-1">
-        {filteredConversations.length > 0 ? (
-          <div className="py-1" data-testid="conversations-list">
-            {filteredConversations.map(conv => {
-              const isSelected = selectedUserId === conv.otherUser.id;
-              const hasUnread = conv.unreadCount > 0;
-              const lastText = getLastMessageText(conv);
-              const isDeletedMsg = conv.lastMessage?.deleted;
-
-              return (
-                <button
-                  key={conv.id}
-                  onClick={() => onSelectConversation(conv.otherUser.id)}
-                  className={cn(
-                    "w-full flex items-center gap-3 px-4 py-3 text-left transition-all relative active:scale-[0.99]",
-                    "hover:bg-muted/50",
-                    isSelected && "bg-primary/5"
-                  )}
-                  data-testid={`conversation-item-${conv.otherUser.id}`}
-                >
-                  {/* Active indicator bar */}
-                  {isSelected && (
-                    <div className="absolute left-0 top-2 bottom-2 w-0.5 rounded-full bg-primary" />
-                  )}
-
-                  {/* Avatar */}
-                  <div className="relative flex-shrink-0">
-                    <AvatarWithInitials
-                      src={conv.otherUser.avatarUrl}
-                      alt={conv.otherUser.username}
-                      name={conv.otherUser.username}
-                      userId={conv.otherUser.id}
-                      className="w-11 h-11"
-                    />
+    <ScrollArea className="h-full" data-testid="conversation-list">
+      {filteredConversations.length > 0 && (
+        <div className="py-1.5 px-2" data-testid="conversations-list">
+          {filteredConversations.map(conv => {
+            const isSelected = selectedUserId === conv.otherUser.id;
+            const hasUnread = conv.unreadCount > 0;
+            const isDeletedMsg = conv.lastMessage?.deleted;
+            return (
+              <button
+                key={conv.id}
+                onClick={() => onSelectConversation(conv.otherUser.id)}
+                className={cn(
+                  "w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-left transition-colors",
+                  isSelected ? "bg-muted" : "hover:bg-muted/60"
+                )}
+                aria-current={isSelected ? "true" : undefined}
+                data-testid={`conversation-item-${conv.otherUser.id}`}
+              >
+                <AvatarWithInitials
+                  src={conv.otherUser.avatarUrl}
+                  alt={conv.otherUser.username}
+                  name={conv.otherUser.username}
+                  userId={conv.otherUser.id}
+                  className="w-12 h-12 flex-shrink-0"
+                />
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-baseline justify-between gap-2">
+                    <p className={cn("text-[15px] truncate", hasUnread ? "font-semibold" : "font-medium")}>{conv.otherUser.username}</p>
+                    <span className={cn("text-[11px] flex-shrink-0 font-mono", hasUnread ? "text-primary" : "text-muted-foreground")}>
+                      {formatTimestamp(conv.lastMessageAt)}
+                    </span>
+                  </div>
+                  <div className="flex items-center justify-between gap-2 mt-0.5">
+                    <p className={cn(
+                      "text-[13px] truncate",
+                      isDeletedMsg ? "italic text-muted-foreground/70" : hasUnread ? "text-foreground" : "text-muted-foreground"
+                    )}>
+                      {getLastMessageText(conv)}
+                    </p>
                     {hasUnread && (
-                      <span className="absolute -top-0.5 -right-0.5 w-2.5 h-2.5 bg-primary rounded-full border-2 border-card" />
+                      <span className="flex-shrink-0 min-w-[20px] h-5 bg-primary text-primary-foreground text-[11px] font-semibold rounded-full flex items-center justify-center px-1.5 font-mono">
+                        {conv.unreadCount > 99 ? "99+" : conv.unreadCount}
+                      </span>
                     )}
                   </div>
+                </div>
+              </button>
+            );
+          })}
+        </div>
+      )}
 
-                  {/* Text */}
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-baseline justify-between gap-2 mb-0.5">
-                      <p className={cn("text-sm truncate", hasUnread ? "font-bold" : "font-medium")}>
-                        {conv.otherUser.username}
-                      </p>
-                      <span className={cn(
-                        "text-[11px] flex-shrink-0 tabular-nums",
-                        hasUnread ? "text-primary font-semibold" : "text-muted-foreground"
-                      )}>
-                        {formatTimestamp(conv.lastMessageAt)}
-                      </span>
-                    </div>
-                    <div className="flex items-center justify-between gap-2">
-                      <p className={cn(
-                        "text-xs truncate",
-                        isDeletedMsg ? "italic text-muted-foreground/60" : hasUnread ? "text-foreground font-medium" : "text-muted-foreground"
-                      )}>
-                        {lastText}
-                      </p>
-                      {hasUnread && (
-                        <span className="flex-shrink-0 min-w-[18px] h-[18px] bg-primary text-primary-foreground text-[10px] font-bold rounded-full flex items-center justify-center px-1">
-                          {conv.unreadCount > 99 ? "99+" : conv.unreadCount}
-                        </span>
-                      )}
-                    </div>
-                  </div>
-                </button>
-              );
-            })}
-          </div>
-        ) : conversations && conversations.length > 0 ? (
+      {q.length >= 2 && (
+        <div className="px-2 pb-3">
+          <p className="px-3 pt-3 pb-1.5 text-xs font-medium text-muted-foreground flex items-center gap-2">
+            Novi razgovor {peopleLoading && <Loader2 className="w-3 h-3 animate-spin" />}
+          </p>
+          {newPeople.map(p => (
+            <button
+              key={p.id}
+              onClick={() => onSelectConversation(p.id)}
+              className="w-full flex items-center gap-3 px-3 py-2 rounded-xl text-left hover:bg-muted/60 transition-colors"
+              data-testid={`user-result-${p.id}`}
+            >
+              <AvatarWithInitials src={p.avatarUrl} alt={p.username} name={p.username} userId={p.id} className="w-10 h-10 flex-shrink-0" />
+              <span className="text-sm font-medium truncate">{p.username}</span>
+            </button>
+          ))}
+          {!peopleLoading && debounced === q && newPeople.length === 0 && (
+            <p className="px-3 py-1 text-sm text-muted-foreground">Nema drugih korisnika sa tim imenom.</p>
+          )}
+        </div>
+      )}
+
+      {filteredConversations.length === 0 && q.length < 2 && (
+        conversations && conversations.length > 0 ? (
           <EmptyState icon={SearchX} text="Nema rezultata pretrage" compact />
         ) : (
-          <EmptyState icon={MessageCircle} text="Nema konverzacija" sub="Pretražite korisnika gore da biste započeli" />
-        )}
-      </ScrollArea>
-    </div>
+          <EmptyState icon={MessageCircle} text="Još nema razgovora" sub="Potražite nekoga po korisničkom imenu iznad." />
+        )
+      )}
+    </ScrollArea>
   );
 }
