@@ -87,6 +87,20 @@ export default function PlocaPage() {
     onError: (e: any) => toast({ title: "Ploča nije zavrtena", description: e?.message || "Pokušajte ponovo za minut.", variant: "destructive" }),
   });
 
+  // Super Admin test helper: wipe today's own spin and spin again.
+  const resetSpin = useMutation({
+    mutationFn: () => apiRequest("POST", "/api/admin/spin/reset"),
+    onSuccess: async () => {
+      setRevealed(null);
+      setLanded(null);
+      settledRef.current = false;
+      for (const k of ["/api/spin/today", "/api/spin/history", "/api/game/today", "/api/me/vouchers"]) await queryClient.invalidateQueries({ queryKey: [k] });
+      toast({ title: "Ploča je resetovana", description: "Možete ponovo da zavrtite." });
+    },
+    onError: () => toast({ title: "Reset nije uspeo", variant: "destructive" }),
+  });
+  const isSuperAdmin = user?.role === "admin";
+
   const busy = spinning || spin.isPending;
   const canSpin = !!on && !on.spun && !revealed && !busy;
   const result = revealed;
@@ -154,6 +168,14 @@ export default function PlocaPage() {
         {result.reward === "feature_post" && <Link href="/zajednica"><Button variant="outline" className="mt-5">Pogledaj zajednicu <ArrowRight className="w-4 h-4" /></Button></Link>}
 
         {countdown && <p className="text-sm text-muted-foreground mt-6">Nova ploča za <span className="font-mono text-foreground">{countdown}</span></p>}
+        {isSuperAdmin && (
+          <Button
+            variant="outline" size="sm" className={`mt-4 ${resetSpin.isPending ? "opacity-60 pointer-events-none" : ""}`}
+            aria-busy={resetSpin.isPending} onClick={() => resetSpin.mutate()}
+          >
+            {resetSpin.isPending && <Loader2 className="w-3.5 h-3.5 animate-spin" />} Reset
+          </Button>
+        )}
       </div>
     );
   }

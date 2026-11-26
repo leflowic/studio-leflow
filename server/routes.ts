@@ -4368,6 +4368,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Super Admin only: undo your own spin for today, to test the Ploča again.
+  app.post("/api/admin/spin/reset", requireAdmin, async (req, res) => {
+    try {
+      const removed = await storage.resetSpin(req.jwtUser!.id, belgradeToday());
+      res.json({ ok: true, removed });
+    } catch (e) {
+      console.error("[Spin] reset error:", e);
+      res.status(500).json({ error: "Greška na serveru" });
+    }
+  });
+
   // Ploča dana switches (Super Admin only - it's a business decision).
   app.get("/api/admin/spin-settings", requireRole("producer"), async (_req, res) => {
     try { res.json(await spinSwitches()); } catch { res.status(500).json({ error: "Greška na serveru" }); }

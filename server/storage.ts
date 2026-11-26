@@ -456,6 +456,7 @@ export interface IStorage {
   }>;
   getSharedIpGroups(sinceDate: string): Promise<Array<{ ip: string; users: Array<{ id: number; username: string }>; lastSeen: string }>>;
   resetListens(userId: number, date: string): Promise<void>;
+  resetSpin(userId: number, date: string): Promise<boolean>;
   deleteGuess(userId: number, date: string): Promise<boolean>;
   performSpin(userId: number, date: string, opts: { canExtraListen: boolean; ip: string | null; ipLimit?: boolean }): Promise<{ spin: DailySpin; voucher: Voucher | null; created: boolean } | { blocked: "ip" }>;
   getStudioEligibility(userId: number, ip: string | null): Promise<{ eligible: boolean; reason: "disabled" | "staff" | "new_account" | "already_won" | "no_ip" | null; eligibleFrom?: Date }>;
@@ -3710,6 +3711,20 @@ export class DatabaseStorage implements IStorage {
     `);
     const rows: any[] = result.rows ?? result;
     return rows.map(r => ({ ip: String(r.ip), lastSeen: String(r.last_seen), users: (typeof r.users === "string" ? JSON.parse(r.users) : r.users) as Array<{ id: number; username: string }> }));
+  }
+
+  // Super Admin test helper: undo today's spin and everything it granted.
+  async resetSpin(userId: number, date: string): Promise<boolean> {
+    return db.transaction(async (tx) => {
+      const [spin] = await tx.select().from(dailySpins).where(and(eq(dailySpins.userId, userId), eq(dailySpins.spinDate, date)));
+      if (!spin) return false;
+      await tx.delete(vouchers).where(eq(vouchers.spinId, spin.id));
+      if (spin.reward === "feature_post") {
+        await tx.update(posts).set({ featuredUntil: null }).where(and(eq(posts.userId, userId), sql`${posts.featuredUntil} > NOW()`));
+      }
+      await tx.delete(dailySpins).where(eq(dailySpins.id, spin.id));
+      return true;
+    });
   }
 
   async resetListens(userId: number, date: string): Promise<void> {
