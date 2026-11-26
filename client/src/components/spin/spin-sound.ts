@@ -3,7 +3,7 @@
 // on the AudioContext clock, so ticks line up with the CSS spin animation.
 //
 //   needle drop  - soft thump + a little noise when the spin starts
-//   crackle      - quiet vinyl surface noise with random pops while spinning
+//   crackle      - quiet vinyl surface noise (noise levels cut 40% on owner request 2026-11-26) with random pops while spinning
 //   ticks        - a click every time a sector edge passes the needle, timed
 //                  from the same cubic-bezier the record uses, so they slow
 //                  down together with the record
@@ -101,7 +101,7 @@ export function playSpin(fromDeg: number, toDeg: number, durationMs: number, sec
 
   // needle drop
   tone(a, t0, 70, { peak: 0.35, decay: 0.16, to: 45 });
-  noiseHit(a, t0, { type: "lowpass", freq: 1400, peak: 0.18, decay: 0.07 });
+  noiseHit(a, t0, { type: "lowpass", freq: 1400, peak: 0.108, decay: 0.07 });
 
   // surface crackle bed
   const bed = a.ctx.createBufferSource();
@@ -109,14 +109,14 @@ export function playSpin(fromDeg: number, toDeg: number, durationMs: number, sec
   const hp = a.ctx.createBiquadFilter(); hp.type = "bandpass"; hp.frequency.value = 2400; hp.Q.value = 0.5;
   const bedGain = a.ctx.createGain();
   bedGain.gain.setValueAtTime(0.0001, t0);
-  bedGain.gain.exponentialRampToValueAtTime(0.018, t0 + 0.15);
-  bedGain.gain.setValueAtTime(0.018, t0 + Math.max(0.2, dur - 0.5));
+  bedGain.gain.exponentialRampToValueAtTime(0.0108, t0 + 0.15);
+  bedGain.gain.setValueAtTime(0.0108, t0 + Math.max(0.2, dur - 0.5));
   bedGain.gain.exponentialRampToValueAtTime(0.0001, t0 + dur + 0.3);
   bed.connect(hp).connect(bedGain).connect(a.out);
   bed.start(t0); bed.stop(t0 + dur + 0.4);
   const pops = Math.round(dur * 7);
   for (let i = 0; i < pops; i++) {
-    noiseHit(a, t0 + Math.random() * dur, { type: "highpass", freq: 3000, peak: 0.03 + Math.random() * 0.05, decay: 0.008 });
+    noiseHit(a, t0 + Math.random() * dur, { type: "highpass", freq: 3000, peak: 0.018 + Math.random() * 0.03, decay: 0.008 });
   }
 
   // ticks at every sector edge crossing, following the record's easing
@@ -154,11 +154,11 @@ export function playResult(reward: Reward) {
       tone(a, t + i * 0.085, note(n), { type: "triangle", peak: 0.11, decay: 0.9 });
       tone(a, t + i * 0.085, note(n + 12), { peak: 0.035, decay: 0.7 });
     });
-    noiseHit(a, t + 0.45, { type: "highpass", freq: 6000, peak: 0.03, decay: 0.6 });
+    noiseHit(a, t + 0.45, { type: "highpass", freq: 6000, peak: 0.018, decay: 0.6 });
   } else if (reward === "nothing") {
     // a record winding down
     tone(a, t, 196, { type: "triangle", peak: 0.08, decay: 0.55, to: 70 });
-    noiseHit(a, t, { type: "lowpass", freq: 900, peak: 0.05, decay: 0.12 });
+    noiseHit(a, t, { type: "lowpass", freq: 900, peak: 0.03, decay: 0.12 });
   } else {
     // warm two-note "got something"
     tone(a, t, note(0), { type: "triangle", peak: 0.1, decay: 0.5 });
