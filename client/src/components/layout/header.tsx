@@ -156,16 +156,16 @@ function MenuLink({ item, onNavigate, className, children }: { item: { href: str
 }
 
 function FeaturedCard({ kind, onNavigate }: { kind: NavMenu["featured"]; onNavigate: () => void }) {
-  // Latest release for the Studio panel (public, newest first). Only fetched
-  // once the Studio panel is actually opened.
+  // Newest release staff picked for the main site (admin Smart Links → "Izdvoji na sajtu"),
+  // not simply the newest smart link. Only fetched once the Studio panel is opened.
   const { data: releases } = useQuery<Array<{ slug: string; title: string; artist: string; coverUrl: string | null }>>({
-    queryKey: ["/api/smart-links"],
+    queryKey: ["/api/smart-links?featured=1"],
     enabled: kind === "release",
     staleTime: 5 * 60 * 1000,
   });
 
   if (kind === "release") {
-    const latest = releases?.[0];
+    const latest = Array.isArray(releases) ? releases[0] : undefined;
     return (
       <a
         href={latest ? `https://music.studioleflow.com/${latest.slug}` : "https://music.studioleflow.com"}

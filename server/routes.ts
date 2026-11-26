@@ -5170,10 +5170,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   // Public: lightweight list of all smart links, for the music.studioleflow.com
   // root hub page (no click stats/platform URLs - those are admin-only fields).
-  app.get("/api/smart-links", async (_req, res) => {
+  app.get("/api/smart-links", async (req, res) => {
     try {
-      // Only songs staff chose to feature (not every client's release), and no click stats.
-      const links = await storage.getFeaturedSmartLinks();
+      // music.studioleflow.com lists every song; ?featured=1 is the main site's header card,
+      // which shows only songs staff picked (not every client's release). No click stats here.
+      const links = await storage.listPublicSmartLinks(req.query.featured === "1");
       res.json(links.map(l => ({ slug: l.slug, title: l.title, artist: l.artist, coverUrl: l.coverUrl })));
     } catch (e: any) {
       console.error("[SmartLink] List error:", e?.message);

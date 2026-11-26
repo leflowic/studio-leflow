@@ -124,7 +124,7 @@ export function SmartLinksTab() {
       apiRequest("PATCH", `/api/admin/smart-links/${id}`, { featured }),
     onSuccess: (_r, v) => {
       queryClient.invalidateQueries({ queryKey: ["/api/admin/smart-links"] });
-      toast({ title: v.featured ? "Pesma je na music stranici" : "Pesma je skinuta sa music stranice", description: v.featured ? undefined : "Link pesme i dalje radi." });
+      toast({ title: v.featured ? "Pesma je izdvojena na sajtu" : "Pesma više nije izdvojena", description: v.featured ? "Najnovija izdvojena pesma se vidi u meniju Studio." : undefined });
     },
     onError: () => toast({ title: "Izmena nije sačuvana", description: "Pokušajte ponovo.", variant: "destructive" }),
   });
@@ -595,7 +595,7 @@ export function SmartLinksTab() {
                               <p className="text-xs text-muted-foreground truncate">
                                 {link.artist}
                                 {owner && <span className="text-muted-foreground/70"> · vlasnik {owner}</span>}
-                                {link.featured && <span className="text-primary"> · na music stranici</span>}
+                                {link.featured && <span className="text-primary"> · izdvojena na sajtu</span>}
                               </p>
                               <p className="text-[11px] font-mono text-muted-foreground/70 truncate mt-0.5">/{link.slug}</p>
                             </div>
@@ -635,7 +635,7 @@ export function SmartLinksTab() {
                                   </a>
                                 </DropdownMenuItem>
                                 <DropdownMenuItem onSelect={() => featureMutation.mutate({ id: link.id, featured: !link.featured })}>
-                                  <Star className={`w-4 h-4 mr-2 ${link.featured ? "fill-current text-primary" : ""}`} /> {link.featured ? "Skini sa music stranice" : "Prikaži na music stranici"}
+                                  <Star className={`w-4 h-4 mr-2 ${link.featured ? "fill-current text-primary" : ""}`} /> {link.featured ? "Ukloni sa sajta" : "Izdvoji na sajtu"}
                                 </DropdownMenuItem>
                                 <DropdownMenuItem onSelect={() => openAssign(link)}>
                                   <UserPlus className="w-4 h-4 mr-2" /> {owner ? "Promeni vlasnika" : "Dodeli vlasnika"}

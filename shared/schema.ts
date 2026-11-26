@@ -1114,7 +1114,7 @@ export const smartLinks = pgTable("smart_links", {
   tidalUrl: text("tidal_url"),
   deezerUrl: text("deezer_url"),
   userId: integer("user_id").references(() => users.id, { onDelete: "set null" }), // "Owner" - assigned user who may edit cover/platform URLs from their dashboard
-  // Listed on the public music.studioleflow.com page only when staff picks it; every link still works by its own URL.
+  // Staff pick for the main site (header "Najnovije izdanje" card). The music.studioleflow.com list shows every link.
   featured: boolean("featured").notNull().default(false),
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });

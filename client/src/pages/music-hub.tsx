@@ -36,11 +36,6 @@ export default function MusicHubPage() {
     document.title = "Studio LeFlow Music";
   }, []);
 
-  // Nothing featured yet: there's no catalogue to show, send visitors to the studio site.
-  useEffect(() => {
-    if (Array.isArray(links) && links.length === 0) window.location.replace("https://studioleflow.com");
-  }, [links]);
-
   return (
     <div className="min-h-screen bg-[#050505] relative overflow-hidden">
       <div className="absolute inset-0 pointer-events-none"
