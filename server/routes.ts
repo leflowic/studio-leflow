@@ -69,6 +69,15 @@ const messageRateLimiter = rateLimit({
   legacyHeaders: false,
 });
 
+const reportRateLimiter = rateLimit({
+  windowMs: 60 * 60 * 1000,
+  max: 10,
+  keyGenerator: (req: any) => `report:${req.jwtUser?.id ?? "anon"}`,
+  message: { error: "Poslali ste previše prijava. Pokušajte kasnije." },
+  standardHeaders: true,
+  legacyHeaders: false,
+});
+
 function isOwnMessageImageUrl(url: string): boolean {
   try {
     const u = new URL(url);
@@ -2524,18 +2533,87 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(404).json({ error: "Korisnik nije pronađen" });
       }
       
-      // Only expose public profile fields - never email to other users
+      // Only expose public profile fields - never email to other users.
+      // Blocked either way: no online status / last seen.
+      const block = await storage.getBlockState(req.jwtUser!.id, userId);
+      const hidePresence = block.blockedByMe || block.blockedMe;
       res.json({
         id: user.id,
         username: user.username,
         avatarUrl: user.avatarUrl,
-        lastSeen: user.lastSeen,
+        lastSeen: hidePresence ? null : user.lastSeen,
+        online: hidePresence ? false : getOnlineUsersSnapshot().includes(userId),
         role: user.role,
         emailVerified: user.emailVerified,
+        blockedByMe: block.blockedByMe,
+        blockedMe: block.blockedMe,
       });
     } catch (error: any) {
       console.error("[MESSAGING] Get user error:", error);
       res.status(500).json({ error: "Greška pri učitavanju korisnika" });
+    }
+  });
+
+  // ── Block / report ──
+  app.post("/api/users/:id/block", requireVerifiedEmail, async (req, res) => {
+    const other = parseInt(req.params.id);
+    if (isNaN(other) || other === req.jwtUser!.id) return res.status(400).json({ error: "Nevažeći korisnik" });
+    try {
+      await storage.blockUser(req.jwtUser!.id, other);
+      res.json({ success: true });
+    } catch (e) {
+      console.error("[MESSAGING] Block error:", e);
+      res.status(500).json({ error: "Blokiranje nije uspelo" });
+    }
+  });
+
+  app.delete("/api/users/:id/block", requireVerifiedEmail, async (req, res) => {
+    const other = parseInt(req.params.id);
+    if (isNaN(other)) return res.status(400).json({ error: "Nevažeći korisnik" });
+    try {
+      await storage.unblockUser(req.jwtUser!.id, other);
+      res.json({ success: true });
+    } catch (e) {
+      console.error("[MESSAGING] Unblock error:", e);
+      res.status(500).json({ error: "Odblokiranje nije uspelo" });
+    }
+  });
+
+  app.post("/api/users/:id/report", requireVerifiedEmail, reportRateLimiter, async (req, res) => {
+    const other = parseInt(String(req.params.id));
+    if (isNaN(other) || other === req.jwtUser!.id) return res.status(400).json({ error: "Nevažeći korisnik" });
+    const reason = String(req.body?.reason ?? "");
+    if (!["harassment", "spam", "inappropriate", "scam", "other"].includes(reason)) return res.status(400).json({ error: "Izaberite razlog prijave" });
+    const note = typeof req.body?.note === "string" ? req.body.note.trim().slice(0, 500) : "";
+    try {
+      if (!(await storage.getUser(other))) return res.status(404).json({ error: "Korisnik nije pronađen" });
+      await storage.createUserReport({ reporterId: req.jwtUser!.id, reportedId: other, reason, note: note || null });
+      if (req.body?.block === true) await storage.blockUser(req.jwtUser!.id, other);
+      res.json({ success: true });
+    } catch (e) {
+      console.error("[MESSAGING] Report error:", e);
+      res.status(500).json({ error: "Prijava nije poslata. Pokušajte ponovo." });
+    }
+  });
+
+  app.get("/api/admin/reports", requireRole("producer"), async (req, res) => {
+    try {
+      res.json(await storage.getUserReports(req.query.all === "1"));
+    } catch (e) {
+      console.error("[Admin] Reports list error:", e);
+      res.status(500).json({ error: "Prijave nisu učitane" });
+    }
+  });
+
+  app.patch("/api/admin/reports/:id", requireRole("producer"), async (req, res) => {
+    const id = parseInt(req.params.id);
+    if (isNaN(id)) return res.status(400).json({ error: "Nevažeći ID" });
+    try {
+      await storage.setUserReportResolved(id, req.body?.resolved !== false);
+      res.json({ success: true });
+    } catch (e) {
+      console.error("[Admin] Report update error:", e);
+      res.status(500).json({ error: "Izmena nije sačuvana" });
     }
   });
 
@@ -2624,6 +2702,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
       if (receiver.banned) {
         return res.status(403).json({ error: "Ne možete slati poruke banovanom korisniku" });
       }
+
+      // Blocked either way: refuse, with a neutral message (doesn't say who blocked whom).
+      const block = await storage.getBlockState(req.jwtUser!.id, receiverId);
+      if (block.blockedByMe) return res.status(403).json({ error: "Blokirali ste ovog korisnika. Odblokirajte ga da biste mu pisali." });
+      if (block.blockedMe) return res.status(403).json({ error: "Ne možete slati poruke ovom korisniku." });
 
       // Images must be ones uploaded through our chat upload - never an arbitrary
       // external URL (tracking pixels, other people's images).

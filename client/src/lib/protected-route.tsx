@@ -8,7 +8,10 @@ export function ProtectedRoute({
   component: Component,
 }: {
   path: string;
-  component: () => React.JSX.Element | null;
+  // Pass the component itself (component={InboxPage}), never an inline arrow:
+  // a new arrow on every App render made React remount the whole page, wiping
+  // its state (open chat, half-filled forms) e.g. whenever a toast appeared.
+  component: React.ElementType;
 }) {
   const { user, isLoading } = useAuth();
 
@@ -30,5 +33,5 @@ export function ProtectedRoute({
     );
   }
 
-  return <Route path={path} component={Component} />;
+  return <Route path={path}><Component /></Route>;
 }

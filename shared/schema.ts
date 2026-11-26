@@ -322,6 +322,30 @@ export const messages = pgTable("messages", {
   conversationCreatedIdx: index("messages_conversation_created_idx").on(table.conversationId, table.createdAt),
 }));
 
+// Blocks: the blocker no longer receives messages from the blocked user (either
+// direction is refused). Reports: staff review queue in admin → Poruke.
+export const userBlocks = pgTable("user_blocks", {
+  id: serial("id").primaryKey(),
+  blockerId: integer("blocker_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  blockedId: integer("blocked_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+}, (table) => ({
+  uniquePair: unique().on(table.blockerId, table.blockedId),
+  blockedIdx: index("user_blocks_blocked_idx").on(table.blockedId),
+}));
+
+export const userReports = pgTable("user_reports", {
+  id: serial("id").primaryKey(),
+  reporterId: integer("reporter_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  reportedId: integer("reported_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  reason: text("reason").notNull(),       // harassment | spam | inappropriate | scam | other
+  note: text("note"),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  resolvedAt: timestamp("resolved_at"),
+}, (table) => ({
+  openIdx: index("user_reports_open_idx").on(table.resolvedAt, table.createdAt),
+}));
+
 // Message Reactions table - emoji reactions on messages
 export const messageReactions = pgTable("message_reactions", {
   id: serial("id").primaryKey(),

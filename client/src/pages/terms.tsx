@@ -108,7 +108,7 @@ const rulesSections = [
     items: [
       "Podatke obrađuje Studio LeFlow, Beograd. Za sva pitanja o vašim podacima pišite na <strong>podrska@studioleflow.com</strong>.",
       "<strong>Nalog:</strong> korisničko ime, email adresa i lozinka (čuvamo je samo u šifrovanom obliku, ne možemo da je pročitamo). Ako se prijavite preko Google-a, dobijamo ime, email i sliku sa Google naloga. Biografiju i profilnu sliku dodajete sami.",
-      "<strong>Sadržaj koji objavite:</strong> objave, komentari, poruke, prijavljene pesme i demo snimci, utisci o saradnji. Za klijente studija: podaci potrebni za licence i fakture (ime, adresa, matični broj), koje unosi studio.",
+      "<strong>Sadržaj koji objavite:</strong> objave, komentari, poruke, prijavljene pesme i demo snimci, utisci o saradnji. Ako nekoga blokirate ili prijavite, čuvamo to (prijavu vidi samo tim studija, a prijavljeni ne saznaje ko ga je prijavio). Za klijente studija: podaci potrebni za licence i fakture (ime, adresa, matični broj), koje unosi studio.",
       "<strong>Tehnički podaci:</strong> neke tehničke podatke o pristupu (na primer IP adresu) koristimo isključivo radi bezbednosti, sprečavanja zloupotrebe i osnovne statistike poseta, i ne čuvamo ih duže nego što je za to potrebno.",
       "<strong>Kolačići i memorija pregledača:</strong> za prijavu, temu i podešavanja sajta - bez njih sajt ne radi i za njih nije potrebna dozvola. Kolačići za statistiku poseta se uključuju <strong>samo ako ih prihvatite</strong> u obaveštenju o kolačićima.",
       "<strong>Obaveštenja na telefonu:</strong> ako ih uključite, čuvamo adresu pretplate koju daje vaš pregledač. Isključujete ih u Podešavanjima, a možete birati i koje vrste obaveštenja želite.",

@@ -61,6 +61,8 @@ import {
   messages,
   messageReads,
   messageReactions,
+  userBlocks,
+  userReports,
   adminMessageAudit,
   contracts,
   invoices,
@@ -170,6 +172,12 @@ export interface IStorage {
   createGoogleUser(data: { email: string; username: string; googleId: string; avatarUrl?: string }): Promise<User>;
   updateUserRole(id: number, role: string): Promise<void>;
   banUser(id: number): Promise<void>;
+  blockUser(blockerId: number, blockedId: number): Promise<void>;
+  unblockUser(blockerId: number, blockedId: number): Promise<void>;
+  getBlockState(me: number, other: number): Promise<{ blockedByMe: boolean; blockedMe: boolean }>;
+  createUserReport(data: { reporterId: number; reportedId: number; reason: string; note: string | null }): Promise<void>;
+  getUserReports(includeResolved: boolean): Promise<Array<{ id: number; reason: string; note: string | null; createdAt: Date; resolvedAt: Date | null; reporter: { id: number; username: string }; reported: { id: number; username: string; banned: boolean }; reportsAgainst: number }>>;
+  setUserReportResolved(id: number, resolved: boolean): Promise<void>;
   unbanUser(id: number): Promise<void>;
   acceptTerms(id: number): Promise<void>;
   getAllUsers(): Promise<User[]>;
@@ -584,6 +592,49 @@ export class DatabaseStorage implements IStorage {
 
   async updateUserRole(id: number, role: string): Promise<void> {
     await db.update(users).set({ role }).where(eq(users.id, id));
+  }
+
+  async blockUser(blockerId: number, blockedId: number): Promise<void> {
+    await db.insert(userBlocks).values({ blockerId, blockedId }).onConflictDoNothing();
+  }
+
+  async unblockUser(blockerId: number, blockedId: number): Promise<void> {
+    await db.delete(userBlocks).where(and(eq(userBlocks.blockerId, blockerId), eq(userBlocks.blockedId, blockedId)));
+  }
+
+  async getBlockState(me: number, other: number): Promise<{ blockedByMe: boolean; blockedMe: boolean }> {
+    const rows = await db.select({ blockerId: userBlocks.blockerId }).from(userBlocks).where(or(
+      and(eq(userBlocks.blockerId, me), eq(userBlocks.blockedId, other)),
+      and(eq(userBlocks.blockerId, other), eq(userBlocks.blockedId, me)),
+    ));
+    return { blockedByMe: rows.some(r => r.blockerId === me), blockedMe: rows.some(r => r.blockerId === other) };
+  }
+
+  async createUserReport(data: { reporterId: number; reportedId: number; reason: string; note: string | null }): Promise<void> {
+    await db.insert(userReports).values(data);
+  }
+
+  async getUserReports(includeResolved: boolean) {
+    const rows = await db.select().from(userReports)
+      .where(includeResolved ? undefined : sql`${userReports.resolvedAt} IS NULL`)
+      .orderBy(desc(userReports.createdAt)).limit(200);
+    if (!rows.length) return [];
+    const ids = Array.from(new Set(rows.flatMap(r => [r.reporterId, r.reportedId])));
+    const people = await db.select({ id: users.id, username: users.username, banned: users.banned }).from(users).where(inArray(users.id, ids));
+    const pm = new Map(people.map(u => [u.id, u]));
+    const counts = await db.select({ reportedId: userReports.reportedId, n: sql<number>`count(DISTINCT ${userReports.reporterId})` })
+      .from(userReports).where(inArray(userReports.reportedId, Array.from(new Set(rows.map(r => r.reportedId))))).groupBy(userReports.reportedId);
+    const cm = new Map(counts.map(c => [c.reportedId, Number(c.n)]));
+    return rows.map(r => ({
+      id: r.id, reason: r.reason, note: r.note, createdAt: r.createdAt, resolvedAt: r.resolvedAt,
+      reporter: { id: r.reporterId, username: pm.get(r.reporterId)?.username ?? "obrisan nalog" },
+      reported: { id: r.reportedId, username: pm.get(r.reportedId)?.username ?? "obrisan nalog", banned: !!pm.get(r.reportedId)?.banned },
+      reportsAgainst: cm.get(r.reportedId) ?? 1,
+    }));
+  }
+
+  async setUserReportResolved(id: number, resolved: boolean): Promise<void> {
+    await db.update(userReports).set({ resolvedAt: resolved ? new Date() : null }).where(eq(userReports.id, id));
   }
 
   async banUser(id: number): Promise<void> {

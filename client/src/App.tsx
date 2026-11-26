@@ -249,16 +249,16 @@ function Router() {
                 <Route path="/izvodjac/:username"><IzvodjacPage /></Route>
                 <Route path="/ploca"><PlocaPage /></Route>
                 <Route path="/prodavnica"><ProdavnicaPage /></Route>
-                <ProtectedRoute path="/u/:username" component={() => <UserProfilePage />} />
-                <ProtectedRoute path="/igra" component={() => <IgraPage />} />
-                <ProtectedRoute path="/igra/arhiva" component={() => <IgraArhivaPage />} />
-                <ProtectedRoute path="/zajednica" component={() => <ZajednicaPage />} />
-                <ProtectedRoute path="/giveaway" component={() => <GiveawayPage />} />
-                <ProtectedRoute path="/moje-pesme" component={() => <MojePesmePage />} />
-                <ProtectedRoute path="/inbox" component={() => <InboxPage />} />
-                <ProtectedRoute path="/dashboard" component={() => <DashboardPage />} />
-                <ProtectedRoute path="/admin" component={() => <AdminPageComponent />} />
-                <ProtectedRoute path="/settings" component={() => <SettingsPage />} />
+                <ProtectedRoute path="/u/:username" component={UserProfilePage} />
+                <ProtectedRoute path="/igra" component={IgraPage} />
+                <ProtectedRoute path="/igra/arhiva" component={IgraArhivaPage} />
+                <ProtectedRoute path="/zajednica" component={ZajednicaPage} />
+                <ProtectedRoute path="/giveaway" component={GiveawayPage} />
+                <ProtectedRoute path="/moje-pesme" component={MojePesmePage} />
+                <ProtectedRoute path="/inbox" component={InboxPage} />
+                <ProtectedRoute path="/dashboard" component={DashboardPage} />
+                <ProtectedRoute path="/admin" component={AdminPageComponent} />
+                <ProtectedRoute path="/settings" component={SettingsPage} />
                 <Route><NotFoundPage /></Route>
             </Switch>
           </div>

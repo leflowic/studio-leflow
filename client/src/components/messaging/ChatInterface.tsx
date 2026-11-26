@@ -24,7 +24,8 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import { ArrowLeft, Send, Loader2, Check, CheckCheck, Trash2, Smile, Paperclip, CornerUpLeft, X, ChevronDown, Pencil, Forward, ExternalLink } from "lucide-react";
+import { ArrowLeft, Send, Loader2, Check, CheckCheck, Trash2, Smile, Paperclip, CornerUpLeft, X, ChevronDown, Pencil, Forward, ExternalLink, MoreVertical, Ban, Flag } from "lucide-react";
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { ImageLabel } from "@/components/messaging/ImageLabel";
 import { format, isToday, isYesterday, isSameDay } from "date-fns";
 import { cn } from "@/lib/utils";
@@ -94,7 +95,18 @@ interface OtherUser {
   username: string;
   avatarUrl: string | null;
   lastSeen: string | null;
+  online?: boolean;
+  blockedByMe?: boolean;
+  blockedMe?: boolean;
 }
+
+const REPORT_REASONS: { value: string; label: string }[] = [
+  { value: "harassment", label: "Uznemiravanje ili pretnje" },
+  { value: "spam", label: "Spam ili reklame" },
+  { value: "inappropriate", label: "Neprimeren sadržaj" },
+  { value: "scam", label: "Prevara ili lažno predstavljanje" },
+  { value: "other", label: "Nešto drugo" },
+];
 
 interface Conversation {
   id: number;
@@ -251,6 +263,34 @@ export default function ChatInterface({ selectedUserId, onBack }: ChatInterfaceP
       const res = await apiRequest("GET", `/api/users/${selectedUserId}`);
       return res.json();
     },
+    refetchInterval: 60_000, // keeps "online" / "aktivan pre..." current
+  });
+
+  const blocked = !!(otherUser?.blockedByMe || otherUser?.blockedMe);
+  const [showDeleteMine, setShowDeleteMine] = useState(false);
+  const [showReport, setShowReport] = useState(false);
+  const [reportReason, setReportReason] = useState("");
+  const [reportNote, setReportNote] = useState("");
+  const [reportAlsoBlock, setReportAlsoBlock] = useState(true);
+
+  const blockMutation = useMutation({
+    mutationFn: (block: boolean) => apiRequest(block ? "POST" : "DELETE", `/api/users/${selectedUserId}/block`),
+    onSuccess: (_r, block) => {
+      queryClient.invalidateQueries({ queryKey: ["/api/users", selectedUserId] });
+      toast({ title: block ? "Korisnik je blokiran" : "Korisnik je odblokiran", description: block ? "Više ne može da vam šalje poruke." : undefined });
+    },
+    onError: () => toast({ title: "Nije uspelo", description: "Pokušajte ponovo.", variant: "destructive" }),
+  });
+
+  const reportMutation = useMutation({
+    mutationFn: () => apiRequest("POST", `/api/users/${selectedUserId}/report`, { reason: reportReason, note: reportNote, block: reportAlsoBlock }),
+    onSuccess: () => {
+      setShowReport(false);
+      setReportReason(""); setReportNote("");
+      queryClient.invalidateQueries({ queryKey: ["/api/users", selectedUserId] });
+      toast({ title: "Prijava je poslata", description: "Pregledaćemo je. Hvala što pomažete da zajednica ostane prijatna." });
+    },
+    onError: (e: any) => toast({ title: "Prijava nije poslata", description: e?.message || "Pokušajte ponovo.", variant: "destructive" }),
   });
 
   const sendMessageMutation = useMutation({
@@ -276,6 +316,10 @@ export default function ChatInterface({ selectedUserId, onBack }: ChatInterfaceP
       localStorage.removeItem(DRAFT_KEY);
       setReplyTo(null);
       scrollToBottom();
+    },
+    onError: (e: any) => {
+      toast({ title: "Poruka nije poslata", description: e?.message || "Pokušajte ponovo.", variant: "destructive" });
+      queryClient.invalidateQueries({ queryKey: ["/api/users", selectedUserId] });
     },
   });
 
@@ -659,7 +703,7 @@ export default function ChatInterface({ selectedUserId, onBack }: ChatInterfaceP
             userId={selectedUserId}
             className="w-10 h-10 flex-shrink-0"
           />
-          {otherUser?.lastSeen && new Date().getTime() - new Date(otherUser.lastSeen).getTime() < 3 * 60 * 1000 && (
+          {otherUser?.online && (
             <span className="absolute bottom-0 right-0 w-2.5 h-2.5 bg-green-500 rounded-full border-2 border-card" />
           )}
         </div>
@@ -674,17 +718,33 @@ export default function ChatInterface({ selectedUserId, onBack }: ChatInterfaceP
                 ))}
               </span>
             </div>
+          ) : otherUser?.online ? (
+            <p className="text-xs text-muted-foreground leading-tight">Online</p>
           ) : otherUser?.lastSeen ? (
             <p className="text-xs text-muted-foreground leading-tight">{formatLastSeen(otherUser.lastSeen)}</p>
           ) : null}
         </div>
-        {/* Delete conversation */}
-        <AlertDialog>
-          <AlertDialogTrigger asChild>
-            <Button variant="ghost" size="icon" className="text-muted-foreground hover:text-destructive flex-shrink-0" title="Obriši moje poruke">
-              <Trash2 className="w-4 h-4" />
+        {/* Conversation menu: report / block / delete my messages */}
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <Button variant="ghost" size="icon" className="text-muted-foreground flex-shrink-0" aria-label="Opcije razgovora">
+              <MoreVertical className="w-4 h-4" />
             </Button>
-          </AlertDialogTrigger>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="end" className="w-56">
+            <DropdownMenuItem onSelect={() => setShowReport(true)}>
+              <Flag className="w-4 h-4 mr-2" /> Prijavi korisnika
+            </DropdownMenuItem>
+            <DropdownMenuItem onSelect={() => blockMutation.mutate(!otherUser?.blockedByMe)}>
+              <Ban className="w-4 h-4 mr-2" /> {otherUser?.blockedByMe ? "Odblokiraj" : "Blokiraj"}
+            </DropdownMenuItem>
+            <DropdownMenuSeparator />
+            <DropdownMenuItem onSelect={() => setShowDeleteMine(true)} className="text-destructive focus:text-destructive">
+              <Trash2 className="w-4 h-4 mr-2" /> Obriši moje poruke
+            </DropdownMenuItem>
+          </DropdownMenuContent>
+        </DropdownMenu>
+        <AlertDialog open={showDeleteMine} onOpenChange={setShowDeleteMine}>
           <AlertDialogContent>
             <AlertDialogHeader>
               <AlertDialogTitle>Obriši moje poruke</AlertDialogTitle>
@@ -1006,8 +1066,19 @@ export default function ChatInterface({ selectedUserId, onBack }: ChatInterfaceP
           </div>
         )}
 
+        {blocked && (
+          <div className="flex flex-wrap items-center justify-between gap-2 px-3 py-2.5 rounded-xl bg-muted/60 text-sm">
+            <span className="text-muted-foreground">
+              {otherUser?.blockedByMe ? "Blokirali ste ovog korisnika. Ne može da vam piše." : "Ne možete odgovoriti u ovom razgovoru."}
+            </span>
+            {otherUser?.blockedByMe && (
+              <Button size="sm" variant="outline" onClick={() => blockMutation.mutate(false)} aria-busy={blockMutation.isPending}>Odblokiraj</Button>
+            )}
+          </div>
+        )}
+
         {/* Input row */}
-        <div className="flex gap-2 items-end">
+        <div className={cn("flex gap-2 items-end", blocked && "hidden")}>
           <div className="flex gap-0.5 flex-shrink-0">
             <Button variant="ghost" size="icon"
               className="h-10 w-10 text-muted-foreground hover:text-foreground rounded-xl"
@@ -1069,6 +1140,53 @@ export default function ChatInterface({ selectedUserId, onBack }: ChatInterfaceP
           />
         </div>
       )}
+
+      {/* Report dialog */}
+      <Dialog open={showReport} onOpenChange={setShowReport}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>Prijavi {otherUser?.username ?? "korisnika"}</DialogTitle>
+          </DialogHeader>
+          <p className="text-sm text-muted-foreground -mt-1">Prijavu vidi samo tim studija. Korisnik ne saznaje ko ga je prijavio.</p>
+          <div className="grid gap-1.5" role="radiogroup" aria-label="Razlog prijave">
+            {REPORT_REASONS.map(r => (
+              <button
+                key={r.value}
+                type="button"
+                role="radio"
+                aria-checked={reportReason === r.value}
+                onClick={() => setReportReason(r.value)}
+                className={cn(
+                  "text-left px-3.5 py-2.5 rounded-xl border text-sm transition-colors",
+                  reportReason === r.value ? "border-primary bg-primary/10" : "border-border hover:bg-muted",
+                )}
+              >
+                {r.label}
+              </button>
+            ))}
+          </div>
+          <Textarea
+            value={reportNote}
+            onChange={e => setReportNote(e.target.value.slice(0, 500))}
+            placeholder="Šta se desilo? (nije obavezno)"
+            className="min-h-[80px] text-sm"
+          />
+          <label className="flex items-center gap-2 text-sm cursor-pointer select-none">
+            <input type="checkbox" checked={reportAlsoBlock} onChange={e => setReportAlsoBlock(e.target.checked)} className="accent-[hsl(var(--primary))] w-4 h-4" />
+            Blokiraj i ovog korisnika
+          </label>
+          <div className="flex justify-end gap-2 pt-1">
+            <Button variant="ghost" onClick={() => setShowReport(false)}>Otkaži</Button>
+            <Button
+              onClick={() => reportReason && !reportMutation.isPending && reportMutation.mutate()}
+              aria-busy={reportMutation.isPending}
+              className={cn((!reportReason || reportMutation.isPending) && "opacity-60")}
+            >
+              {reportMutation.isPending ? "Šaljem..." : "Pošalji prijavu"}
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
 
       {/* Forward modal */}
       <Dialog open={!!forwardMessage} onOpenChange={open => { if (!open) setForwardMessage(null); }}>

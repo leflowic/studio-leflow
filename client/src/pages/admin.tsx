@@ -54,6 +54,7 @@ import { TestimonialsTab } from "@/components/admin/TestimonialsTab";
 import { VouchersTab } from "@/components/admin/VouchersTab";
 import { AntiAbuseTab } from "@/components/admin/AntiAbuseTab";
 import { ErrorsTab } from "@/components/admin/ErrorsTab";
+import { MessageReportsPanel } from "@/components/admin/MessageReportsPanel";
 import {
   Select,
   SelectContent,
@@ -1057,6 +1058,7 @@ function MessagesTab() {
 
   return (
     <div className="space-y-6">
+      <MessageReportsPanel />
       {/* Statistics Cards */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
         <StatTile icon={MessageCircle} iconBg="bg-primary/10" iconColor="text-primary" label="Ukupno poruka" value={stats?.totalMessages || 0} loading={statsLoading} />

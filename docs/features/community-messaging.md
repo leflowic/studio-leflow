@@ -63,3 +63,11 @@ Feature reference split out of CLAUDE.md (2026-11-26). The cross-cutting rules i
 - `POST /api/messages/send`: `messageRateLimiter` (30/min **per account**); `imageUrl` must be our own `res.cloudinary.com/.../studioleflow/messages/` upload; `replyToId` must be a message between the same two people.
 - `GET /api/link-preview` goes through `safeFetchHtml()` (`server/safe-fetch.ts`): public addresses only (localhost, private ranges, cloud metadata, `.internal` refused), ports 80/443, every redirect hop re-checked, HTML only, max 512KB, 4s. Preview images must be https. Tests: `server/__tests__/safe-fetch.test.ts`.
 - Default avatar (no photo) is `attached_assets/avatar_200.png` via `ui/avatar.tsx` - brand anthracite version.
+
+**Block / report / presence (2026-11-26):**
+- `user_blocks` (blocker → blocked, unique pair) and `user_reports` (reporter, reported, reason `harassment|spam|inappropriate|scam|other`, optional note ≤500, `resolved_at`); both also in `runMigrations()`.
+- `POST/DELETE /api/users/:id/block`; `POST /api/users/:id/report` (`reportRateLimiter` 10/h per account; `block: true` also blocks). Send is refused either way with a neutral message for the blocked side ("Ne možete slati poruke ovom korisniku" - never says who blocked whom).
+- `GET /api/users/:id` adds `online` (live WS presence via `getOnlineUsersSnapshot()`, not the old "lastSeen < 3 min" guess - lastSeen is only written on connect/disconnect), `blockedByMe`, `blockedMe`; presence is hidden when blocked either way. The chat refetches it every 60s.
+- Chat header "⋮" menu: Prijavi korisnika / Blokiraj (Odblokiraj) / Obriši moje poruke. Blocked → composer replaced by a banner.
+- Staff see reports at the top of admin → Poruke (`MessageReportsPanel`, `GET/PATCH /api/admin/reports`, `requireRole("producer")`), with "Banuj" (existing ban route) and the number of distinct reporters.
+- Privacy section on /pravila mentions blocks/reports.

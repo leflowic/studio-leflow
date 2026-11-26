@@ -185,7 +185,27 @@ async function runMigrations() {
         UNIQUE(message_id, user_id, emoji)
       );
     `);
-    log('[Migrations] Messaging extensions (edited_at, reactions) ready', 'express');
+    await client.query(`
+      CREATE TABLE IF NOT EXISTS user_blocks (
+        id SERIAL PRIMARY KEY,
+        blocker_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+        blocked_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+        created_at TIMESTAMP NOT NULL DEFAULT NOW(),
+        UNIQUE(blocker_id, blocked_id)
+      );
+      CREATE INDEX IF NOT EXISTS user_blocks_blocked_idx ON user_blocks(blocked_id);
+      CREATE TABLE IF NOT EXISTS user_reports (
+        id SERIAL PRIMARY KEY,
+        reporter_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+        reported_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+        reason TEXT NOT NULL,
+        note TEXT,
+        created_at TIMESTAMP NOT NULL DEFAULT NOW(),
+        resolved_at TIMESTAMP
+      );
+      CREATE INDEX IF NOT EXISTS user_reports_open_idx ON user_reports(resolved_at, created_at);
+    `);
+    log('[Migrations] Messaging extensions (edited_at, reactions, blocks, reports) ready', 'express');
   } catch (err: any) {
     log(`[Migrations] Warning on messaging extensions: ${err.message}`, 'express');
   }
