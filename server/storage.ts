@@ -102,6 +102,7 @@ import {
   vouchers,
   gameListens,
   coinLedger,
+  referrals,
   shopItems,
   shopPurchases,
   type CoinLedgerEntry,
@@ -109,6 +110,7 @@ import {
   type DailySpin,
   type Voucher,
 } from "@shared/schema";
+import { TESTIMONIAL_COINS, REFERRAL_COINS, REFERRAL_ACTIVE_DAYS, REFERRAL_MONTHLY_CAP, REFERRAL_CLAIM_WINDOW_HOURS, LEADERBOARD_COINS, SPIN_STREAK_DAYS, SPIN_STREAK_COINS, leaderboardRef, makeReferralCode } from "./coins";
 import { pickReward, generateVoucherCode, VOUCHER_VALID_DAYS, STUDIO_MIN_ACCOUNT_DAYS, COIN_REWARDS, GAME_CORRECT_COINS, type SpinReward } from "./spin";
 import { db, pool } from "./db";
 import { eq, and, or, desc, sql, notInArray, inArray, gte, lte, count, countDistinct, isNotNull } from "drizzle-orm";
@@ -409,7 +411,7 @@ export interface IStorage {
   getAllSmartLinks(): Promise<Array<SmartLink & { totalClicks: number; clicksByPlatform: Record<string, number>; uniqueClicks: number }>>;
   getSmartLinkById(id: number): Promise<SmartLink | undefined>;
   getSmartLinkBySlug(slug: string): Promise<SmartLink | undefined>;
-  getSmartLinksByUserId(userId: number): Promise<Array<SmartLink & { uniqueClicks: number; uniqueByPlatform: Record<string, number> }>>;
+  getSmartLinksByUserId(userId: number): Promise<Array<SmartLink & { uniqueClicks: number; uniqueByPlatform: Record<string, number>; weekUnique: number; prevWeekUnique: number }>>;
   updateSmartLink(id: number, data: Partial<InsertSmartLink>): Promise<SmartLink>;
   deleteSmartLink(id: number): Promise<void>;
   recordSmartLinkClick(smartLinkId: number, platform: string, ipAddress?: string | null): Promise<void>;
@@ -463,7 +465,7 @@ export interface IStorage {
   resetListens(userId: number, date: string): Promise<void>;
   resetSpin(userId: number, date: string): Promise<boolean>;
   deleteGuess(userId: number, date: string): Promise<boolean>;
-  performSpin(userId: number, date: string, opts: { canExtraListen: boolean; ip: string | null; ipLimit?: boolean }): Promise<{ spin: DailySpin; voucher: Voucher | null; created: boolean } | { blocked: "ip" }>;
+  performSpin(userId: number, date: string, opts: { canExtraListen: boolean; ip: string | null; ipLimit?: boolean }): Promise<{ spin: DailySpin; voucher: Voucher | null; created: boolean; streak?: number; streakBonus?: number } | { blocked: "ip" }>;
   // Studio Coins + shop
   getCoinBalance(userId: number): Promise<number>;
   getCoinHistory(userId: number, limit: number): Promise<CoinLedgerEntry[]>;
@@ -476,6 +478,20 @@ export interface IStorage {
     | { ok: false; error: "not_found" | "inactive" | "sold_out" | "balance" | "staff" | "new_account" | "active_voucher"; eligibleFrom?: Date }
   >;
   getUserPurchases(userId: number, limit: number): Promise<Array<{ id: number; itemTitle: string; priceSc: number; createdAt: Date }>>;
+  getSpinStreak(userId: number, today: string): Promise<number>;
+  getSpinStreakReminderTargets(today: string): Promise<Array<{ userId: number; streak: number }>>;
+  awardTestimonialCoins(testimonialId: number): Promise<number | null>;
+  payWeeklyLeaderboard(weekStart: string): Promise<Array<{ userId: number; place: number; coins: number }>>;
+  getNotificationPrefs(userId: number): Promise<Record<string, boolean>>;
+  setNotificationPrefs(userId: number, prefs: Record<string, boolean>): Promise<void>;
+  getOrCreateReferralCode(userId: number): Promise<string>;
+  claimReferral(inviteeId: number, code: string, ip: string | null): Promise<"ok" | "invalid" | "self" | "already" | "too_old">;
+  getReferralStats(userId: number): Promise<{ invited: number; rewarded: number; pending: number }>;
+  processReferrals(): Promise<Array<{ referralId: number; inviterId: number; inviteeId: number; status: string }>>;
+  getEconomyStats(month: string): Promise<any>;
+  getWeeklySmartLinkReport(weekStartDate: Date): Promise<Array<{ userId: number; email: string; username: string; links: Array<{ title: string; slug: string; thisWeek: number; lastWeek: number; topPlatform: string | null }> }>>;
+  getPastChallenges(today: string, userId: number): Promise<Array<{ challengeDate: string; hasClip: boolean; practiced: { correct: boolean } | null }>>;
+  getChallengeByDate(date: string): Promise<any>;
   getUserVouchers(userId: number): Promise<Voucher[]>;
   getUserSpins(userId: number, limit: number): Promise<DailySpin[]>;
   getAllVouchers(): Promise<Array<Voucher & { username: string; email: string }>>;
@@ -3409,7 +3425,7 @@ export class DatabaseStorage implements IStorage {
 
   // Owner-facing: only distinct-IP (unique) numbers, never raw click totals
   // (owner preference - see CLAUDE.md "Unique click tracking").
-  async getSmartLinksByUserId(userId: number): Promise<Array<SmartLink & { uniqueClicks: number; uniqueByPlatform: Record<string, number> }>> {
+  async getSmartLinksByUserId(userId: number): Promise<Array<SmartLink & { uniqueClicks: number; uniqueByPlatform: Record<string, number>; weekUnique: number; prevWeekUnique: number }>> {
     const links = await db.select().from(smartLinks).where(eq(smartLinks.userId, userId)).orderBy(desc(smartLinks.createdAt));
     if (!links.length) return [];
     const uniqueByLink = await this.getUniqueSmartLinkClickCounts();
@@ -3420,10 +3436,20 @@ export class DatabaseStorage implements IStorage {
     }).from(smartLinkClicks)
       .where(and(isNotNull(smartLinkClicks.ipAddress), inArray(smartLinkClicks.smartLinkId, links.map(l => l.id))))
       .groupBy(smartLinkClicks.smartLinkId, smartLinkClicks.platform);
+    // unique visitors in the last 7 days vs the 7 before - "this week" on the owner's panel
+    const wk: any = await db.execute(sql`
+      SELECT smart_link_id AS id,
+        COUNT(DISTINCT ip_address) FILTER (WHERE clicked_at >= NOW() - INTERVAL '7 days') AS w,
+        COUNT(DISTINCT ip_address) FILTER (WHERE clicked_at < NOW() - INTERVAL '7 days' AND clicked_at >= NOW() - INTERVAL '14 days') AS p
+      FROM smart_link_clicks
+      WHERE ip_address IS NOT NULL AND clicked_at >= NOW() - INTERVAL '14 days' AND smart_link_id IN (${sql.join(links.map(l => sql`${l.id}`), sql`, `)})
+      GROUP BY smart_link_id`);
+    const weekly = new Map<number, { weekUnique: number; prevWeekUnique: number }>(
+      ((wk.rows ?? wk) as any[]).map(r => [Number(r.id), { weekUnique: Number(r.w), prevWeekUnique: Number(r.p) }]));
     return links.map(link => {
       const uniqueByPlatform: Record<string, number> = {};
       for (const r of perPlatform) if (r.smartLinkId === link.id) uniqueByPlatform[r.platform] = Number(r.uniqueCnt);
-      return { ...link, uniqueClicks: uniqueByLink.get(link.id) ?? 0, uniqueByPlatform };
+      return { ...link, uniqueClicks: uniqueByLink.get(link.id) ?? 0, uniqueByPlatform, ...(weekly.get(link.id) ?? { weekUnique: 0, prevWeekUnique: 0 }) };
     });
   }
 
@@ -3761,6 +3787,238 @@ export class DatabaseStorage implements IStorage {
       .from(shopPurchases).where(eq(shopPurchases.userId, userId)).orderBy(desc(shopPurchases.createdAt)).limit(limit);
   }
 
+  // ─── Ploča dana streak ────────────────────────────────────────────────────
+  // Consecutive Belgrade days with a spin, ending today (or yesterday, if
+  // today's spin hasn't happened yet).
+  async getSpinStreak(userId: number, today: string, exec: any = db): Promise<number> {
+    const rows: Array<{ d: string }> = await exec.select({ d: dailySpins.spinDate }).from(dailySpins)
+      .where(eq(dailySpins.userId, userId)).orderBy(desc(dailySpins.spinDate)).limit(400);
+    const dates = new Set(rows.map(r => r.d));
+    const day = (offset: number) => {
+      const d = new Date(`${today}T12:00:00Z`); d.setUTCDate(d.getUTCDate() - offset); return d.toISOString().slice(0, 10);
+    };
+    let start = dates.has(today) ? 0 : 1;
+    let n = 0;
+    while (dates.has(day(start + n))) n++;
+    return n;
+  }
+
+  async getSpinStreakReminderTargets(today: string): Promise<Array<{ userId: number; streak: number }>> {
+    const d = new Date(`${today}T12:00:00Z`); d.setUTCDate(d.getUTCDate() - 1);
+    const yesterday = d.toISOString().slice(0, 10);
+    const result: any = await db.execute(sql`
+      SELECT y.user_id FROM daily_spins y
+      WHERE y.spin_date = ${yesterday}
+        AND NOT EXISTS (SELECT 1 FROM daily_spins t WHERE t.user_id = y.user_id AND t.spin_date = ${today})
+        AND EXISTS (SELECT 1 FROM push_subscriptions p WHERE p.user_id = y.user_id)
+    `);
+    const ids: number[] = (result.rows ?? result).map((r: any) => Number(r.user_id));
+    const out: Array<{ userId: number; streak: number }> = [];
+    for (const id of ids) {
+      const streak = await this.getSpinStreak(id, today);
+      if (streak >= 2) out.push({ userId: id, streak });
+    }
+    return out;
+  }
+
+  // ─── Coins for other events ───────────────────────────────────────────────
+  /** Pays TESTIMONIAL_COINS for an approved testimonial once. Returns the user id if paid now. */
+  async awardTestimonialCoins(testimonialId: number): Promise<number | null> {
+    const [t] = await db.select({ userId: testimonials.userId }).from(testimonials).where(eq(testimonials.id, testimonialId));
+    if (!t) return null;
+    const rows = await db.insert(coinLedger)
+      .values({ userId: t.userId, amount: TESTIMONIAL_COINS, reason: "testimonial", refId: testimonialId, note: "Utisak o saradnji" })
+      .onConflictDoNothing().returning({ id: coinLedger.id });
+    return rows.length ? t.userId : null;
+  }
+
+  async payWeeklyLeaderboard(weekStart: string): Promise<Array<{ userId: number; place: number; coins: number }>> {
+    const board = await this.getWeeklyLeaderboard(weekStart);
+    const paid: Array<{ userId: number; place: number; coins: number }> = [];
+    for (let i = 0; i < Math.min(LEADERBOARD_COINS.length, board.length); i++) {
+      const entry = board[i]!;
+      const coins = LEADERBOARD_COINS[i]!;
+      const rows = await db.insert(coinLedger)
+        .values({ userId: entry.userId, amount: coins, reason: "leaderboard", refId: leaderboardRef(weekStart, i + 1), note: `Pogodi Pesmu - ${i + 1}. mesto u nedelji` })
+        .onConflictDoNothing().returning({ id: coinLedger.id });
+      if (rows.length) paid.push({ userId: entry.userId, place: i + 1, coins });
+    }
+    return paid;
+  }
+
+  // ─── Notification preferences ─────────────────────────────────────────────
+  async getNotificationPrefs(userId: number): Promise<Record<string, boolean>> {
+    const [u] = await db.select({ prefs: users.notificationPrefs }).from(users).where(eq(users.id, userId));
+    return (u?.prefs as Record<string, boolean> | null) ?? {};
+  }
+
+  async setNotificationPrefs(userId: number, prefs: Record<string, boolean>): Promise<void> {
+    await db.update(users).set({ notificationPrefs: prefs }).where(eq(users.id, userId));
+  }
+
+  // ─── Referrals ────────────────────────────────────────────────────────────
+  async getOrCreateReferralCode(userId: number): Promise<string> {
+    const [u] = await db.select({ code: users.referralCode }).from(users).where(eq(users.id, userId));
+    if (u?.code) return u.code;
+    for (let i = 0; i < 6; i++) {
+      const code = makeReferralCode();
+      try {
+        const rows = await db.update(users).set({ referralCode: code })
+          .where(and(eq(users.id, userId), sql`${users.referralCode} IS NULL`)).returning({ code: users.referralCode });
+        if (rows[0]?.code) return rows[0].code;
+        const [again] = await db.select({ code: users.referralCode }).from(users).where(eq(users.id, userId));
+        if (again?.code) return again.code;
+      } catch { /* code collision - try another */ }
+    }
+    throw new Error("Could not create referral code");
+  }
+
+  async claimReferral(inviteeId: number, code: string, ip: string | null): Promise<"ok" | "invalid" | "self" | "already" | "too_old"> {
+    const [inviter] = await db.select({ id: users.id }).from(users).where(eq(users.referralCode, code.trim().toLowerCase()));
+    if (!inviter) return "invalid";
+    if (inviter.id === inviteeId) return "self";
+    const [me] = await db.select({ createdAt: users.createdAt }).from(users).where(eq(users.id, inviteeId));
+    if (!me || Date.now() - new Date(me.createdAt).getTime() > REFERRAL_CLAIM_WINDOW_HOURS * 3600_000) return "too_old";
+    const rows = await db.insert(referrals).values({ inviterId: inviter.id, inviteeId, claimIp: ip }).onConflictDoNothing().returning({ id: referrals.id });
+    return rows.length ? "ok" : "already";
+  }
+
+  async getReferralStats(userId: number): Promise<{ invited: number; rewarded: number; pending: number }> {
+    const rows = await db.select({ status: referrals.status, n: count() }).from(referrals).where(eq(referrals.inviterId, userId)).groupBy(referrals.status);
+    const by = Object.fromEntries(rows.map(r => [r.status, Number(r.n)]));
+    return { invited: rows.reduce((a, r) => a + Number(r.n), 0), rewarded: (by.rewarded ?? 0) + (by.capped ?? 0), pending: by.pending ?? 0 };
+  }
+
+  // Pays referrals whose invitee has been active on REFERRAL_ACTIVE_DAYS
+  // different days. Pairs that ever used the same network (claim IP, spins,
+  // game answers) are blocked instead of paid - that's one person with two
+  // accounts far more often than not.
+  async processReferrals() {
+    const pending = await db.select().from(referrals).where(eq(referrals.status, "pending"));
+    const done: Array<{ referralId: number; inviterId: number; inviteeId: number; status: string }> = [];
+    const ipsOf = async (uid: number) => {
+      const r: any = await db.execute(sql`
+        SELECT ip_address AS ip FROM daily_spins WHERE user_id = ${uid} AND ip_address IS NOT NULL
+        UNION SELECT ip_address FROM daily_guesses WHERE user_id = ${uid} AND ip_address IS NOT NULL
+        UNION SELECT claim_ip FROM referrals WHERE invitee_id = ${uid} AND claim_ip IS NOT NULL`);
+      return new Set<string>((r.rows ?? r).map((x: any) => String(x.ip)));
+    };
+    const month = new Intl.DateTimeFormat("sv", { timeZone: "Europe/Belgrade" }).format(new Date()).slice(0, 7);
+    for (const ref of pending) {
+      const [invitee] = await db.select({ verified: users.emailVerified, banned: users.banned }).from(users).where(eq(users.id, ref.inviteeId));
+      if (!invitee?.verified || invitee.banned) continue;
+      const act: any = await db.execute(sql`
+        SELECT COUNT(DISTINCT d) AS days FROM (
+          SELECT spin_date AS d FROM daily_spins WHERE user_id = ${ref.inviteeId}
+          UNION SELECT challenge_date FROM daily_guesses WHERE user_id = ${ref.inviteeId}
+        ) x`);
+      const days = Number((act.rows ?? act)[0]?.days ?? 0);
+      if (days < REFERRAL_ACTIVE_DAYS) continue;
+
+      const [a, b] = await Promise.all([ipsOf(ref.inviterId), ipsOf(ref.inviteeId)]);
+      const shared = [...b].some(ip => a.has(ip));
+      if (shared) {
+        await db.update(referrals).set({ status: "blocked" }).where(eq(referrals.id, ref.id));
+        done.push({ referralId: ref.id, inviterId: ref.inviterId, inviteeId: ref.inviteeId, status: "blocked" });
+        continue;
+      }
+
+      const [paidThisMonth] = await db.select({ n: count() }).from(referrals)
+        .where(and(eq(referrals.inviterId, ref.inviterId), sql`${referrals.status} IN ('rewarded') AND to_char(${referrals.rewardedAt}, 'YYYY-MM') = ${month}`));
+      const capped = Number(paidThisMonth?.n ?? 0) >= REFERRAL_MONTHLY_CAP;
+      await db.transaction(async (tx) => {
+        await tx.insert(coinLedger).values({ userId: ref.inviteeId, amount: REFERRAL_COINS, reason: "referral_invitee", refId: ref.id, note: "Dobrodošlica - pozvao te prijatelj" }).onConflictDoNothing();
+        if (!capped) await tx.insert(coinLedger).values({ userId: ref.inviterId, amount: REFERRAL_COINS, reason: "referral_inviter", refId: ref.id, note: "Prijatelj kog si pozvao je aktivan" }).onConflictDoNothing();
+        await tx.update(referrals).set({ status: capped ? "capped" : "rewarded", rewardedAt: new Date() }).where(eq(referrals.id, ref.id));
+      });
+      done.push({ referralId: ref.id, inviterId: ref.inviterId, inviteeId: ref.inviteeId, status: capped ? "capped" : "rewarded" });
+    }
+    return done;
+  }
+
+  // ─── Admin: economy overview ──────────────────────────────────────────────
+  async getEconomyStats(month: string) {
+    const monthCond = sql`to_char(${coinLedger.createdAt}, 'YYYY-MM') = ${month}`;
+    const issued = await db.select({ reason: coinLedger.reason, total: sql<number>`COALESCE(SUM(${coinLedger.amount}), 0)::int` })
+      .from(coinLedger).where(and(monthCond, sql`${coinLedger.amount} > 0`)).groupBy(coinLedger.reason);
+    const [spent] = await db.select({ total: sql<number>`COALESCE(-SUM(${coinLedger.amount}), 0)::int` })
+      .from(coinLedger).where(and(monthCond, eq(coinLedger.reason, "purchase")));
+    const [outstanding] = await db.select({ total: sql<number>`COALESCE(SUM(${coinLedger.amount}), 0)::int`, holders: sql<number>`COUNT(DISTINCT ${coinLedger.userId})::int` }).from(coinLedger);
+    const items = await db.select({ title: shopPurchases.itemTitle, n: count(), sc: sql<number>`SUM(${shopPurchases.priceSc})::int` })
+      .from(shopPurchases).where(eq(shopPurchases.month, month)).groupBy(shopPurchases.itemTitle);
+    const v: any = await db.execute(sql`
+      SELECT
+        COUNT(*) FILTER (WHERE to_char(created_at, 'YYYY-MM') = ${month}) AS issued_month,
+        COUNT(*) FILTER (WHERE redeemed_at IS NOT NULL AND to_char(redeemed_at, 'YYYY-MM') = ${month}) AS redeemed_month,
+        COUNT(*) FILTER (WHERE redeemed_at IS NOT NULL) AS redeemed_all,
+        COUNT(*) AS issued_all,
+        COUNT(*) FILTER (WHERE redeemed_at IS NULL AND expires_at > NOW()) AS open,
+        COUNT(*) FILTER (WHERE redeemed_at IS NULL AND expires_at <= NOW()) AS expired
+      FROM vouchers`);
+    const vr = (v.rows ?? v)[0] ?? {};
+    const ref = await this.referralTotals();
+    return {
+      month,
+      issuedByReason: Object.fromEntries(issued.map(r => [r.reason, Number(r.total)])),
+      spentMonth: Number(spent?.total ?? 0),
+      outstanding: Number(outstanding?.total ?? 0),
+      holders: Number(outstanding?.holders ?? 0),
+      purchasesMonth: items.map(i => ({ title: i.title, count: Number(i.n), sc: Number(i.sc) })),
+      vouchers: {
+        issuedMonth: Number(vr.issued_month ?? 0), redeemedMonth: Number(vr.redeemed_month ?? 0),
+        issuedAll: Number(vr.issued_all ?? 0), redeemedAll: Number(vr.redeemed_all ?? 0),
+        open: Number(vr.open ?? 0), expired: Number(vr.expired ?? 0),
+      },
+      referrals: ref,
+    };
+  }
+
+  private async referralTotals() {
+    const rows = await db.select({ status: referrals.status, n: count() }).from(referrals).groupBy(referrals.status);
+    return Object.fromEntries(rows.map(r => [r.status, Number(r.n)])) as Record<string, number>;
+  }
+
+  // ─── Weekly smart link report ─────────────────────────────────────────────
+  async getWeeklySmartLinkReport(weekStartDate: Date) {
+    const end = weekStartDate;                                   // exclusive: this Monday 00:00
+    const start = new Date(end.getTime() - 7 * 86400_000);       // previous Monday
+    const prevStart = new Date(end.getTime() - 14 * 86400_000);
+    const r: any = await db.execute(sql`
+      SELECT l.id, l.title, l.slug, l.user_id, u.email, u.username,
+        COUNT(DISTINCT c.ip_address) FILTER (WHERE c.clicked_at >= ${start} AND c.clicked_at < ${end}) AS this_week,
+        COUNT(DISTINCT c.ip_address) FILTER (WHERE c.clicked_at >= ${prevStart} AND c.clicked_at < ${start}) AS last_week,
+        (SELECT c2.platform FROM smart_link_clicks c2 WHERE c2.smart_link_id = l.id AND c2.ip_address IS NOT NULL
+           AND c2.clicked_at >= ${start} AND c2.clicked_at < ${end}
+           GROUP BY c2.platform ORDER BY COUNT(DISTINCT c2.ip_address) DESC LIMIT 1) AS top_platform
+      FROM smart_links l
+      JOIN users u ON u.id = l.user_id
+      LEFT JOIN smart_link_clicks c ON c.smart_link_id = l.id AND c.ip_address IS NOT NULL
+      WHERE l.user_id IS NOT NULL AND u.banned = false
+      GROUP BY l.id, u.email, u.username
+    `);
+    const byUser = new Map<number, { userId: number; email: string; username: string; links: Array<{ title: string; slug: string; thisWeek: number; lastWeek: number; topPlatform: string | null }> }>();
+    for (const row of (r.rows ?? r) as any[]) {
+      const uid = Number(row.user_id);
+      const entry = byUser.get(uid) ?? { userId: uid, email: String(row.email), username: String(row.username), links: [] };
+      entry.links.push({ title: String(row.title), slug: String(row.slug), thisWeek: Number(row.this_week), lastWeek: Number(row.last_week), topPlatform: row.top_platform ? String(row.top_platform) : null });
+      byUser.set(uid, entry);
+    }
+    // only owners with at least one visit this week - an empty report is noise
+    return [...byUser.values()].filter(u => u.links.some(l => l.thisWeek > 0));
+  }
+
+  // ─── Pogodi Pesmu archive (practice) ──────────────────────────────────────
+  async getPastChallenges(today: string, userId: number) {
+    const rows = await db.select({ challengeDate: dailyChallenges.challengeDate, clipUrl: dailyChallenges.clipUrl })
+      .from(dailyChallenges).where(sql`${dailyChallenges.challengeDate} < ${today}`).orderBy(desc(dailyChallenges.challengeDate)).limit(120);
+    return rows.map(r => ({ challengeDate: r.challengeDate, hasClip: !!r.clipUrl, practiced: null }));
+  }
+
+  async getChallengeByDate(date: string) {
+    const [row] = await db.select().from(dailyChallenges).where(eq(dailyChallenges.challengeDate, date));
+    return row;
+  }
+
   // ─── Admin "Zaštita igara" ───────────────────────────────────────────────
   async getGameDayOverview(date: string) {
     const listens = await db.select({ userId: gameListens.userId, username: users.username, count: gameListens.count })
@@ -3807,7 +4065,7 @@ export class DatabaseStorage implements IStorage {
       const [spin] = await tx.select().from(dailySpins).where(and(eq(dailySpins.userId, userId), eq(dailySpins.spinDate, date)));
       if (!spin) return false;
       await tx.delete(vouchers).where(eq(vouchers.spinId, spin.id));
-      await tx.delete(coinLedger).where(and(eq(coinLedger.reason, "spin"), eq(coinLedger.refId, spin.id)));
+      await tx.delete(coinLedger).where(and(sql`${coinLedger.reason} IN ('spin', 'spin_streak')`, eq(coinLedger.refId, spin.id)));
       if (spin.reward === "feature_post") {
         await tx.update(posts).set({ featuredUntil: null }).where(and(eq(posts.userId, userId), sql`${posts.featuredUntil} > NOW()`));
       }
@@ -3826,7 +4084,7 @@ export class DatabaseStorage implements IStorage {
     return rows.length > 0;
   }
 
-  async performSpin(userId: number, date: string, opts: { canExtraListen: boolean; ip: string | null; ipLimit?: boolean }): Promise<{ spin: DailySpin; voucher: Voucher | null; created: boolean } | { blocked: "ip" }> {
+  async performSpin(userId: number, date: string, opts: { canExtraListen: boolean; ip: string | null; ipLimit?: boolean }): Promise<{ spin: DailySpin; voucher: Voucher | null; created: boolean; streak?: number; streakBonus?: number } | { blocked: "ip" }> {
     return db.transaction(async (tx) => {
       await tx.execute(sql`SELECT pg_advisory_xact_lock(735102)`);
 
@@ -3858,9 +4116,17 @@ export class DatabaseStorage implements IStorage {
       } else if (reward === "feature_post" && latestPost) {
         await tx.update(posts).set({ featuredUntil: new Date(Date.now() + 24 * 3600_000) }).where(eq(posts.id, latestPost.id));
       }
+      // Every SPIN_STREAK_DAYS-th day in a row pays a bonus.
+      const streak = await this.getSpinStreak(userId, date, tx);
+      let streakBonus = 0;
+      if (streak > 0 && streak % SPIN_STREAK_DAYS === 0) {
+        const paid = await tx.insert(coinLedger).values({ userId, amount: SPIN_STREAK_COINS, reason: "spin_streak", refId: spin!.id, note: `Ploča dana - ${streak} dana zaredom` })
+          .onConflictDoNothing().returning({ id: coinLedger.id });
+        if (paid.length) streakBonus = SPIN_STREAK_COINS;
+      }
       const voucher: Voucher | null = null;
 
-      return { spin: spin!, voucher, created: true };
+      return { spin: spin!, voucher, created: true, streak, streakBonus };
     });
   }
 

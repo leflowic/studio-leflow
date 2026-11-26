@@ -47,8 +47,8 @@ export async function getClipSlice(clipUrl: string, startSeconds: number): Promi
   });
 
   if (slice.length < 1000) throw new Error("Slice too short - clip start beyond the end of the song?");
-  // keep only the current day's slice (and maybe the previous one)
-  if (cache.size >= 2) cache.delete(cache.keys().next().value!);
+  // today's slice plus a few archive (practice) slices; oldest entry goes first
+  if (cache.size >= 12) cache.delete(cache.keys().next().value!);
   cache.set(key, slice);
   return slice;
 }

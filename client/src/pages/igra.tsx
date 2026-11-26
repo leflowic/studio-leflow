@@ -654,11 +654,13 @@ export default function IgraPage() {
                       <Trophy className="w-4 h-4 text-yellow-500" />
                       <span className="font-bold text-sm">Nedeljni leaderboard</span>
                     </div>
-                    {leaderboardData.prize && (
+                    {leaderboardData.prize ? (
                       <span className="text-[11px] text-muted-foreground bg-muted/60 rounded-full px-2.5 py-1 font-medium">
                         Nagrada: {leaderboardData.prize.prizeDescription}
                       </span>
-                    )}
+                    ) : leaderboardData.coinRewards?.length ? (
+                      <span className="text-[11px] text-muted-foreground font-mono">Top 3: {leaderboardData.coinRewards.join(" / ")} SC</span>
+                    ) : null}
                   </div>
                   <div className="p-3">
                     {!leaderboardData.leaderboard?.length ? (
@@ -725,6 +727,13 @@ export default function IgraPage() {
                   Leaderboard se učitava...
                 </div>
               )}
+              <Link href="/igra/arhiva" className="mt-3 flex items-center justify-between gap-3 rounded-2xl border border-border/60 bg-card px-5 py-4 hover:border-primary/40 transition-colors">
+                <span>
+                  <span className="block text-sm font-medium">Vežbaj na starim pesmama</span>
+                  <span className="block text-xs text-muted-foreground">Arhiva prethodnih dana - bez bodova, za zabavu</span>
+                </span>
+                <ArrowRight className="w-4 h-4 text-muted-foreground" />
+              </Link>
             </div>
           </div>
 

@@ -74,6 +74,8 @@ export const users = pgTable("users", {
   usernameLastChanged: timestamp("username_last_changed"),
   avatarUrl: text("avatar_url"),
   avatarFrameUntil: timestamp("avatar_frame_until"), // Studio Coins shop: oak ring around the avatar until this time
+  notificationPrefs: json("notification_prefs").$type<Record<string, boolean>>(), // per-category opt-outs (see NOTIFICATION_CATEGORIES); missing key = on
+  referralCode: text("referral_code").unique(), // "Pozovi prijatelja" link code, created on first request
   lastSeen: timestamp("last_seen"),
   isVerifiedArtist: boolean("is_verified_artist").notNull().default(false),
   availableForCollab: boolean("available_for_collab").notNull().default(false),
@@ -1258,7 +1260,8 @@ export const coinLedger = pgTable("coin_ledger", {
   createdAt: timestamp("created_at").defaultNow().notNull(),
 }, (table) => ({
   userIdx: index("coin_ledger_user_idx").on(table.userId),
-  earnUnique: uniqueIndex("coin_ledger_earn_unique").on(table.reason, table.refId).where(sql`reason IN ('spin', 'game') AND ref_id IS NOT NULL`),
+  // one payout per (reason, event): spin id, guess id, testimonial id, referral id, leaderboard week+place...
+  refUnique: uniqueIndex("coin_ledger_ref_unique").on(table.reason, table.refId).where(sql`ref_id IS NOT NULL`),
 }));
 
 export type CoinLedgerEntry = typeof coinLedger.$inferSelect;
@@ -1294,3 +1297,35 @@ export const shopPurchases = pgTable("shop_purchases", {
 }));
 
 export type ShopPurchase = typeof shopPurchases.$inferSelect;
+
+// "Pozovi prijatelja": invitee claims the inviter's code right after signing up;
+// both get coins once the invitee has been active on 3 different days
+// (server/engagement-jobs.ts). Same-network pairs are blocked, not paid.
+export const referrals = pgTable("referrals", {
+  id: serial("id").primaryKey(),
+  inviterId: integer("inviter_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  inviteeId: integer("invitee_id").notNull().unique().references(() => users.id, { onDelete: "cascade" }),
+  status: text("status").notNull().default("pending"), // pending | rewarded | blocked | capped
+  claimIp: text("claim_ip"),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  rewardedAt: timestamp("rewarded_at"),
+}, (table) => ({
+  inviterIdx: index("referrals_inviter_idx").on(table.inviterId),
+}));
+
+export type Referral = typeof referrals.$inferSelect;
+
+// Notification categories a user can switch off in Podešavanja (push + the
+// weekly email). Keep labels user-facing Serbian.
+export const NOTIFICATION_CATEGORIES = [
+  { key: "messages", label: "Poruke", desc: "Kad ti neko pošalje poruku." },
+  { key: "community", label: "Zajednica", desc: "Lajkovi, komentari i pominjanja na tvojim objavama." },
+  { key: "jobs", label: "Moja pesma", desc: "Kad tvoja pesma pređe u sledeću fazu u studiju." },
+  { key: "game", label: "Pogodi Pesmu", desc: "Podsetnik pred početak dnevne igre." },
+  { key: "spin", label: "Ploča dana", desc: "Uveče, ako imaš niz i još nisi zavrteo ploču." },
+  { key: "challenge", label: "Izazov meseca", desc: "Nova tema i podsetnik dan pre roka." },
+  { key: "rewards", label: "Nagrade i coini", desc: "Kad dobiješ coine, nov rang ili nagradu sa tabele." },
+  { key: "weekly_report", label: "Nedeljni izveštaj", desc: "Ponedeljkom: koliko je ljudi otvorilo tvoje smart linkove (email i obaveštenje)." },
+] as const;
+
+export type NotificationCategory = (typeof NOTIFICATION_CATEGORIES)[number]["key"];

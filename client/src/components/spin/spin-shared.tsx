@@ -12,7 +12,7 @@ export type Reward =
 export type SpinResult = { reward: Reward; title: string; detail: string; voucher: { code: string; expiresAt: string } | null };
 export type SpinToday =
   | { enabled: false }
-  | { enabled: true; date: string; spun: boolean; result: SpinResult | null; balance: number; shopEnabled: boolean };
+  | { enabled: true; date: string; spun: boolean; result: SpinResult | null; balance: number; shopEnabled: boolean; streak: number; streakEvery: number; streakCoins: number };
 
 export const COIN_AMOUNT: Partial<Record<Reward, number>> = { coins_5: 5, coins_10: 10, coins_25: 25, coins_50: 50, coins_100: 100 };
 export const isCoin = (r: Reward) => r in COIN_AMOUNT;

@@ -15,7 +15,7 @@ import {
 import type { SmartLink } from "@shared/schema";
 
 // Owner sees unique (per-IP) numbers only - never raw click totals (owner's preference).
-type OwnedSmartLink = SmartLink & { uniqueClicks: number; uniqueByPlatform?: Record<string, number> };
+type OwnedSmartLink = SmartLink & { uniqueClicks: number; uniqueByPlatform?: Record<string, number>; weekUnique?: number; prevWeekUnique?: number };
 
 type FormState = {
   title: string; artist: string; coverUrl: string;
@@ -256,6 +256,15 @@ function LinkItem({ link, onEdit }: { link: OwnedSmartLink; onEdit: () => void }
         <div className="text-right shrink-0">
           <p className="text-2xl font-semibold font-mono tabular-nums leading-none">{nfSr.format(link.uniqueClicks)}</p>
           <p className="text-xs text-muted-foreground mt-1">{pluralPosetilac(link.uniqueClicks)}</p>
+          {typeof link.weekUnique === "number" && (
+            <p className="text-xs text-muted-foreground mt-2">
+              Ove nedelje <span className="font-mono text-foreground">{nfSr.format(link.weekUnique)}</span>
+              {(link.prevWeekUnique ?? 0) > 0 && (() => {
+                const diff = link.weekUnique! - link.prevWeekUnique!;
+                return <span className={`font-mono ml-1 ${diff >= 0 ? "text-primary" : ""}`}>{diff >= 0 ? "+" : ""}{diff}</span>;
+              })()}
+            </p>
+          )}
         </div>
       </div>
 

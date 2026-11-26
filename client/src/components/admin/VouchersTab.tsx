@@ -10,7 +10,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { EmptyState } from "@/components/ui/empty-state";
 import { Ticket, Search } from "lucide-react";
 import { format } from "date-fns";
-import { ShopCatalogue, CoinGrant } from "./ShopAdmin";
+import { ShopCatalogue, CoinGrant, EconomyOverview } from "./ShopAdmin";
 
 type AdminVoucher = {
   id: number; code: string; type: string; title?: string | null; userId: number; username: string; email: string;
@@ -92,6 +92,8 @@ export function VouchersTab() {
       </div>
 
       {user?.role === "admin" && <SpinSwitches />}
+
+      <EconomyOverview />
 
       <ShopCatalogue canEdit={user?.role === "admin"} />
 

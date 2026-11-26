@@ -22,6 +22,7 @@ import { InstallPrompt } from "@/components/pwa/InstallPrompt";
 import { WhatsAppButton } from "@/components/WhatsAppButton";
 import { CookieConsent } from "@/components/CookieConsent";
 import { DebugConsole } from "@/components/admin/DebugConsole";
+import { ReferralClaimer } from "@/components/referral/Referral";
 
 class ChunkErrorBoundary extends Component<{ children: ReactNode }, { failed: boolean; errorMsg: string }> {
   state = { failed: false, errorMsg: "" };
@@ -100,6 +101,7 @@ const MojePesmePage = lazy(() => import("@/pages/moje-pesme"));
 const ZajednicaPage = lazy(() => import("@/pages/zajednica"));
 const NotFoundPage = lazy(() => import("@/pages/not-found"));
 const IgraPage = lazy(() => import("@/pages/igra"));
+const IgraArhivaPage = lazy(() => import("@/pages/igra-arhiva"));
 const PlocaPage = lazy(() => import("@/pages/ploca"));
 const ProdavnicaPage = lazy(() => import("@/pages/prodavnica"));
 const VerifyLicensePage = lazy(() => import("@/pages/verify-license"));
@@ -243,6 +245,7 @@ function Router() {
                 <Route path="/prodavnica"><ProdavnicaPage /></Route>
                 <ProtectedRoute path="/u/:username" component={() => <UserProfilePage />} />
                 <ProtectedRoute path="/igra" component={() => <IgraPage />} />
+                <ProtectedRoute path="/igra/arhiva" component={() => <IgraArhivaPage />} />
                 <ProtectedRoute path="/zajednica" component={() => <ZajednicaPage />} />
                 <ProtectedRoute path="/giveaway" component={() => <GiveawayPage />} />
                 <ProtectedRoute path="/moje-pesme" component={() => <MojePesmePage />} />
@@ -284,6 +287,7 @@ function App() {
                     <WhatsAppButton />
                     <CookieConsent />
                     <DebugConsole />
+                    <ReferralClaimer />
                     <Router />
                   </TooltipProvider>
                 </EditModeProvider>

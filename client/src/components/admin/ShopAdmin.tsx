@@ -196,3 +196,88 @@ export function CoinGrant() {
     </section>
   );
 }
+
+// ─── Economy overview ─────────────────────────────────────────────────────────
+// Is the shop costing more than it brings? Coins issued vs spent this month,
+// vouchers bought vs actually redeemed (= real studio work), referrals.
+
+type EconomyStats = {
+  month: string;
+  issuedByReason: Record<string, number>;
+  spentMonth: number;
+  outstanding: number;
+  holders: number;
+  purchasesMonth: Array<{ title: string; count: number; sc: number }>;
+  vouchers: { issuedMonth: number; redeemedMonth: number; issuedAll: number; redeemedAll: number; open: number; expired: number };
+  referrals: Record<string, number>;
+};
+
+const REASON_LABEL: Record<string, string> = {
+  spin: "Ploča dana", spin_streak: "Bonus za niz", game: "Tačni odgovori", leaderboard: "Nedeljna tabela",
+  testimonial: "Utisci", referral_inviter: "Pozivi (pozivalac)", referral_invitee: "Pozivi (novi član)", admin: "Ručno dodeljeno",
+};
+
+export function EconomyOverview() {
+  const { data } = useQuery<EconomyStats>({ queryKey: ["/api/admin/shop/stats"], refetchInterval: 5 * 60_000 });
+  if (!data) return null;
+  const issued = Object.values(data.issuedByReason).reduce((a, b) => a + b, 0);
+  const v = data.vouchers;
+  const tiles = [
+    { label: "Podeljeno ovog meseca", value: `${nf.format(issued)} SC` },
+    { label: "Potrošeno ovog meseca", value: `${nf.format(data.spentMonth)} SC` },
+    { label: "U novčanicima ukupno", value: `${nf.format(data.outstanding)} SC`, sub: `${data.holders} korisnika` },
+    { label: "Vaučeri iskorišćeni", value: `${v.redeemedAll} / ${v.issuedAll}`, sub: `${v.open} čeka · ${v.expired} istekao` },
+  ];
+  const monthLabel = data.month.split("-").reverse().join(".");
+  return (
+    <section className="space-y-3">
+      <div>
+        <h3 className="font-semibold">Pregled za {monthLabel}.</h3>
+        <p className="text-xs text-muted-foreground mt-1">"Iskorišćen" vaučer znači da je klijent došao u studio - to je stvarni posao koji je prodavnica donela.</p>
+      </div>
+      <div className="grid grid-cols-2 lg:grid-cols-4 rounded-2xl border border-border bg-card divide-x divide-y lg:divide-y-0 divide-border overflow-hidden">
+        {tiles.map(t => (
+          <div key={t.label} className="px-5 py-4">
+            <p className="font-mono text-xl font-semibold">{t.value}</p>
+            <p className="text-xs text-muted-foreground mt-1">{t.label}</p>
+            {t.sub && <p className="text-[11px] text-muted-foreground/80 mt-0.5">{t.sub}</p>}
+          </div>
+        ))}
+      </div>
+      <div className="grid md:grid-cols-2 gap-3">
+        <div className="rounded-2xl border border-border bg-card p-5">
+          <p className="text-sm font-medium mb-3">Odakle su coini ovog meseca</p>
+          {issued === 0 ? <p className="text-xs text-muted-foreground">Još ništa.</p> : (
+            <ul className="space-y-2">
+              {Object.entries(data.issuedByReason).sort((a, b) => b[1] - a[1]).map(([k, n]) => (
+                <li key={k} className="grid grid-cols-[9rem_minmax(0,1fr)_5rem] items-center gap-3 text-xs">
+                  <span className="truncate">{REASON_LABEL[k] ?? k}</span>
+                  <span className="h-1.5 rounded-full bg-muted overflow-hidden"><span className="block h-full bg-primary rounded-full" style={{ width: `${(n / issued) * 100}%` }} /></span>
+                  <span className="font-mono text-right">{nf.format(n)}</span>
+                </li>
+              ))}
+            </ul>
+          )}
+        </div>
+        <div className="rounded-2xl border border-border bg-card p-5">
+          <p className="text-sm font-medium mb-3">Kupljeno ovog meseca</p>
+          {!data.purchasesMonth.length ? <p className="text-xs text-muted-foreground">Još ništa.</p> : (
+            <ul className="space-y-2 text-xs">
+              {data.purchasesMonth.map(p => (
+                <li key={p.title} className="flex justify-between gap-3">
+                  <span className="truncate">{p.title}</span>
+                  <span className="font-mono shrink-0">{p.count} × · {nf.format(p.sc)} SC</span>
+                </li>
+              ))}
+            </ul>
+          )}
+          <p className="text-xs text-muted-foreground mt-4">
+            Pozivi: <span className="font-mono text-foreground">{(data.referrals.rewarded ?? 0) + (data.referrals.capped ?? 0)}</span> nagrađeno
+            {" · "}<span className="font-mono text-foreground">{data.referrals.pending ?? 0}</span> čeka
+            {" · "}<span className="font-mono text-foreground">{data.referrals.blocked ?? 0}</span> blokirano (ista mreža)
+          </p>
+        </div>
+      </div>
+    </section>
+  );
+}

@@ -368,3 +368,53 @@ export function newsletterCampaignEmail(contentHtml: string, unsubscribeUrl: str
     footerNote: 'Ovaj email ste dobili jer ste se prijavili na newsletter Studio LeFlow.',
   });
 }
+
+// ─── 11. Weekly smart link report (owners) ───────────────────────────────────
+// Sent Monday mornings by server/engagement-jobs.ts to users who own a smart
+// link with at least one visitor last week. Numbers are unique visitors (one
+// per network), the same metric the owner sees on the dashboard.
+const PLATFORM_NAME: Record<string, string> = {
+  spotify: 'Spotify', youtube: 'YouTube', apple_music: 'Apple Music', soundcloud: 'SoundCloud', tidal: 'Tidal', deezer: 'Deezer',
+};
+
+function posetilaca(n: number): string {
+  const m10 = n % 10, m100 = n % 100;
+  if (m10 === 1 && m100 !== 11) return 'posetilac';
+  if (m10 >= 2 && m10 <= 4 && (m100 < 12 || m100 > 14)) return 'posetioca';
+  return 'posetilaca';
+}
+
+export function weeklySmartLinkReportEmail(data: {
+  username: string;
+  links: Array<{ title: string; slug: string; thisWeek: number; lastWeek: number; topPlatform: string | null }>;
+}): string {
+  const sorted = [...data.links].sort((a, b) => b.thisWeek - a.thisWeek);
+  const total = sorted.reduce((a, l) => a + l.thisWeek, 0);
+  const rows = sorted.map(l => {
+    const diff = l.thisWeek - l.lastWeek;
+    const trend = l.lastWeek === 0 ? (l.thisWeek > 0 ? 'prva nedelja sa posetama' : '') : `${diff >= 0 ? '+' : ''}${diff} u odnosu na prošlu nedelju`;
+    const top = l.topPlatform ? `, najviše preko ${PLATFORM_NAME[l.topPlatform] ?? l.topPlatform}` : '';
+    return `
+      <tr>
+        <td style="padding:10px 0;border-bottom:1px solid ${LINE};">
+          <div class="ink" style="color:${INK};font-size:15px;font-weight:600;">${esc(l.title)}</div>
+          <div class="muted" style="color:${MUTED};font-size:13px;line-height:1.5;">${esc(trend)}${esc(top)}</div>
+        </td>
+        <td align="right" style="padding:10px 0 10px 16px;border-bottom:1px solid ${LINE};white-space:nowrap;">
+          <span class="ink" style="color:${INK};font-size:18px;font-weight:700;">${l.thisWeek}</span>
+          <span class="muted" style="color:${MUTED};font-size:12px;"> ${posetilaca(l.thisWeek)}</span>
+        </td>
+      </tr>`;
+  }).join('');
+  return wrap(`
+    ${heading('Tvoja muzika prošle nedelje')}
+    ${paragraph(`Ćao ${esc(data.username)}, tvoji smart linkovi su prošle nedelje imali ${total} ${posetilaca(total)}.`)}
+    <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="margin:4px 0 22px;border-collapse:collapse;">${rows}</table>
+    ${button('Pogledaj detalje', `${BASE_URL}/dashboard`)}
+    ${small(`Brojimo jednu posetu po mreži, pa je broj realan. Izveštaj možeš da isključiš u ${link(`${BASE_URL}/settings#obavestenja`, 'Podešavanjima')}.`)}
+    ${signoff()}
+  `, {
+    preheader: `Prošle nedelje: ${total} ${posetilaca(total)} na tvojim linkovima.`,
+    footerNote: 'Ovaj email dobijaš jer imaš smart link na Studio LeFlow.',
+  });
+}

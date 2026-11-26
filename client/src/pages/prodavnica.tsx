@@ -8,8 +8,9 @@ import { SEO } from "@/components/SEO";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { MyVouchersPanel } from "@/components/dashboard/MyVouchersPanel";
+import { InviteFriendCard } from "@/components/referral/Referral";
 import { Modal } from "@/components/admin/AdminModal";
-import { Coins, Ticket, Sparkles, Disc, Gamepad2, Copy, Check, Loader2, X, ArrowRight } from "lucide-react";
+import { Coins, Ticket, Sparkles, Disc, Gamepad2, Copy, Check, Loader2, X, ArrowRight, MessageSquareHeart, Trophy } from "lucide-react";
 
 // Studio Coins shop (/prodavnica). Coins are earned on the Ploča dana and in
 // Pogodi Pesmu, never bought. Every purchase is validated server-side
@@ -155,7 +156,25 @@ export default function ProdavnicaPage() {
             </span>
             <ArrowRight className="w-4 h-4 text-muted-foreground group-hover:text-primary" />
           </Link>
+          <Link href="/igra" className="group rounded-2xl border border-border/60 bg-card p-4 flex items-center gap-3 hover:border-primary/40 transition-colors">
+            <Trophy className="w-5 h-5 text-primary shrink-0" />
+            <span className="flex-1 min-w-0">
+              <span className="block text-sm font-medium">Nedeljna tabela</span>
+              <span className="block text-xs text-muted-foreground">Prva tri mesta u igri: 100, 50 i 25 SC svakog ponedeljka</span>
+            </span>
+            <ArrowRight className="w-4 h-4 text-muted-foreground group-hover:text-primary" />
+          </Link>
+          <Link href="/dashboard" className="group rounded-2xl border border-border/60 bg-card p-4 flex items-center gap-3 hover:border-primary/40 transition-colors">
+            <MessageSquareHeart className="w-5 h-5 text-primary shrink-0" />
+            <span className="flex-1 min-w-0">
+              <span className="block text-sm font-medium">Utisak o saradnji</span>
+              <span className="block text-xs text-muted-foreground">+100 SC kad studio odobri tvoj utisak o isporučenoj pesmi</span>
+            </span>
+            <ArrowRight className="w-4 h-4 text-muted-foreground group-hover:text-primary" />
+          </Link>
         </section>
+
+        {verified && <InviteFriendCard />}
 
         {/* Items */}
         <section aria-labelledby="items-title" className="space-y-4">

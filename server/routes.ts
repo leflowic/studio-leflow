@@ -5,6 +5,8 @@ import { wsHelpers, notifyUser, broadcastToUser, getOnlineUsersSnapshot } from "
 import { getActivityPoints, rankForPoints, RANK_THRESHOLDS, POINT_RULES, RANK_PERKS, perksFor } from "./activity";
 import { getTrustedClientIp } from "./client-ip";
 import { getClipSlice } from "./game-clip";
+import { TESTIMONIAL_COINS, REFERRAL_COINS, REFERRAL_ACTIVE_DAYS, LEADERBOARD_COINS, SPIN_STREAK_DAYS, SPIN_STREAK_COINS } from "./coins";
+import { NOTIFICATION_CATEGORIES } from "@shared/schema";
 import { SPIN_REWARDS, COIN_REWARDS, STUDIO_MIN_ACCOUNT_DAYS, SETTING_SPIN_ENABLED, SETTING_SHOP_ENABLED, SETTING_SPIN_IP_LIMIT, SETTING_GAME_IP_LIMIT, getSpinIp, type SpinReward } from "./spin";
 import { getVapidPublicKey, saveSubscription, removeSubscription, hasSubscription, sendPushToUser, sendPushToUserIfOffline, sendPushToAll } from "./push";
 import { insertContactSubmissionSchema, insertCmsContentSchema, insertCmsMediaSchema, insertVideoSpotSchema, insertUserSongSchema, insertNewsletterSubscriberSchema, insertInvoiceSchema, insertCommunityMessageSchema, insertSiteAnnouncementSchema, mixMasterContractDataSchema, copyrightTransferContractDataSchema, instrumentalSaleContractDataSchema, insertSmartLinkSchema, insertStudioJobSchema, JOB_STAGES, insertNewsArticleSchema, insertRightsProtectionSchema, insertTestimonialSchema, upsertJobBriefSchema, type CmsContent, type CmsMedia, type VideoSpot, type UserSong } from "@shared/schema";
@@ -1359,7 +1361,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       ]);
       res.json({ success: true });
       if (data.theme && data.theme !== previous?.value) {
-        sendPushToAll({ title: "Novi izazov meseca", body: data.theme, url: "/giveaway", tag: "challenge" });
+        sendPushToAll({ title: "Novi izazov meseca", body: data.theme, url: "/giveaway", tag: "challenge", category: "challenge" });
       }
     } catch (error: any) {
       if (error.name === "ZodError") return res.status(400).json({ error: error.errors[0]?.message ?? "Nevažeći podaci" });
@@ -2439,7 +2441,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
       await saveSubscription(req.jwtUser!.id, sub);
       res.json({ success: true });
-      sendPushToUser(req.jwtUser!.id, { title: "Obaveštenja su uključena", body: "Javićemo ti za igru, nove pesme i tvoje poruke.", url: "/", tag: "push-welcome" });
+      sendPushToUser(req.jwtUser!.id, { title: "Obaveštenja su uključena", body: "Javićemo ti za igru, tvoje poruke i status tvoje pesme. Šta dobijaš, biraš u Podešavanjima.", url: "/", tag: "push-welcome" });
     } catch (e) {
       console.error("[Push] subscribe error:", e);
       res.status(500).json({ error: "Greška na serveru" });
@@ -2626,6 +2628,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         body: preview,
         url: "/inbox",
         tag: `dm-${req.jwtUser!.id}`,
+        category: "messages",
       });
       
       res.json(message);
@@ -3564,7 +3567,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           isporuceno: "je isporučena",
         };
         const phrase = STAGE_PUSH[stage];
-        if (phrase) sendPushToUser(job.userId, { title: "Gde je moja pesma", body: `"${job.title}" ${phrase}.`, url: "/dashboard", tag: `job-${jobId}` });
+        if (phrase) sendPushToUser(job.userId, { title: "Gde je moja pesma", body: `"${job.title}" ${phrase}.`, url: "/dashboard", tag: `job-${jobId}`, category: "jobs" });
       }
 
       // Auto review-request: fires once, the first time a job is delivered -
@@ -3670,6 +3673,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(400).json({ error: "Nevažeći status" });
       }
       await storage.updateTestimonialStatus(id, status);
+      // Studio Coins for an approved testimonial (paid once; never tied to a Google review)
+      if (status === "approved") {
+        const paidTo = await storage.awardTestimonialCoins(id);
+        if (paidTo) {
+          notifyUser(paidTo, `+${TESTIMONIAL_COINS} SC`, "Hvala na utisku! Coini su u tvom novčaniku.");
+          sendPushToUser(paidTo, { title: `+${TESTIMONIAL_COINS} Studio Coins`, body: "Hvala na utisku! Coini su u tvom novčaniku.", url: "/prodavnica", tag: "coins", category: "rewards" });
+        }
+      }
       res.json({ success: true });
     } catch {
       res.status(500).json({ error: "Greška na serveru" });
@@ -4243,6 +4254,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
         result: spinPayload(spin, voucher),
         balance: await storage.getCoinBalance(req.jwtUser!.id),
         shopEnabled,
+        streak: await storage.getSpinStreak(req.jwtUser!.id, today),
+        streakEvery: SPIN_STREAK_DAYS,
+        streakCoins: SPIN_STREAK_COINS,
       });
     } catch (e) {
       console.error("[Spin] today error:", e);
@@ -4264,7 +4278,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(429).json({ error: "Sa ovog interneta je ploča danas već zavrtena (možda neko iz iste kuće). Pokušaj ponovo sutra." });
       }
       const { spin, voucher, created } = outcome;
-      res.json({ created, result: spinPayload(spin, voucher), coins: COIN_REWARDS[spin.reward as SpinReward] ?? 0, balance: await storage.getCoinBalance(userId) });
+      res.json({
+        created, result: spinPayload(spin, voucher),
+        coins: COIN_REWARDS[spin.reward as SpinReward] ?? 0,
+        streak: outcome.streak ?? await storage.getSpinStreak(userId, today),
+        streakBonus: outcome.streakBonus ?? 0,
+        balance: await storage.getCoinBalance(userId),
+      });
     } catch (e) {
       console.error("[Spin] error:", e);
       res.status(500).json({ error: "Ploča trenutno ne radi. Pokušajte ponovo za minut." });
@@ -4398,6 +4418,103 @@ export async function registerRoutes(app: Express): Promise<Server> {
       if (!user) return res.status(404).json({ error: "Korisnik nije pronađen" });
       await storage.addCoins(user.id, amount, "admin", note);
       res.json({ username: user.username, balance: await storage.getCoinBalance(user.id) });
+    } catch { res.status(500).json({ error: "Greška na serveru" }); }
+  });
+
+  // ─── Notification preferences (Podešavanja → Obaveštenja) ────────────────
+  app.get("/api/me/notification-prefs", requireVerifiedEmail, async (req, res) => {
+    try {
+      const prefs = await storage.getNotificationPrefs(req.jwtUser!.id);
+      res.json({ categories: NOTIFICATION_CATEGORIES, prefs: Object.fromEntries(NOTIFICATION_CATEGORIES.map(c => [c.key, prefs[c.key] !== false])) });
+    } catch { res.status(500).json({ error: "Greška na serveru" }); }
+  });
+
+  app.put("/api/me/notification-prefs", requireVerifiedEmail, async (req, res) => {
+    try {
+      const body = req.body?.prefs ?? {};
+      const current = await storage.getNotificationPrefs(req.jwtUser!.id);
+      for (const c of NOTIFICATION_CATEGORIES) if (typeof body[c.key] === "boolean") current[c.key] = body[c.key];
+      await storage.setNotificationPrefs(req.jwtUser!.id, current);
+      res.json({ prefs: Object.fromEntries(NOTIFICATION_CATEGORIES.map(c => [c.key, current[c.key] !== false])) });
+    } catch { res.status(500).json({ error: "Greška na serveru" }); }
+  });
+
+  // ─── Pozovi prijatelja ────────────────────────────────────────────────────
+  app.get("/api/me/referral", requireVerifiedEmail, async (req, res) => {
+    try {
+      const code = await storage.getOrCreateReferralCode(req.jwtUser!.id);
+      const base = process.env.APP_URL || "https://studioleflow.com";
+      res.json({ code, link: `${base.replace(/\/$/, "")}/registracija?ref=${code}`, coins: REFERRAL_COINS, activeDays: REFERRAL_ACTIVE_DAYS, ...(await storage.getReferralStats(req.jwtUser!.id)) });
+    } catch (e) {
+      console.error("[Referral] get error:", e);
+      res.status(500).json({ error: "Greška na serveru" });
+    }
+  });
+
+  // Called by the client right after the first login of a fresh account that
+  // arrived through someone's ?ref= link (stored in localStorage meanwhile).
+  app.post("/api/me/referral/claim", requireVerifiedEmail, async (req, res) => {
+    try {
+      const code = String(req.body?.code ?? "").trim().toLowerCase();
+      if (!/^[a-z0-9]{4,12}$/.test(code)) return res.status(400).json({ error: "Nevažeći kod" });
+      const r = await storage.claimReferral(req.jwtUser!.id, code, getTrustedClientIp(req));
+      res.json({ result: r });
+    } catch (e) {
+      console.error("[Referral] claim error:", e);
+      res.status(500).json({ error: "Greška na serveru" });
+    }
+  });
+
+  // ─── Admin: economy overview ──────────────────────────────────────────────
+  app.get("/api/admin/shop/stats", requireRole("producer"), async (_req, res) => {
+    try {
+      res.json(await storage.getEconomyStats(belgradeToday().slice(0, 7)));
+    } catch (e) {
+      console.error("[Shop] stats error:", e);
+      res.status(500).json({ error: "Greška na serveru" });
+    }
+  });
+
+  // ─── Pogodi Pesmu archive (practice: no points, no coins) ─────────────────
+  const archiveClipCounts = new Map<string, number>();
+  const archiveLimiter = rateLimit({ windowMs: 10 * 60 * 1000, max: 60, message: { error: "Previše pokušaja. Pokušajte ponovo za nekoliko minuta." }, standardHeaders: true, legacyHeaders: false });
+  const isPastDate = (d: string) => /^\d{4}-\d{2}-\d{2}$/.test(d) && d < belgradeToday();
+
+  app.get("/api/game/archive", requireVerifiedEmail, async (req, res) => {
+    try {
+      const rows = await storage.getPastChallenges(belgradeToday(), req.jwtUser!.id);
+      res.json(rows.filter(r => r.hasClip).map((r, i, arr) => ({ date: r.challengeDate, number: arr.length - i })));
+    } catch { res.status(500).json({ error: "Greška na serveru" }); }
+  });
+
+  app.get("/api/game/archive/:date/clip", requireVerifiedEmail, async (req, res) => {
+    try {
+      const date = String(req.params.date ?? "");
+      if (!isPastDate(date)) return res.status(404).send("Not found");
+      const key = `${req.jwtUser!.id}_${belgradeToday()}`;
+      const n = archiveClipCounts.get(key) ?? 0;
+      if (n >= 60) return res.status(429).send("Limit reached");
+      archiveClipCounts.set(key, n + 1);
+      const ch = await storage.getChallengeByDate(date);
+      if (!ch?.clipUrl) return res.status(404).send("No clip");
+      const slice = await getClipSlice(ch.clipUrl, ch.clipStartSeconds ?? 0);
+      res.setHeader("Content-Type", "audio/mpeg");
+      res.setHeader("Cache-Control", "no-store");
+      res.send(slice);
+    } catch { res.status(500).send("Server error"); }
+  });
+
+  app.post("/api/game/archive/:date/guess", archiveLimiter, requireVerifiedEmail, async (req, res) => {
+    try {
+      const date = String(req.params.date ?? "");
+      const answer = String(req.body?.answer ?? "").trim();
+      if (!isPastDate(date)) return res.status(404).json({ error: "Igra nije pronađena" });
+      if (!answer || answer.length > 200) return res.status(400).json({ error: "Upišite odgovor" });
+      const ch = await storage.getChallengeByDate(date);
+      if (!ch) return res.status(404).json({ error: "Igra nije pronađena" });
+      const variants = String(ch.correctAnswers).split(",").map((v: string) => v.trim()).filter(Boolean);
+      const correct = variants.some((v: string) => v.toLowerCase() === answer.toLowerCase());
+      res.json({ correct, answer: variants[0] ?? "" });
     } catch { res.status(500).json({ error: "Greška na serveru" }); }
   });
 
@@ -4604,7 +4721,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         storage.getWeeklyLeaderboard(weekStart),
         storage.getWeeklyPrize(weekStart),
       ]);
-      res.json({ weekStart, leaderboard, prize });
+      res.json({ weekStart, leaderboard, prize, coinRewards: LEADERBOARD_COINS });
     } catch (e) {
       res.status(500).json({ error: "Greška na serveru" });
     }
@@ -5244,7 +5361,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
             message: `${liker?.username ?? "Neko"} je lajkovao tvoju objavu`,
           });
           broadcastToUser(post.userId, { type: "feed_notification", notification: { ...notif, fromUsername: liker?.username ?? null, fromAvatarUrl: liker?.avatarUrl ?? null } });
-          sendPushToUserIfOffline(post.userId, { title: "Zajednica", body: notif.message, url: "/zajednica", tag: `post-${postId}` });
+          sendPushToUserIfOffline(post.userId, { title: "Zajednica", body: notif.message, url: "/zajednica", tag: `post-${postId}`, category: "community" });
         }
       }
     } catch (e) {
@@ -5289,7 +5406,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           message: `${commenter?.username ?? "Neko"} je komentarisao tvoju objavu`,
         });
         broadcastToUser(post.userId, { type: "feed_notification", notification: { ...notif, fromUsername: commenter?.username ?? null, fromAvatarUrl: commenter?.avatarUrl ?? null } });
-        sendPushToUserIfOffline(post.userId, { title: "Zajednica", body: notif.message, url: "/zajednica", tag: `post-${postId}` });
+        sendPushToUserIfOffline(post.userId, { title: "Zajednica", body: notif.message, url: "/zajednica", tag: `post-${postId}`, category: "community" });
       }
       // Mentions: @username
       const mentions = [...content.matchAll(/@(\w+)/g)].map(m => m[1]);
@@ -5304,7 +5421,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
             message: `${commenter?.username ?? "Neko"} te pomenuo u komentaru`,
           });
           broadcastToUser(mentioned.id, { type: "feed_notification", notification: { ...notif, fromUsername: commenter?.username ?? null, fromAvatarUrl: commenter?.avatarUrl ?? null } });
-          sendPushToUserIfOffline(mentioned.id, { title: "Zajednica", body: notif.message, url: "/zajednica", tag: `post-${postId}` });
+          sendPushToUserIfOffline(mentioned.id, { title: "Zajednica", body: notif.message, url: "/zajednica", tag: `post-${postId}`, category: "community" });
         }
       }
     } catch (e) {

@@ -476,7 +476,25 @@ async function runMigrations() {
       );
     `);
     await clientSpin.query(`CREATE INDEX IF NOT EXISTS coin_ledger_user_idx ON coin_ledger(user_id);`);
-    await clientSpin.query(`CREATE UNIQUE INDEX IF NOT EXISTS coin_ledger_earn_unique ON coin_ledger(reason, ref_id) WHERE reason IN ('spin', 'game') AND ref_id IS NOT NULL;`);
+    // one payout per (reason, event) for every reason that carries a ref_id (replaces the spin/game-only index)
+    await clientSpin.query(`DROP INDEX IF EXISTS coin_ledger_earn_unique;`);
+    await clientSpin.query(`CREATE UNIQUE INDEX IF NOT EXISTS coin_ledger_ref_unique ON coin_ledger(reason, ref_id) WHERE ref_id IS NOT NULL;`);
+    // notification preferences + referrals
+    await clientSpin.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS notification_prefs JSON;`);
+    await clientSpin.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS referral_code TEXT;`);
+    await clientSpin.query(`CREATE UNIQUE INDEX IF NOT EXISTS users_referral_code_unique ON users(referral_code) WHERE referral_code IS NOT NULL;`);
+    await clientSpin.query(`
+      CREATE TABLE IF NOT EXISTS referrals (
+        id SERIAL PRIMARY KEY,
+        inviter_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+        invitee_id INTEGER NOT NULL UNIQUE REFERENCES users(id) ON DELETE CASCADE,
+        status TEXT NOT NULL DEFAULT 'pending',
+        claim_ip TEXT,
+        created_at TIMESTAMP NOT NULL DEFAULT NOW(),
+        rewarded_at TIMESTAMP
+      );
+    `);
+    await clientSpin.query(`CREATE INDEX IF NOT EXISTS referrals_inviter_idx ON referrals(inviter_id);`);
     await clientSpin.query(`
       CREATE TABLE IF NOT EXISTS shop_items (
         id SERIAL PRIMARY KEY,

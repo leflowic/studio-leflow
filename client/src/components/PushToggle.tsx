@@ -54,7 +54,7 @@ export function PushToggle({ variant = "row" }: { variant?: "row" | "compact" })
       <div>
         <p className="font-medium text-sm">Obaveštenja na telefonu</p>
         <p className="text-xs text-muted-foreground mt-0.5">
-          {hint ?? "Kad igra počinje, kad izađe nova pesma iz studija, kad ti neko piše i kad se tvoja pesma pomeri u sledeću fazu."}
+          {hint ?? "Kad igra počinje, kad ti neko piše, kad se tvoja pesma pomeri u sledeću fazu i kad dobiješ coine."}
         </p>
       </div>
       {button}

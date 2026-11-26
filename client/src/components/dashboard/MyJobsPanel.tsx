@@ -90,7 +90,7 @@ function TestimonialPrompt({ jobId }: { jobId: number }) {
         className="text-sm min-h-20"
       />
       <p className="text-[11px] text-muted-foreground">
-        Nakon odobrenja utisak može biti objavljen na sajtu, uz tvoje korisničko ime.
+        Nakon odobrenja utisak može biti objavljen na sajtu, uz tvoje korisničko ime. Za odobren utisak dobijaš 100 Studio Coins - važi i za kritiku, samo da je iskrena.
       </p>
       <div className="flex items-center gap-2">
         <Button

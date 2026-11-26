@@ -1,8 +1,8 @@
 import webpush from "web-push";
-import { eq, inArray } from "drizzle-orm";
+import { eq, inArray, sql } from "drizzle-orm";
 import { db } from "./db";
 import { storage } from "./storage";
-import { pushSubscriptions } from "@shared/schema";
+import { pushSubscriptions, users, type NotificationCategory } from "@shared/schema";
 import { wsHelpers } from "./websocket-helpers";
 
 // Web Push. VAPID keys are generated once on first startup and kept in the
@@ -15,7 +15,17 @@ export type PushPayload = {
   body: string;
   url?: string;   // where clicking the notification opens (same-origin path or absolute URL)
   tag?: string;   // same tag replaces an older notification instead of stacking
+  // Per-user opt-out bucket (Podešavanja → Obaveštenja). Without a category the
+  // push always goes out (e.g. the "push is on" confirmation).
+  category?: NotificationCategory;
 };
+
+/** True unless the user switched this category off in Podešavanja. */
+export async function wantsNotification(userId: number, category: NotificationCategory | undefined): Promise<boolean> {
+  if (!category) return true;
+  const [u] = await db.select({ prefs: users.notificationPrefs }).from(users).where(eq(users.id, userId));
+  return (u?.prefs as Record<string, boolean> | null | undefined)?.[category] !== false;
+}
 
 let publicKey: string | null = null;
 let ready = false;
@@ -88,6 +98,7 @@ async function deliver(rows: Array<typeof pushSubscriptions.$inferSelect>, paylo
 
 export async function sendPushToUser(userId: number, payload: PushPayload) {
   try {
+    if (!(await wantsNotification(userId, payload.category))) return;
     const rows = await db.select().from(pushSubscriptions).where(eq(pushSubscriptions.userId, userId));
     await deliver(rows, payload);
   } catch (e) {
@@ -106,7 +117,11 @@ export async function sendPushToUserIfOffline(userId: number, payload: PushPaylo
 
 export async function sendPushToAll(payload: PushPayload) {
   try {
-    const rows = await db.select().from(pushSubscriptions);
+    const rows = payload.category
+      ? (await db.select({ s: pushSubscriptions }).from(pushSubscriptions)
+          .innerJoin(users, eq(users.id, pushSubscriptions.userId))
+          .where(sql`COALESCE(${users.notificationPrefs}::json->>${payload.category}, 'true') <> 'false'`)).map(r => r.s)
+      : await db.select().from(pushSubscriptions);
     await deliver(rows, payload);
   } catch (e) {
     console.error("[Push] sendPushToAll error:", e);

@@ -21,6 +21,7 @@ import { FadeInWhenVisible } from "@/components/motion/FadeIn";
 import { PanelCard } from "@/components/ui/panel-card";
 import { Textarea } from "@/components/ui/textarea";
 import { PushToggle } from "@/components/PushToggle";
+import { NotificationPrefs } from "@/components/settings/NotificationPrefs";
 
 function PasswordInput({ id, value, onChange, placeholder, autoComplete, disabled }: {
   id: string; value: string; onChange: (v: string) => void;
@@ -460,6 +461,7 @@ export default function Settings() {
         <FadeInWhenVisible>
           <div id="obavestenja" className="rounded-2xl border border-border/60 bg-card p-6 scroll-mt-24">
             <PushToggle />
+            <NotificationPrefs />
           </div>
         </FadeInWhenVisible>
 

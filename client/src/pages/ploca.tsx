@@ -47,6 +47,9 @@ export default function PlocaPage() {
   const on = data && data.enabled ? data : null;
   const sectors = SECTORS;
   const [balance, setBalance] = useState<number | null>(null);
+  const [streak, setStreak] = useState<number>(0);
+  const [streakBonus, setStreakBonus] = useState(0);
+  useEffect(() => { if (on) setStreak(on.streak ?? 0); }, [on?.streak]); // eslint-disable-line react-hooks/exhaustive-deps
   useEffect(() => { if (on) setBalance(on.balance); }, [on?.balance]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const [rotation, setRotation] = useState(0);
@@ -71,8 +74,8 @@ export default function PlocaPage() {
   }, [on, spinning, jitter, sectors]);
 
   const spin = useMutation({
-    mutationFn: async () => (await apiRequest("POST", "/api/spin")).json() as Promise<{ created: boolean; result: SpinResult; coins: number; balance: number }>,
-    onSuccess: ({ result, balance: newBalance }) => {
+    mutationFn: async () => (await apiRequest("POST", "/api/spin")).json() as Promise<{ created: boolean; result: SpinResult; coins: number; balance: number; streak: number; streakBonus: number }>,
+    onSuccess: ({ result, balance: newBalance, streak: newStreak, streakBonus: bonus }) => {
       settledRef.current = true;
       setSpinning(true);
       const { rotation: next, index } = rotationFor(sectors, result.reward, rotation, reduced ? 1 : 6, jitter);
@@ -83,6 +86,8 @@ export default function PlocaPage() {
         setSpinning(false);
         setRevealed(result);
         setBalance(newBalance);
+        setStreak(newStreak ?? 0);
+        setStreakBonus(bonus ?? 0);
         playResult(result.reward);
         for (const k of ["/api/spin/today", "/api/spin/history", "/api/game/today", "/api/me/coins", "/api/shop"]) queryClient.invalidateQueries({ queryKey: [k] });
       }, reduced ? 700 : SPIN_MS + 150);
@@ -172,6 +177,9 @@ export default function PlocaPage() {
         {result.reward === "extra_listen" && <Link href="/igra"><Button variant="outline" className="mt-5">Idi na Pogodi Pesmu <ArrowRight className="w-4 h-4" /></Button></Link>}
         {result.reward === "feature_post" && <Link href="/zajednica"><Button variant="outline" className="mt-5">Pogledaj zajednicu <ArrowRight className="w-4 h-4" /></Button></Link>}
 
+        {streakBonus > 0 && (
+          <p className="mt-4 text-sm"><span className="font-mono text-primary">+{streakBonus} SC</span> bonus za {streak} dana zaredom!</p>
+        )}
         {countdown && <p className="text-sm text-muted-foreground mt-6">Nova ploča za <span className="font-mono text-foreground">{countdown}</span></p>}
         {isSuperAdmin && (
           <Button
@@ -219,6 +227,12 @@ export default function PlocaPage() {
                 <span className="text-muted-foreground">Novčanik</span>
                 <span className="font-mono font-semibold">{balance} SC</span>
               </Link>
+            )}
+            {verified && on && streak > 0 && (
+              <p className="text-xs text-muted-foreground mt-3">
+                Niz: <span className="font-mono text-foreground">{streak}</span> {streak === 1 ? "dan" : "dana"} zaredom
+                {" · "}još <span className="font-mono text-foreground">{on.streakEvery - (streak % on.streakEvery)}</span> {on.streakEvery - (streak % on.streakEvery) === 1 ? "dan" : "dana"} do bonusa od <span className="font-mono text-foreground">{on.streakCoins} SC</span>
+              </p>
             )}
             {panel}
           </div>
