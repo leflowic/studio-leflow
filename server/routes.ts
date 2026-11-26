@@ -48,6 +48,7 @@ import { generateMixMasterPDF, generateCopyrightTransferPDF, generateInstrumenta
 import { computeFingerprint, compareFingerprint } from "./audio-fingerprint";
 import rateLimit from "express-rate-limit";
 import { fileTypeFromBuffer } from "file-type";
+import { safeFetchHtml } from "./safe-fetch";
 
 // Rate limiters for security
 const loginRateLimiter = rateLimit({
@@ -57,6 +58,23 @@ const loginRateLimiter = rateLimit({
   standardHeaders: true,
   legacyHeaders: false,
 });
+
+// Private messages: per account, not per IP. Stops one account flooding someone.
+const messageRateLimiter = rateLimit({
+  windowMs: 60 * 1000,
+  max: 30,
+  keyGenerator: (req: any) => `msg:${req.jwtUser?.id ?? "anon"}`,
+  message: { error: "Šaljete poruke prebrzo. Sačekajte malo pa pokušajte ponovo." },
+  standardHeaders: true,
+  legacyHeaders: false,
+});
+
+function isOwnMessageImageUrl(url: string): boolean {
+  try {
+    const u = new URL(url);
+    return u.protocol === "https:" && u.hostname === "res.cloudinary.com" && u.pathname.includes("/studioleflow/messages/");
+  } catch { return false; }
+}
 
 const uploadRateLimiter = rateLimit({
   windowMs: 60 * 60 * 1000, // 1 sat
@@ -2547,8 +2565,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.json([]);
       }
       
-      const messages = await storage.getConversationMessages(conversation.id, req.jwtUser!.id);
-      
+      const beforeId = req.query.before ? parseInt(String(req.query.before)) : undefined;
+      const messages = await storage.getConversationMessages(conversation.id, req.jwtUser!.id, {
+        beforeId: beforeId && !isNaN(beforeId) ? beforeId : undefined,
+        limit: 50,
+      });
+      // Loading an older page doesn't change what's read - no need to mark/broadcast again.
+      if (beforeId) return res.json(messages);
+
       await storage.markMessagesAsRead(conversation.id, req.jwtUser!.id);
 
       if (wsHelpers.broadcastToUser) {
@@ -2571,7 +2595,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Send a message
-  app.post("/api/messages/send", requireVerifiedEmail, async (req, res) => {
+  app.post("/api/messages/send", requireVerifiedEmail, messageRateLimiter, async (req, res) => {
     try {
       const { receiverId, content, imageUrl, replyToId } = req.body;
       
@@ -2600,7 +2624,22 @@ export async function registerRoutes(app: Express): Promise<Server> {
       if (receiver.banned) {
         return res.status(403).json({ error: "Ne možete slati poruke banovanom korisniku" });
       }
-      
+
+      // Images must be ones uploaded through our chat upload - never an arbitrary
+      // external URL (tracking pixels, other people's images).
+      if (imageUrl != null && (typeof imageUrl !== "string" || !isOwnMessageImageUrl(imageUrl))) {
+        return res.status(400).json({ error: "Slika mora biti otpremljena kroz dugme za slike" });
+      }
+
+      // A reply may only quote a message from this same conversation.
+      if (replyToId != null) {
+        const quoted = typeof replyToId === "number" ? await storage.getMessageById(replyToId) : undefined;
+        const me = req.jwtUser!.id;
+        if (!quoted || !((quoted.senderId === me && quoted.receiverId === receiverId) || (quoted.senderId === receiverId && quoted.receiverId === me))) {
+          return res.status(400).json({ error: "Poruka na koju odgovarate nije pronađena" });
+        }
+      }
+
       const message = await storage.sendMessage(
         req.jwtUser!.id,
         receiverId,
@@ -2759,16 +2798,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const url = req.query.url as string;
       if (!url || !url.startsWith("http")) return res.status(400).json({ error: "Nevažeći URL" });
-      const controller = new AbortController();
-      const timeout = setTimeout(() => controller.abort(), 4000);
-      const response = await fetch(url, {
-        signal: controller.signal,
-        headers: { "User-Agent": "Mozilla/5.0 (compatible; LinkPreview/1.0)" },
-        redirect: "follow",
-      });
-      clearTimeout(timeout);
-      if (!response.ok) return res.status(400).json({ error: "Nije moguće učitati URL" });
-      const html = await response.text();
+      // safeFetchHtml refuses internal/private addresses, non-HTML and anything over 512KB.
+      const { html } = await safeFetchHtml(url, { timeoutMs: 4000, maxBytes: 512 * 1024 });
       const getMeta = (prop: string, name?: string) => {
         const ogMatch = html.match(new RegExp(`<meta[^>]+property=["']${prop}["'][^>]+content=["']([^"']+)["']`, "i"))
           ?? html.match(new RegExp(`<meta[^>]+content=["']([^"']+)["'][^>]+property=["']${prop}["']`, "i"));
@@ -2783,7 +2814,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const titleMatch = html.match(/<title[^>]*>([^<]+)<\/title>/i);
       const title = getMeta("og:title") ?? titleMatch?.[1]?.trim() ?? null;
       const description = getMeta("og:description", "description");
-      const image = getMeta("og:image") ?? getMeta("twitter:image");
+      const rawImage = getMeta("og:image") ?? getMeta("twitter:image");
+      // only https images in the preview card
+      const image = rawImage && /^https:\/\//i.test(rawImage) ? rawImage : null;
       const siteName = getMeta("og:site_name");
       res.json({ url, title, description, image, siteName });
     } catch (e: any) {

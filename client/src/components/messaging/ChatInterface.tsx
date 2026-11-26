@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, useCallback } from "react";
+import { useState, useEffect, useRef, useCallback, useMemo, useLayoutEffect } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useAuth } from "@/hooks/use-auth";
 import { useWebSocketContext } from "@/contexts/WebSocketContext";
@@ -78,6 +78,15 @@ interface Message {
   isRead: boolean;
   editedAt: string | null;
   reactions: Reaction[];
+  replyTo?: { id: number; senderId: number; content: string; imageUrl: string | null; deleted: boolean } | null;
+}
+
+const PAGE_SIZE = 50; // must match the server's page size
+
+function mergeMessages(older: Message[], latest: Message[] | undefined): Message[] {
+  if (!older.length) return latest ?? [];
+  const latestIds = new Set((latest ?? []).map(m => m.id));
+  return [...older.filter(m => !latestIds.has(m.id)), ...(latest ?? [])];
 }
 
 interface OtherUser {
@@ -185,7 +194,7 @@ export default function ChatInterface({ selectedUserId, onBack }: ChatInterfaceP
   const emojiPickerRef = useRef<HTMLDivElement>(null);
   const bottomSentinelRef = useRef<HTMLDivElement>(null);
 
-  const { data: messages, isLoading: messagesLoading } = useQuery<Message[]>({
+  const { data: latest, isLoading: messagesLoading } = useQuery<Message[]>({
     queryKey: ["/api/messages/conversation", selectedUserId],
     queryFn: async () => {
       const res = await apiRequest("GET", `/api/messages/conversation/${selectedUserId}`);
@@ -196,6 +205,21 @@ export default function ChatInterface({ selectedUserId, onBack }: ChatInterfaceP
     refetchInterval: 60_000,
     staleTime: 0,
   });
+
+  // The query holds the newest page; older pages are fetched on scroll-up and kept here.
+  const [older, setOlder] = useState<Message[]>([]);
+  const [hasMoreOlder, setHasMoreOlder] = useState<boolean | null>(null);
+  const [loadingOlder, setLoadingOlder] = useState(false);
+  const prependAnchorRef = useRef<{ height: number; top: number } | null>(null);
+  const messages = useMemo(() => (latest ? mergeMessages(older, latest) : undefined), [older, latest]);
+
+  useEffect(() => {
+    if (latest && hasMoreOlder === null) setHasMoreOlder(latest.length >= PAGE_SIZE);
+  }, [latest, hasMoreOlder]);
+
+  const patchOlder = useCallback((fn: (m: Message) => Message) => {
+    setOlder(prev => (prev.length ? prev.map(fn) : prev));
+  }, []);
 
   const { data: conversations } = useQuery<Conversation[]>({
     queryKey: ["/api/conversations"],
@@ -270,6 +294,7 @@ export default function ChatInterface({ selectedUserId, onBack }: ChatInterfaceP
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/messages/conversation", selectedUserId] });
+      patchOlder(m => (m.senderId === user?.id ? { ...m, deleted: true } : m));
       toast({ title: "Poruke obrisane", description: "Vaše poruke su obrisane" });
     },
   });
@@ -282,6 +307,39 @@ export default function ChatInterface({ selectedUserId, onBack }: ChatInterfaceP
     const sc = getScrollViewport();
     if (sc) sc.scrollTop = sc.scrollHeight;
   }, [getScrollViewport]);
+
+  const loadingOlderRef = useRef(false); // state updates too late to stop a burst of scroll events
+  const loadOlder = useCallback(async () => {
+    if (loadingOlderRef.current || !hasMoreOlder || !messages?.length) return;
+    loadingOlderRef.current = true;
+    setLoadingOlder(true);
+    try {
+      const res = await apiRequest("GET", `/api/messages/conversation/${selectedUserId}?before=${messages[0]!.id}`);
+      const page: Message[] = await res.json();
+      const sc = getScrollViewport();
+      if (sc) prependAnchorRef.current = { height: sc.scrollHeight, top: sc.scrollTop };
+      setOlder(prev => {
+        const have = new Set(prev.map(m => m.id));
+        return [...page.filter(m => !have.has(m.id)), ...prev];
+      });
+      page.forEach(m => knownMessageIdsRef.current.add(m.id));
+      setHasMoreOlder(page.length >= PAGE_SIZE);
+    } catch {
+      toast({ title: "Starije poruke nisu učitane", description: "Pokušajte ponovo.", variant: "destructive" });
+    } finally {
+      loadingOlderRef.current = false;
+      setLoadingOlder(false);
+    }
+  }, [hasMoreOlder, messages, selectedUserId, getScrollViewport, toast]);
+
+  // Keep the view still when older messages are prepended above it.
+  useLayoutEffect(() => {
+    const a = prependAnchorRef.current;
+    const sc = getScrollViewport();
+    if (!a || !sc) return;
+    sc.scrollTop = a.top + (sc.scrollHeight - a.height);
+    prependAnchorRef.current = null;
+  }, [older, getScrollViewport]);
 
   // Unread divider scroll
   useEffect(() => {
@@ -309,10 +367,11 @@ export default function ChatInterface({ selectedUserId, onBack }: ChatInterfaceP
     const onScroll = () => {
       const distFromBottom = sc.scrollHeight - sc.scrollTop - sc.clientHeight;
       setShowScrollBtn(distFromBottom > 120);
+      if (sc.scrollTop < 80 && hasScrolledToUnreadRef.current) loadOlder();
     };
     sc.addEventListener("scroll", onScroll, { passive: true });
     return () => sc.removeEventListener("scroll", onScroll);
-  }, [getScrollViewport, messages]);
+  }, [getScrollViewport, messages, loadOlder]);
 
   // Draft saving
   useEffect(() => {
@@ -323,7 +382,11 @@ export default function ChatInterface({ selectedUserId, onBack }: ChatInterfaceP
   // Clear draft key when switching conversations (runs on unmount)
   useEffect(() => () => { /* draft stays - intentional */ }, [selectedUserId]);
 
-  useEffect(() => { scrollToBottom(); }, [messages, scrollToBottom]);
+  useEffect(() => {
+    const sc = getScrollViewport();
+    if (!sc) return;
+    if (sc.scrollHeight - sc.scrollTop - sc.clientHeight < 200) scrollToBottom();
+  }, [latest, getScrollViewport, scrollToBottom]);
 
   // Jump to quoted message
   const jumpToMessage = useCallback((msgId: number) => {
@@ -357,6 +420,7 @@ export default function ChatInterface({ selectedUserId, onBack }: ChatInterfaceP
         queryClient.invalidateQueries({ queryKey: ["/api/messages/conversation", selectedUserId] });
       }
       if (message.type === "message_edited") {
+        patchOlder(m => (m.id === message.message.id ? { ...m, ...message.message } : m));
         queryClient.setQueryData(
           ["/api/messages/conversation", selectedUserId],
           (old: Message[] | undefined) => old
@@ -365,16 +429,31 @@ export default function ChatInterface({ selectedUserId, onBack }: ChatInterfaceP
         );
       }
       if (message.type === "message_reaction") {
+        const { messageId, userId: rxUser, emoji, added } = message as any;
+        patchOlder(m => {
+          if (m.id !== messageId) return m;
+          const list = m.reactions.map(r => ({ ...r, userIds: [...r.userIds] }));
+          const g = list.find(r => r.emoji === emoji);
+          if (added) {
+            if (g) { if (!g.userIds.includes(rxUser)) { g.userIds.push(rxUser); g.count++; } }
+            else list.push({ emoji, count: 1, userIds: [rxUser] });
+          } else if (g) {
+            g.userIds = g.userIds.filter(id => id !== rxUser);
+            g.count = g.userIds.length;
+          }
+          return { ...m, reactions: list.filter(r => r.count > 0) };
+        });
         queryClient.invalidateQueries({ queryKey: ["/api/messages/conversation", selectedUserId] });
       }
       if (message.type === "message_deleted") {
+        patchOlder(m => (m.id === (message as any).messageId ? { ...m, deleted: true } : m));
         queryClient.invalidateQueries({ queryKey: ["/api/messages/conversation", selectedUserId] });
       }
       if (message.type === "typing_start" && message.userId === selectedUserId) setOtherUserTyping(true);
       if (message.type === "typing_stop" && message.userId === selectedUserId) setOtherUserTyping(false);
     });
     return unsubscribe;
-  }, [subscribe, selectedUserId, queryClient, scrollToBottom]);
+  }, [subscribe, selectedUserId, queryClient, scrollToBottom, patchOlder]);
 
   // Close emoji picker on outside click
   useEffect(() => {
@@ -499,6 +578,8 @@ export default function ChatInterface({ selectedUserId, onBack }: ChatInterfaceP
     if (!editText.trim() || !editingMessageId) return;
     try {
       await apiRequest("PATCH", `/api/messages/${editingMessageId}`, { content: editText.trim() });
+      const id = editingMessageId, text = editText.trim();
+      patchOlder(m => (m.id === id ? { ...m, content: text, editedAt: new Date().toISOString() } : m));
       queryClient.invalidateQueries({ queryKey: ["/api/messages/conversation", selectedUserId] });
       cancelEdit();
     } catch { /* silent */ }
@@ -540,9 +621,16 @@ export default function ChatInterface({ selectedUserId, onBack }: ChatInterfaceP
     );
   }
 
+  const findQuoted = (replyToId: number) => {
+    const loaded = messages?.find(m => m.id === replyToId);
+    if (loaded) return loaded;
+    const holder = messages?.find(m => m.replyToId === replyToId && m.replyTo);
+    return holder?.replyTo ?? undefined;
+  };
+
   const getReplyPreview = (replyToId: number | null): React.ReactNode => {
     if (!replyToId || !messages) return "";
-    const msg = messages.find(m => m.id === replyToId);
+    const msg = findQuoted(replyToId);
     if (!msg || msg.deleted) return "Obrisana poruka";
     // "📎" is the stored placeholder content of an image-only message - never shown as-is
     if (msg.imageUrl && msg.content === "📎") return <ImageLabel />;
@@ -551,7 +639,7 @@ export default function ChatInterface({ selectedUserId, onBack }: ChatInterfaceP
 
   const getReplyUsername = (replyToId: number | null): string => {
     if (!replyToId || !messages) return "";
-    const msg = messages.find(m => m.id === replyToId);
+    const msg = findQuoted(replyToId);
     if (!msg) return "";
     return msg.senderId === user?.id ? "Ti" : otherUser?.username ?? "";
   };
@@ -632,6 +720,19 @@ export default function ChatInterface({ selectedUserId, onBack }: ChatInterfaceP
       {/* Messages */}
       <ScrollArea className="flex-1 px-3 md:px-4" ref={scrollAreaRef}>
         <div className="flex flex-col gap-0.5 py-4">
+          {hasMoreOlder && messages && messages.length > 0 && (
+            <div className="flex justify-center pb-3">
+              <button
+                type="button"
+                onClick={loadOlder}
+                aria-busy={loadingOlder}
+                className={`inline-flex items-center gap-1.5 h-8 px-3 rounded-full text-xs text-muted-foreground border border-border hover:text-foreground hover:bg-muted transition-colors ${loadingOlder ? "opacity-60 pointer-events-none" : ""}`}
+              >
+                {loadingOlder ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : null}
+                {loadingOlder ? "Učitavam..." : "Starije poruke"}
+              </button>
+            </div>
+          )}
           {messages && messages.length > 0 ? (
             messages.map((message, index) => {
               const isOwn = message.senderId === user?.id;

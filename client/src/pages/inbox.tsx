@@ -116,6 +116,7 @@ export default function Inbox() {
           <div className={`flex-1 flex flex-col min-w-0 ${selectedUserId ? "flex" : "hidden md:flex"}`} data-testid="chat-area">
             {selectedUserId ? (
               <ChatInterface
+                key={selectedUserId}
                 selectedUserId={selectedUserId}
                 onBack={() => setSelectedUserId(null)}
               />

@@ -55,3 +55,11 @@ Feature reference split out of CLAUDE.md (2026-11-26). The cross-cutting rules i
 - Source rect math: `srcX = natural.w/2 - CROP/2/zoom - pos.x/zoom`, `srcSize = CROP/zoom`. This correctly handles pan+zoom combinations.
 - After `onApply(blob)`, convert to `File` with `new File([blob], "slika.jpg", { type: "image/jpeg" })` before setting state.
 - Reset `input.value = ""` after each file pick so the same file can be re-selected after cropping.
+
+**Hardening + paging (2026-11-26):**
+- `GET /api/messages/conversation/:userId` returns the newest **50** messages (oldest-first); `?before=<id>` returns the 50 before that id (and doesn't re-mark/broadcast reads). `ChatInterface` keeps the newest page in React Query and older pages in local `older` state (merged by id), loads more when scrolled near the top or via "Starije poruke", and keeps the scroll anchored on prepend. WS edit/reaction/delete events patch `older` too. Each message carries `replyTo` (snippet of the quoted message from the same conversation) so a quote shows even when the quoted message isn't loaded. `inbox.tsx` mounts `ChatInterface` with `key={selectedUserId}` - per-person state (older pages, draft, scroll refs) resets on switch.
+- New messages only auto-scroll when the reader is already near the bottom.
+- `getUserConversations` is 4 batched queries for the whole list (was 3 per conversation).
+- `POST /api/messages/send`: `messageRateLimiter` (30/min **per account**); `imageUrl` must be our own `res.cloudinary.com/.../studioleflow/messages/` upload; `replyToId` must be a message between the same two people.
+- `GET /api/link-preview` goes through `safeFetchHtml()` (`server/safe-fetch.ts`): public addresses only (localhost, private ranges, cloud metadata, `.internal` refused), ports 80/443, every redirect hop re-checked, HTML only, max 512KB, 4s. Preview images must be https. Tests: `server/__tests__/safe-fetch.test.ts`.
+- Default avatar (no photo) is `attached_assets/avatar_200.png` via `ui/avatar.tsx` - brand anthracite version.

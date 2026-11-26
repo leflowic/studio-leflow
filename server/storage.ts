@@ -149,6 +149,9 @@ export type EnrichedMessage = {
   content: string; imageUrl: string | null; replyToId: number | null;
   deleted: boolean; createdAt: Date; editedAt: Date | null;
   isRead: boolean; reactions: ReactionGroup[];
+  // Snippet of the quoted message, so a reply still shows its quote when the
+  // quoted message is older than the loaded page.
+  replyTo?: { id: number; senderId: number; content: string; imageUrl: string | null; deleted: boolean } | null;
 };
 
 export interface IStorage {
@@ -280,7 +283,7 @@ export interface IStorage {
   sendMessage(senderId: number, receiverId: number, content: string, imageUrl?: string, replyToId?: number): Promise<Message>;
   deleteConversation(userId: number, otherUserId: number): Promise<void>;
   getMessageById(messageId: number): Promise<Message | undefined>;
-  getConversationMessages(conversationId: number, userId: number): Promise<EnrichedMessage[]>;
+  getConversationMessages(conversationId: number, userId: number, opts?: { beforeId?: number; limit?: number }): Promise<EnrichedMessage[]>;
   editMessage(messageId: number, userId: number, content: string): Promise<Message | null>;
   toggleReaction(messageId: number, userId: number, emoji: string): Promise<{ added: boolean }>;
   markMessagesAsRead(conversationId: number, userId: number): Promise<void>;
@@ -1568,47 +1571,30 @@ export class DatabaseStorage implements IStorage {
       )
       .orderBy(desc(conversations.lastMessageAt));
 
-    const results = await Promise.all(
-      userConvos.map(async (convo) => {
-        const otherUserId = convo.user1Id === userId ? convo.user2Id : convo.user1Id;
-        const [otherUser] = await db
-          .select({ id: users.id, username: users.username, avatarUrl: users.avatarUrl })
-          .from(users)
-          .where(eq(users.id, otherUserId));
+    if (!userConvos.length) return [];
+    // Three batched queries for the whole list instead of three per conversation.
+    const convoIds = userConvos.map(c => c.id);
+    const otherIds = Array.from(new Set(userConvos.map(c => (c.user1Id === userId ? c.user2Id : c.user1Id))));
+    const [others, lastRows, unreadRows] = await Promise.all([
+      db.select({ id: users.id, username: users.username, avatarUrl: users.avatarUrl }).from(users).where(inArray(users.id, otherIds)),
+      db.execute(sql`SELECT DISTINCT ON (conversation_id) id FROM messages WHERE conversation_id IN (${sql.join(convoIds.map(id => sql`${id}`), sql`, `)}) ORDER BY conversation_id, id DESC`),
+      db.select({ conversationId: messages.conversationId, count: sql<number>`count(*)` })
+        .from(messages)
+        .leftJoin(messageReads, and(eq(messageReads.messageId, messages.id), eq(messageReads.userId, userId)))
+        .where(and(inArray(messages.conversationId, convoIds), eq(messages.receiverId, userId), sql`${messageReads.id} IS NULL`))
+        .groupBy(messages.conversationId),
+    ]);
+    const lastIds: number[] = (((lastRows as any).rows ?? lastRows) as any[]).map((r: any) => Number(r.id));
+    const lastMsgs = lastIds.length ? await db.select().from(messages).where(inArray(messages.id, lastIds)) : [];
+    const userMap = new Map(others.map(u => [u.id, u]));
+    const lastMap = new Map(lastMsgs.map(m => [m.conversationId, m]));
+    const unreadMap = new Map(unreadRows.map(r => [r.conversationId, Number(r.count)]));
 
-        const [lastMsg] = await db
-          .select()
-          .from(messages)
-          .where(eq(messages.conversationId, convo.id))
-          .orderBy(desc(messages.createdAt))
-          .limit(1);
-
-        const unreadMsgs = await db
-          .select({ count: sql<number>`count(*)` })
-          .from(messages)
-          .leftJoin(
-            messageReads,
-            and(
-              eq(messageReads.messageId, messages.id),
-              eq(messageReads.userId, userId)
-            )
-          )
-          .where(
-            and(
-              eq(messages.conversationId, convo.id),
-              sql`${messages.receiverId} = ${userId}`,
-              sql`${messageReads.id} IS NULL`
-            )
-          );
-
-        return {
-          ...convo,
-          otherUser: otherUser!,
-          lastMessage: lastMsg || undefined,
-          unreadCount: Number(unreadMsgs[0]?.count ?? 0),
-        };
-      })
-    );
+    const results = userConvos.flatMap(convo => {
+      const otherUser = userMap.get(convo.user1Id === userId ? convo.user2Id : convo.user1Id);
+      if (!otherUser) return [];
+      return [{ ...convo, otherUser, lastMessage: lastMap.get(convo.id), unreadCount: unreadMap.get(convo.id) ?? 0 }];
+    });
 
     return results;
   }
@@ -1655,12 +1641,19 @@ export class DatabaseStorage implements IStorage {
     return message || undefined;
   }
 
-  async getConversationMessages(conversationId: number, userId: number): Promise<EnrichedMessage[]> {
-    const msgs = await db
+  // Newest `limit` messages (optionally older than `beforeId`), returned oldest-first.
+  // The chat loads one page and fetches older pages when scrolled up.
+  async getConversationMessages(conversationId: number, userId: number, opts: { beforeId?: number; limit?: number } = {}): Promise<EnrichedMessage[]> {
+    const limit = Math.min(Math.max(opts.limit ?? 50, 1), 100);
+    const page = await db
       .select()
       .from(messages)
-      .where(eq(messages.conversationId, conversationId))
-      .orderBy(messages.createdAt);
+      .where(opts.beforeId
+        ? and(eq(messages.conversationId, conversationId), sql`${messages.id} < ${opts.beforeId}`)
+        : eq(messages.conversationId, conversationId))
+      .orderBy(desc(messages.id))
+      .limit(limit);
+    const msgs = page.reverse();
 
     if (msgs.length === 0) return [];
     const msgIds = msgs.map(m => m.id);
@@ -1682,12 +1675,24 @@ export class DatabaseStorage implements IStorage {
       rxMap.set(row.messageId, arr);
     }
 
-    return msgs.map(m => ({
-      ...m,
-      editedAt: (m as any).editedAt ?? null,
-      isRead: readSet.has(m.id),
-      reactions: rxMap.get(m.id) ?? [],
-    }));
+    const replyIds = Array.from(new Set(msgs.map(m => m.replyToId).filter((id): id is number => id != null)));
+    const quoted = replyIds.length
+      ? await db.select({ id: messages.id, senderId: messages.senderId, content: messages.content, imageUrl: messages.imageUrl, deleted: messages.deleted, conversationId: messages.conversationId })
+          .from(messages).where(inArray(messages.id, replyIds))
+      : [];
+    // only quotes from this same conversation
+    const quoteMap = new Map(quoted.filter(q => q.conversationId === conversationId).map(q => [q.id, q]));
+
+    return msgs.map(m => {
+      const q = m.replyToId != null ? quoteMap.get(m.replyToId) : undefined;
+      return {
+        ...m,
+        editedAt: (m as any).editedAt ?? null,
+        isRead: readSet.has(m.id),
+        reactions: rxMap.get(m.id) ?? [],
+        replyTo: q ? { id: q.id, senderId: q.senderId, content: q.deleted ? "" : q.content, imageUrl: q.deleted ? null : q.imageUrl, deleted: q.deleted } : null,
+      };
+    });
   }
 
   async editMessage(messageId: number, userId: number, content: string): Promise<Message | null> {
