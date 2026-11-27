@@ -196,9 +196,13 @@ function FeaturedCard({ kind, onNavigate }: { kind: NavMenu["featured"]; onNavig
   if (kind === "game") {
     return (
       <Link href="/igra" onClick={onNavigate} className="group flex h-full flex-col rounded-lg border border-border bg-background p-4 hover:border-primary/40 transition-colors">
-        <div className="flex items-end gap-[3px] h-10 mb-4" aria-hidden="true">
+        <div className="eq-paused flex items-end gap-[3px] h-10 mb-4" aria-hidden="true">
           {[6, 14, 9, 22, 12, 30, 16, 24, 10, 18, 7, 13].map((h, i) => (
-            <span key={i} className="w-[4px] rounded-full bg-primary/60 group-hover:bg-primary transition-colors" style={{ height: h }} />
+            <span
+              key={i}
+              className="eq-bar w-[4px] rounded-full bg-primary/60 group-hover:bg-primary transition-colors"
+              style={{ height: h, ["--eq-dur" as string]: `${0.7 + (i % 4) * 0.18}s`, ["--eq-delay" as string]: `${-i * 0.13}s`, ["--eq-min" as string]: 0.35 }}
+            />
           ))}
         </div>
         <p className="text-sm font-medium">Pogodi Pesmu</p>

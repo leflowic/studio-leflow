@@ -1,5 +1,6 @@
 import { useRef } from "react";
 import { motion, useScroll, useTransform, useSpring } from "framer-motion";
+import { HeroSpectrum } from "@/components/home/HeroSpectrum";
 interface ParallaxHeroProps {
   children: React.ReactNode;
 }
@@ -57,6 +58,8 @@ export function ParallaxHero({ children }: ParallaxHeroProps) {
       />
 
       <div className="absolute inset-0 z-[2] bg-gradient-to-b from-black/40 via-transparent to-black/60" />
+
+      <HeroSpectrum />
 
       <motion.div
         className="absolute inset-0 z-[4] pointer-events-none overflow-hidden"

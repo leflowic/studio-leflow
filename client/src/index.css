@@ -517,3 +517,21 @@ img {
 }
 .marquee-track { animation: marquee-x 50s linear infinite; }
 .marquee:hover .marquee-track { animation-play-state: paused; }
+
+/* Live level-meter bars (hero spectrum, header game card, process stepper).
+   Each bar sets its own --eq-dur / --eq-delay / --eq-min inline. Only
+   transform is animated, so it stays on the compositor (no layout work). */
+@keyframes eq-bounce {
+  0%, 100% { transform: scaleY(var(--eq-min, 0.25)); }
+  50% { transform: scaleY(1); }
+}
+.eq-bar {
+  transform-origin: bottom;
+  animation: eq-bounce var(--eq-dur, 1.2s) ease-in-out var(--eq-delay, 0s) infinite;
+  will-change: transform;
+}
+.eq-paused .eq-bar { animation-play-state: paused; }
+.group:hover .eq-paused .eq-bar { animation-play-state: running; }
+@media (prefers-reduced-motion: reduce) {
+  .eq-bar { animation: none; }
+}

@@ -89,3 +89,10 @@ Feature reference split out of CLAUDE.md (2026-11-26). The cross-cutting rules i
 
 **Verify License page:**
 - Route: `/verify-license` — public. Users enter a contract number; `GET /api/verify/:hash` (license `verificationHash`) returns sanitized contract info (no personal data beyond what's on the license itself).
+
+## Motion accents (2026-11-27)
+
+- `HeroSpectrum` (`components/home/HeroSpectrum.tsx`): a slow CSS level meter along the bottom of the homepage hero, oak bars, faded edges.
+- `ProcessSection` stepper plays once when 50% in view: stages tick off up to "Mix", a 3-bar meter sits next to "u toku", then the timestamped comment slides in.
+- Header Studio menu, Pogodi Pesmu card: its bars animate only while hovered (`.eq-paused`).
+- All use `.eq-bar` / `@keyframes eq-bounce` in `index.css` (transform-only, per-bar `--eq-dur/--eq-delay/--eq-min`), and all stop under `prefers-reduced-motion`. Keep new motion to this kind of audio motif, one per section.
