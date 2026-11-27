@@ -31,12 +31,15 @@ export default function NotFound() {
                 initial={{ height: 0 }}
                 animate={{ height: `${h}%` }}
                 transition={{ delay: i * 0.025, duration: 0.35, ease: "easeOut" }}
+                // after the reveal the bars keep stuttering - a signal that cuts out
+                style={{ ["--eq-dur" as string]: `${0.45 + (i % 5) * 0.23}s`, ["--eq-delay" as string]: `${0.5 + i * 0.07}s`, ["--eq-min" as string]: i % 4 === 0 ? 0.2 : 0.5 }}
                 className={
-                  i % 3 === 0
-                    ? "flex-1 rounded-full bg-primary/40"
+                  "eq-bar " +
+                  (i % 3 === 0
+                    ? "flex-1 rounded-[3px] bg-primary/40"
                     : i % 3 === 1
-                    ? "flex-1 rounded-full bg-primary/15"
-                    : "flex-1 rounded-full bg-muted/40"
+                    ? "flex-1 rounded-[3px] bg-primary/15"
+                    : "flex-1 rounded-[3px] bg-muted/40")
                 }
               />
             ))}

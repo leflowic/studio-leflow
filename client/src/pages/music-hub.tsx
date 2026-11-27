@@ -15,7 +15,7 @@ function TrackWave() {
   return (
     <div className="track-wave flex items-end gap-[3px] h-4" aria-hidden="true">
       {WAVE_BARS.map((h, i) => (
-        <span key={i} className="wavebar w-[3px] rounded-full bg-[#8b73ff]" style={{ height: h, animationDelay: `${i * 0.12}s` }} />
+        <span key={i} className="wavebar w-[3px] rounded-full bg-[#c9a27a]" style={{ height: h, animationDelay: `${i * 0.12}s` }} />
       ))}
     </div>
   );
@@ -96,8 +96,20 @@ export default function MusicHubPage() {
                     className="track-row group flex items-center gap-4 py-3 px-2 -mx-2 rounded-xl transition-colors duration-200 hover:bg-white/[0.035]"
                     style={{ borderBottom: i < links.length - 1 ? "1px solid rgba(255,255,255,0.06)" : "none" }}
                   >
-                    <span className="w-5 shrink-0 text-right font-mono text-[11px] text-white/25 transition-colors duration-200 group-hover:text-[#c9a27a]">
-                      {String(i + 1).padStart(2, "0")}
+                    {/* number swaps to a small "now playing" meter on hover */}
+                    <span className="relative w-5 h-4 shrink-0 font-mono text-[11px] text-white/25">
+                      <span className="absolute inset-0 flex items-center justify-end transition-opacity duration-200 group-hover:opacity-0">
+                        {String(i + 1).padStart(2, "0")}
+                      </span>
+                      <span className="eq-paused absolute inset-0 flex items-end justify-end gap-[2px] opacity-0 transition-opacity duration-200 group-hover:opacity-100" aria-hidden="true">
+                        {[0, 1, 2].map(b => (
+                          <span
+                            key={b}
+                            className="eq-bar w-[2px] h-3 rounded-full bg-[#c9a27a]"
+                            style={{ ["--eq-dur" as string]: `${0.7 + b * 0.17}s`, ["--eq-delay" as string]: `${-b * 0.25}s`, ["--eq-min" as string]: 0.3 }}
+                          />
+                        ))}
+                      </span>
                     </span>
 
                     <div
