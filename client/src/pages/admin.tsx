@@ -89,7 +89,7 @@ const ADMIN_NAV: { group: string; items: { value: string; label: string; icon: L
       { value: "game", label: "Igra", icon: Gamepad2, roles: ["producer"] },
       { value: "anti-abuse", label: "Zaštita igara", icon: ShieldAlert, roles: ["producer"] },
       { value: "smart-links", label: "Smart Links", icon: Link2, roles: ["producer", "marketing"] },
-      { value: "news", label: "Vesti", icon: Newspaper, roles: ["editor", "marketing"] },
+      { value: "news", label: "Novosti", icon: Newspaper, roles: ["editor", "marketing"] },
     ],
   },
   {

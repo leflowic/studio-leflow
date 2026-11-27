@@ -23,7 +23,7 @@ const BREADCRUMB_NAMES: Record<string, string> = {
   "/kontakt": "Kontakt",
   "/tim": "Tim",
   "/pravila": "Pravila i česta pitanja",
-  "/news": "Vesti",
+  "/news": "Novosti",
   "/zastita-brenda": "Zaštita brenda",
 };
 

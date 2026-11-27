@@ -49,6 +49,7 @@ import { computeFingerprint, compareFingerprint } from "./audio-fingerprint";
 import rateLimit from "express-rate-limit";
 import { fileTypeFromBuffer } from "file-type";
 import { safeFetchHtml } from "./safe-fetch";
+import { isNewsCategory, readingMinutes } from "@shared/news";
 import { generatePhoneCode, extractPhoneCode, hashPhone, verifyMetaSignature, parseInboundMessages, whatsappConfig, whatsappLink, PHONE_CODE_TTL_MS, SETTING_PHONE_REQUIRED } from "./phone-verify";
 
 // Rate limiters for security
@@ -3896,7 +3897,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const limit = Math.min(parseInt(String(req.query.limit ?? "20"), 10) || 20, 50);
       const offset = Math.max(parseInt(String(req.query.offset ?? "0"), 10) || 0, 0);
-      const articles = await storage.getPublishedArticles(limit, offset);
+      const category = isNewsCategory(req.query.category) ? req.query.category : undefined;
+      const articles = await storage.getPublishedArticles(limit, offset, category);
       res.json(articles);
     } catch (error: any) {
       console.error("[NEWS] Get published error:", error);
@@ -3909,7 +3911,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const article = await storage.getArticleBySlugPublic(req.params.slug);
       if (!article) return res.status(404).json({ error: "Vest nije pronađena" });
-      res.json(article);
+      // linked release for the "Poslušaj" card (public fields only)
+      const link = article.smartLinkSlug ? await storage.getSmartLinkBySlug(article.smartLinkSlug) : undefined;
+      res.json({
+        ...article,
+        readingMinutes: readingMinutes(article.content),
+        release: link ? { slug: link.slug, title: link.title, artist: link.artist, coverUrl: link.coverUrl } : null,
+      });
     } catch (error: any) {
       console.error("[NEWS] Get by slug error:", error);
       res.status(500).json({ error: "Greška pri učitavanju vesti" });

@@ -355,7 +355,7 @@ export interface IStorage {
   getAllArticlesAdmin(): Promise<Array<NewsArticle & { authorUsername: string }>>;
   getArticleById(id: number): Promise<NewsArticle | undefined>;
   getArticleBySlugPublic(slug: string): Promise<NewsArticle | undefined>;
-  getPublishedArticles(limit: number, offset: number): Promise<Array<NewsArticle & { authorUsername: string }>>;
+  getPublishedArticles(limit: number, offset: number, category?: string): Promise<Array<Omit<NewsArticle, "content"> & { authorUsername: string; readingMinutes: number }>>;
   updateArticle(id: number, data: Partial<InsertNewsArticle>): Promise<void>;
   deleteArticle(id: number): Promise<void>;
 
@@ -2569,6 +2569,8 @@ export class DatabaseStorage implements IStorage {
         seoTitle: newsArticles.seoTitle,
         seoDescription: newsArticles.seoDescription,
         seoKeywords: newsArticles.seoKeywords,
+        category: newsArticles.category,
+        smartLinkSlug: newsArticles.smartLinkSlug,
         status: newsArticles.status,
         publishedAt: newsArticles.publishedAt,
         createdAt: newsArticles.createdAt,
@@ -2595,19 +2597,23 @@ export class DatabaseStorage implements IStorage {
     return article || undefined;
   }
 
-  async getPublishedArticles(limit: number, offset: number): Promise<Array<NewsArticle & { authorUsername: string }>> {
+  // List view: no article bodies (they're the heavy part), just a word count
+  // turned into reading time.
+  async getPublishedArticles(limit: number, offset: number, category?: string): Promise<Array<Omit<NewsArticle, "content"> & { authorUsername: string; readingMinutes: number }>> {
     const results = await db
       .select({
         id: newsArticles.id,
         title: newsArticles.title,
         slug: newsArticles.slug,
         excerpt: newsArticles.excerpt,
-        content: newsArticles.content,
+        words: sql<number>`coalesce(array_length(regexp_split_to_array(trim(regexp_replace(${newsArticles.content}, '<[^>]+>', ' ', 'g')), '\\s+'), 1), 0)`,
         coverImage: newsArticles.coverImage,
         tags: newsArticles.tags,
         seoTitle: newsArticles.seoTitle,
         seoDescription: newsArticles.seoDescription,
         seoKeywords: newsArticles.seoKeywords,
+        category: newsArticles.category,
+        smartLinkSlug: newsArticles.smartLinkSlug,
         status: newsArticles.status,
         publishedAt: newsArticles.publishedAt,
         createdAt: newsArticles.createdAt,
@@ -2617,11 +2623,13 @@ export class DatabaseStorage implements IStorage {
       })
       .from(newsArticles)
       .innerJoin(users, eq(newsArticles.createdBy, users.id))
-      .where(eq(newsArticles.status, "published"))
+      .where(category
+        ? and(eq(newsArticles.status, "published"), eq(newsArticles.category, category))
+        : eq(newsArticles.status, "published"))
       .orderBy(desc(newsArticles.publishedAt))
       .limit(limit)
       .offset(offset);
-    return results;
+    return results.map(({ words, ...a }) => ({ ...a, readingMinutes: Math.max(1, Math.round(Number(words) / 200)) }));
   }
 
   async updateArticle(id: number, data: Partial<InsertNewsArticle>): Promise<void> {

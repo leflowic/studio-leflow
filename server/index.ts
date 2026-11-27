@@ -403,6 +403,8 @@ async function runMigrations() {
     await client8.query(`
       CREATE INDEX IF NOT EXISTS news_articles_published_at_idx ON news_articles(published_at);
     `);
+    await client8.query(`ALTER TABLE news_articles ADD COLUMN IF NOT EXISTS category TEXT;`);
+    await client8.query(`ALTER TABLE news_articles ADD COLUMN IF NOT EXISTS smart_link_slug TEXT;`);
     log('[Migrations] News Articles table ready', 'express');
   } catch (err: any) {
     log(`[Migrations] Warning on news_articles table: ${err.message}`, 'express');

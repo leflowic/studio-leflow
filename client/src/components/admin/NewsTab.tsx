@@ -1,4 +1,5 @@
 import { lazy, Suspense, useRef, useState } from "react";
+import { NEWS_CATEGORIES } from "@shared/news";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
@@ -47,6 +48,8 @@ interface Article {
   seoTitle: string | null;
   seoDescription: string | null;
   seoKeywords: string | null;
+  category: string | null;
+  smartLinkSlug: string | null;
   status: "draft" | "published";
   publishedAt: string | null;
   createdAt: string;
@@ -77,8 +80,12 @@ const emptyForm = {
   seoTitle: "",
   seoDescription: "",
   seoKeywords: "",
+  category: "",
+  smartLinkSlug: "",
   status: "draft" as "draft" | "published",
 };
+
+const NONE = "__none";
 
 type FormState = typeof emptyForm;
 
@@ -98,6 +105,11 @@ export function NewsTab() {
   const fileRef = useRef<HTMLInputElement>(null);
 
   const { data: articles, isLoading } = useQuery<Article[]>({ queryKey: ["/api/admin/news"] });
+  const { data: releases } = useQuery<Array<{ slug: string; title: string; artist: string }>>({
+    queryKey: ["/api/smart-links"],
+    enabled: view === "form",
+    staleTime: 5 * 60 * 1000,
+  });
 
   const saveMutation = useMutation({
     mutationFn: async () => {
@@ -108,6 +120,8 @@ export function NewsTab() {
         seoTitle: form.seoTitle || null,
         seoDescription: form.seoDescription || null,
         seoKeywords: form.seoKeywords || null,
+        category: form.category || null,
+        smartLinkSlug: form.smartLinkSlug || null,
       };
       if (editingId !== null) {
         await apiRequest("PATCH", `/api/admin/news/${editingId}`, payload);
@@ -156,6 +170,8 @@ export function NewsTab() {
       seoTitle: article.seoTitle ?? "",
       seoDescription: article.seoDescription ?? "",
       seoKeywords: article.seoKeywords ?? "",
+      category: article.category ?? "",
+      smartLinkSlug: article.smartLinkSlug ?? "",
       status: article.status,
     });
     setEditingId(article.id);
@@ -290,6 +306,35 @@ export function NewsTab() {
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div className="space-y-1.5">
+                <Label>Rubrika</Label>
+                <Select value={form.category || NONE} onValueChange={v => setForm(f => ({ ...f, category: v === NONE ? "" : v }))}>
+                  <SelectTrigger data-testid="select-news-category">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value={NONE}>Bez rubrike (Novosti)</SelectItem>
+                    {NEWS_CATEGORIES.map(c => <SelectItem key={c.value} value={c.value}>{c.label}</SelectItem>)}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-1.5">
+                <Label>Pesma uz vest (kartica "Poslušaj")</Label>
+                <Select value={form.smartLinkSlug || NONE} onValueChange={v => setForm(f => ({ ...f, smartLinkSlug: v === NONE ? "" : v }))}>
+                  <SelectTrigger data-testid="select-news-release">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value={NONE}>Bez pesme</SelectItem>
+                    {(Array.isArray(releases) ? releases : []).map(r => (
+                      <SelectItem key={r.slug} value={r.slug}>{r.artist} - {r.title}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div className="space-y-1.5">
                 <Label>Tagovi (odvojeni zarezom)</Label>
                 <Input
                   value={form.tags}
@@ -372,7 +417,7 @@ export function NewsTab() {
     <div className="space-y-4" data-testid="content-news">
       <div className="flex items-center justify-between flex-wrap gap-3">
         <div>
-          <h2 className="text-xl font-semibold">Vesti</h2>
+          <h2 className="text-xl font-semibold">Novosti</h2>
           <p className="text-sm text-muted-foreground">Upravljanje člancima na /news portalu</p>
         </div>
         <Button size="sm" onClick={openCreate} data-testid="button-new-news">

@@ -53,8 +53,8 @@ const STATIC_PAGE_META: Record<string, PageMeta> = {
     canonical: `${BASE_URL}/pravila`,
   },
   "/news": {
-    title: "Vesti - Studio LeFlow | Muzičke Novosti iz Beograda",
-    description: "Najnovije vesti o izdanjima, saradnjama i dešavanjima u muzičkoj sceni - iz Studio LeFlow-a u Beogradu.",
+    title: "Novosti - Studio LeFlow | Muzičke novosti iz Beograda",
+    description: "Najnovije novosti o izdanjima, saradnjama i dešavanjima u muzičkoj sceni - iz Studio LeFlow-a u Beogradu.",
     canonical: `${BASE_URL}/news`,
   },
   "/zastita-brenda": {
@@ -181,7 +181,7 @@ export function registerHtmlMetaRoutes(app: Express) {
     try {
       const article = await storage.getArticleBySlugPublic(req.params.slug);
       if (!article) return next(); // SPA renders its own not-found state
-      const title = article.seoTitle || `${article.title} - Studio LeFlow Vesti`;
+      const title = article.seoTitle || `${article.title} - Studio LeFlow Novosti`;
       const description = article.seoDescription || article.excerpt;
       const canonical = `${BASE_URL}/news/${article.slug}`;
       const keywords = article.seoKeywords || article.tags || undefined;

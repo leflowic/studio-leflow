@@ -994,6 +994,8 @@ export const newsArticles = pgTable("news_articles", {
   seoTitle: text("seo_title"),
   seoDescription: text("seo_description"),
   seoKeywords: text("seo_keywords"), // comma-separated meta keywords / artist names
+  category: text("category"), // rubrika, see shared/news.ts NEWS_CATEGORIES
+  smartLinkSlug: text("smart_link_slug"), // optional release shown as a "Poslušaj" card
   status: text("status").notNull().default("draft"), // "draft" | "published"
   publishedAt: timestamp("published_at"),
   createdAt: timestamp("created_at").defaultNow().notNull(),

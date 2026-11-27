@@ -81,7 +81,7 @@ function buildMenus(loggedIn: boolean): NavMenu[] {
           items: [
             { icon: FolderOpen, title: "Projekti", desc: "Pesme i spotovi na kojima smo radili", href: "/projekti" },
             { icon: Disc3, title: "Pesme iz studija", desc: "Izdanja sa linkovima za sve platforme", href: "https://music.studioleflow.com", external: true },
-            { icon: Newspaper, title: "Vesti", desc: "Izdanja, saradnje i dešavanja", href: "/news" },
+            { icon: Newspaper, title: "Novosti", desc: "Izdanja, saradnje i dešavanja", href: "/news" },
           ],
         },
         {
