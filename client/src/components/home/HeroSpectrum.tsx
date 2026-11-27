@@ -21,10 +21,10 @@ const BARS = Array.from({ length: COUNT }, (_, i) => {
   };
 });
 
-export function HeroSpectrum() {
+export function HeroSpectrum({ className = "" }: { className?: string }) {
   return (
     <div
-      className="absolute inset-x-0 bottom-0 z-[3] h-24 flex items-end justify-between gap-[2px] px-6 pointer-events-none opacity-60 [mask-image:linear-gradient(to_right,transparent,black_18%,black_82%,transparent)]"
+      className={`absolute inset-x-0 bottom-0 z-[3] h-24 flex items-end justify-between gap-[2px] px-6 pointer-events-none opacity-60 [mask-image:linear-gradient(to_right,transparent,black_18%,black_82%,transparent)] ${className}`}
       aria-hidden="true"
     >
       {BARS.map((b, i) => (

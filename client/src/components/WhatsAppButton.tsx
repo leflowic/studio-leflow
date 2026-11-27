@@ -1,6 +1,8 @@
 import { useState, useRef } from "react";
 import { useLocation } from "wouter";
 import { X } from "lucide-react";
+import { useQuery } from "@tanstack/react-query";
+import { useAuth } from "@/hooks/use-auth";
 
 export function WhatsAppButton() {
   const [location] = useLocation();
@@ -10,6 +12,9 @@ export function WhatsAppButton() {
   const [nearDismiss, setNearDismiss] = useState(false);
   const dragOrigin = useRef<{ mx: number; my: number; ox: number; oy: number } | null>(null);
   const moved = useRef(false);
+  const { user } = useAuth();
+  // same query + rule as App.tsx: the maintenance screen has its own WhatsApp CTA
+  const { data: maintenance } = useQuery<{ maintenanceMode: boolean }>({ queryKey: ["/api/maintenance"], retry: false, staleTime: 30000 });
 
   // /inbox: the floating button sat on top of the chat's send button
   if (location.startsWith("/l/") || location.startsWith("/portal/") || location.startsWith("/inbox")) return null;
@@ -17,6 +22,7 @@ export function WhatsAppButton() {
   if (typeof window !== "undefined" && window.location.hostname === "music.studioleflow.com") return null;
   // Sign-in / sign-up pages are kept distraction-free
   if (location === "/prijava" || location === "/registracija" || location === "/auth") return null;
+  if (maintenance?.maintenanceMode && user?.role !== "admin" && !localStorage.getItem("maintenance_bypass")) return null;
   if (hidden) return null;
 
   const DISMISS_ZONE_HEIGHT = 96;

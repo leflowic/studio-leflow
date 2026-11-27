@@ -1,4 +1,5 @@
-import { Construction, Lock, User, KeyRound } from "lucide-react";
+import { Lock, User, KeyRound, MessageCircle, Phone, Mail, Instagram, ArrowUpRight } from "lucide-react";
+import leflowLogo from "@/assets/leflow-logo.png";
 import { motion } from "framer-motion";
 import { useState } from "react";
 import { useForm } from "react-hook-form";
@@ -179,60 +180,146 @@ export default function MaintenancePage() {
     }
   };
 
+  // Status-page style: plain, factual, what works and how to reach us.
+  const status: Array<{ label: string; note: string; ok: boolean; href?: string }> = [
+    { label: "Studio i termini", note: "Radi normalno", ok: true },
+    { label: "Upiti i dogovori", note: "WhatsApp, telefon, email", ok: true },
+    { label: "Pesme iz studija", note: "music.studioleflow.com", ok: true, href: "https://music.studioleflow.com" },
+    { label: "Sajt i korisnički nalozi", note: "Održavanje u toku", ok: false },
+  ];
+  const contacts = [
+    { icon: MessageCircle, label: "WhatsApp", value: "+381 63 734 7023", href: "https://wa.me/381637347023", external: true },
+    { icon: Phone, label: "Telefon", value: "+381 63 734 7023", href: "tel:+381637347023", external: false },
+    { icon: Mail, label: "Email", value: "info@studioleflow.com", href: "mailto:info@studioleflow.com", external: false },
+    { icon: Instagram, label: "Instagram", value: "@studioleflow", href: "https://instagram.com/studioleflow", external: true },
+  ];
+
   return (
-    <div className="min-h-screen bg-background flex items-center justify-center p-6">
-      <div className="max-w-2xl w-full text-center space-y-8">
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.5 }}
-        >
-          <div className="flex justify-center mb-8">
-            <img
-              src="/attached_assets/logo/studioleflow-transparent.png"
-              alt="Studio LeFlow"
-              className="h-32 w-auto filter invert cursor-pointer select-none"
-              onClick={handleLogoTap}
-            />
-          </div>
-
-          <Construction className="w-24 h-24 text-primary mx-auto mb-6" />
-          
-          <h1 className="text-4xl md:text-5xl font-bold mb-4">
-            Sajt je u pripremi
-          </h1>
-          
-          <p className="text-xl text-muted-foreground mb-8">
-            Trenutno radimo na unapređenju naših servisa. Uskoro se vraćamo!
-          </p>
-
-          <div className="bg-muted rounded-lg p-6 max-w-md mx-auto">
-            <p className="text-sm text-muted-foreground">
-              Možete nas kontaktirati putem:
-            </p>
-            <div className="mt-4 space-y-2">
-              <p className="font-medium">
-                Email: <a href="mailto:info@studioleflow.com" className="text-primary hover:underline">info@studioleflow.com</a>
-              </p>
-              <p className="font-medium">
-                Telefon: <a href="tel:+381637347023" className="text-primary hover:underline">+381 63 734 7023</a>
-              </p>
-              <p className="font-medium">
-                Instagram: <a href="https://instagram.com/studioleflow" target="_blank" rel="noopener noreferrer" className="text-primary hover:underline">@studioleflow</a>
-              </p>
-            </div>
-          </div>
-
-          <div className="mt-12">
-            <button
-              onClick={() => setShowLoginDialog(true)}
-              className="text-sm text-muted-foreground hover:text-primary transition-colors"
-            >
-              Admin prijava
-            </button>
-          </div>
-        </motion.div>
+    <div className="min-h-[100svh] bg-background text-foreground flex flex-col">
+      {/* thin indeterminate bar: work in progress, nothing more */}
+      <div className="h-px w-full overflow-hidden bg-border" aria-hidden="true">
+        <div className="maint-slide h-full w-1/3 bg-primary" />
       </div>
+      <style>{`@keyframes maint-slide { 0% { transform: translateX(-100%); } 100% { transform: translateX(300%); } }
+        .maint-slide { animation: maint-slide 2.4s ease-in-out infinite; }
+        @media (prefers-reduced-motion: reduce) { .maint-slide { animation: none; } }`}</style>
+
+      <header className="border-b border-border/60 pt-[env(safe-area-inset-top)]">
+        <div className="max-w-6xl mx-auto px-6 h-16 flex items-center justify-between">
+          <button type="button" onClick={handleLogoTap} className="flex items-center gap-3 select-none" aria-label="Studio LeFlow">
+            <img src={leflowLogo} alt="" draggable={false} className="h-7 w-auto dark:invert" />
+            <span className="font-semibold tracking-tight">Studio LeFlow</span>
+          </button>
+          <button
+            onClick={() => setShowLoginDialog(true)}
+            className="text-xs text-muted-foreground hover:text-foreground transition-colors"
+          >
+            Admin prijava
+          </button>
+        </div>
+      </header>
+
+      <main className="flex-1 flex items-center">
+        <motion.div
+          className="max-w-6xl w-full mx-auto px-6 py-16 md:py-24 grid lg:grid-cols-[minmax(0,1.15fr)_minmax(0,1fr)] gap-14 lg:gap-20"
+          initial={{ opacity: 0, y: 8 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.5, ease: [0.22, 1, 0.36, 1] }}
+        >
+          <section>
+            <p className="inline-flex items-center gap-2 text-sm font-medium text-amber-600 dark:text-amber-400">
+              <span className="w-1.5 h-1.5 rounded-full bg-amber-500" />
+              Planirano održavanje
+            </p>
+            <h1 className="mt-6 text-4xl md:text-6xl font-semibold tracking-[-0.035em] leading-[1.05]">
+              Sajt je trenutno u održavanju
+            </h1>
+            <p className="mt-6 text-lg text-muted-foreground leading-relaxed max-w-xl">
+              Radimo planirane izmene i uskoro se vraćamo. Studio radi normalno - za termine, upite i dogovore javite nam se direktno.
+            </p>
+
+            <div className="mt-10 flex flex-wrap items-center gap-3">
+              <a
+                href="https://wa.me/381637347023"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-flex items-center gap-2 h-11 px-6 rounded-full bg-primary text-primary-foreground text-sm font-semibold hover:bg-primary/90 transition-colors"
+              >
+                <MessageCircle className="w-4 h-4" /> Pišite nam na WhatsApp
+              </a>
+              <a
+                href="tel:+381637347023"
+                className="inline-flex items-center gap-2 h-11 px-6 rounded-full border border-border text-sm font-semibold hover:bg-muted transition-colors"
+              >
+                <Phone className="w-4 h-4" /> Pozovite
+              </a>
+            </div>
+          </section>
+
+          <section className="space-y-6">
+            <div className="rounded-xl border border-border bg-card">
+              <div className="px-5 py-4 border-b border-border flex items-center justify-between">
+                <h2 className="text-sm font-semibold">Status</h2>
+                <span className="font-mono text-[11px] text-muted-foreground">studioleflow.com</span>
+              </div>
+              <ul className="divide-y divide-border">
+                {status.map(s => {
+                  const body = (
+                    <>
+                      <span className="min-w-0">
+                        <span className="block text-sm font-medium">{s.label}</span>
+                        <span className="block text-xs text-muted-foreground mt-0.5">{s.note}</span>
+                      </span>
+                      <span className={`inline-flex items-center gap-1.5 text-xs font-medium shrink-0 ${s.ok ? "text-emerald-600 dark:text-emerald-400" : "text-amber-600 dark:text-amber-400"}`}>
+                        <span className={`w-1.5 h-1.5 rounded-full ${s.ok ? "bg-emerald-500" : "bg-amber-500"}`} />
+                        {s.ok ? "Dostupno" : "Održavanje"}
+                      </span>
+                    </>
+                  );
+                  return (
+                    <li key={s.label}>
+                      {s.href ? (
+                        <a href={s.href} target="_blank" rel="noopener noreferrer" className="flex items-center justify-between gap-4 px-5 py-3.5 hover:bg-muted/50 transition-colors">{body}</a>
+                      ) : (
+                        <div className="flex items-center justify-between gap-4 px-5 py-3.5">{body}</div>
+                      )}
+                    </li>
+                  );
+                })}
+              </ul>
+            </div>
+
+            <div className="rounded-xl border border-border bg-card">
+              <div className="px-5 py-4 border-b border-border">
+                <h2 className="text-sm font-semibold">Kontakt</h2>
+              </div>
+              <ul className="divide-y divide-border">
+                {contacts.map(c => (
+                  <li key={c.label}>
+                    <a
+                      href={c.href}
+                      {...(c.external ? { target: "_blank", rel: "noopener noreferrer" } : {})}
+                      className="group flex items-center gap-4 px-5 py-3.5 hover:bg-muted/50 transition-colors"
+                    >
+                      <c.icon className="w-4 h-4 text-muted-foreground shrink-0" />
+                      <span className="text-sm text-muted-foreground w-20 shrink-0">{c.label}</span>
+                      <span className="text-sm font-medium truncate flex-1">{c.value}</span>
+                      <ArrowUpRight className="w-4 h-4 text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity shrink-0" />
+                    </a>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          </section>
+        </motion.div>
+      </main>
+
+      <footer className="border-t border-border/60">
+        <div className="max-w-6xl mx-auto px-6 pt-5 pb-[calc(1.25rem+env(safe-area-inset-bottom))] flex items-center justify-between text-xs text-muted-foreground">
+          <span>© {new Date().getFullYear()} Studio LeFlow</span>
+          <span>Beograd, Srbija</span>
+        </div>
+      </footer>
 
       <Dialog open={showBypassDialog} onOpenChange={(open) => { setShowBypassDialog(open); setBypassCode(""); setBypassError(false); }}>
         <DialogContent className="sm:max-w-xs">
