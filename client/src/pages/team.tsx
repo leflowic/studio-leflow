@@ -238,12 +238,12 @@ export default function Team() {
                         currentImageUrl={getCmsValue("members", `member_${member.index}_image`, "")}
                         fallbackSrc={member.image}
                         alt={member.name}
-                        className="w-16 h-16 rounded-full border-2 border-primary/20 object-cover"
+                        className="w-16 h-16 rounded-full border-2 border-primary/20 object-cover grayscale"
                         containerClassName="w-16 h-16 flex-shrink-0"
                       />
                     ) : (
                       <Avatar className="w-16 h-16 border-2 border-primary/20">
-                        <AvatarImage src={member.image} alt={member.name} />
+                        <AvatarImage src={member.image} alt={member.name} className="grayscale" />
                         <AvatarFallback className="bg-primary/10 text-primary text-lg font-bold">
                           {member.initials}
                         </AvatarFallback>

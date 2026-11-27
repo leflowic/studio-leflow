@@ -463,7 +463,7 @@ export default function Home() {
                       currentImageUrl={getCmsValue("services", service.imageKey, undefined)}
                       fallbackSrc={service.imageFallback}
                       alt={service.title}
-                      className="w-full h-full object-cover saturate-[0.25] transition-transform duration-500 group-hover:scale-[1.03]"
+                      className="w-full h-full object-cover grayscale transition-transform duration-500 group-hover:scale-[1.03]"
                     />
                   </div>
                   <CardContent className="p-6 flex flex-col flex-1">
@@ -511,7 +511,7 @@ export default function Home() {
                 currentImageUrl={getCmsValue("equipment", "equipment_image", undefined)}
                 fallbackSrc="/services/yamaha-hs8-service.jpg"
                 alt="Studio oprema"
-                className="rounded-xl w-full saturate-[0.25]"
+                className="rounded-xl w-full grayscale"
               />
 
               <div>
@@ -573,7 +573,7 @@ export default function Home() {
               ].map((item) => (
                 <Card key={item.title} className="overflow-hidden">
                   <CardContent className="p-0">
-                    <OptimizedImage src={item.src} alt={item.title} className="w-full h-48 object-cover saturate-[0.25]" />
+                    <OptimizedImage src={item.src} alt={item.title} className="w-full h-48 object-cover grayscale" />
                     <div className="p-6">
                       <h3 className="text-lg font-bold mb-2">{item.title}</h3>
                       <p className="text-muted-foreground text-sm leading-relaxed">{item.text}</p>

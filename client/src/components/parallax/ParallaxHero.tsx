@@ -45,7 +45,7 @@ export function ParallaxHero({ children }: ParallaxHeroProps) {
           // @ts-expect-error - fetchpriority is valid HTML, React 18 types lag behind
           fetchpriority="high"
           decoding="async"
-          className="w-full h-full object-cover blur-[2px] saturate-[0.25]"
+          className="w-full h-full object-cover blur-[2px] grayscale"
         />
       </div>
 

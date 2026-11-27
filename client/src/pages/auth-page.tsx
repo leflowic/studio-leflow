@@ -48,7 +48,7 @@ function AuthBrandPanel() {
         initial={{ scale: 1.1, opacity: 0 }}
         animate={{ scale: 1, opacity: 0.3 }}
         transition={{ duration: 1.5, ease: "easeOut" }}
-        className="absolute inset-0 bg-cover bg-center saturate-[0.25]"
+        className="absolute inset-0 bg-cover bg-center grayscale"
         style={{ backgroundImage: "url('/equipment/midi-workstation.jpg')" }}
       />
       <div

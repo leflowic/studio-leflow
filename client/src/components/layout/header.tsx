@@ -213,7 +213,7 @@ function FeaturedCard({ kind, onNavigate }: { kind: NavMenu["featured"]; onNavig
   return (
     <Link href="/kontakt" onClick={onNavigate} className="group block rounded-lg overflow-hidden border border-border bg-background hover:border-primary/40 transition-colors">
       <div className="aspect-[4/3] overflow-hidden bg-muted">
-        <img src="/services/wa47-microphone-service.jpg" alt="" className="w-full h-full object-cover saturate-[0.25] transition-transform duration-500 group-hover:scale-[1.03]" loading="lazy" />
+        <img src="/services/wa47-microphone-service.jpg" alt="" className="w-full h-full object-cover grayscale transition-transform duration-500 group-hover:scale-[1.03]" loading="lazy" />
       </div>
       <div className="p-3">
         <p className="text-sm font-medium">Besplatna konsultacija</p>
